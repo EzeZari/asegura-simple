@@ -1,0 +1,154 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+}
+
+// --- ITERACIÓN 1: CORE (Gestión de Pólizas y Asegurados) ---
+
+model Productor {
+  id             Int      @id @default(autoincrement())
+  nombre         String
+  apellido       String
+  email          String   @unique
+  telefono       String?
+  usuario        String   @unique
+  contrasenaHash String
+  fechaAlta      DateTime @default(now())
+
+  asegurados         Asegurado[]
+  notasSiniestro     NotaSiniestro[]
+  historialSiniestro HistorialSiniestro[]
+  alertas            Alerta[]
+}
+
+model Asegurado {
+  id            Int      @id @default(autoincrement())
+  nombre        String
+  apellido      String
+  dni           String   @unique
+  email         String
+  telefono      String?
+  direccion     String?
+  fechaRegistro DateTime @default(now())
+  
+  productorId   Int
+  productor     Productor @relation(fields: [productorId], references: [id])
+
+  polizas       Poliza[]
+}
+
+model Compania {
+  id        Int     @id @default(autoincrement())
+  nombre    String
+  telefono  String?
+  email     String?
+  direccion String?
+
+  polizas   Poliza[]
+}
+
+model Poliza {
+  id               Int      @id @default(autoincrement())
+  nroPoliza        String   @unique
+  tipoPoliza       String
+  fechaInicio      DateTime
+  fechaVencimiento DateTime
+  estado           String
+  cobertura        String?
+
+  aseguradoId      Int
+  asegurado        Asegurado @relation(fields: [aseguradoId], references: [id])
+  
+  companiaId       Int
+  compania         Compania  @relation(fields: [companiaId], references: [id])
+
+  siniestros       Siniestro[]
+  alertas          Alerta[]
+}
+
+model Alerta {
+  id              Int      @id @default(autoincrement())
+  mensaje         String
+  fechaGeneracion DateTime @default(now())
+  
+  polizaId        Int
+  poliza          Poliza   @relation(fields: [polizaId], references: [id])
+
+  productorId     Int
+  productor       Productor @relation(fields: [productorId], references: [id])
+}
+
+// --- ITERACIÓN 2: GESTIÓN DE SINIESTROS ---
+
+model Siniestro {
+  id                 Int      @id @default(autoincrement())
+  nroSiniestro       String   @unique
+  fechaHecho         DateTime
+  descripcionInicial String
+  estadoSiniestro    String
+  fechaCreacion      DateTime @default(now())
+  fechaCierre        DateTime?
+
+  polizaId           Int
+  poliza             Poliza   @relation(fields: [polizaId], references: [id])
+
+  notas          NotaSiniestro[]
+  historial      HistorialSiniestro[]
+  linksConsulta  LinkConsulta[]
+  notificaciones Notificacion[]
+}
+
+model NotaSiniestro {
+  id          Int      @id @default(autoincrement())
+  texto       String
+  fecha       DateTime @default(now())
+  publico     Boolean  @default(false)
+
+  siniestroId Int
+  siniestro   Siniestro @relation(fields: [siniestroId], references: [id])
+  
+  productorId Int
+  productor   Productor @relation(fields: [productorId], references: [id])
+}
+
+model HistorialSiniestro {
+  id             Int      @id @default(autoincrement())
+  estadoAnterior String
+  estadoNuevo    String
+  fechaCambio    DateTime @default(now())
+  comentario     String?
+
+  siniestroId    Int
+  siniestro      Siniestro @relation(fields: [siniestroId], references: [id])
+  
+  productorId    Int
+  productor      Productor @relation(fields: [productorId], references: [id])
+}
+
+model LinkConsulta {
+  id          Int      @id @default(autoincrement())
+  token       String   @unique
+  url         String?
+  creadoEn    DateTime @default(now())
+  expiracion  DateTime
+  activo      Boolean  @default(true)
+
+  siniestroId Int
+  siniestro   Siniestro @relation(fields: [siniestroId], references: [id])
+}
+
+model Notificacion {
+  id           Int      @id @default(autoincrement())
+  canal        String
+  destinatario String
+  motivo       String
+  mensaje      String
+  enviadaEn    DateTime @default(now())
+  estadoEnvio  String
+
+  siniestroId  Int
+  siniestro    Siniestro @relation(fields: [siniestroId], references: [id])
+}
