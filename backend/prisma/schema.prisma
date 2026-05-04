@@ -152,3 +152,11 @@ model Notificacion {
   siniestroId  Int
   siniestro    Siniestro @relation(fields: [siniestroId], references: [id])
 }
+model User {
+  id        Int      @id @default(autoincrement())
+  nombre    String
+  email     String   @unique // Esto obliga a que el correo no se pueda repetir
+  telefono  String
+  password  String   // Acá guardaremos la contraseña encriptada
+  createdAt DateTime @default(now())
+}
