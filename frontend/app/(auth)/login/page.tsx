@@ -1,44 +1,51 @@
-"use function"; // Mantenemos "use client" porque acá hay interactividad
 "use client";
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react"; // Importamos el gancho para manejar estados
+import { useState } from "react";
+import { Eye, EyeOff } from "lucide-react"; // Importamos los íconos
 
 export default function LoginPage() {
   const router = useRouter();
 
-  // 1. Creamos los "cajones" (estados) para guardar lo que escribe el usuario
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  
-  // 2. Estados para manejar errores y la animación de carga
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  
+  // Nuevo estado para ver/ocultar contraseña
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault(); // Evitamos que la página recargue
-    setError(""); // Limpiamos errores previos
+    e.preventDefault();
+    setError("");
 
-    // Validación básica
     if (!email || !password) {
       setError("Por favor, completá todos los campos.");
       return;
     }
 
-    // Prendemos el estado de carga
     setIsLoading(true);
 
     try {
-      // Acá simulamos que le pegamos al Backend (puerto 3001) con un retraso de 1.5 segundos
-      // En el futuro acá irá un fetch('http://localhost:3001/api/login', ...)
-      await new Promise((resolve) => setTimeout(resolve, 1500));
+      const response = await fetch('http://localhost:3001/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
 
-      // Si todo sale bien, lo mandamos al panel
+      const data = await response.json();
+
+      if (!response.ok) {
+        setError(data.error || "Credenciales incorrectas.");
+        setIsLoading(false);
+        return;
+      }
+
       router.push("/");
     } catch (err) {
-      setError("Credenciales incorrectas. Volvé a intentar.");
-      setIsLoading(false); // Apagamos la carga si hay error
+      setError("Error de conexión con el servidor. ¿Está prendido el backend?");
+      setIsLoading(false);
     }
   };
 
@@ -55,16 +62,12 @@ export default function LoginPage() {
 
       <div className="w-full lg:w-1/2 flex flex-col justify-center items-center p-8 lg:p-16 bg-white relative">
         <div className="w-full max-w-md flex flex-col gap-10">
-          <div className="text-green-700 font-bold text-sm tracking-wide">
-            Logo y nombre
-          </div>
+          <div className="text-green-700 font-bold text-sm tracking-wide">Logo y nombre</div>
 
           <div>
             <h1 className="text-5xl leading-tight font-bold text-gray-900 tracking-tight">
               Hola!<br />Ingresa a tu<br />cuenta
             </h1>
-            
-            {/* Si hay un error, mostramos este cartelito rojo */}
             {error && (
               <div className="mt-4 p-3 bg-red-50 border border-red-200 text-red-600 text-sm rounded-md">
                 {error}
@@ -77,23 +80,31 @@ export default function LoginPage() {
               <input
                 type="email"
                 placeholder="Email"
-                // Conectamos el input con el estado "email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                disabled={isLoading} // Si está cargando, bloqueamos el input
-                className="w-full border border-gray-200 rounded-md px-5 py-4 text-base text-gray-900 placeholder:text-gray-400 focus:outline-none focus:border-green-600 focus:ring-1 focus:ring-green-600 transition-all disabled:bg-gray-50 disabled:text-gray-400"
-              />
-            </div>
-            <div>
-              <input
-                type="password"
-                placeholder="Contraseña"
-                // Conectamos el input con el estado "password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
                 disabled={isLoading}
                 className="w-full border border-gray-200 rounded-md px-5 py-4 text-base text-gray-900 placeholder:text-gray-400 focus:outline-none focus:border-green-600 focus:ring-1 focus:ring-green-600 transition-all disabled:bg-gray-50 disabled:text-gray-400"
               />
+            </div>
+            
+            {/* Contenedor relativo para el input de contraseña y el botón */}
+            <div className="relative">
+              <input
+                // Cambiamos el tipo dinámicamente
+                type={showPassword ? "text" : "password"}
+                placeholder="Contraseña"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                disabled={isLoading}
+                className="w-full border border-gray-200 rounded-md px-5 py-4 text-base text-gray-900 placeholder:text-gray-400 focus:outline-none focus:border-green-600 focus:ring-1 focus:ring-green-600 transition-all disabled:bg-gray-50 disabled:text-gray-400 pr-12"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-green-700 transition-colors"
+              >
+                {showPassword ? <EyeOff size={22} /> : <Eye size={22} />}
+              </button>
             </div>
 
             <div className="flex justify-end mt-1">
@@ -104,10 +115,9 @@ export default function LoginPage() {
 
             <button
               type="submit"
-              disabled={isLoading} // Deshabilitamos el botón mientras carga
+              disabled={isLoading}
               className="w-full bg-green-700 text-white text-lg font-medium rounded-md py-4 mt-2 hover:bg-green-800 transition-colors shadow-sm disabled:bg-green-700/70 flex justify-center items-center"
             >
-              {/* Cambiamos el texto dinámicamente */}
               {isLoading ? "Ingresando..." : "Ingresar"}
             </button>
           </form>
@@ -118,10 +128,6 @@ export default function LoginPage() {
               Creá una cuenta
             </Link>
           </div>
-        </div>
-
-        <div className="absolute bottom-8 text-xs text-gray-400 font-light">
-          ©2026 AseguraSimple. Reservados todos los derechos.
         </div>
       </div>
     </div>
