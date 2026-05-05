@@ -17,9 +17,21 @@ export default function AuthLayout({
         <div className="absolute inset-0 bg-gradient-to-b from-black/20 to-black/60 pointer-events-none"></div>
       </div>
 
-      {/* Mitad Derecha - Contenedor dinámico (Acá se inyecta el login o el registro) */}
+      {/* Mitad Derecha - Contenedor blanco con el formulario */}
       <div className="w-full lg:w-1/2 flex flex-col justify-center items-center p-8 lg:p-12 bg-white relative overflow-y-auto">
+        
+        {/* LOGO CENTRADO Y MÁS GRANDE */}
+        <div className="w-full max-w-md flex justify-center mb-10">
+          <img 
+            src="/logo.png" 
+            alt="AseguraSimple Logo" 
+            className="h-24 w-auto drop-shadow-[0_0px_2px_rgba(0,0,0,0.5)]"
+          />
+        </div>
+
+        {/* Acá adentro se inyecta el Login o el Registro de forma dinámica */}
         {children}
+
       </div>
     </div>
   );

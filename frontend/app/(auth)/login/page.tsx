@@ -49,7 +49,6 @@ export default function LoginPage() {
   // Mirá qué limpio quedó el return, solo es el formulario
   return (
     <div className="w-full max-w-md flex flex-col gap-10">
-      <div className="text-green-700 font-bold text-sm tracking-wide">Logo y nombre</div>
 
       <div>
         <h1 className="text-5xl leading-tight font-bold text-gray-900 tracking-tight">

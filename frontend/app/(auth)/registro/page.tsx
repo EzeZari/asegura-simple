@@ -61,7 +61,6 @@ export default function RegisterPage() {
 
   return (
     <div className="w-full max-w-md flex flex-col gap-6 my-auto py-10">
-      <div className="text-green-700 font-bold text-sm tracking-wide">Logo y nombre</div>
 
       {isSuccess ? (
         <div className="flex flex-col items-center text-center gap-6 py-12 animate-in fade-in zoom-in duration-500">
