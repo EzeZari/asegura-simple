@@ -152,11 +152,17 @@ model Notificacion {
   siniestroId  Int
   siniestro    Siniestro @relation(fields: [siniestroId], references: [id])
 }
+enum Role {
+  ADMIN
+  PRODUCTOR
+  VIEWER
+}
 model User {
   id        Int      @id @default(autoincrement())
   nombre    String
-  email     String   @unique // Esto obliga a que el correo no se pueda repetir
+  email     String   @unique
   telefono  String
-  password  String   // Acá guardaremos la contraseña encriptada
+  password  String
+  role      Role     @default(PRODUCTOR) // <-- Solo agregás esta línea
   createdAt DateTime @default(now())
 }

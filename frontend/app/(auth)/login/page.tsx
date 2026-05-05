@@ -29,6 +29,7 @@ export default function LoginPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
+        credentials: 'include', // <--- LA LÍNEA MÁGICA AGREGADA ACÁ
       });
 
       const data = await response.json();
