@@ -9,8 +9,9 @@ import {
   Bell, 
   LayoutDashboard, 
   Settings,
-  LogOut // 1. Agregamos el icono de salida
+  LogOut
 } from 'lucide-react';
+import { useAuthStore } from '@/store/authStore';
 
 const menuItems = [
   { name: 'Inicio', icon: Home, path: '/' },
@@ -23,17 +24,24 @@ const menuItems = [
 
 export default function Sidebar() {
   const router = useRouter();
+  
+  // Traemos al usuario y la función para limpiar la memoria de Zustand
+  const user = useAuthStore((state) => state.user);
+  const clearStore = useAuthStore((state) => state.logout);
 
-  // 2. Función para cerrar sesión
+  // Función para cerrar sesión
   const handleLogout = async () => {
     try {
-      // Le avisamos al backend que destruya la cookie segura
+      // 1. Le avisamos al backend que destruya la cookie segura
       await fetch('http://localhost:3001/api/auth/logout', {
         method: 'POST',
-        credentials: 'include', // Clave para que envíe y borre la cookie
+        credentials: 'include', 
       });
       
-      // Lo mandamos al login, y como el middleware ya no ve la cookie, lo deja ahí
+      // 2. Borramos al usuario de la memoria global (Zustand)
+      clearStore();
+
+      // 3. Lo mandamos al login
       router.push('/login');
     } catch (error) {
       console.error("Error al cerrar sesión", error);
@@ -42,9 +50,10 @@ export default function Sidebar() {
 
   return (
     <aside className="w-64 h-screen bg-green-700 text-white flex flex-col fixed left-0 top-0">
-      {/* Zona del Logo */}
-      <div className="h-24 flex items-center justify-center font-bold text-2xl tracking-wide">
-        Logo
+      {/* Zona del Logo y Saludo */}
+      <div className="h-24 flex flex-col items-center justify-center font-bold tracking-wide border-b border-green-600/50">
+        <span className="text-2xl">Logo</span>
+        {user && <span className="text-sm font-normal text-green-200 mt-1">Hola, {user.nombre}</span>}
       </div>
 
       {/* Zona de Navegación */}
