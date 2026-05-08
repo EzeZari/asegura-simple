@@ -90,9 +90,14 @@ export const refresh = async (req: Request, res: Response): Promise<any> => {
     if (!user) return res.status(401).json({ error: 'Usuario no encontrado.' });
 
     const accessToken = jwt.sign({ userId: user.id, role: user.role }, process.env.JWT_SECRET as string, { expiresIn: '15m' });
-    res.status(200).json({ accessToken });
+    
+    // ESTA ES LA LÍNEA QUE FALTA:
+    res.status(200).json({ 
+      accessToken,
+      user: { id: user.id, nombre: user.nombre, email: user.email, role: user.role }
+    });
   } catch (error) {
-    res.status(403).json({ error: 'Token inválido o expirado. Por favor, iniciá sesión nuevamente.' });
+    res.status(403).json({ error: 'Token inválido o expirado.' });
   }
 };
 
