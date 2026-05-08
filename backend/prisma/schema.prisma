@@ -165,4 +165,7 @@ model User {
   password  String
   role      Role     @default(PRODUCTOR) // <-- Solo agregás esta línea
   createdAt DateTime @default(now())
+
+  resetPasswordToken   String?   // Guarda el código secreto temporal
+  resetPasswordExpires DateTime? // Guarda la fecha de vencimiento del código
 }

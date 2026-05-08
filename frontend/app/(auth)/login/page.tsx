@@ -13,7 +13,7 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const setUser = useAuthStore((state) => state.setUser); // <-- Agregá esto
+  const setUser = useAuthStore((state) => state.setUser);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -31,7 +31,7 @@ export default function LoginPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
-        credentials: 'include', // <--- LA LÍNEA MÁGICA AGREGADA ACÁ
+        credentials: 'include',
       });
 
       const data = await response.json();
@@ -41,8 +41,8 @@ export default function LoginPage() {
         setIsLoading(false);
         return;
       }
-      setUser(data.user);
 
+      setUser(data.user);
       router.push("/");
     } catch (err) {
       setError("Error de conexión con el servidor.");
@@ -50,10 +50,8 @@ export default function LoginPage() {
     }
   };
 
-  // Mirá qué limpio quedó el return, solo es el formulario
   return (
     <div className="w-full max-w-md flex flex-col gap-10">
-
       <div>
         <h1 className="text-5xl leading-tight font-bold text-gray-900 tracking-tight">
           Hola!<br />Ingresa a tu<br />cuenta
@@ -64,17 +62,34 @@ export default function LoginPage() {
       </div>
 
       <form onSubmit={handleLogin} className="flex flex-col gap-6 mt-2">
-        <input type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} disabled={isLoading} className="w-full border border-gray-200 rounded-md px-5 py-4 text-base text-gray-900 placeholder:text-gray-400 focus:outline-none focus:border-green-600 focus:ring-1 focus:ring-green-600 transition-all disabled:bg-gray-50" />
+        <input 
+          type="email" 
+          placeholder="Email" 
+          value={email} 
+          onChange={(e) => setEmail(e.target.value)} 
+          disabled={isLoading} 
+          className="w-full border border-gray-200 rounded-md px-5 py-4 text-base text-gray-900 placeholder:text-gray-400 focus:outline-none focus:border-green-600 focus:ring-1 focus:ring-green-600 transition-all disabled:bg-gray-50" 
+        />
         
         <div className="relative">
-          <input type={showPassword ? "text" : "password"} placeholder="Contraseña" value={password} onChange={(e) => setPassword(e.target.value)} disabled={isLoading} className="w-full border border-gray-200 rounded-md px-5 py-4 text-base text-gray-900 placeholder:text-gray-400 focus:outline-none focus:border-green-600 focus:ring-1 focus:ring-green-600 transition-all disabled:bg-gray-50 pr-12" />
+          <input 
+            type={showPassword ? "text" : "password"} 
+            placeholder="Contraseña" 
+            value={password} 
+            onChange={(e) => setPassword(e.target.value)} 
+            disabled={isLoading} 
+            className="w-full border border-gray-200 rounded-md px-5 py-4 text-base text-gray-900 placeholder:text-gray-400 focus:outline-none focus:border-green-600 focus:ring-1 focus:ring-green-600 transition-all disabled:bg-gray-50 pr-12" 
+          />
           <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-green-700">
             {showPassword ? <EyeOff size={22} /> : <Eye size={22} />}
           </button>
         </div>
 
+        {/* Acá está el link bien acomodado a la derecha */}
         <div className="flex justify-end mt-1">
-          <Link href="#" className="text-sm text-green-700 font-medium hover:underline">¿Olvidaste tu contraseña?</Link>
+          <Link href="/recuperar" className="text-sm text-green-700 font-medium hover:underline">
+            ¿Olvidaste tu contraseña?
+          </Link>
         </div>
 
         <button type="submit" disabled={isLoading} className="w-full bg-green-700 text-white text-lg font-medium rounded-md py-4 mt-2 hover:bg-green-800 transition-colors disabled:bg-green-700/70">

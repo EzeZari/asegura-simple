@@ -5,9 +5,11 @@ export function middleware(request: NextRequest) {
   // 1. Buscamos la pulsera VIP (la cookie que nos dio el backend)
   const token = request.cookies.get('refreshToken')?.value;
 
-  // 2. Identificamos qué rutas son de acceso libre (Login y Registro)
+  // 2. Identificamos qué rutas son de acceso libre (Login, Registro y Recuperar)
   const isAuthRoute = request.nextUrl.pathname.startsWith('/login') || 
-                      request.nextUrl.pathname.startsWith('/registro');
+                      request.nextUrl.pathname.startsWith('/registro') ||
+                      request.nextUrl.pathname.startsWith('/recuperar')||
+                      request.nextUrl.pathname.startsWith('/nueva-contrasena'); // <--- AGREGAMOS ESTO
 
   // 3. REGLA A: Si NO tiene token y quiere entrar a la plataforma -> Lo pateamos al Login
   if (!token && !isAuthRoute) {
@@ -32,7 +34,8 @@ export const config = {
      * - _next/static (archivos de diseño de Next.js)
      * - _next/image (imágenes optimizadas)
      * - favicon.ico (el iconito de la pestaña)
+     * - logo.png (nuestro logo estático)
      */
-    '/((?!api|_next/static|_next/image|favicon.ico).*)',
+    '/((?!api|_next/static|_next/image|favicon.ico|logo.png).*)',
   ],
 };
