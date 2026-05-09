@@ -1,22 +1,23 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Search, Plus, MoreHorizontal, Shield, Building2, User } from "lucide-react";
+import { Plus, MoreHorizontal, Shield, Building2, User, Search } from "lucide-react";
 import NuevoAseguradoModal from "@/components/asegurados/NuevoAseguradoModal";
+import AseguradosFiltros from "@/components/asegurados/AseguradosFiltros";
 import Toast from "@/components/ui/Toast";
 
 export default function AseguradosPage() {
+  // Estados de Filtros
   const [searchTerm, setSearchTerm] = useState("");
+  const [filtroTipo, setFiltroTipo] = useState("Todos");
+  const [filtroEstado, setFiltroEstado] = useState("Todos");
   
-  // Estados para el Modal
+  // Estados de UI y Datos
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [clienteAEditar, setClienteAEditar] = useState<any>(null); // Para saber a quién editamos
-  
+  const [clienteAEditar, setClienteAEditar] = useState<any>(null);
   const [asegurados, setAsegurados] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showToast, setShowToast] = useState(false);
-  
-  // Estado para saber qué menú de 3 puntitos está abierto
   const [menuAbiertoId, setMenuAbiertoId] = useState<number | null>(null);
 
   const fetchAsegurados = async () => {
@@ -35,27 +36,25 @@ export default function AseguradosPage() {
 
   const handleSuccess = () => {
     setIsModalOpen(false);
-    setClienteAEditar(null); // Limpiamos el cliente en edición
+    setClienteAEditar(null);
     fetchAsegurados();
     setShowToast(true);
   };
 
-  // Función para abrir el modal en modo edición
   const abrirParaEditar = (cliente: any) => {
     setClienteAEditar(cliente);
-    setMenuAbiertoId(null); // Cerramos el menú
+    setMenuAbiertoId(null);
     setIsModalOpen(true);
   };
 
-  // Función rápida para Desactivar/Activar sin abrir el modal
   const toggleEstado = async (cliente: any) => {
     try {
       await fetch(`http://localhost:3001/api/asegurados/${cliente.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...cliente, activo: !cliente.activo }), // Invertimos el estado
+        body: JSON.stringify({ ...cliente, activo: !cliente.activo }),
       });
-      fetchAsegurados(); // Recargamos la tabla
+      fetchAsegurados();
     } catch (error) {
       console.error("Error al cambiar estado:", error);
     } finally {
@@ -66,7 +65,14 @@ export default function AseguradosPage() {
   const aseguradosFiltrados = asegurados.filter((cliente) => {
     const busqueda = searchTerm.toLowerCase();
     const nombreCompleto = `${cliente.nombre} ${cliente.apellido || ""}`.toLowerCase();
-    return nombreCompleto.includes(busqueda) || cliente.dni.includes(busqueda);
+    const pasaFiltroTexto = nombreCompleto.includes(busqueda) || cliente.dni.includes(busqueda);
+    const pasaFiltroTipo = filtroTipo === "Todos" || cliente.tipo === filtroTipo;
+    const pasaFiltroEstado = 
+      filtroEstado === "Todos" || 
+      (filtroEstado === "Activos" && cliente.activo) || 
+      (filtroEstado === "Inactivos" && !cliente.activo);
+
+    return pasaFiltroTexto && pasaFiltroTipo && pasaFiltroEstado;
   });
 
   return (
@@ -78,7 +84,7 @@ export default function AseguradosPage() {
         </div>
         <button 
           onClick={() => {
-            setClienteAEditar(null); // Si hacemos clic en Nuevo, limpiamos
+            setClienteAEditar(null);
             setIsModalOpen(true);
           }}
           className="flex items-center gap-2 bg-green-700 hover:bg-green-800 text-white px-4 py-2 rounded-lg font-medium transition-colors shadow-sm whitespace-nowrap"
@@ -88,12 +94,12 @@ export default function AseguradosPage() {
         </button>
       </div>
 
-      <div className="flex items-center gap-4 bg-white p-4 rounded-xl border border-gray-100 shadow-sm w-full">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
-          <input type="text" placeholder="Buscar por nombre o DNI..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-600 outline-none transition-all" />
-        </div>
-      </div>
+      {/* Componente Modular de Filtros */}
+      <AseguradosFiltros 
+        searchTerm={searchTerm} setSearchTerm={setSearchTerm}
+        filtroTipo={filtroTipo} setFiltroTipo={setFiltroTipo}
+        filtroEstado={filtroEstado} setFiltroEstado={setFiltroEstado}
+      />
 
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-visible pb-10 w-full">
         <div className="overflow-visible w-full min-h-[300px]">
@@ -114,7 +120,15 @@ export default function AseguradosPage() {
               {isLoading ? (
                 <tr><td colSpan={8} className="px-6 py-8 text-center text-gray-500">Cargando...</td></tr>
               ) : aseguradosFiltrados.length === 0 ? (
-                <tr><td colSpan={8} className="px-6 py-8 text-center text-gray-500">Sin datos.</td></tr>
+                <tr>
+                  <td colSpan={8} className="px-6 py-12 text-center">
+                    <div className="flex flex-col items-center justify-center text-gray-500">
+                      <Search size={32} className="text-gray-300 mb-3" />
+                      <p className="font-medium text-gray-900">No se encontraron clientes</p>
+                      <p className="text-sm mt-1">Probá ajustando los filtros de búsqueda.</p>
+                    </div>
+                  </td>
+                </tr>
               ) : (
                 aseguradosFiltrados.map((cliente) => (
                   <tr key={cliente.id} className="hover:bg-gray-50/50 transition-colors group">
@@ -148,8 +162,6 @@ export default function AseguradosPage() {
                       </span>
                     </td>
                     <td className="px-6 py-4 text-right relative">
-                      
-                      {/* El botón de los 3 puntitos */}
                       <button 
                         onClick={() => setMenuAbiertoId(menuAbiertoId === cliente.id ? null : cliente.id)}
                         className="text-gray-400 hover:text-green-600 transition-colors p-2 hover:bg-green-50 rounded-lg"
@@ -157,7 +169,6 @@ export default function AseguradosPage() {
                         <MoreHorizontal size={20} />
                       </button>
 
-                      {/* El Mini Menú Desplegable */}
                       {menuAbiertoId === cliente.id && (
                         <div className="absolute right-8 top-10 mt-1 w-32 bg-white rounded-lg shadow-xl border border-gray-100 z-50 overflow-hidden">
                           <button 
@@ -187,7 +198,7 @@ export default function AseguradosPage() {
         isOpen={isModalOpen} 
         onClose={() => setIsModalOpen(false)} 
         onSuccess={handleSuccess}
-        clienteAEditar={clienteAEditar} // <-- Le pasamos la data
+        clienteAEditar={clienteAEditar}
       />
 
       <Toast 
