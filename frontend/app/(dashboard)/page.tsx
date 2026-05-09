@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { useAuthStore } from "@/store/authStore";
-// ¡ESTA ES LA LÍNEA CLAVE QUE FALTABA! Trae los íconos a la página
 import { Users, FileText, AlertCircle, DollarSign } from "lucide-react"; 
 import StatCard from "@/components/dashboard/StatCard";
 import RecentActivity from "@/components/dashboard/RecentActivity";
@@ -29,7 +28,8 @@ export default function DashboardPage() {
   useEffect(() => setMounted(true), []);
 
   return (
-    <div className="flex-1 flex flex-col p-8 w-full max-w-7xl mx-auto gap-8 bg-white min-h-screen">
+    // ¡ACÁ ESTÁ LA MAGIA! Se borró max-w-7xl y mx-auto
+    <div className="flex-1 flex flex-col p-8 w-full gap-8 bg-white min-h-screen">
       
       {/* Saludo */}
       <div className="pb-4">
