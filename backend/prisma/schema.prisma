@@ -25,23 +25,28 @@ model Productor {
 }
 
 model Asegurado {
-  id            Int      @id @default(autoincrement())
-  nombre        String
-  apellido      String
-  dni           String   @unique
-  email         String
-  telefono      String?
-  direccion     String?
-  fechaRegistro DateTime @default(now())
+  id              Int       @id @default(autoincrement())
+  nombre          String    // Nombre o Razón Social
+  apellido        String?   // Opcional por si es empresa
+  tipo            String    @default("Individuo") 
+  dni             String    @unique // Lo usamos para DNI o CUIT
+  fechaNacimiento DateTime?
+  condicionIva    String    @default("Consumidor Final")
+  email           String?   
+  telefono        String?
+  direccion       String?
+  codigoPostal    String?
+  activo          Boolean   @default(true)
+  fechaRegistro   DateTime  @default(now())
   
-  productorId   Int
-  productor     Productor @relation(fields: [productorId], references: [id])
+  productorId     Int
+  productor       Productor @relation(fields: [productorId], references: [id])
 
-  polizas       Poliza[]
+  polizas         Poliza[]
 }
 
 model Compania {
-  id        Int     @id @default(autoincrement())
+  id        Int      @id @default(autoincrement())
   nombre    String
   telefono  String?
   email     String?
@@ -152,20 +157,22 @@ model Notificacion {
   siniestroId  Int
   siniestro    Siniestro @relation(fields: [siniestroId], references: [id])
 }
+
 enum Role {
   ADMIN
   PRODUCTOR
   VIEWER
 }
-model User {
-  id        Int      @id @default(autoincrement())
-  nombre    String
-  email     String   @unique
-  telefono  String
-  password  String
-  role      Role     @default(PRODUCTOR) // <-- Solo agregás esta línea
-  createdAt DateTime @default(now())
 
-  resetPasswordToken   String?   // Guarda el código secreto temporal
-  resetPasswordExpires DateTime? // Guarda la fecha de vencimiento del código
+model User {
+  id                 Int      @id @default(autoincrement())
+  nombre             String
+  email              String   @unique
+  telefono           String
+  password           String
+  role               Role     @default(PRODUCTOR) 
+  createdAt          DateTime @default(now())
+
+  resetPasswordToken   String?  
+  resetPasswordExpires DateTime? 
 }

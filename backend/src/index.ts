@@ -6,6 +6,7 @@ import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 
 import authRoutes from './routes/auth.routes';
+import aseguradosRoutes from './routes/asegurados.routes'; // Ajustá la ruta según tu carpeta
 
 dotenv.config();
 
@@ -34,6 +35,7 @@ app.use(cookieParser());
 
 // --- RUTAS ---
 app.use('/api/auth', authRoutes);
+app.use('/api/asegurados', aseguradosRoutes);
 
 const PORT = process.env.PORT || 3001;
 
