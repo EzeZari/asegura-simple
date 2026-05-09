@@ -78,5 +78,35 @@ router.post('/', async (req, res) => {
     res.status(500).json({ error: 'Hubo un error al guardar el asegurado.' });
   }
 });
+// RUTA: PUT /api/asegurados/:id (Editar o dar de baja un cliente)
+router.put('/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const data = req.body;
+
+    const aseguradoActualizado = await prisma.asegurado.update({
+      where: { id: parseInt(id) },
+      data: {
+        nombre: data.nombre,
+        apellido: data.apellido,
+        tipo: data.tipo,
+        dni: data.dni,
+        condicionIva: data.condicionIva,
+        email: data.email,
+        telefono: data.telefono,
+        direccion: data.direccion,
+        codigoPostal: data.codigoPostal,
+        // Si hay fecha la convertimos, sino mandamos null
+        fechaNacimiento: data.fechaNacimiento ? new Date(data.fechaNacimiento) : null,
+        activo: data.activo, // Esto nos va a servir para "desactivarlo"
+      },
+    });
+
+    res.json(aseguradoActualizado);
+  } catch (error) {
+    console.error("Error al actualizar el asegurado:", error);
+    res.status(500).json({ error: 'Hubo un error al actualizar el asegurado.' });
+  }
+});
 
 export default router;

@@ -7,10 +7,17 @@ import Toast from "@/components/ui/Toast";
 
 export default function AseguradosPage() {
   const [searchTerm, setSearchTerm] = useState("");
+  
+  // Estados para el Modal
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [clienteAEditar, setClienteAEditar] = useState<any>(null); // Para saber a quién editamos
+  
   const [asegurados, setAsegurados] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showToast, setShowToast] = useState(false);
+  
+  // Estado para saber qué menú de 3 puntitos está abierto
+  const [menuAbiertoId, setMenuAbiertoId] = useState<number | null>(null);
 
   const fetchAsegurados = async () => {
     try {
@@ -24,14 +31,36 @@ export default function AseguradosPage() {
     }
   };
 
-  useEffect(() => {
-    fetchAsegurados();
-  }, []);
+  useEffect(() => { fetchAsegurados(); }, []);
 
   const handleSuccess = () => {
     setIsModalOpen(false);
+    setClienteAEditar(null); // Limpiamos el cliente en edición
     fetchAsegurados();
     setShowToast(true);
+  };
+
+  // Función para abrir el modal en modo edición
+  const abrirParaEditar = (cliente: any) => {
+    setClienteAEditar(cliente);
+    setMenuAbiertoId(null); // Cerramos el menú
+    setIsModalOpen(true);
+  };
+
+  // Función rápida para Desactivar/Activar sin abrir el modal
+  const toggleEstado = async (cliente: any) => {
+    try {
+      await fetch(`http://localhost:3001/api/asegurados/${cliente.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...cliente, activo: !cliente.activo }), // Invertimos el estado
+      });
+      fetchAsegurados(); // Recargamos la tabla
+    } catch (error) {
+      console.error("Error al cambiar estado:", error);
+    } finally {
+      setMenuAbiertoId(null);
+    }
   };
 
   const aseguradosFiltrados = asegurados.filter((cliente) => {
@@ -48,7 +77,10 @@ export default function AseguradosPage() {
           <p className="text-gray-500 mt-1">Gestioná tu cartera de clientes reales.</p>
         </div>
         <button 
-          onClick={() => setIsModalOpen(true)}
+          onClick={() => {
+            setClienteAEditar(null); // Si hacemos clic en Nuevo, limpiamos
+            setIsModalOpen(true);
+          }}
           className="flex items-center gap-2 bg-green-700 hover:bg-green-800 text-white px-4 py-2 rounded-lg font-medium transition-colors shadow-sm whitespace-nowrap"
         >
           <Plus size={20} />
@@ -59,19 +91,13 @@ export default function AseguradosPage() {
       <div className="flex items-center gap-4 bg-white p-4 rounded-xl border border-gray-100 shadow-sm w-full">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
-          <input 
-            type="text" 
-            placeholder="Buscar por nombre o DNI..." 
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-600 transition-all"
-          />
+          <input type="text" placeholder="Buscar por nombre o DNI..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-600 outline-none transition-all" />
         </div>
       </div>
 
-      <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden pb-10 w-full">
-        <div className="overflow-x-auto w-full">
-          <table className="w-full text-left text-sm border-collapse">
+      <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-visible pb-10 w-full">
+        <div className="overflow-visible w-full min-h-[300px]">
+          <table className="w-full text-left text-sm border-collapse relative">
             <thead className="bg-gray-50 text-gray-500 border-b border-gray-100">
               <tr>
                 <th className="px-6 py-4 font-semibold">Nombre / Razón Social</th>
@@ -116,15 +142,38 @@ export default function AseguradosPage() {
                     </td>
                     <td className="px-6 py-4">
                       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${
-                        cliente.activo ? "bg-emerald-100 text-emerald-800" : "bg-gray-100 text-gray-600"
+                        cliente.activo ? "bg-emerald-100 text-emerald-800" : "bg-red-100 text-red-800"
                       }`}>
                         {cliente.activo ? "Activo" : "Inactivo"}
                       </span>
                     </td>
-                    <td className="px-6 py-4 text-right">
-                      <button className="text-gray-300 group-hover:text-green-600 transition-colors p-2 hover:bg-green-50 rounded-lg">
+                    <td className="px-6 py-4 text-right relative">
+                      
+                      {/* El botón de los 3 puntitos */}
+                      <button 
+                        onClick={() => setMenuAbiertoId(menuAbiertoId === cliente.id ? null : cliente.id)}
+                        className="text-gray-400 hover:text-green-600 transition-colors p-2 hover:bg-green-50 rounded-lg"
+                      >
                         <MoreHorizontal size={20} />
                       </button>
+
+                      {/* El Mini Menú Desplegable */}
+                      {menuAbiertoId === cliente.id && (
+                        <div className="absolute right-8 top-10 mt-1 w-32 bg-white rounded-lg shadow-xl border border-gray-100 z-50 overflow-hidden">
+                          <button 
+                            onClick={() => abrirParaEditar(cliente)}
+                            className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                          >
+                            Editar
+                          </button>
+                          <button 
+                            onClick={() => toggleEstado(cliente)}
+                            className={`w-full text-left px-4 py-2 text-sm ${cliente.activo ? "text-red-600 hover:bg-red-50" : "text-green-600 hover:bg-green-50"}`}
+                          >
+                            {cliente.activo ? "Desactivar" : "Activar"}
+                          </button>
+                        </div>
+                      )}
                     </td>
                   </tr>
                 ))
@@ -137,7 +186,8 @@ export default function AseguradosPage() {
       <NuevoAseguradoModal 
         isOpen={isModalOpen} 
         onClose={() => setIsModalOpen(false)} 
-        onSuccess={handleSuccess} 
+        onSuccess={handleSuccess}
+        clienteAEditar={clienteAEditar} // <-- Le pasamos la data
       />
 
       <Toast 
