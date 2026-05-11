@@ -58,5 +58,20 @@ router.post('/', async (req, res) => {
     res.status(500).json({ error: 'Hubo un error al guardar la póliza.' });
   }
 });
-
+// RUTA: DELETE /api/companias/:id
+router.delete('/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    await prisma.compania.delete({
+      where: { id: parseInt(id) }
+    });
+    res.json({ message: 'Compañía eliminada correctamente' });
+  } catch (error: any) {
+    // Si el error es P2003, significa que hay pólizas usando esta compañía
+    if (error.code === 'P2003') {
+      return res.status(400).json({ error: 'No se puede eliminar la compañía porque tiene pólizas asociadas.' });
+    }
+    res.status(500).json({ error: 'Error al eliminar la compañía.' });
+  }
+});
 export default router;
