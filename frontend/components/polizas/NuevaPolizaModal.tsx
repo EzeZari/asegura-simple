@@ -7,7 +7,7 @@ interface Props {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
-  polizaAEditar?: any; // <-- Le agregamos esto para saber si editamos
+  polizaAEditar?: any; 
 }
 
 const ESTADO_INICIAL = {
@@ -18,11 +18,13 @@ const ESTADO_INICIAL = {
   estado: "Vigente",
   cobertura: "",
   aseguradoId: "", 
+  companiaId: "", // <-- NUEVO ESTADO
 };
 
 export default function NuevaPolizaModal({ isOpen, onClose, onSuccess, polizaAEditar }: Props) {
   const [formData, setFormData] = useState(ESTADO_INICIAL);
   const [clientes, setClientes] = useState<any[]>([]); 
+  const [companias, setCompanias] = useState<any[]>([]); // <-- NUEVO ESTADO PARA COMPAÑÍAS
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -31,19 +33,22 @@ export default function NuevaPolizaModal({ isOpen, onClose, onSuccess, polizaAEd
       // 1. Buscamos los clientes
       fetch("http://localhost:3001/api/asegurados")
         .then((res) => res.json())
-        .then((data) => {
-          const clientesActivos = data.filter((c: any) => c.activo);
-          setClientes(clientesActivos);
-        })
+        .then((data) => setClientes(data.filter((c: any) => c.activo)))
         .catch((err) => console.error("Error al cargar clientes:", err));
       
-      // 2. Si hay póliza para editar, llenamos los datos. Si no, vaciamos.
+      // 2. Buscamos las compañías
+      fetch("http://localhost:3001/api/companias")
+        .then((res) => res.json())
+        .then((data) => setCompanias(data))
+        .catch((err) => console.error("Error al cargar compañías:", err));
+
       if (polizaAEditar) {
         setFormData({
           ...polizaAEditar,
           fechaInicio: polizaAEditar.fechaInicio.split('T')[0],
           fechaVencimiento: polizaAEditar.fechaVencimiento.split('T')[0],
           aseguradoId: polizaAEditar.aseguradoId.toString(),
+          companiaId: polizaAEditar.companiaId?.toString() || "", // <-- Precargamos compañía
         });
       } else {
         setFormData(ESTADO_INICIAL);
@@ -61,8 +66,9 @@ export default function NuevaPolizaModal({ isOpen, onClose, onSuccess, polizaAEd
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.aseguradoId) {
-      setError("Por favor, seleccioná un asegurado de la lista.");
+    // Validación de seguridad
+    if (!formData.aseguradoId || !formData.companiaId) {
+      setError("Por favor, seleccioná un Asegurado y una Compañía.");
       return;
     }
 
@@ -70,7 +76,6 @@ export default function NuevaPolizaModal({ isOpen, onClose, onSuccess, polizaAEd
     setError("");
 
     try {
-      // Magia: Si hay póliza editamos (PUT), sino creamos (POST)
       const url = polizaAEditar 
         ? `http://localhost:3001/api/polizas/${polizaAEditar.id}`
         : "http://localhost:3001/api/polizas";
@@ -102,7 +107,6 @@ export default function NuevaPolizaModal({ isOpen, onClose, onSuccess, polizaAEd
           <X size={24} />
         </button>
 
-        {/* Título dinámico */}
         <h2 className="text-xl font-bold text-gray-900 mb-6 border-b pb-4">
           {polizaAEditar ? "Editar Póliza" : "Nueva Póliza"}
         </h2>
@@ -113,7 +117,8 @@ export default function NuevaPolizaModal({ isOpen, onClose, onSuccess, polizaAEd
           <div className="space-y-4">
             <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider">Asignación</h3>
             
-            <div className="grid grid-cols-1 gap-4">
+            {/* Dividimos la asignación en 2 columnas: Cliente y Compañía */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Asegurado Titular *</label>
                 <select 
@@ -127,6 +132,24 @@ export default function NuevaPolizaModal({ isOpen, onClose, onSuccess, polizaAEd
                   {clientes.map((cliente) => (
                     <option key={cliente.id} value={cliente.id}>
                       {cliente.nombre} {cliente.apellido || ""} - {cliente.dni}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Compañía Aseguradora *</label>
+                <select 
+                  required
+                  name="companiaId"
+                  value={formData.companiaId}
+                  onChange={handleChange}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-600 outline-none bg-white"
+                >
+                  <option value="" disabled>-- Seleccioná una compañía --</option>
+                  {companias.map((compania) => (
+                    <option key={compania.id} value={compania.id}>
+                      {compania.nombre}
                     </option>
                   ))}
                 </select>

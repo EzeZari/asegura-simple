@@ -6,6 +6,7 @@ import {
   Home, 
   Users, 
   FileText, 
+  Building, // <-- Importamos el ícono del edificio
   Bell, 
   LayoutDashboard, 
   Settings,
@@ -17,6 +18,7 @@ const menuItems = [
   { name: 'Inicio', icon: Home, path: '/' },
   { name: 'Asegurados', icon: Users, path: '/asegurados' },
   { name: 'Pólizas', icon: FileText, path: '/polizas' },
+  { name: 'Compañías', icon: Building, path: '/companias' }, // <-- Agregamos Compañías acá
   { name: 'Alertas', icon: Bell, path: '/alertas' },
   { name: 'Panel de control', icon: LayoutDashboard, path: '/panel' },
   { name: 'Configuración', icon: Settings, path: '/configuracion' },

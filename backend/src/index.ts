@@ -8,6 +8,7 @@ import rateLimit from 'express-rate-limit';
 import authRoutes from './routes/auth.routes';
 import aseguradosRoutes from './routes/asegurados.routes'; // Ajustá la ruta según tu carpeta
 import polizasRoutes from './routes/polizas.routes';
+import companiasRoutes from './routes/companias.routes';
 
 dotenv.config();
 
@@ -38,6 +39,7 @@ app.use(cookieParser());
 app.use('/api/auth', authRoutes);
 app.use('/api/asegurados', aseguradosRoutes);
 app.use('/api/polizas', polizasRoutes);
+app.use('/api/companias', companiasRoutes);
 
 const PORT = process.env.PORT || 3001;
 

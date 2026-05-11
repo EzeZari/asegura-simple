@@ -46,13 +46,12 @@ model Asegurado {
 }
 
 model Compania {
-  id        Int      @id @default(autoincrement())
-  nombre    String
-  telefono  String?
-  email     String?
-  direccion String?
-
-  polizas   Poliza[]
+  id                 Int      @id @default(autoincrement())
+  nombre             String
+  cuit               String?  // <-- Agregamos CUIT
+  telefonoSiniestros String?  // <-- Agregamos Teléfono
+  email              String?
+  polizas            Poliza[]
 }
 
 model Poliza {
