@@ -5,6 +5,7 @@ import { Plus, MoreHorizontal, FileText } from "lucide-react";
 import NuevaPolizaModal from "@/components/polizas/NuevaPolizaModal";
 import PolizasFiltros from "@/components/polizas/PolizasFiltros";
 import Toast from "@/components/ui/Toast";
+import Table, { TableColumn } from "@/components/ui/Table";
 
 export default function PolizasPage() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -32,9 +33,7 @@ export default function PolizasPage() {
     }
   };
 
-  useEffect(() => {
-    fetchPolizas();
-  }, []);
+  useEffect(() => { fetchPolizas(); }, []);
 
   const handleSuccess = () => {
     setIsModalOpen(false);
@@ -90,173 +89,106 @@ export default function PolizasPage() {
     }
   };
 
+  // DEFINIMOS LAS COLUMNAS
+  const columnas: TableColumn[] = [
+    { label: "Nro Póliza" },
+    { label: "Titular" },
+    { label: "Compañía" },
+    { label: "Rama / Cobertura" },
+    { label: "Vigencia" },
+    { label: "Estado" },
+    { label: "Acciones", align: "right" },
+  ];
+
+  // DEFINIMOS EL DISEÑO VACÍO
+  const estadoVacio = (
+    <div className="flex flex-col items-center justify-center text-gray-500">
+      <FileText size={32} className="text-gray-300 mb-3" />
+      <p className="font-medium text-gray-900">No se encontraron pólizas</p>
+      <p className="text-sm mt-1">Probá ajustando los filtros de búsqueda.</p>
+    </div>
+  );
+
   return (
     <div className="flex flex-col p-8 w-full gap-8 bg-white min-h-screen overflow-x-hidden">
       
-      {/* Encabezado */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 w-full">
         <div>
           <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Pólizas</h1>
           <p className="text-gray-500 mt-1">Gestioná las coberturas activas de tus clientes.</p>
         </div>
         <button 
-          onClick={() => {
-            setPolizaAEditar(null);
-            setIsModalOpen(true);
-          }}
+          onClick={() => { setPolizaAEditar(null); setIsModalOpen(true); }}
           className="flex items-center gap-2 bg-green-700 hover:bg-green-800 text-white px-4 py-2 rounded-lg font-medium transition-colors shadow-sm whitespace-nowrap"
         >
-          <Plus size={20} />
-          Nueva Póliza
+          <Plus size={20} /> Nueva Póliza
         </button>
       </div>
 
-      {/* Componente Modular de Filtros */}
       <PolizasFiltros 
-        searchTerm={searchTerm} 
-        setSearchTerm={setSearchTerm}
-        filtroRama={filtroRama} 
-        setFiltroRama={setFiltroRama}
-        filtroEstado={filtroEstado} 
-        setFiltroEstado={setFiltroEstado}
+        searchTerm={searchTerm} setSearchTerm={setSearchTerm}
+        filtroRama={filtroRama} setFiltroRama={setFiltroRama}
+        filtroEstado={filtroEstado} setFiltroEstado={setFiltroEstado}
       />
 
-      {/* Tabla con el diseño expandido */}
-      <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-visible pb-10 w-full">
-        <div className="overflow-visible w-full min-h-[300px]">
-          <table className="w-full text-left text-sm border-collapse relative">
-            <thead className="bg-gray-50 text-gray-500 border-b border-gray-100">
-              <tr>
-                <th className="px-6 py-4 font-semibold">Nro Póliza</th>
-                <th className="px-6 py-4 font-semibold">Titular</th>
-                <th className="px-6 py-4 font-semibold">Compañía</th>
-                <th className="px-6 py-4 font-semibold">Rama / Cobertura</th>
-                <th className="px-6 py-4 font-semibold">Vigencia</th>
-                <th className="px-6 py-4 font-semibold">Estado</th>
-                <th className="px-6 py-4 font-semibold text-right">Acciones</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {isLoading ? (
-                <tr>
-                  <td colSpan={7} className="px-6 py-8 text-center text-gray-500">Cargando pólizas...</td>
-                </tr>
-              ) : polizasFiltradas.length === 0 ? (
-                <tr>
-                  <td colSpan={7} className="px-6 py-12 text-center">
-                    <div className="flex flex-col items-center justify-center text-gray-500">
-                      <FileText size={32} className="text-gray-300 mb-3" />
-                      <p className="font-medium text-gray-900">No se encontraron pólizas</p>
-                      <p className="text-sm mt-1">Probá ajustando los filtros de búsqueda.</p>
-                    </div>
-                  </td>
-                </tr>
-              ) : (
-                polizasFiltradas.map((poliza) => (
-                  <tr key={poliza.id} className="hover:bg-gray-50/50 transition-colors group">
-                    <td className="px-6 py-4 font-mono font-medium text-green-700">
-                      #{poliza.nroPoliza}
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="font-medium text-gray-900">
-                        {poliza.asegurado?.nombre} {poliza.asegurado?.apellido}
-                      </div>
-                      <div className="text-xs text-gray-500">DNI: {poliza.asegurado?.dni}</div>
-                    </td>
-                    <td className="px-6 py-4 text-gray-700">
-                      {poliza.compania?.nombre || "-"}
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="font-medium text-gray-900">{poliza.tipoPoliza}</div>
-                      <div className="text-xs text-gray-500 truncate max-w-[150px]">
-                        {poliza.cobertura || "Sin detalle"}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="text-gray-900">
-                        {new Date(poliza.fechaInicio).toLocaleDateString("es-AR")}
-                      </div>
-                      <div className="text-xs text-gray-500">
-                        al {new Date(poliza.fechaVencimiento).toLocaleDateString("es-AR")}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${getEstadoBadge(poliza.estado)}`}>
-                        {poliza.estado}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-right relative">
-                      
-                      <button 
-                        onClick={() => setMenuAbiertoId(menuAbiertoId === poliza.id ? null : poliza.id)}
-                        className="text-gray-400 hover:text-green-600 transition-colors p-2 hover:bg-green-50 rounded-lg"
-                      >
-                        <MoreHorizontal size={20} />
-                      </button>
+      {/* USAMOS EL NUEVO COMPONENTE MAESTRO */}
+      <Table 
+        columns={columnas} 
+        isLoading={isLoading} 
+        isEmpty={polizasFiltradas.length === 0} 
+        emptyContent={estadoVacio}
+      >
+        {polizasFiltradas.map((poliza) => (
+          <tr key={poliza.id} className="hover:bg-gray-50/50 transition-colors group">
+            <td className="px-6 py-4 font-mono font-medium text-green-700">#{poliza.nroPoliza}</td>
+            <td className="px-6 py-4">
+              <div className="font-medium text-gray-900">{poliza.asegurado?.nombre} {poliza.asegurado?.apellido}</div>
+              <div className="text-xs text-gray-500">DNI: {poliza.asegurado?.dni}</div>
+            </td>
+            <td className="px-6 py-4 text-gray-700">{poliza.compania?.nombre || "-"}</td>
+            <td className="px-6 py-4">
+              <div className="font-medium text-gray-900">{poliza.tipoPoliza}</div>
+              <div className="text-xs text-gray-500 truncate max-w-[150px]">{poliza.cobertura || "Sin detalle"}</div>
+            </td>
+            <td className="px-6 py-4">
+              <div className="text-gray-900">{new Date(poliza.fechaInicio).toLocaleDateString("es-AR")}</div>
+              <div className="text-xs text-gray-500">al {new Date(poliza.fechaVencimiento).toLocaleDateString("es-AR")}</div>
+            </td>
+            <td className="px-6 py-4">
+              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${getEstadoBadge(poliza.estado)}`}>
+                {poliza.estado}
+              </span>
+            </td>
+            <td className="px-6 py-4 text-right relative">
+              <button 
+                onClick={() => setMenuAbiertoId(menuAbiertoId === poliza.id ? null : poliza.id)}
+                className="text-gray-400 hover:text-green-600 transition-colors p-2 hover:bg-green-50 rounded-lg"
+              >
+                <MoreHorizontal size={20} />
+              </button>
 
-                      {/* MENÚ DESPLEGABLE CON ACCIONES RÁPIDAS */}
-                      {menuAbiertoId === poliza.id && (
-                        <div className="absolute right-8 top-10 mt-1 w-44 bg-white rounded-lg shadow-xl border border-gray-100 z-50 overflow-hidden py-1">
-                          <button 
-                            onClick={() => abrirParaEditar(poliza)}
-                            className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                          >
-                            Editar Póliza
-                          </button>
-                          
-                          <div className="h-px bg-gray-100 my-1"></div>
-                          
-                          {poliza.estado !== "Vigente" && (
-                            <button 
-                              onClick={() => cambiarEstadoRapido(poliza, "Vigente")}
-                              className="w-full text-left px-4 py-2 text-sm text-emerald-600 hover:bg-emerald-50"
-                            >
-                              Marcar Vigente
-                            </button>
-                          )}
-                          
-                          {poliza.estado !== "Pendiente de Pago" && (
-                            <button 
-                              onClick={() => cambiarEstadoRapido(poliza, "Pendiente de Pago")}
-                              className="w-full text-left px-4 py-2 text-sm text-amber-600 hover:bg-amber-50"
-                            >
-                              Marcar Pendiente
-                            </button>
-                          )}
-                          
-                          {poliza.estado !== "Anulada" && (
-                            <button 
-                              onClick={() => cambiarEstadoRapido(poliza, "Anulada")}
-                              className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50"
-                            >
-                              Anular Póliza
-                            </button>
-                          )}
-                        </div>
-                      )}
-                      
-                    </td>
-                  </tr>
-                ))
+              {menuAbiertoId === poliza.id && (
+                <div className="absolute right-8 top-10 mt-1 w-44 bg-white rounded-lg shadow-xl border border-gray-100 z-50 overflow-hidden py-1">
+                  <button onClick={() => abrirParaEditar(poliza)} className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">Editar Póliza</button>
+                  <div className="h-px bg-gray-100 my-1"></div>
+                  {poliza.estado !== "Vigente" && (
+                    <button onClick={() => cambiarEstadoRapido(poliza, "Vigente")} className="w-full text-left px-4 py-2 text-sm text-emerald-600 hover:bg-emerald-50">Marcar Vigente</button>
+                  )}
+                  {poliza.estado !== "Pendiente de Pago" && (
+                    <button onClick={() => cambiarEstadoRapido(poliza, "Pendiente de Pago")} className="w-full text-left px-4 py-2 text-sm text-amber-600 hover:bg-amber-50">Marcar Pendiente</button>
+                  )}
+                  {poliza.estado !== "Anulada" && (
+                    <button onClick={() => cambiarEstadoRapido(poliza, "Anulada")} className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50">Anular Póliza</button>
+                  )}
+                </div>
               )}
-            </tbody>
-          </table>
-        </div>
-      </div>
+            </td>
+          </tr>
+        ))}
+      </Table>
 
-      <NuevaPolizaModal 
-        isOpen={isModalOpen} 
-        onClose={() => setIsModalOpen(false)} 
-        onSuccess={handleSuccess} 
-        polizaAEditar={polizaAEditar} 
-      />
-
-      <Toast 
-        message={mensajeToast} 
-        isVisible={showToast} 
-        onClose={() => setShowToast(false)} 
-      />
-      
+      <NuevaPolizaModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSuccess={handleSuccess} polizaAEditar={polizaAEditar} />
+      <Toast message={mensajeToast} isVisible={showToast} onClose={() => setShowToast(false)} />
     </div>
   );
 }
