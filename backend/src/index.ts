@@ -7,6 +7,7 @@ import rateLimit from 'express-rate-limit';
 
 import authRoutes from './routes/auth.routes';
 import aseguradosRoutes from './routes/asegurados.routes'; // Ajustá la ruta según tu carpeta
+import polizasRoutes from './routes/polizas.routes';
 
 dotenv.config();
 
@@ -36,6 +37,7 @@ app.use(cookieParser());
 // --- RUTAS ---
 app.use('/api/auth', authRoutes);
 app.use('/api/asegurados', aseguradosRoutes);
+app.use('/api/polizas', polizasRoutes);
 
 const PORT = process.env.PORT || 3001;
 
