@@ -80,5 +80,42 @@ router.post('/', async (req, res) => {
     res.status(500).json({ error: 'Hubo un error al guardar la póliza.' });
   }
 });
+// RUTA: PUT /api/polizas/:id (Editar o cambiar estado de una póliza)
+router.put('/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const {
+      nroPoliza,
+      tipoPoliza,
+      fechaInicio,
+      fechaVencimiento,
+      estado,
+      cobertura,
+      aseguradoId
+    } = req.body;
+
+    const polizaActualizada = await prisma.poliza.update({
+      where: { id: parseInt(id) },
+      data: {
+        nroPoliza,
+        tipoPoliza,
+        fechaInicio: new Date(fechaInicio),
+        fechaVencimiento: new Date(fechaVencimiento),
+        estado,
+        cobertura,
+        aseguradoId: parseInt(aseguradoId)
+      },
+      include: {
+        asegurado: true,
+        compania: true
+      }
+    });
+
+    res.json(polizaActualizada);
+  } catch (error) {
+    console.error("Error al actualizar la póliza:", error);
+    res.status(500).json({ error: 'Hubo un error al actualizar la póliza.' });
+  }
+});
 
 export default router;

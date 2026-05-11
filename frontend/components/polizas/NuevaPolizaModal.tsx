@@ -7,6 +7,7 @@ interface Props {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
+  polizaAEditar?: any; // <-- Le agregamos esto para saber si editamos
 }
 
 const ESTADO_INICIAL = {
@@ -16,31 +17,40 @@ const ESTADO_INICIAL = {
   fechaVencimiento: "",
   estado: "Vigente",
   cobertura: "",
-  aseguradoId: "", // Acá vamos a guardar el ID del cliente que elijas
+  aseguradoId: "", 
 };
 
-export default function NuevaPolizaModal({ isOpen, onClose, onSuccess }: Props) {
+export default function NuevaPolizaModal({ isOpen, onClose, onSuccess, polizaAEditar }: Props) {
   const [formData, setFormData] = useState(ESTADO_INICIAL);
-  const [clientes, setClientes] = useState<any[]>([]); // Lista de clientes reales
+  const [clientes, setClientes] = useState<any[]>([]); 
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
 
-  // Cuando se abre el modal, vamos a buscar a tus clientes al backend
   useEffect(() => {
     if (isOpen) {
+      // 1. Buscamos los clientes
       fetch("http://localhost:3001/api/asegurados")
         .then((res) => res.json())
         .then((data) => {
-          // Filtramos para que solo puedas elegir clientes "Activos"
           const clientesActivos = data.filter((c: any) => c.activo);
           setClientes(clientesActivos);
         })
         .catch((err) => console.error("Error al cargar clientes:", err));
       
-      setFormData(ESTADO_INICIAL); // Reseteamos el form al abrir
+      // 2. Si hay póliza para editar, llenamos los datos. Si no, vaciamos.
+      if (polizaAEditar) {
+        setFormData({
+          ...polizaAEditar,
+          fechaInicio: polizaAEditar.fechaInicio.split('T')[0],
+          fechaVencimiento: polizaAEditar.fechaVencimiento.split('T')[0],
+          aseguradoId: polizaAEditar.aseguradoId.toString(),
+        });
+      } else {
+        setFormData(ESTADO_INICIAL);
+      }
       setError("");
     }
-  }, [isOpen]);
+  }, [isOpen, polizaAEditar]);
 
   if (!isOpen) return null;
 
@@ -51,7 +61,6 @@ export default function NuevaPolizaModal({ isOpen, onClose, onSuccess }: Props) 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Validación rápida: no podés crear una póliza sin cliente
     if (!formData.aseguradoId) {
       setError("Por favor, seleccioná un asegurado de la lista.");
       return;
@@ -61,8 +70,15 @@ export default function NuevaPolizaModal({ isOpen, onClose, onSuccess }: Props) 
     setError("");
 
     try {
-      const response = await fetch("http://localhost:3001/api/polizas", {
-        method: "POST",
+      // Magia: Si hay póliza editamos (PUT), sino creamos (POST)
+      const url = polizaAEditar 
+        ? `http://localhost:3001/api/polizas/${polizaAEditar.id}`
+        : "http://localhost:3001/api/polizas";
+      
+      const method = polizaAEditar ? "PUT" : "POST";
+
+      const response = await fetch(url, {
+        method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formData),
       });
@@ -86,7 +102,10 @@ export default function NuevaPolizaModal({ isOpen, onClose, onSuccess }: Props) 
           <X size={24} />
         </button>
 
-        <h2 className="text-xl font-bold text-gray-900 mb-6 border-b pb-4">Nueva Póliza</h2>
+        {/* Título dinámico */}
+        <h2 className="text-xl font-bold text-gray-900 mb-6 border-b pb-4">
+          {polizaAEditar ? "Editar Póliza" : "Nueva Póliza"}
+        </h2>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-6">
           {error && <div className="bg-red-50 text-red-600 p-3 rounded-lg text-sm font-medium">{error}</div>}
@@ -169,7 +188,7 @@ export default function NuevaPolizaModal({ isOpen, onClose, onSuccess }: Props) 
               Cancelar
             </button>
             <button type="submit" disabled={isLoading} className="px-4 py-2 bg-green-700 hover:bg-green-800 text-white rounded-lg font-medium transition-colors disabled:opacity-50">
-              {isLoading ? "Guardando..." : "Guardar Póliza"}
+              {isLoading ? "Guardando..." : (polizaAEditar ? "Actualizar Póliza" : "Guardar Póliza")}
             </button>
           </div>
         </form>
