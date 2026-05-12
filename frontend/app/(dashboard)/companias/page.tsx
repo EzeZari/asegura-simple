@@ -1,11 +1,13 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Search, Plus, MoreHorizontal, Building, Trash2, Edit } from "lucide-react"; // Sumamos Trash2 y Edit
+import { Search, Plus, MoreHorizontal, Building, Trash2, Edit } from "lucide-react"; 
 import NuevaCompaniaModal from "@/components/companias/NuevaCompaniaModal";
 import Table, { TableColumn } from "@/components/ui/Table";
 import Toast from "@/components/ui/Toast";
-import ConfirmModal from "@/components/ui/ConfirmModal"; // Importamos el modal de confirmación
+import ConfirmModal from "@/components/ui/ConfirmModal"; 
+import { useTableSort } from "@/app/hooks/useTableSort";
+import SortableHeader from "@/components/ui/SortableHeader";
 
 export default function CompaniasPage() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -47,14 +49,12 @@ export default function CompaniasPage() {
     setIsModalOpen(true);
   };
 
-  // NUEVO: Función para confirmar eliminación
   const confirmarEliminacion = (compania: any) => {
     setCompaniaAEliminar(compania);
     setMenuAbiertoId(null);
     setIsConfirmOpen(true);
   };
 
-  // NUEVO: Función que ejecuta la eliminación real
   const ejecutarEliminacion = async () => {
     if (!companiaAEliminar) return;
     setIsDeleting(true);
@@ -71,35 +71,40 @@ export default function CompaniasPage() {
       fetchCompanias();
       setIsConfirmOpen(false);
     } catch (error: any) {
-      alert(error.message); // Avisamos si tiene pólizas asociadas
+      alert(error.message); 
     } finally {
       setIsDeleting(false);
       setCompaniaAEliminar(null);
     }
   };
 
+  // 1. PRIMERO FILTRAMOS
   const companiasFiltradas = companias.filter((c) =>
     c.nombre.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  // 2. DESPUÉS ORDENAMOS LOS RESULTADOS
+  const { items: companiasOrdenadas, requestSort, sortConfig } = useTableSort(companiasFiltradas);
+
+  // 3. ARMAMOS LAS COLUMNAS CON EL SORTABLE HEADER
   const columnas: TableColumn[] = [
-    { label: "Nombre" },
-    { label: "CUIT" },
-    { label: "Teléfono Siniestros" },
-    { label: "Email Contacto" },
+    { label: <SortableHeader label="Nombre" sortKey="nombre" currentSort={sortConfig} requestSort={requestSort} /> },
+    { label: <SortableHeader label="CUIT" sortKey="cuit" currentSort={sortConfig} requestSort={requestSort} /> },
+    { label: <SortableHeader label="Teléfono Siniestros" sortKey="telefonoSiniestros" currentSort={sortConfig} requestSort={requestSort} /> },
+    { label: <SortableHeader label="Email Contacto" sortKey="email" currentSort={sortConfig} requestSort={requestSort} /> },
     { label: "Acciones", align: "right" },
   ];
 
   return (
     <div className="flex flex-col p-8 w-full gap-8 bg-white min-h-screen overflow-x-hidden">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 w-full">
         <div>
           <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Compañías</h1>
           <p className="text-gray-500 mt-1">Gestioná las aseguradoras con las que operás.</p>
         </div>
         <button 
           onClick={() => { setCompaniaAEditar(null); setIsModalOpen(true); }}
-          className="flex items-center gap-2 bg-green-700 hover:bg-green-800 text-white px-4 py-2 rounded-lg font-medium shadow-sm transition-colors"
+          className="flex items-center gap-2 bg-green-700 hover:bg-green-800 text-white px-4 py-2 rounded-lg font-medium shadow-sm transition-colors whitespace-nowrap"
         >
           <Plus size={20} /> Nueva Compañía
         </button>
@@ -119,10 +124,11 @@ export default function CompaniasPage() {
       <Table 
         columns={columnas} 
         isLoading={isLoading} 
-        isEmpty={companiasFiltradas.length === 0} 
-        emptyContent={<div className="text-gray-500">No hay compañías registradas</div>}
+        isEmpty={companiasOrdenadas.length === 0} 
+        emptyContent={<div className="text-gray-500 flex flex-col items-center py-6"><Search size={32} className="text-gray-300 mb-2"/><p>No hay compañías registradas</p></div>}
       >
-        {companiasFiltradas.map((compania) => (
+        {/* MAPEAR SOBRE companiasOrdenadas */}
+        {companiasOrdenadas.map((compania) => (
           <tr key={compania.id} className="hover:bg-gray-50 transition-colors group border-b border-gray-50">
             <td className="px-6 py-4 font-medium text-gray-900">{compania.nombre}</td>
             <td className="px-6 py-4 text-gray-600 font-mono text-sm">{compania.cuit || "-"}</td>
@@ -131,7 +137,7 @@ export default function CompaniasPage() {
             <td className="px-6 py-4 text-right relative">
               <button 
                 onClick={() => setMenuAbiertoId(menuAbiertoId === compania.id ? null : compania.id)}
-                className="text-gray-400 hover:text-green-600 p-2 rounded-lg"
+                className="text-gray-400 hover:text-green-600 p-2 rounded-lg transition-colors"
               >
                 <MoreHorizontal size={20} />
               </button>
@@ -159,7 +165,6 @@ export default function CompaniasPage() {
 
       <NuevaCompaniaModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSuccess={handleSuccess} companiaAEditar={companiaAEditar} />
       
-      {/* MODAL DE CONFIRMACIÓN */}
       <ConfirmModal 
         isOpen={isConfirmOpen}
         onClose={() => setIsConfirmOpen(false)}

@@ -8,9 +8,11 @@ import Toast from "@/components/ui/Toast";
 import Table, { TableColumn } from "@/components/ui/Table";
 import ConfirmModal from "@/components/ui/ConfirmModal";
 import { useRouter } from "next/navigation";
+import { useTableSort } from "@/app/hooks/useTableSort";
+import SortableHeader from "@/components/ui/SortableHeader";
 
 export default function PolizasPage() {
-    const router = useRouter();
+  const router = useRouter();
   const [searchTerm, setSearchTerm] = useState("");
   const [filtroRama, setFiltroRama] = useState("Todas");
   const [filtroEstado, setFiltroEstado] = useState("Todos");
@@ -97,6 +99,7 @@ export default function PolizasPage() {
     }
   };
 
+  // 1. PRIMERO FILTRAMOS LOS DATOS
   const polizasFiltradas = polizas.filter((poliza) => {
     const busqueda = searchTerm.toLowerCase();
     const nroPoliza = poliza.nroPoliza.toLowerCase();
@@ -109,6 +112,9 @@ export default function PolizasPage() {
     return pasaFiltroTexto && pasaFiltroRama && pasaFiltroEstado;
   });
 
+  // 2. DESPUÉS ORDENAMOS LOS DATOS FILTRADOS
+  const { items: polizasOrdenadas, requestSort, sortConfig } = useTableSort(polizasFiltradas);
+
   const getEstadoBadge = (estado: string) => {
     switch (estado) {
       case "Vigente":
@@ -119,25 +125,26 @@ export default function PolizasPage() {
     }
   };
 
+  // 3. ARMAMOS LAS COLUMNAS CON LOS BOTONES DE ORDENAMIENTO
   const columnas: TableColumn[] = [
-    { label: "Nro Póliza" },
+    { label: <SortableHeader label="Nro Póliza" sortKey="nroPoliza" currentSort={sortConfig} requestSort={requestSort} /> },
     { label: "Titular" },
     { label: "Compañía" },
-    { label: "Rama / Cobertura" },
-    { label: "Vigencia" },
-    { label: "Estado" },
+    { label: <SortableHeader label="Rama / Cobertura" sortKey="tipoPoliza" currentSort={sortConfig} requestSort={requestSort} /> },
+    { label: <SortableHeader label="Vigencia" sortKey="fechaVencimiento" currentSort={sortConfig} requestSort={requestSort} /> },
+    { label: <SortableHeader label="Estado" sortKey="estado" currentSort={sortConfig} requestSort={requestSort} /> },
     { label: "Acciones", align: "right" },
   ];
 
   const estadoVacio = (
-    <div className="flex flex-col items-center justify-center text-gray-500">
+    <div className="flex flex-col items-center justify-center text-gray-500 py-6">
       <FileText size={32} className="text-gray-300 mb-3" />
       <p className="font-medium text-gray-900">No se encontraron pólizas</p>
       <p className="text-sm mt-1">Probá ajustando los filtros de búsqueda.</p>
     </div>
   );
 
-return (
+  return (
     <div className="flex flex-col p-8 w-full gap-8 bg-white min-h-screen overflow-x-hidden">
       
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 w-full">
@@ -162,12 +169,12 @@ return (
       <Table 
         columns={columnas} 
         isLoading={isLoading} 
-        isEmpty={polizasFiltradas.length === 0} 
+        isEmpty={polizasOrdenadas.length === 0} 
         emptyContent={estadoVacio}
       >
-        {polizasFiltradas.map((poliza) => (
+        {/* MAPEAR SOBRE polizasOrdenadas */}
+        {polizasOrdenadas.map((poliza) => (
           <tr key={poliza.id} className="hover:bg-gray-50/50 transition-colors group">
-            {/* ACÁ ESTÁ EL CAMBIO: Hicimos el número clickeable */}
             <td 
               className="px-6 py-4 font-mono font-medium text-green-700 cursor-pointer hover:underline hover:text-green-800"
               onClick={() => router.push(`/polizas/${poliza.id}`)}

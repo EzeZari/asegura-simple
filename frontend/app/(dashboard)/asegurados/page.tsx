@@ -8,6 +8,8 @@ import Toast from "@/components/ui/Toast";
 import Table, { TableColumn } from "@/components/ui/Table";
 import ConfirmModal from "@/components/ui/ConfirmModal";
 import PolizasDelAseguradoModal from "@/components/asegurados/PolizasDelAseguradoModal";
+import { useTableSort } from "@/app/hooks/useTableSort";
+import SortableHeader from "@/components/ui/SortableHeader";
 
 export default function AseguradosPage() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -25,7 +27,6 @@ export default function AseguradosPage() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [mensajeToast, setMensajeToast] = useState("");
   
-  // Estado para el modal de ver pólizas
   const [aseguradoParaVerPolizas, setAseguradoParaVerPolizas] = useState<any>(null);
 
   const fetchAsegurados = async () => {
@@ -92,6 +93,7 @@ export default function AseguradosPage() {
     }
   };
 
+  // 1. PRIMERO FILTRAMOS LOS DATOS
   const aseguradosFiltrados = asegurados.filter((cliente) => {
     const busqueda = searchTerm.toLowerCase();
     const nombreCompleto = `${cliente.nombre} ${cliente.apellido || ""}`.toLowerCase();
@@ -105,14 +107,18 @@ export default function AseguradosPage() {
     return pasaFiltroTexto && pasaFiltroTipo && pasaFiltroEstado;
   });
 
+  // 2. DESPUÉS ORDENAMOS LOS DATOS FILTRADOS
+  const { items: aseguradosOrdenados, requestSort, sortConfig } = useTableSort(aseguradosFiltrados);
+
+  // 3. ARMAMOS LAS COLUMNAS CON LOS BOTONES DE ORDENAMIENTO
   const columnas: TableColumn[] = [
-    { label: "Nombre / Razón Social" },
-    { label: "DNI / CUIT" },
-    { label: "Contacto" },
-    { label: "Tipo" },
-    { label: "Fecha de Alta" },
+    { label: <SortableHeader label="Nombre / Razón Social" sortKey="nombre" currentSort={sortConfig} requestSort={requestSort} /> },
+    { label: <SortableHeader label="DNI / CUIT" sortKey="dni" currentSort={sortConfig} requestSort={requestSort} /> },
+    { label: "Contacto" }, // Esta columna no se ordena porque son múltiples datos combinados
+    { label: <SortableHeader label="Tipo" sortKey="tipo" currentSort={sortConfig} requestSort={requestSort} /> },
+    { label: <SortableHeader label="Fecha de Alta" sortKey="fechaRegistro" currentSort={sortConfig} requestSort={requestSort} /> },
     { label: "Pólizas", align: "center" },
-    { label: "Estado" },
+    { label: <SortableHeader label="Estado" sortKey="activo" currentSort={sortConfig} requestSort={requestSort} /> },
     { label: "Acciones", align: "right" },
   ];
 
@@ -148,10 +154,11 @@ export default function AseguradosPage() {
       <Table 
         columns={columnas} 
         isLoading={isLoading} 
-        isEmpty={aseguradosFiltrados.length === 0} 
+        isEmpty={aseguradosOrdenados.length === 0} 
         emptyContent={estadoVacio}
       >
-        {aseguradosFiltrados.map((cliente) => (
+        {/* IMPORTANTE: Ahora mapeamos sobre 'aseguradosOrdenados' en vez de 'aseguradosFiltrados' */}
+        {aseguradosOrdenados.map((cliente) => (
           <tr key={cliente.id} className="hover:bg-gray-50/50 transition-colors group">
             <td className="px-6 py-4 font-medium text-gray-900">{cliente.nombre} {cliente.apellido}</td>
             <td className="px-6 py-4 text-gray-600 font-mono text-xs">{cliente.dni}</td>
@@ -171,7 +178,6 @@ export default function AseguradosPage() {
               {new Date(cliente.fechaRegistro).toLocaleDateString("es-AR")}
             </td>
             <td className="px-6 py-4 text-center">
-              {/* Botón interactivo para abrir las pólizas */}
               <button 
                 onClick={() => setAseguradoParaVerPolizas(cliente)}
                 className="inline-flex items-center justify-center bg-green-50 hover:bg-green-100 text-green-700 px-3 py-1 rounded-full font-bold gap-1.5 border border-green-100 hover:border-green-200 text-xs transition-colors cursor-pointer"
