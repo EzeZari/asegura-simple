@@ -68,32 +68,49 @@ router.post('/', async (req, res) => {
 router.put('/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const { nroPoliza, tipoPoliza, fechaInicio, fechaVencimiento, estado, cobertura, aseguradoId, companiaId } = req.body;
+    const data = req.body;
 
-    const polizaActualizada = await prisma.poliza.update({
+    // 1. Buscamos la versión anterior
+    const vieja = await prisma.poliza.findUnique({ 
       where: { id: parseInt(id) },
-      data: {
-        nroPoliza, tipoPoliza, 
-        fechaInicio: new Date(fechaInicio), 
-        fechaVencimiento: new Date(fechaVencimiento), 
-        estado, cobertura, 
-        aseguradoId: parseInt(aseguradoId), 
-        companiaId: parseInt(companiaId) 
-      },
-      include: { asegurado: true }
+      include: { asegurado: true, compania: true }
     });
 
-    // REGISTRO SEPARADO: Detalle y Cliente
+    // 2. Actualizamos
+    const actualizada = await prisma.poliza.update({
+      where: { id: parseInt(id) },
+      data: {
+        nroPoliza: data.nroPoliza,
+        tipoPoliza: data.tipoPoliza,
+        fechaInicio: new Date(data.fechaInicio),
+        fechaVencimiento: new Date(data.fechaVencimiento),
+        estado: data.estado,
+        cobertura: data.cobertura,
+        aseguradoId: parseInt(data.aseguradoId),
+        companiaId: parseInt(data.companiaId) 
+      },
+      include: { asegurado: true, compania: true }
+    });
+
+    // 3. Comparamos cambios
+    let cambios = [];
+    if (vieja && vieja.estado !== data.estado) cambios.push(`Estado: ${vieja.estado} -> ${data.estado}`);
+    if (vieja && vieja.nroPoliza !== data.nroPoliza) cambios.push(`Nro: ${vieja.nroPoliza} -> ${data.nroPoliza}`);
+    if (vieja && vieja.companiaId !== actualizada.companiaId) cambios.push(`Compañía: ${vieja.compania.nombre} -> ${actualizada.compania.nombre}`);
+    
+    let textoDetalle = cambios.length > 0 ? cambios.join(" | ") : "Actualización de datos técnicos";
+
+    // 4. Registro en historial
     await prisma.actividad.create({
       data: {
         accion: "Edición",
         entidad: "Póliza",
-        descripcion: `Cambio de estado a: ${estado} (#${nroPoliza})`,
-        cliente: `${polizaActualizada.asegurado.nombre} ${polizaActualizada.asegurado.apellido || ''}`.trim()
+        descripcion: textoDetalle,
+        cliente: `${actualizada.asegurado.nombre} ${actualizada.asegurado.apellido || ''}`.trim()
       }
     });
 
-    res.json(polizaActualizada);
+    res.json(actualizada);
   } catch (error) {
     res.status(500).json({ error: 'Error al actualizar.' });
   }

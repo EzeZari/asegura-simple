@@ -108,11 +108,16 @@ router.post('/', async (req, res) => {
 });
 
 // RUTA: PUT /api/asegurados/:id (Editar o dar de baja un cliente)
+// RUTA: PUT /api/asegurados/:id (Editar o dar de baja un cliente)
 router.put('/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const data = req.body;
 
+    // 1. Buscamos cómo estaban los datos ANTES de editar para poder compararlos
+    const viejo = await prisma.asegurado.findUnique({ where: { id: parseInt(id) } });
+
+    // 2. Hacemos la actualización en la base de datos
     const aseguradoActualizado = await prisma.asegurado.update({
       where: { id: parseInt(id) },
       data: {
@@ -130,13 +135,32 @@ router.put('/:id', async (req, res) => {
       },
     });
 
-    // REGISTRO DE ACTIVIDAD: Edición
-    const accionReal = data.activo === false ? "Desactivación" : "Edición";
+    // 3. Comparamos y armamos el texto de "Viejo -> Nuevo"
+    let cambios = [];
+    if (viejo && viejo.nombre !== data.nombre) cambios.push(`Nombre: ${viejo.nombre} -> ${data.nombre}`);
+    if (viejo && viejo.apellido !== data.apellido) cambios.push(`Apellido: ${viejo.apellido} -> ${data.apellido}`);
+    if (viejo && viejo.telefono !== data.telefono) cambios.push(`Tel: ${viejo.telefono || '-'} -> ${data.telefono || '-'}`);
+    if (viejo && viejo.email !== data.email) cambios.push(`Email: ${viejo.email || '-'} -> ${data.email || '-'}`);
+    if (viejo && viejo.dni !== data.dni) cambios.push(`DNI: ${viejo.dni} -> ${data.dni}`);
+
+    // Si cambió algo, unimos los textos. Si no detectó cambios específicos, ponemos un texto genérico.
+    let textoDetalle = cambios.length > 0 ? cambios.join(" | ") : "Actualización de datos";
+    
+    // Si lo que se hizo fue desactivar/activar al cliente, pisamos el texto con algo más claro
+    const accionReal = data.activo === false && viejo?.activo === true ? "Desactivación" : 
+                       data.activo === true && viejo?.activo === false ? "Activación" : "Edición";
+                       
+    if (accionReal !== "Edición") {
+        textoDetalle = accionReal === "Desactivación" ? "Cliente pasado a Inactivo" : "Cliente vuelto a Activar";
+    }
+
+    // 4. REGISTRO DE ACTIVIDAD (Acá arreglamos el 'No aplica' mandando el cliente)
     await prisma.actividad.create({
       data: {
         accion: accionReal,
         entidad: "Asegurado",
-        descripcion: `${data.nombre} ${data.apellido || ''}`.trim(),
+        descripcion: textoDetalle, // Acá va el "viejo -> nuevo"
+        cliente: `${data.nombre} ${data.apellido || ''}`.trim(), // Acá mandamos el nombre a su columna
       }
     });
 

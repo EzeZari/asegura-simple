@@ -3,7 +3,7 @@ import { prisma } from '../config/db';
 
 const router = Router();
 
-// RUTA: GET /api/companias (Listar todas)
+// RUTA: GET /api/companias (Traer todas las compañías)
 router.get('/', async (req, res) => {
   try {
     const companias = await prisma.compania.findMany({
@@ -15,63 +15,104 @@ router.get('/', async (req, res) => {
   }
 });
 
-// RUTA: POST /api/companias (Crear una nueva)
-// RUTA: POST /api/polizas (Crea una póliza nueva)
+// RUTA: POST /api/companias (Crear una compañía nueva)
 router.post('/', async (req, res) => {
   try {
-    const {
-      nroPoliza,
-      tipoPoliza,
-      fechaInicio,
-      fechaVencimiento,
-      estado,
-      cobertura,
-      aseguradoId,
-      companiaId // <-- Ahora exigimos que venga la compañía elegida
-    } = req.body;
+    const { nombre, cuit, telefonoSiniestros, email } = req.body;
 
-    // Guardamos la Póliza conectando Cliente y Compañía reales
-    const nuevaPoliza = await prisma.poliza.create({
+    const nuevaCompania = await prisma.compania.create({
       data: {
-        nroPoliza,
-        tipoPoliza,
-        fechaInicio: new Date(fechaInicio),
-        fechaVencimiento: new Date(fechaVencimiento),
-        estado,
-        cobertura,
-        aseguradoId: parseInt(aseguradoId),
-        companiaId: parseInt(companiaId), // <-- Conexión real
-      },
-      include: {
-        asegurado: true,
-        compania: true
+        nombre,
+        cuit,
+        telefonoSiniestros,
+        email
       }
     });
 
-    res.status(201).json(nuevaPoliza);
+    // REGISTRO DE ACTIVIDAD
+    await prisma.actividad.create({
+      data: {
+        accion: "Alta",
+        entidad: "Compañía",
+        descripcion: `Aseguradora: ${nombre}`,
+      }
+    });
 
+    res.status(201).json(nuevaCompania);
   } catch (error: any) {
-    console.error("Error al guardar la póliza:", error);
-    if (error.code === 'P2002') {
-      return res.status(400).json({ error: 'Ya existe una póliza con ese número.' });
-    }
-    res.status(500).json({ error: 'Hubo un error al guardar la póliza.' });
+    console.error("Error al guardar la compañía:", error);
+    res.status(500).json({ error: 'Hubo un error al guardar la compañía.' }); // ¡Acá estaba el texto viejo!
   }
 });
-// RUTA: DELETE /api/companias/:id
+
+// RUTA: PUT /api/companias/:id (Editar una compañía)
+router.put('/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const data = req.body;
+
+    const vieja = await prisma.compania.findUnique({ where: { id: parseInt(id) } });
+
+    const actualizada = await prisma.compania.update({
+      where: { id: parseInt(id) },
+      data: {
+        nombre: data.nombre,
+        cuit: data.cuit,
+        telefonoSiniestros: data.telefonoSiniestros,
+        email: data.email
+      }
+    });
+
+    let cambios = [];
+    if (vieja && vieja.nombre !== data.nombre) cambios.push(`Nombre: ${vieja.nombre} -> ${data.nombre}`);
+    if (vieja && vieja.cuit !== data.cuit) cambios.push(`CUIT: ${vieja.cuit || '-'} -> ${data.cuit || '-'}`);
+    if (vieja && vieja.telefonoSiniestros !== data.telefonoSiniestros) cambios.push(`Tel: ${vieja.telefonoSiniestros || '-'} -> ${data.telefonoSiniestros || '-'}`);
+
+    await prisma.actividad.create({
+      data: {
+        accion: "Edición",
+        entidad: "Compañía",
+        descripcion: cambios.length > 0 ? cambios.join(" | ") : "Actualización de contacto",
+        cliente: actualizada.nombre // En compañías usamos el nombre de la empresa como 'cliente'
+      }
+    });
+
+    res.json(actualizada);
+  } catch (error) {
+    res.status(500).json({ error: 'Error al actualizar.' });
+  }
+});
+
+// RUTA: DELETE /api/companias/:id (Eliminar una compañía)
 router.delete('/:id', async (req, res) => {
   try {
     const { id } = req.params;
+    
+    const companiaABorrar = await prisma.compania.findUnique({ where: { id: parseInt(id) } });
+
     await prisma.compania.delete({
       where: { id: parseInt(id) }
     });
-    res.json({ message: 'Compañía eliminada correctamente' });
+
+    // REGISTRO DE ACTIVIDAD
+    if (companiaABorrar) {
+      await prisma.actividad.create({
+        data: {
+          accion: "Baja",
+          entidad: "Compañía",
+          descripcion: `Se eliminó la aseguradora: ${companiaABorrar.nombre}`,
+        }
+      });
+    }
+
+    res.json({ message: 'Compañía eliminada' });
   } catch (error: any) {
-    // Si el error es P2003, significa que hay pólizas usando esta compañía
+    // Si da error porque tiene pólizas asociadas, atajamos el código P2003 de Prisma
     if (error.code === 'P2003') {
-      return res.status(400).json({ error: 'No se puede eliminar la compañía porque tiene pólizas asociadas.' });
+      return res.status(400).json({ error: 'No podés eliminar una compañía que tiene pólizas activas.' });
     }
     res.status(500).json({ error: 'Error al eliminar la compañía.' });
   }
 });
+
 export default router;
