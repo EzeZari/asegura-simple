@@ -1,7 +1,9 @@
 "use client";
 
-import { MessageCircle, Shield, ArrowRight } from "lucide-react";
+import { MessageCircle, Shield, ArrowRight, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useState } from "react";
+import ConfirmModal from "../ui/ConfirmModal"; // Asegurate de que esta ruta sea la correcta en tu proyecto
 
 interface Props {
   poliza: any;
@@ -10,6 +12,8 @@ interface Props {
 
 export default function AlertaCard({ poliza, nivel }: Props) {
   const router = useRouter();
+  const [isBajaLoading, setIsBajaLoading] = useState(false);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
 
   const calcularDias = (fechaVencimiento: string) => {
     const hoy = new Date().getTime();
@@ -29,6 +33,22 @@ export default function AlertaCard({ poliza, nivel }: Props) {
     return `https://wa.me/${numeroLimpio}?text=${encodeURIComponent(mensaje)}`;
   };
 
+  const ejecutarBaja = async () => {
+    setIsBajaLoading(true);
+    try {
+      await fetch(`http://localhost:3001/api/polizas/${poliza.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...poliza, estado: "Anulada" })
+      });
+      window.location.reload(); 
+    } catch (error) {
+      console.error("Error al anular", error);
+      setIsBajaLoading(false);
+      setShowConfirmModal(false);
+    }
+  };
+
   const estilos = {
     vencida: { borde: "border-rose-200", fondo: "bg-rose-50", texto: "text-rose-700", linea: "bg-rose-500" },
     critica: { borde: "border-orange-200", fondo: "bg-orange-50", texto: "text-orange-700", linea: "bg-orange-500" },
@@ -38,42 +58,65 @@ export default function AlertaCard({ poliza, nivel }: Props) {
   const fechaFormat = new Date(poliza.fechaVencimiento).toLocaleDateString("es-AR");
 
   return (
-    <div className={`flex flex-col p-5 bg-white rounded-2xl border ${estilos.borde} shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group`}>
-      <div className={`absolute top-0 left-0 w-1.5 h-full ${estilos.linea}`}></div>
-      
-      <div className="flex justify-between items-start mb-3 ml-2">
-        <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-black uppercase tracking-wider ${estilos.fondo} ${estilos.texto}`}>
-          {calcularDias(poliza.fechaVencimiento)}
-        </span>
-        <span className="text-xs font-mono text-gray-400">#{poliza.nroPoliza}</span>
-      </div>
-
-      <div className="ml-2 mb-4">
-        <h3 className="text-lg font-bold text-gray-900 leading-tight">
-          {poliza.asegurado?.nombre} {poliza.asegurado?.apellido}
-        </h3>
-        <div className="flex items-center gap-1.5 text-sm text-gray-600 mt-1.5">
-          <Shield size={14} className="text-gray-400" />
-          <span>{poliza.compania?.nombre} • {poliza.tipoPoliza}</span>
+    <>
+      <div className={`flex flex-col p-5 bg-white rounded-2xl border ${estilos.borde} shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group ${isBajaLoading ? 'opacity-50 pointer-events-none' : ''}`}>
+        <div className={`absolute top-0 left-0 w-1.5 h-full ${estilos.linea}`}></div>
+        
+        <div className="flex justify-between items-start mb-3 ml-2">
+          <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-black uppercase tracking-wider ${estilos.fondo} ${estilos.texto}`}>
+            {calcularDias(poliza.fechaVencimiento)}
+          </span>
+          <span className="text-xs font-mono text-gray-400">#{poliza.nroPoliza}</span>
         </div>
-        <p className="text-xs text-gray-500 mt-1">Vence: {fechaFormat}</p>
+
+        <div className="ml-2 mb-4">
+          <h3 className="text-lg font-bold text-gray-900 leading-tight">
+            {poliza.asegurado?.nombre} {poliza.asegurado?.apellido}
+          </h3>
+          <div className="flex items-center gap-1.5 text-sm text-gray-600 mt-1.5">
+            <Shield size={14} className="text-gray-400" />
+            <span>{poliza.compania?.nombre} • {poliza.tipoPoliza}</span>
+          </div>
+          <p className="text-xs text-gray-500 mt-1">Vence: {fechaFormat}</p>
+        </div>
+
+        <div className="mt-auto ml-2 flex gap-2 pt-4 border-t border-gray-50">
+          
+          {nivel === "vencida" ? (
+            <button 
+              onClick={() => setShowConfirmModal(true)}
+              className="flex-1 flex justify-center items-center gap-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 py-2 rounded-xl text-sm font-bold transition-colors"
+            >
+              <Trash2 size={16} /> Anular
+            </button>
+          ) : (
+            <a 
+              href={generarLinkWhatsApp(poliza.asegurado.telefono, poliza.asegurado.nombre, poliza.compania.nombre, fechaFormat)} 
+              target="_blank" rel="noopener noreferrer"
+              className="flex-1 flex justify-center items-center gap-1.5 bg-green-50 hover:bg-green-100 text-green-700 py-2 rounded-xl text-sm font-bold transition-colors"
+            >
+              <MessageCircle size={16} /> Avisar
+            </a>
+          )}
+
+          <button 
+            onClick={() => router.push(`/polizas/${poliza.id}`)}
+            className="flex-1 flex justify-center items-center gap-1.5 bg-gray-50 hover:bg-gray-100 text-gray-700 py-2 rounded-xl text-sm font-bold transition-colors"
+          >
+            Ver Ficha <ArrowRight size={16} />
+          </button>
+        </div>
       </div>
 
-      <div className="mt-auto ml-2 flex gap-2 pt-4 border-t border-gray-50">
-        <a 
-          href={generarLinkWhatsApp(poliza.asegurado.telefono, poliza.asegurado.nombre, poliza.compania.nombre, fechaFormat)} 
-          target="_blank" rel="noopener noreferrer"
-          className="flex-1 flex justify-center items-center gap-1.5 bg-green-50 hover:bg-green-100 text-green-700 py-2 rounded-xl text-sm font-bold transition-colors"
-        >
-          <MessageCircle size={16} /> Avisar
-        </a>
-        <button 
-          onClick={() => router.push(`/polizas/${poliza.id}`)}
-          className="flex-1 flex justify-center items-center gap-1.5 bg-gray-50 hover:bg-gray-100 text-gray-700 py-2 rounded-xl text-sm font-bold transition-colors"
-        >
-          Ver Ficha <ArrowRight size={16} />
-        </button>
-      </div>
-    </div>
+      {/* Modal de Confirmación */}
+      <ConfirmModal 
+        isOpen={showConfirmModal}
+        onClose={() => setShowConfirmModal(false)}
+        onConfirm={ejecutarBaja}
+        isLoading={isBajaLoading}
+        title="Anular Póliza"
+        message={`¿Estás seguro que querés anular la póliza de ${poliza.asegurado?.nombre}? Esta acción la sacará de tus alertas activas.`}
+      />
+    </>
   );
 }

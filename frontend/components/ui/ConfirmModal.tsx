@@ -9,9 +9,12 @@ interface Props {
   title: string;
   message: string;
   isLoading?: boolean;
+  confirmText?: string; // <-- Le agregamos esto
 }
 
-export default function ConfirmModal({ isOpen, onClose, onConfirm, title, message, isLoading }: Props) {
+export default function ConfirmModal({ 
+  isOpen, onClose, onConfirm, title, message, isLoading, confirmText = "Eliminar" 
+}: Props) {
   if (!isOpen) return null;
 
   return (
@@ -43,7 +46,8 @@ export default function ConfirmModal({ isOpen, onClose, onConfirm, title, messag
               disabled={isLoading}
               className="flex-1 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition-colors disabled:opacity-50"
             >
-              {isLoading ? "Eliminando..." : "Eliminar"}
+              {/* Usamos el texto dinámico, y si no le pasamos nada, dice "Eliminar" por defecto */}
+              {isLoading ? "Procesando..." : confirmText} 
             </button>
           </div>
         </div>
