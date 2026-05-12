@@ -81,6 +81,7 @@ router.post('/', async (req, res) => {
   }
 });
 // RUTA: PUT /api/polizas/:id (Editar o cambiar estado de una póliza)
+// RUTA: PUT /api/polizas/:id (Editar o cambiar estado de una póliza)
 router.put('/:id', async (req, res) => {
   try {
     const { id } = req.params;
@@ -91,7 +92,8 @@ router.put('/:id', async (req, res) => {
       fechaVencimiento,
       estado,
       cobertura,
-      aseguradoId
+      aseguradoId,
+      companiaId // <-- ¡Faltaba recibir esto del frontend!
     } = req.body;
 
     const polizaActualizada = await prisma.poliza.update({
@@ -103,7 +105,8 @@ router.put('/:id', async (req, res) => {
         fechaVencimiento: new Date(fechaVencimiento),
         estado,
         cobertura,
-        aseguradoId: parseInt(aseguradoId)
+        aseguradoId: parseInt(aseguradoId),
+        companiaId: parseInt(companiaId) // <-- ¡Faltaba decirle a la BD que lo actualice!
       },
       include: {
         asegurado: true,
