@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { X, FileText, AlertCircle } from "lucide-react";
+import { useRouter } from "next/navigation"; // <-- Sumamos el import del router
 
 interface Props {
   isOpen: boolean;
@@ -10,6 +11,7 @@ interface Props {
 }
 
 export default function PolizasDelAseguradoModal({ isOpen, onClose, asegurado }: Props) {
+  const router = useRouter(); // <-- Inicializamos el router
   const [polizas, setPolizas] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -67,7 +69,14 @@ export default function PolizasDelAseguradoModal({ isOpen, onClose, asegurado }:
           ) : (
             <div className="flex flex-col gap-3">
               {polizas.map((poliza) => (
-                <div key={poliza.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-xl border border-gray-100 bg-white hover:border-green-200 hover:shadow-sm transition-all gap-4">
+                <div 
+                  key={poliza.id} 
+                  onClick={() => {
+                    onClose(); // Cerramos el modal
+                    router.push(`/polizas/${poliza.id}`); // Navegamos a la póliza
+                  }}
+                  className="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-xl border border-gray-100 bg-white hover:border-green-400 hover:shadow-md transition-all gap-4 cursor-pointer"
+                >
                   <div className="flex items-start gap-4">
                     <div className="bg-green-50 text-green-700 p-2.5 rounded-lg shrink-0">
                       <FileText size={20} />
@@ -75,7 +84,7 @@ export default function PolizasDelAseguradoModal({ isOpen, onClose, asegurado }:
                     <div>
                       <div className="flex items-center gap-2">
                         <span className="font-bold text-gray-900">{poliza.tipoPoliza}</span>
-                        <span className="font-mono text-xs text-gray-500">#{poliza.nroPoliza}</span>
+                        <span className="font-mono text-xs text-gray-500 hover:text-green-700 transition-colors">#{poliza.nroPoliza}</span>
                       </div>
                       <div className="text-sm text-gray-600 mt-0.5">
                         {poliza.compania?.nombre || "Compañía no asignada"} • {poliza.cobertura || "Sin detalle"}

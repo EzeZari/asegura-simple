@@ -3,20 +3,41 @@ import { prisma } from '../config/db';
 
 const router = Router();
 
-// RUTA: GET /api/polizas (Trae todas las pólizas con los datos del cliente y la compañía)
+// RUTA 1: Traer TODAS las pólizas (Esta es la que faltaba y tiraba error 404)
 router.get('/', async (req, res) => {
   try {
     const polizas = await prisma.poliza.findMany({
       include: {
-        asegurado: true, // Magia de Prisma: nos trae los datos del cliente asociado
-        compania: true,  // Y los datos de la compañía
+        asegurado: true,
+        compania: true
       },
-      orderBy: { fechaInicio: 'desc' }
+      orderBy: { fechaVencimiento: 'asc' } // Opcional: para que salgan ordenadas
     });
     res.json(polizas);
   } catch (error) {
-    console.error("Error al obtener pólizas:", error);
-    res.status(500).json({ error: 'Hubo un error al obtener la lista de pólizas.' });
+    console.error("Error al obtener las pólizas:", error);
+    res.status(500).json({ error: 'Error al obtener las pólizas.' });
+  }
+});
+
+// RUTA 2: Traer UNA SOLA póliza (La que agregamos para la pantalla de detalle)
+router.get('/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const poliza = await prisma.poliza.findUnique({
+      where: { id: parseInt(id) },
+      include: {
+        asegurado: true,
+        compania: true
+      }
+    });
+
+    if (!poliza) return res.status(404).json({ error: 'Póliza no encontrada' });
+    
+    res.json(poliza);
+  } catch (error) {
+    console.error("Error al obtener el detalle de la póliza:", error);
+    res.status(500).json({ error: 'Error al obtener el detalle de la póliza.' });
   }
 });
 

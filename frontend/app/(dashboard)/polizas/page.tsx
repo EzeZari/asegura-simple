@@ -7,8 +7,10 @@ import PolizasFiltros from "@/components/polizas/PolizasFiltros";
 import Toast from "@/components/ui/Toast";
 import Table, { TableColumn } from "@/components/ui/Table";
 import ConfirmModal from "@/components/ui/ConfirmModal";
+import { useRouter } from "next/navigation";
 
 export default function PolizasPage() {
+    const router = useRouter();
   const [searchTerm, setSearchTerm] = useState("");
   const [filtroRama, setFiltroRama] = useState("Todas");
   const [filtroEstado, setFiltroEstado] = useState("Todos");
@@ -135,7 +137,7 @@ export default function PolizasPage() {
     </div>
   );
 
-  return (
+return (
     <div className="flex flex-col p-8 w-full gap-8 bg-white min-h-screen overflow-x-hidden">
       
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 w-full">
@@ -165,7 +167,14 @@ export default function PolizasPage() {
       >
         {polizasFiltradas.map((poliza) => (
           <tr key={poliza.id} className="hover:bg-gray-50/50 transition-colors group">
-            <td className="px-6 py-4 font-mono font-medium text-green-700">#{poliza.nroPoliza}</td>
+            {/* ACÁ ESTÁ EL CAMBIO: Hicimos el número clickeable */}
+            <td 
+              className="px-6 py-4 font-mono font-medium text-green-700 cursor-pointer hover:underline hover:text-green-800"
+              onClick={() => router.push(`/polizas/${poliza.id}`)}
+              title="Ver detalle completo"
+            >
+              #{poliza.nroPoliza}
+            </td>
             <td className="px-6 py-4">
               <div className="font-medium text-gray-900">{poliza.asegurado?.nombre} {poliza.asegurado?.apellido}</div>
               <div className="text-xs text-gray-500">DNI: {poliza.asegurado?.dni}</div>
