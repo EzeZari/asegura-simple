@@ -7,6 +7,7 @@ import AseguradosFiltros from "@/components/asegurados/AseguradosFiltros";
 import Toast from "@/components/ui/Toast";
 import Table, { TableColumn } from "@/components/ui/Table";
 import ConfirmModal from "@/components/ui/ConfirmModal";
+import PolizasDelAseguradoModal from "@/components/asegurados/PolizasDelAseguradoModal";
 
 export default function AseguradosPage() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -18,12 +19,14 @@ export default function AseguradosPage() {
   const [asegurados, setAsegurados] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showToast, setShowToast] = useState(false);
-  const [mensajeToast, setMensajeToast] = useState("");
   const [menuAbiertoId, setMenuAbiertoId] = useState<number | null>(null);
-  
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [aseguradoAEliminar, setAseguradoAEliminar] = useState<any>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [mensajeToast, setMensajeToast] = useState("");
+  
+  // Estado para el modal de ver pólizas
+  const [aseguradoParaVerPolizas, setAseguradoParaVerPolizas] = useState<any>(null);
 
   const fetchAsegurados = async () => {
     try {
@@ -78,7 +81,7 @@ export default function AseguradosPage() {
         throw new Error(data.error);
       }
       fetchAsegurados();
-      setMensajeToast("Asegurado eliminado");
+      setMensajeToast("Asegurado eliminado correctamente");
       setShowToast(true);
       setIsConfirmOpen(false);
     } catch (error: any) {
@@ -168,10 +171,14 @@ export default function AseguradosPage() {
               {new Date(cliente.fechaRegistro).toLocaleDateString("es-AR")}
             </td>
             <td className="px-6 py-4 text-center">
-              <div className="inline-flex items-center justify-center bg-green-50 text-green-700 px-3 py-1 rounded-full font-bold gap-1.5 border border-green-100 text-xs">
-                {/* Acá se refleja el conteo de pólizas que envía Prisma */}
+              {/* Botón interactivo para abrir las pólizas */}
+              <button 
+                onClick={() => setAseguradoParaVerPolizas(cliente)}
+                className="inline-flex items-center justify-center bg-green-50 hover:bg-green-100 text-green-700 px-3 py-1 rounded-full font-bold gap-1.5 border border-green-100 hover:border-green-200 text-xs transition-colors cursor-pointer"
+                title="Ver pólizas"
+              >
                 <Shield size={14} /> {cliente._count?.polizas || 0}
-              </div>
+              </button>
             </td>
             <td className="px-6 py-4">
               <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${
@@ -228,6 +235,12 @@ export default function AseguradosPage() {
         isLoading={isDeleting}
         title="¿Eliminar asegurado?"
         message={`Esta acción eliminará a "${aseguradoAEliminar?.nombre} ${aseguradoAEliminar?.apellido || ''}" permanentemente. Solo es posible si no tiene pólizas activas.`}
+      />
+      
+      <PolizasDelAseguradoModal 
+        isOpen={!!aseguradoParaVerPolizas} 
+        onClose={() => setAseguradoParaVerPolizas(null)} 
+        asegurado={aseguradoParaVerPolizas} 
       />
 
       <Toast message={mensajeToast} isVisible={showToast} onClose={() => setShowToast(false)} />

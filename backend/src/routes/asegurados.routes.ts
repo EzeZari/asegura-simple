@@ -3,7 +3,7 @@ import { prisma } from '../config/db';
 
 const router = Router();
 
-// RUTA: GET /api/asegurados (Trae la lista para mostrar en la tabla)
+// RUTA FALTANTE: GET /api/asegurados (Traer todos los clientes)
 router.get('/', async (req, res) => {
   try {
     const asegurados = await prisma.asegurado.findMany({
@@ -16,9 +16,28 @@ router.get('/', async (req, res) => {
     });
     res.json(asegurados);
   } catch (error) {
+    console.error("Error al obtener asegurados:", error);
     res.status(500).json({ error: 'Error al obtener asegurados.' });
   }
 });
+
+// RUTA: GET /api/asegurados/:id/polizas (Traer pólizas de un cliente)
+router.get('/:id/polizas', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const polizas = await prisma.poliza.findMany({
+      where: { aseguradoId: parseInt(id) },
+      include: { compania: true }, // Incluimos la compañía para mostrar el nombre
+      orderBy: { fechaVencimiento: 'asc' } // Ordenamos por las que vencen primero
+    });
+    res.json(polizas);
+  } catch (error) {
+    console.error("Error al obtener las pólizas del asegurado:", error);
+    res.status(500).json({ error: 'Error al obtener las pólizas del asegurado.' });
+  }
+});
+
+// ... (El resto de tus rutas POST, PUT y DELETE quedan exactamente igual)
 
 // RUTA: POST /api/asegurados (Guarda un cliente nuevo)
 router.post('/', async (req, res) => {
