@@ -1,9 +1,10 @@
 "use client";
 
-import { MessageCircle, Shield, ArrowRight, Trash2 } from "lucide-react";
+import { MessageCircle, Shield, ArrowRight, Trash2, RefreshCcw } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import ConfirmModal from "../ui/ConfirmModal"; // Asegurate de que esta ruta sea la correcta en tu proyecto
+import ConfirmModal from "../ui/ConfirmModal"; 
+import NuevaPolizaModal from "../polizas/NuevaPolizaModal"; // Importamos el modal de pólizas
 
 interface Props {
   poliza: any;
@@ -14,6 +15,7 @@ export default function AlertaCard({ poliza, nivel }: Props) {
   const router = useRouter();
   const [isBajaLoading, setIsBajaLoading] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [showRenovarModal, setShowRenovarModal] = useState(false);
 
   const calcularDias = (fechaVencimiento: string) => {
     const hoy = new Date().getTime();
@@ -90,25 +92,25 @@ export default function AlertaCard({ poliza, nivel }: Props) {
               <Trash2 size={16} /> Anular
             </button>
           ) : (
-            <a 
-              href={generarLinkWhatsApp(poliza.asegurado.telefono, poliza.asegurado.nombre, poliza.compania.nombre, fechaFormat)} 
-              target="_blank" rel="noopener noreferrer"
-              className="flex-1 flex justify-center items-center gap-1.5 bg-green-50 hover:bg-green-100 text-green-700 py-2 rounded-xl text-sm font-bold transition-colors"
+            <button 
+              onClick={() => setShowRenovarModal(true)}
+              className="flex-1 flex justify-center items-center gap-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 py-2 rounded-xl text-sm font-bold transition-colors"
             >
-              <MessageCircle size={16} /> Avisar
-            </a>
+              <RefreshCcw size={16} /> Renovar
+            </button>
           )}
 
-          <button 
-            onClick={() => router.push(`/polizas/${poliza.id}`)}
-            className="flex-1 flex justify-center items-center gap-1.5 bg-gray-50 hover:bg-gray-100 text-gray-700 py-2 rounded-xl text-sm font-bold transition-colors"
+          <a 
+            href={generarLinkWhatsApp(poliza.asegurado.telefono, poliza.asegurado.nombre, poliza.compania.nombre, fechaFormat)} 
+            target="_blank" rel="noopener noreferrer"
+            className="flex-1 flex justify-center items-center gap-1.5 bg-green-50 hover:bg-green-100 text-green-700 py-2 rounded-xl text-sm font-bold transition-colors"
           >
-            Ver Ficha <ArrowRight size={16} />
-          </button>
+            <MessageCircle size={16} /> Avisar
+          </a>
         </div>
       </div>
 
-      {/* Modal de Confirmación */}
+      {/* Modal de Confirmación para anular */}
       <ConfirmModal 
         isOpen={showConfirmModal}
         onClose={() => setShowConfirmModal(false)}
@@ -116,6 +118,16 @@ export default function AlertaCard({ poliza, nivel }: Props) {
         isLoading={isBajaLoading}
         title="Anular Póliza"
         message={`¿Estás seguro que querés anular la póliza de ${poliza.asegurado?.nombre}? Esta acción la sacará de tus alertas activas.`}
+        confirmText="Anular"
+      />
+
+      {/* Modal de Renovación Rápida */}
+      <NuevaPolizaModal 
+        isOpen={showRenovarModal}
+        onClose={() => setShowRenovarModal(false)}
+        onSuccess={() => window.location.reload()}
+        polizaAEditar={poliza}
+        isRenovacion={true}
       />
     </>
   );

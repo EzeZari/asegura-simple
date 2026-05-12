@@ -8,6 +8,7 @@ interface Props {
   onClose: () => void;
   onSuccess: () => void;
   polizaAEditar?: any; 
+  isRenovacion?: boolean; // <-- NUEVA PROP
 }
 
 const ESTADO_INICIAL = {
@@ -18,44 +19,63 @@ const ESTADO_INICIAL = {
   estado: "Vigente",
   cobertura: "",
   aseguradoId: "", 
-  companiaId: "", // <-- NUEVO ESTADO
+  companiaId: "", 
 };
 
-export default function NuevaPolizaModal({ isOpen, onClose, onSuccess, polizaAEditar }: Props) {
+export default function NuevaPolizaModal({ isOpen, onClose, onSuccess, polizaAEditar, isRenovacion = false }: Props) {
   const [formData, setFormData] = useState(ESTADO_INICIAL);
   const [clientes, setClientes] = useState<any[]>([]); 
-  const [companias, setCompanias] = useState<any[]>([]); // <-- NUEVO ESTADO PARA COMPAÑÍAS
+  const [companias, setCompanias] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
     if (isOpen) {
-      // 1. Buscamos los clientes
       fetch("http://localhost:3001/api/asegurados")
         .then((res) => res.json())
         .then((data) => setClientes(data.filter((c: any) => c.activo)))
         .catch((err) => console.error("Error al cargar clientes:", err));
       
-      // 2. Buscamos las compañías
       fetch("http://localhost:3001/api/companias")
         .then((res) => res.json())
         .then((data) => setCompanias(data))
         .catch((err) => console.error("Error al cargar compañías:", err));
 
       if (polizaAEditar) {
-        setFormData({
-          ...polizaAEditar,
-          fechaInicio: polizaAEditar.fechaInicio.split('T')[0],
-          fechaVencimiento: polizaAEditar.fechaVencimiento.split('T')[0],
-          aseguradoId: polizaAEditar.aseguradoId.toString(),
-          companiaId: polizaAEditar.companiaId?.toString() || "", // <-- Precargamos compañía
-        });
+        if (isRenovacion) {
+          // LÓGICA DE RENOVACIÓN: Pre-calculamos fechas
+          const fechaInicioNueva = polizaAEditar.fechaVencimiento.split('T')[0];
+          
+          // Le sumamos 6 meses por defecto a la nueva vigencia
+          const vDate = new Date(polizaAEditar.fechaVencimiento);
+          vDate.setMonth(vDate.getMonth() + 6);
+          const fechaVencimientoNueva = vDate.toISOString().split('T')[0];
+
+          setFormData({
+            ...polizaAEditar,
+            nroPoliza: "", // Vaciamos para el número nuevo
+            fechaInicio: fechaInicioNueva,
+            fechaVencimiento: fechaVencimientoNueva,
+            estado: "Vigente", // La nueva nace vigente
+            aseguradoId: polizaAEditar.aseguradoId.toString(),
+            companiaId: polizaAEditar.companiaId?.toString() || "",
+          });
+        } else {
+          // LÓGICA DE EDICIÓN NORMAL
+          setFormData({
+            ...polizaAEditar,
+            fechaInicio: polizaAEditar.fechaInicio.split('T')[0],
+            fechaVencimiento: polizaAEditar.fechaVencimiento.split('T')[0],
+            aseguradoId: polizaAEditar.aseguradoId.toString(),
+            companiaId: polizaAEditar.companiaId?.toString() || "",
+          });
+        }
       } else {
         setFormData(ESTADO_INICIAL);
       }
       setError("");
     }
-  }, [isOpen, polizaAEditar]);
+  }, [isOpen, polizaAEditar, isRenovacion]);
 
   if (!isOpen) return null;
 
@@ -66,7 +86,6 @@ export default function NuevaPolizaModal({ isOpen, onClose, onSuccess, polizaAEd
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Validación de seguridad
     if (!formData.aseguradoId || !formData.companiaId) {
       setError("Por favor, seleccioná un Asegurado y una Compañía.");
       return;
@@ -76,11 +95,13 @@ export default function NuevaPolizaModal({ isOpen, onClose, onSuccess, polizaAEd
     setError("");
 
     try {
-      const url = polizaAEditar 
+      // Si estamos editando normalmente es PUT, si es nueva o renovación es POST
+      const isEditMode = polizaAEditar && !isRenovacion;
+      const url = isEditMode 
         ? `http://localhost:3001/api/polizas/${polizaAEditar.id}`
         : "http://localhost:3001/api/polizas";
       
-      const method = polizaAEditar ? "PUT" : "POST";
+      const method = isEditMode ? "PUT" : "POST";
 
       const response = await fetch(url, {
         method,
@@ -91,6 +112,15 @@ export default function NuevaPolizaModal({ isOpen, onClose, onSuccess, polizaAEd
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Error al guardar la póliza");
 
+      // EL 2x1: Si fue una renovación exitosa, pasamos la póliza vieja a estado "Renovada"
+      if (isRenovacion && polizaAEditar) {
+        await fetch(`http://localhost:3001/api/polizas/${polizaAEditar.id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ...polizaAEditar, estado: "Renovada" })
+        });
+      }
+
       onSuccess();
     } catch (err: any) {
       setError(err.message);
@@ -100,15 +130,17 @@ export default function NuevaPolizaModal({ isOpen, onClose, onSuccess, polizaAEd
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[150] p-4">
       <div className="bg-white rounded-xl p-6 w-full max-w-2xl shadow-xl relative animate-in fade-in zoom-in duration-200 max-h-[90vh] overflow-y-auto">
         
         <button onClick={onClose} className="absolute top-4 right-4 text-gray-400 hover:text-gray-700 transition-colors p-1">
           <X size={24} />
         </button>
 
-        <h2 className="text-xl font-bold text-gray-900 mb-6 border-b pb-4">
-          {polizaAEditar ? "Editar Póliza" : "Nueva Póliza"}
+        <h2 className="text-xl font-bold text-gray-900 mb-6 border-b pb-4 flex items-center gap-2">
+          {isRenovacion ? (
+            <span className="bg-green-100 text-green-700 px-3 py-1 rounded-full text-sm">Proceso de Renovación</span>
+          ) : polizaAEditar ? "Editar Póliza" : "Nueva Póliza"}
         </h2>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-6">
@@ -116,41 +148,29 @@ export default function NuevaPolizaModal({ isOpen, onClose, onSuccess, polizaAEd
 
           <div className="space-y-4">
             <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider">Asignación</h3>
-            
-            {/* Dividimos la asignación en 2 columnas: Cliente y Compañía */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Asegurado Titular *</label>
                 <select 
-                  required
-                  name="aseguradoId"
-                  value={formData.aseguradoId}
-                  onChange={handleChange}
+                  required name="aseguradoId" value={formData.aseguradoId} onChange={handleChange} 
                   className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-600 outline-none bg-white"
+                  disabled={isRenovacion} // Bloqueamos cambiar de cliente si estamos renovando
                 >
                   <option value="" disabled>-- Seleccioná un cliente --</option>
                   {clientes.map((cliente) => (
-                    <option key={cliente.id} value={cliente.id}>
-                      {cliente.nombre} {cliente.apellido || ""} - {cliente.dni}
-                    </option>
+                    <option key={cliente.id} value={cliente.id}>{cliente.nombre} {cliente.apellido || ""} - {cliente.dni}</option>
                   ))}
                 </select>
               </div>
-
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Compañía Aseguradora *</label>
                 <select 
-                  required
-                  name="companiaId"
-                  value={formData.companiaId}
-                  onChange={handleChange}
+                  required name="companiaId" value={formData.companiaId} onChange={handleChange} 
                   className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-600 outline-none bg-white"
                 >
                   <option value="" disabled>-- Seleccioná una compañía --</option>
                   {companias.map((compania) => (
-                    <option key={compania.id} value={compania.id}>
-                      {compania.nombre}
-                    </option>
+                    <option key={compania.id} value={compania.id}>{compania.nombre}</option>
                   ))}
                 </select>
               </div>
@@ -159,7 +179,6 @@ export default function NuevaPolizaModal({ isOpen, onClose, onSuccess, polizaAEd
 
           <div className="space-y-4">
             <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider">Datos de la Póliza</h3>
-            
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Número de Póliza *</label>
@@ -211,7 +230,7 @@ export default function NuevaPolizaModal({ isOpen, onClose, onSuccess, polizaAEd
               Cancelar
             </button>
             <button type="submit" disabled={isLoading} className="px-4 py-2 bg-green-700 hover:bg-green-800 text-white rounded-lg font-medium transition-colors disabled:opacity-50">
-              {isLoading ? "Guardando..." : (polizaAEditar ? "Actualizar Póliza" : "Guardar Póliza")}
+              {isLoading ? "Guardando..." : (isRenovacion ? "Crear Renovación" : polizaAEditar ? "Actualizar Póliza" : "Guardar Póliza")}
             </button>
           </div>
         </form>
