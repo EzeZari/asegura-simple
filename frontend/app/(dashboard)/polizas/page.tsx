@@ -1,11 +1,12 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Plus, MoreHorizontal, FileText } from "lucide-react";
+import { Plus, MoreHorizontal, FileText, Trash2, Edit } from "lucide-react";
 import NuevaPolizaModal from "@/components/polizas/NuevaPolizaModal";
 import PolizasFiltros from "@/components/polizas/PolizasFiltros";
 import Toast from "@/components/ui/Toast";
 import Table, { TableColumn } from "@/components/ui/Table";
+import ConfirmModal from "@/components/ui/ConfirmModal";
 
 export default function PolizasPage() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -20,6 +21,11 @@ export default function PolizasPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [showToast, setShowToast] = useState(false);
   const [mensajeToast, setMensajeToast] = useState("");
+
+  // Estados para eliminación
+  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+  const [polizaAEliminar, setPolizaAEliminar] = useState<any>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const fetchPolizas = async () => {
     try {
@@ -67,6 +73,28 @@ export default function PolizasPage() {
     }
   };
 
+  // Función de eliminación
+  const ejecutarEliminacion = async () => {
+    if (!polizaAEliminar) return;
+    setIsDeleting(true);
+    try {
+      const res = await fetch(`http://localhost:3001/api/polizas/${polizaAEliminar.id}`, { method: 'DELETE' });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error);
+      }
+      fetchPolizas();
+      setMensajeToast("Póliza eliminada correctamente");
+      setShowToast(true);
+      setIsConfirmOpen(false);
+    } catch (error: any) {
+      alert(error.message);
+    } finally {
+      setIsDeleting(false);
+      setPolizaAEliminar(null);
+    }
+  };
+
   const polizasFiltradas = polizas.filter((poliza) => {
     const busqueda = searchTerm.toLowerCase();
     const nroPoliza = poliza.nroPoliza.toLowerCase();
@@ -89,7 +117,6 @@ export default function PolizasPage() {
     }
   };
 
-  // DEFINIMOS LAS COLUMNAS
   const columnas: TableColumn[] = [
     { label: "Nro Póliza" },
     { label: "Titular" },
@@ -100,7 +127,6 @@ export default function PolizasPage() {
     { label: "Acciones", align: "right" },
   ];
 
-  // DEFINIMOS EL DISEÑO VACÍO
   const estadoVacio = (
     <div className="flex flex-col items-center justify-center text-gray-500">
       <FileText size={32} className="text-gray-300 mb-3" />
@@ -131,7 +157,6 @@ export default function PolizasPage() {
         filtroEstado={filtroEstado} setFiltroEstado={setFiltroEstado}
       />
 
-      {/* USAMOS EL NUEVO COMPONENTE MAESTRO */}
       <Table 
         columns={columnas} 
         isLoading={isLoading} 
@@ -168,8 +193,13 @@ export default function PolizasPage() {
               </button>
 
               {menuAbiertoId === poliza.id && (
-                <div className="absolute right-8 top-10 mt-1 w-44 bg-white rounded-lg shadow-xl border border-gray-100 z-50 overflow-hidden py-1">
-                  <button onClick={() => abrirParaEditar(poliza)} className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">Editar Póliza</button>
+                <div className="absolute right-8 top-10 mt-1 w-48 bg-white rounded-lg shadow-xl border border-gray-100 z-50 overflow-hidden py-1">
+                  <button 
+                    onClick={() => abrirParaEditar(poliza)} 
+                    className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
+                  >
+                    <Edit size={14} /> Editar Póliza
+                  </button>
                   <div className="h-px bg-gray-100 my-1"></div>
                   {poliza.estado !== "Vigente" && (
                     <button onClick={() => cambiarEstadoRapido(poliza, "Vigente")} className="w-full text-left px-4 py-2 text-sm text-emerald-600 hover:bg-emerald-50">Marcar Vigente</button>
@@ -180,6 +210,17 @@ export default function PolizasPage() {
                   {poliza.estado !== "Anulada" && (
                     <button onClick={() => cambiarEstadoRapido(poliza, "Anulada")} className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50">Anular Póliza</button>
                   )}
+                  <div className="h-px bg-gray-100 my-1"></div>
+                  <button 
+                    onClick={() => {
+                      setPolizaAEliminar(poliza);
+                      setMenuAbiertoId(null);
+                      setIsConfirmOpen(true);
+                    }}
+                    className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
+                  >
+                    <Trash2 size={14} /> Eliminar Póliza
+                  </button>
                 </div>
               )}
             </td>
@@ -188,6 +229,16 @@ export default function PolizasPage() {
       </Table>
 
       <NuevaPolizaModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSuccess={handleSuccess} polizaAEditar={polizaAEditar} />
+      
+      <ConfirmModal 
+        isOpen={isConfirmOpen}
+        onClose={() => setIsConfirmOpen(false)}
+        onConfirm={ejecutarEliminacion}
+        isLoading={isDeleting}
+        title="¿Eliminar póliza?"
+        message={`Esta acción eliminará la póliza #${polizaAEliminar?.nroPoliza} de forma permanente. No se puede deshacer.`}
+      />
+
       <Toast message={mensajeToast} isVisible={showToast} onClose={() => setShowToast(false)} />
     </div>
   );

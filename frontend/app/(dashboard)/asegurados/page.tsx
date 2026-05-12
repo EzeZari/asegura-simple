@@ -1,11 +1,12 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Plus, MoreHorizontal, Shield, Building2, User, Search } from "lucide-react";
+import { Plus, MoreHorizontal, Shield, Building2, User, Search, Trash2, Edit } from "lucide-react";
 import NuevoAseguradoModal from "@/components/asegurados/NuevoAseguradoModal";
 import AseguradosFiltros from "@/components/asegurados/AseguradosFiltros";
 import Toast from "@/components/ui/Toast";
 import Table, { TableColumn } from "@/components/ui/Table";
+import ConfirmModal from "@/components/ui/ConfirmModal";
 
 export default function AseguradosPage() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -17,7 +18,12 @@ export default function AseguradosPage() {
   const [asegurados, setAsegurados] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showToast, setShowToast] = useState(false);
+  const [mensajeToast, setMensajeToast] = useState("");
   const [menuAbiertoId, setMenuAbiertoId] = useState<number | null>(null);
+  
+  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+  const [aseguradoAEliminar, setAseguradoAEliminar] = useState<any>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const fetchAsegurados = async () => {
     try {
@@ -37,6 +43,7 @@ export default function AseguradosPage() {
     setIsModalOpen(false);
     setClienteAEditar(null);
     fetchAsegurados();
+    setMensajeToast("Asegurado guardado correctamente");
     setShowToast(true);
   };
 
@@ -61,6 +68,27 @@ export default function AseguradosPage() {
     }
   };
 
+  const ejecutarEliminacion = async () => {
+    if (!aseguradoAEliminar) return;
+    setIsDeleting(true);
+    try {
+      const res = await fetch(`http://localhost:3001/api/asegurados/${aseguradoAEliminar.id}`, { method: 'DELETE' });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error);
+      }
+      fetchAsegurados();
+      setMensajeToast("Asegurado eliminado");
+      setShowToast(true);
+      setIsConfirmOpen(false);
+    } catch (error: any) {
+      alert(error.message);
+    } finally {
+      setIsDeleting(false);
+      setAseguradoAEliminar(null);
+    }
+  };
+
   const aseguradosFiltrados = asegurados.filter((cliente) => {
     const busqueda = searchTerm.toLowerCase();
     const nombreCompleto = `${cliente.nombre} ${cliente.apellido || ""}`.toLowerCase();
@@ -74,7 +102,6 @@ export default function AseguradosPage() {
     return pasaFiltroTexto && pasaFiltroTipo && pasaFiltroEstado;
   });
 
-  // DEFINIMOS LAS COLUMNAS DE ESTA TABLA
   const columnas: TableColumn[] = [
     { label: "Nombre / Razón Social" },
     { label: "DNI / CUIT" },
@@ -86,7 +113,6 @@ export default function AseguradosPage() {
     { label: "Acciones", align: "right" },
   ];
 
-  // DEFINIMOS EL DISEÑO VACÍO
   const estadoVacio = (
     <div className="flex flex-col items-center justify-center text-gray-500">
       <Search size={32} className="text-gray-300 mb-3" />
@@ -116,7 +142,6 @@ export default function AseguradosPage() {
         filtroEstado={filtroEstado} setFiltroEstado={setFiltroEstado}
       />
 
-      {/* USAMOS EL NUEVO COMPONENTE MAESTRO */}
       <Table 
         columns={columnas} 
         isLoading={isLoading} 
@@ -144,7 +169,8 @@ export default function AseguradosPage() {
             </td>
             <td className="px-6 py-4 text-center">
               <div className="inline-flex items-center justify-center bg-green-50 text-green-700 px-3 py-1 rounded-full font-bold gap-1.5 border border-green-100 text-xs">
-                <Shield size={14} /> 0
+                {/* Acá se refleja el conteo de pólizas que envía Prisma */}
+                <Shield size={14} /> {cliente._count?.polizas || 0}
               </div>
             </td>
             <td className="px-6 py-4">
@@ -162,10 +188,29 @@ export default function AseguradosPage() {
                 <MoreHorizontal size={20} />
               </button>
               {menuAbiertoId === cliente.id && (
-                <div className="absolute right-8 top-10 mt-1 w-32 bg-white rounded-lg shadow-xl border border-gray-100 z-50 overflow-hidden">
-                  <button onClick={() => abrirParaEditar(cliente)} className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">Editar</button>
-                  <button onClick={() => toggleEstado(cliente)} className={`w-full text-left px-4 py-2 text-sm ${cliente.activo ? "text-red-600 hover:bg-red-50" : "text-green-600 hover:bg-green-50"}`}>
+                <div className="absolute right-8 top-10 mt-1 w-36 bg-white rounded-lg shadow-xl border border-gray-100 z-50 overflow-hidden py-1">
+                  <button 
+                    onClick={() => abrirParaEditar(cliente)} 
+                    className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
+                  >
+                    <Edit size={14} /> Editar
+                  </button>
+                  <button 
+                    onClick={() => toggleEstado(cliente)} 
+                    className={`w-full text-left px-4 py-2 text-sm ${cliente.activo ? "text-amber-600 hover:bg-amber-50" : "text-emerald-600 hover:bg-emerald-50"}`}
+                  >
                     {cliente.activo ? "Desactivar" : "Activar"}
+                  </button>
+                  <div className="h-px bg-gray-100 my-1"></div>
+                  <button 
+                    onClick={() => {
+                      setAseguradoAEliminar(cliente);
+                      setMenuAbiertoId(null);
+                      setIsConfirmOpen(true);
+                    }}
+                    className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
+                  >
+                    <Trash2 size={14} /> Eliminar
                   </button>
                 </div>
               )}
@@ -175,7 +220,17 @@ export default function AseguradosPage() {
       </Table>
 
       <NuevoAseguradoModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSuccess={handleSuccess} clienteAEditar={clienteAEditar} />
-      <Toast message="Asegurado guardado correctamente" isVisible={showToast} onClose={() => setShowToast(false)} />
+      
+      <ConfirmModal 
+        isOpen={isConfirmOpen}
+        onClose={() => setIsConfirmOpen(false)}
+        onConfirm={ejecutarEliminacion}
+        isLoading={isDeleting}
+        title="¿Eliminar asegurado?"
+        message={`Esta acción eliminará a "${aseguradoAEliminar?.nombre} ${aseguradoAEliminar?.apellido || ''}" permanentemente. Solo es posible si no tiene pólizas activas.`}
+      />
+
+      <Toast message={mensajeToast} isVisible={showToast} onClose={() => setShowToast(false)} />
     </div>
   );
 }

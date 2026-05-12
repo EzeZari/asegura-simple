@@ -51,6 +51,7 @@ router.post('/', async (req, res) => {
     }
 
     // Guardamos la Póliza en la base de datos
+    // Guardamos la Póliza conectando Cliente y Compañía reales
     const nuevaPoliza = await prisma.poliza.create({
       data: {
         nroPoliza,
@@ -59,8 +60,8 @@ router.post('/', async (req, res) => {
         fechaVencimiento: new Date(fechaVencimiento),
         estado,
         cobertura,
-        aseguradoId: parseInt(aseguradoId), // Conectamos con el cliente
-        companiaId: companiaRealId,         // Conectamos con la compañía
+        aseguradoId: parseInt(aseguradoId),
+        companiaId: parseInt(companiaId), // <--- ACÁ ESTÁ LA CLAVE. Tiene que tener el parseInt()
       },
       include: {
         asegurado: true,
@@ -118,6 +119,18 @@ router.put('/:id', async (req, res) => {
   } catch (error) {
     console.error("Error al actualizar la póliza:", error);
     res.status(500).json({ error: 'Hubo un error al actualizar la póliza.' });
+  }
+});
+// RUTA: DELETE /api/polizas/:id
+router.delete('/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    await prisma.poliza.delete({
+      where: { id: parseInt(id) }
+    });
+    res.json({ message: 'Póliza eliminada' });
+  } catch (error) {
+    res.status(500).json({ error: 'Error al eliminar la póliza.' });
   }
 });
 

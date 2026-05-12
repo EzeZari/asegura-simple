@@ -7,12 +7,16 @@ const router = Router();
 router.get('/', async (req, res) => {
   try {
     const asegurados = await prisma.asegurado.findMany({
-      orderBy: { fechaRegistro: 'desc' }, // Los más nuevos primero
+      include: {
+        _count: {
+          select: { polizas: true } // Esto le dice a Prisma que sume las pólizas
+        }
+      },
+      orderBy: { nombre: 'asc' }
     });
     res.json(asegurados);
   } catch (error) {
-    console.error("Error al obtener asegurados:", error);
-    res.status(500).json({ error: 'Hubo un error al obtener la lista de asegurados.' });
+    res.status(500).json({ error: 'Error al obtener asegurados.' });
   }
 });
 
@@ -106,6 +110,20 @@ router.put('/:id', async (req, res) => {
   } catch (error) {
     console.error("Error al actualizar el asegurado:", error);
     res.status(500).json({ error: 'Hubo un error al actualizar el asegurado.' });
+  }
+});
+router.delete('/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    await prisma.asegurado.delete({
+      where: { id: parseInt(id) }
+    });
+    res.json({ message: 'Asegurado eliminado' });
+  } catch (error: any) {
+    if (error.code === 'P2003') {
+      return res.status(400).json({ error: 'No se puede eliminar un asegurado con pólizas activas.' });
+    }
+    res.status(500).json({ error: 'Error al eliminar.' });
   }
 });
 
