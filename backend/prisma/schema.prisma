@@ -175,3 +175,11 @@ model User {
   resetPasswordToken   String?  
   resetPasswordExpires DateTime? 
 }
+model Actividad {
+  id          Int      @id @default(autoincrement())
+  accion      String   
+  entidad     String   
+  descripcion String   
+  cliente     String?  // <-- AGREGAMOS ESTO (Con el ? porque es opcional)
+  fecha       DateTime @default(now())
+}

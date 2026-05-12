@@ -3,7 +3,7 @@ import { prisma } from '../config/db';
 
 const router = Router();
 
-// RUTA FALTANTE: GET /api/asegurados (Traer todos los clientes)
+// RUTA: GET /api/asegurados (Traer todos los clientes)
 router.get('/', async (req, res) => {
   try {
     const asegurados = await prisma.asegurado.findMany({
@@ -37,8 +37,6 @@ router.get('/:id/polizas', async (req, res) => {
   }
 });
 
-// ... (El resto de tus rutas POST, PUT y DELETE quedan exactamente igual)
-
 // RUTA: POST /api/asegurados (Guarda un cliente nuevo)
 router.post('/', async (req, res) => {
   try {
@@ -56,10 +54,8 @@ router.post('/', async (req, res) => {
     } = req.body;
 
     // --- PARCHE INTELIGENTE PARA LA PRUEBA ---
-    // Buscamos el primer productor que exista en la base de datos
     let productor = await prisma.productor.findFirst();
     
-    // Si la base de datos está vacía, creamos uno de prueba automáticamente
     if (!productor) {
       productor = await prisma.productor.create({
         data: {
@@ -72,7 +68,6 @@ router.post('/', async (req, res) => {
       });
     }
 
-    // Ahora sí, guardamos el asegurado asignándolo al ID de ese productor real
     const nuevoAsegurado = await prisma.asegurado.create({
       data: {
         nombre,
@@ -85,9 +80,19 @@ router.post('/', async (req, res) => {
         direccion,
         codigoPostal,
         fechaNacimiento: fechaNacimiento ? new Date(fechaNacimiento) : null,
-        productorId: productor.id, // <-- Usamos el ID dinámico que aseguramos arriba
+        productorId: productor.id,
       },
     });
+
+    // REGISTRO DE ACTIVIDAD: Alta
+    await prisma.actividad.create({
+    data: {
+    accion: "Alta",
+    entidad: "Asegurado",
+    descripcion: "Nuevo cliente registrado",
+    cliente: `${nombre} ${apellido || ''}`.trim()
+  }
+});
 
     res.status(201).json(nuevoAsegurado);
 
@@ -101,6 +106,7 @@ router.post('/', async (req, res) => {
     res.status(500).json({ error: 'Hubo un error al guardar el asegurado.' });
   }
 });
+
 // RUTA: PUT /api/asegurados/:id (Editar o dar de baja un cliente)
 router.put('/:id', async (req, res) => {
   try {
@@ -119,10 +125,19 @@ router.put('/:id', async (req, res) => {
         telefono: data.telefono,
         direccion: data.direccion,
         codigoPostal: data.codigoPostal,
-        // Si hay fecha la convertimos, sino mandamos null
         fechaNacimiento: data.fechaNacimiento ? new Date(data.fechaNacimiento) : null,
-        activo: data.activo, // Esto nos va a servir para "desactivarlo"
+        activo: data.activo,
       },
+    });
+
+    // REGISTRO DE ACTIVIDAD: Edición
+    const accionReal = data.activo === false ? "Desactivación" : "Edición";
+    await prisma.actividad.create({
+      data: {
+        accion: accionReal,
+        entidad: "Asegurado",
+        descripcion: `${data.nombre} ${data.apellido || ''}`.trim(),
+      }
     });
 
     res.json(aseguradoActualizado);
@@ -131,12 +146,32 @@ router.put('/:id', async (req, res) => {
     res.status(500).json({ error: 'Hubo un error al actualizar el asegurado.' });
   }
 });
+
+// RUTA: DELETE /api/asegurados/:id (Eliminar definitivamente)
 router.delete('/:id', async (req, res) => {
   try {
     const { id } = req.params;
+    
+    // Primero buscamos al asegurado para saber su nombre antes de borrarlo
+    const aseguradoABorrar = await prisma.asegurado.findUnique({
+      where: { id: parseInt(id) }
+    });
+
     await prisma.asegurado.delete({
       where: { id: parseInt(id) }
     });
+
+    // REGISTRO DE ACTIVIDAD: Baja
+    if (aseguradoABorrar) {
+      await prisma.actividad.create({
+        data: {
+          accion: "Baja",
+          entidad: "Asegurado",
+          descripcion: `${aseguradoABorrar.nombre} ${aseguradoABorrar.apellido || ''}`.trim(),
+        }
+      });
+    }
+
     res.json({ message: 'Asegurado eliminado' });
   } catch (error: any) {
     if (error.code === 'P2003') {

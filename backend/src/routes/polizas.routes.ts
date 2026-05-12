@@ -3,155 +3,129 @@ import { prisma } from '../config/db';
 
 const router = Router();
 
-// RUTA 1: Traer TODAS las pólizas (Esta es la que faltaba y tiraba error 404)
+// RUTA: GET /api/polizas
 router.get('/', async (req, res) => {
   try {
     const polizas = await prisma.poliza.findMany({
-      include: {
-        asegurado: true,
-        compania: true
-      },
-      orderBy: { fechaVencimiento: 'asc' } // Opcional: para que salgan ordenadas
+      include: { asegurado: true, compania: true },
+      orderBy: { fechaVencimiento: 'asc' }
     });
     res.json(polizas);
   } catch (error) {
-    console.error("Error al obtener las pólizas:", error);
     res.status(500).json({ error: 'Error al obtener las pólizas.' });
   }
 });
 
-// RUTA 2: Traer UNA SOLA póliza (La que agregamos para la pantalla de detalle)
+// RUTA: GET /api/polizas/:id
 router.get('/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const poliza = await prisma.poliza.findUnique({
       where: { id: parseInt(id) },
-      include: {
-        asegurado: true,
-        compania: true
-      }
+      include: { asegurado: true, compania: true }
     });
-
     if (!poliza) return res.status(404).json({ error: 'Póliza no encontrada' });
-    
     res.json(poliza);
   } catch (error) {
-    console.error("Error al obtener el detalle de la póliza:", error);
-    res.status(500).json({ error: 'Error al obtener el detalle de la póliza.' });
+    res.status(500).json({ error: 'Error al obtener el detalle.' });
   }
 });
 
 // RUTA: POST /api/polizas (Crea una póliza nueva)
 router.post('/', async (req, res) => {
   try {
-    const {
-      nroPoliza,
-      tipoPoliza,
-      fechaInicio,
-      fechaVencimiento,
-      estado,
-      cobertura,
-      aseguradoId,
-      companiaId
-    } = req.body;
+    const { nroPoliza, tipoPoliza, fechaInicio, fechaVencimiento, estado, cobertura, aseguradoId, companiaId } = req.body;
 
-    // --- PARCHE INTELIGENTE PARA LA COMPAÑÍA ---
-    let companiaRealId = companiaId;
-    
-    if (!companiaRealId) {
-      let compania = await prisma.compania.findFirst();
-      if (!compania) {
-        compania = await prisma.compania.create({
-          data: { 
-            nombre: "Compañía de Prueba (Ej: Federación Patronal)",
-            email: "contacto@compania.com"
-          }
-        });
-      }
-      companiaRealId = compania.id;
-    }
-
-    // Guardamos la Póliza en la base de datos
-    // Guardamos la Póliza conectando Cliente y Compañía reales
     const nuevaPoliza = await prisma.poliza.create({
       data: {
-        nroPoliza,
-        tipoPoliza,
-        fechaInicio: new Date(fechaInicio),
-        fechaVencimiento: new Date(fechaVencimiento),
-        estado,
-        cobertura,
-        aseguradoId: parseInt(aseguradoId),
-        companiaId: parseInt(companiaId), // <--- ACÁ ESTÁ LA CLAVE. Tiene que tener el parseInt()
+        nroPoliza, tipoPoliza, 
+        fechaInicio: new Date(fechaInicio), 
+        fechaVencimiento: new Date(fechaVencimiento), 
+        estado, cobertura, 
+        aseguradoId: parseInt(aseguradoId), 
+        companiaId: parseInt(companiaId),
       },
-      include: {
-        asegurado: true,
-        compania: true
+      include: { asegurado: true }
+    });
+
+    // REGISTRO SEPARADO: Detalle y Cliente
+    await prisma.actividad.create({
+      data: {
+        accion: "Alta",
+        entidad: "Póliza",
+        descripcion: `Póliza #${nroPoliza} (${tipoPoliza})`,
+        cliente: `${nuevaPoliza.asegurado.nombre} ${nuevaPoliza.asegurado.apellido || ''}`.trim()
       }
     });
 
     res.status(201).json(nuevaPoliza);
-
   } catch (error: any) {
-    console.error("Error al guardar la póliza:", error);
-    
-    if (error.code === 'P2002') {
-      return res.status(400).json({ error: 'Ya existe una póliza con ese número.' });
-    }
-
-    res.status(500).json({ error: 'Hubo un error al guardar la póliza.' });
+    res.status(500).json({ error: 'Error al guardar.' });
   }
 });
-// RUTA: PUT /api/polizas/:id (Editar o cambiar estado de una póliza)
-// RUTA: PUT /api/polizas/:id (Editar o cambiar estado de una póliza)
+
+// RUTA: PUT /api/polizas/:id (Editar o cambiar estado)
 router.put('/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const {
-      nroPoliza,
-      tipoPoliza,
-      fechaInicio,
-      fechaVencimiento,
-      estado,
-      cobertura,
-      aseguradoId,
-      companiaId // <-- ¡Faltaba recibir esto del frontend!
-    } = req.body;
+    const { nroPoliza, tipoPoliza, fechaInicio, fechaVencimiento, estado, cobertura, aseguradoId, companiaId } = req.body;
 
     const polizaActualizada = await prisma.poliza.update({
       where: { id: parseInt(id) },
       data: {
-        nroPoliza,
-        tipoPoliza,
-        fechaInicio: new Date(fechaInicio),
-        fechaVencimiento: new Date(fechaVencimiento),
-        estado,
-        cobertura,
-        aseguradoId: parseInt(aseguradoId),
-        companiaId: parseInt(companiaId) // <-- ¡Faltaba decirle a la BD que lo actualice!
+        nroPoliza, tipoPoliza, 
+        fechaInicio: new Date(fechaInicio), 
+        fechaVencimiento: new Date(fechaVencimiento), 
+        estado, cobertura, 
+        aseguradoId: parseInt(aseguradoId), 
+        companiaId: parseInt(companiaId) 
       },
-      include: {
-        asegurado: true,
-        compania: true
+      include: { asegurado: true }
+    });
+
+    // REGISTRO SEPARADO: Detalle y Cliente
+    await prisma.actividad.create({
+      data: {
+        accion: "Edición",
+        entidad: "Póliza",
+        descripcion: `Cambio de estado a: ${estado} (#${nroPoliza})`,
+        cliente: `${polizaActualizada.asegurado.nombre} ${polizaActualizada.asegurado.apellido || ''}`.trim()
       }
     });
 
     res.json(polizaActualizada);
   } catch (error) {
-    console.error("Error al actualizar la póliza:", error);
-    res.status(500).json({ error: 'Hubo un error al actualizar la póliza.' });
+    res.status(500).json({ error: 'Error al actualizar.' });
   }
 });
-// RUTA: DELETE /api/polizas/:id
+
+// RUTA: DELETE /api/polizas/:id (Eliminar)
 router.delete('/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    await prisma.poliza.delete({
-      where: { id: parseInt(id) }
+    
+    const polizaABorrar = await prisma.poliza.findUnique({ 
+      where: { id: parseInt(id) },
+      include: { asegurado: true } 
     });
+    
+    await prisma.poliza.delete({ where: { id: parseInt(id) } });
+
+    // REGISTRO SEPARADO: Detalle y Cliente
+    if (polizaABorrar) {
+      await prisma.actividad.create({
+        data: {
+          accion: "Baja",
+          entidad: "Póliza",
+          descripcion: `Se eliminó la póliza #${polizaABorrar.nroPoliza}`,
+          cliente: `${polizaABorrar.asegurado.nombre} ${polizaABorrar.asegurado.apellido || ''}`.trim()
+        }
+      });
+    }
+
     res.json({ message: 'Póliza eliminada' });
   } catch (error) {
-    res.status(500).json({ error: 'Error al eliminar la póliza.' });
+    res.status(500).json({ error: 'Error al eliminar.' });
   }
 });
 
