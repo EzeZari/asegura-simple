@@ -7,8 +7,8 @@ import { Building2, MessageSquare, Bell, Users, Shield } from "lucide-react";
 import PerfilSettings from "@/components/configuracion/PerfilSettings";
 import PlantillasSettings from "@/components/configuracion/PlantillasSettings";
 import NotificacionesSettings from "@/components/configuracion/NotificacionesSettings";
-// import EquipoSettings from "@/components/configuracion/EquipoSettings";
-// import SeguridadSettings from "@/components/configuracion/SeguridadSettings";
+//import EquipoSettings from "@/components/configuracion/EquipoSettings";
+import SeguridadSettings from "@/components/configuracion/SeguridadSettings";
 
 export default function ConfiguracionPage() {
   const [activeTab, setActiveTab] = useState("perfil");
@@ -51,9 +51,9 @@ export default function ConfiguracionPage() {
       <div className="mt-4 max-w-4xl">
         {activeTab === "perfil" && <PerfilSettings />},
         {activeTab === "plantillas" && <PlantillasSettings />},
-        {activeTab === "notificaciones" && <NotificacionesSettings />}
-        {/* {activeTab === "equipo" && <EquipoSettings />} */}
-        {/* {activeTab === "seguridad" && <SeguridadSettings />} */}
+        {activeTab === "notificaciones" && <NotificacionesSettings />},
+        {/* {activeTab === "equipo" && <EquipoSettings />}*/}
+        {activeTab === "seguridad" && <SeguridadSettings />} 
       </div>
     </div>
   );
