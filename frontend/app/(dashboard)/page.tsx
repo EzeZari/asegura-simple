@@ -62,6 +62,14 @@ export default function DashboardPage() {
     },
   ];
 
+  // EL FILTRO SALVAVIDAS: Limpiamos los datos para no tener que tocar el archivo RecentActivity.tsx
+  const actividadSegura = dashboardData?.actividadReciente?.map((item: any) => ({
+    ...item,
+    // Nos aseguramos de que esto nunca sea "undefined" para que el .toLowerCase() no explote
+    type: item.type || item.tipo || item.accion || "",
+    tipo: item.tipo || item.type || item.accion || ""
+  })) || [];
+
   return (
     <div className="flex-1 flex flex-col p-8 w-full gap-8 bg-white min-h-screen">
       <div className="pb-4">
@@ -80,7 +88,8 @@ export default function DashboardPage() {
       </div>
 
       <div className="mt-4 pb-10">
-        <RecentActivity data={isLoading ? [] : dashboardData?.actividadReciente} />
+        {/* LE PASAMOS LA ACTIVIDAD "SEGURA" (LIMPIA) EN LUGAR DE LA DATA CRUDA */}
+        <RecentActivity data={isLoading ? [] : actividadSegura} />
         {isLoading && (
           <div className="text-center text-gray-400 mt-4 animate-pulse text-sm">
             Cargando actividad reciente...

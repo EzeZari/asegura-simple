@@ -11,6 +11,7 @@ import polizasRoutes from './routes/polizas.routes';
 import companiasRoutes from './routes/companias.routes';
 import dashboardRoutes from './routes/dashboard.routes'; // <-- Agregá esto arriba
 import alertasRoutes from './routes/alertas.routes';
+import agenciaRoutes from './routes/agencia.routes';
 
 dotenv.config();
 
@@ -44,6 +45,7 @@ app.use('/api/polizas', polizasRoutes);
 app.use('/api/companias', companiasRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/alertas', alertasRoutes);
+app.use('/api/agencia', agenciaRoutes);
 
 const PORT = process.env.PORT || 3001;
 
