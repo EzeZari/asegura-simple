@@ -9,30 +9,47 @@ router.get('/stats', async (req, res) => {
     const polizasActivas = await prisma.poliza.count({ where: { estado: 'Vigente' } });
     
     const hoy = new Date();
-    const en30Dias = new Date();
-    en30Dias.setDate(hoy.getDate() + 30);
 
+    // 1. LEER LA CONFIGURACIÓN DE LA AGENCIA
+    const agencia = await prisma.agencia.findUnique({ where: { id: 1 } });
+    const diasParaAviso = agencia?.diasAlertaVencimiento || 30; // 30 por defecto
+
+    // 2. CALCULAR LA FECHA LÍMITE DINÁMICA
+    const fechaLimite = new Date();
+    fechaLimite.setDate(hoy.getDate() + diasParaAviso);
+
+    // 3. BUSCAR VENCIMIENTOS USANDO LA NUEVA FECHA
     const vencimientos = await prisma.poliza.count({
-      where: { estado: 'Vigente', fechaVencimiento: { gte: hoy, lte: en30Dias } }
+      where: { 
+        estado: 'Vigente', 
+        fechaVencimiento: { gte: hoy, lte: fechaLimite } 
+      }
     });
     
     const totalCompanias = await prisma.compania.count();
 
-    // ACÁ ESTÁ LA MAGIA NUEVA: Traemos el historial real
+    // 4. HISTORIAL DE ACTIVIDAD RECIENTE
     const historial = await prisma.actividad.findMany({
       take: 6, // Traemos los últimos 6 movimientos
       orderBy: { fecha: 'desc' }
     });
 
     const actividadReciente = historial.map(h => ({
-  id: h.id.toString(),
-  type: `${h.accion} ${h.entidad}`, 
-  detail: h.descripcion,            // <--- IMPORTANTE: que diga 'detail'
-  client: h.cliente,                // <--- IMPORTANTE: que diga 'client'
-  date: h.fecha.toLocaleString('es-AR', { hour: '2-digit', minute:'2-digit', day: '2-digit', month: '2-digit' })
-}));
+      id: h.id.toString(),
+      type: `${h.accion} ${h.entidad}`, 
+      detail: h.descripcion,
+      client: h.cliente,
+      date: h.fecha.toLocaleString('es-AR', { hour: '2-digit', minute:'2-digit', day: '2-digit', month: '2-digit' })
+    }));
 
-    res.json({ totalAsegurados, polizasActivas, vencimientos, totalCompanias, actividadReciente });
+    // ENVIAR TODO AL FRONTEND
+    res.json({ 
+      totalAsegurados, 
+      polizasActivas, 
+      vencimientos, 
+      totalCompanias, 
+      actividadReciente
+    });
 
   } catch (error) {
     console.error("Error al cargar stats:", error);

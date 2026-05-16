@@ -193,5 +193,7 @@ model Agencia {
   logoUrl   String?  // Lo dejamos preparado para cuando hagamos la subida de imágenes
   mensajeVencimiento String?  @db.Text
   mensajeBienvenida  String?  @db.Text
+  diasAlertaVencimiento Int      @default(30)
+  diasAlertaCritica     Int      @default(7)  // <-- AGREGÁ ESTE CAMPO NUEVO
   updatedAt DateTime @updatedAt
 }
