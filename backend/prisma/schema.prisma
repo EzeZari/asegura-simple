@@ -191,5 +191,7 @@ model Agencia {
   telefono  String?
   firma     String?
   logoUrl   String?  // Lo dejamos preparado para cuando hagamos la subida de imágenes
+  mensajeVencimiento String?  @db.Text
+  mensajeBienvenida  String?  @db.Text
   updatedAt DateTime @updatedAt
 }

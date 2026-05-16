@@ -21,14 +21,20 @@ router.get('/', async (req, res) => {
   }
 });
 
-// PUT: Actualizar los datos de la agencia
+  // PUT: Actualizar los datos de la agencia (incluyendo plantillas)
 router.put('/', async (req, res) => {
   try {
-    const { nombre, cuit, email, telefono, firma } = req.body;
+    const { 
+      nombre, cuit, email, telefono, firma, 
+      mensajeVencimiento, mensajeBienvenida // <-- Agregamos los campos acá
+    } = req.body;
     
     const agenciaActualizada = await prisma.agencia.update({
       where: { id: 1 },
-      data: { nombre, cuit, email, telefono, firma }
+      data: { 
+        nombre, cuit, email, telefono, firma,
+        mensajeVencimiento, mensajeBienvenida // <-- Y los guardamos acá
+      }
     });
 
     res.json(agenciaActualizada);
