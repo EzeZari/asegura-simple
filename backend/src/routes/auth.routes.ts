@@ -57,5 +57,38 @@ router.post('/change-password', async (req, res) => {
     return res.status(500).json({ error: 'Error interno del servidor.' });
   }
 });
+// PUT: Activar/Desactivar 2FA
+router.put('/2fa', async (req, res) => {
+  try {
+    const { email, enabled } = req.body;
+    await prisma.user.update({
+      where: { email },
+      data: { twoFactorEnabled: enabled }
+    });
+    res.json({ message: 'Preferencia de 2FA actualizada.' });
+  } catch (error) {
+    res.status(500).json({ error: 'Error al actualizar 2FA' });
+  }
+});
 
+// DELETE: Zona de Peligro (Vaciar Base de Datos)
+router.delete('/wipe-data', async (req, res) => {
+  try {
+    const { email, confirmacion } = req.body;
+    if (confirmacion !== "ELIMINAR") {
+      return res.status(400).json({ error: 'Confirmación inválida.' });
+    }
+
+    // Borramos todas las pólizas, asegurados y actividades
+    // (Asegurate de que estos nombres coincidan con tus modelos en Prisma)
+    await prisma.actividad.deleteMany();
+    await prisma.poliza.deleteMany();
+    await prisma.asegurado.deleteMany();
+
+    res.json({ message: 'Base de datos vaciada con éxito.' });
+  } catch (error) {
+    console.error("Error al vaciar datos:", error);
+    res.status(500).json({ error: 'Error interno al vaciar la base de datos.' });
+  }
+});
 export default router;
