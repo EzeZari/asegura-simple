@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { Building2, MessageSquare, Bell, Users, Shield } from "lucide-react";
 
-// Importaremos los sub-componentes (iremos creando uno por uno)
 import PerfilSettings from "@/components/configuracion/PerfilSettings";
 import PlantillasSettings from "@/components/configuracion/PlantillasSettings";
 import NotificacionesSettings from "@/components/configuracion/NotificacionesSettings";
@@ -29,7 +28,8 @@ export default function ConfiguracionPage() {
       </div>
 
       {/* BARRA DE NAVEGACIÓN (TABS) */}
-      <div className="flex border-b border-gray-200 mt-2 overflow-x-auto">
+      {/* Se agregó overflow-y-hidden y clases para ocultar el scrollbar visualmente pero permitir el touch en celu */}
+      <div className="flex border-b border-gray-200 mt-2 overflow-x-auto overflow-y-hidden [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
         {tabs.map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
@@ -49,9 +49,9 @@ export default function ConfiguracionPage() {
 
       {/* CONTENEDOR DINÁMICO */}
       <div className="mt-4 max-w-4xl">
-        {activeTab === "perfil" && <PerfilSettings />},
-        {activeTab === "plantillas" && <PlantillasSettings />},
-        {activeTab === "notificaciones" && <NotificacionesSettings />},
+        {activeTab === "perfil" && <PerfilSettings />}
+        {activeTab === "plantillas" && <PlantillasSettings />}
+        {activeTab === "notificaciones" && <NotificacionesSettings />}
         {activeTab === "equipo" && <EquipoSettings />}
         {activeTab === "seguridad" && <SeguridadSettings />} 
       </div>
