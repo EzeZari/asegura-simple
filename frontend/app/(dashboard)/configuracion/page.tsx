@@ -7,7 +7,7 @@ import { Building2, MessageSquare, Bell, Users, Shield } from "lucide-react";
 import PerfilSettings from "@/components/configuracion/PerfilSettings";
 import PlantillasSettings from "@/components/configuracion/PlantillasSettings";
 import NotificacionesSettings from "@/components/configuracion/NotificacionesSettings";
-//import EquipoSettings from "@/components/configuracion/EquipoSettings";
+import EquipoSettings from "@/components/configuracion/EquipoSettings";
 import SeguridadSettings from "@/components/configuracion/SeguridadSettings";
 
 export default function ConfiguracionPage() {
@@ -52,7 +52,7 @@ export default function ConfiguracionPage() {
         {activeTab === "perfil" && <PerfilSettings />},
         {activeTab === "plantillas" && <PlantillasSettings />},
         {activeTab === "notificaciones" && <NotificacionesSettings />},
-        {/* {activeTab === "equipo" && <EquipoSettings />}*/}
+        {activeTab === "equipo" && <EquipoSettings />}
         {activeTab === "seguridad" && <SeguridadSettings />} 
       </div>
     </div>
