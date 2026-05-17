@@ -175,6 +175,9 @@ model User {
   resetPasswordToken   String?  
   resetPasswordExpires DateTime? 
   twoFactorEnabled Boolean @default(false)
+
+  codigoVerificacion    String?  // Acá guardamos el código de 6 dígitos
+  emailPendiente        String?  // Acá guardamos el nuevo mail hasta que se verifique
 }
 model Actividad {
   id          Int      @id @default(autoincrement())

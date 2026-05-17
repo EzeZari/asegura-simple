@@ -3,6 +3,7 @@ import { prisma } from '../config/db'
 import bcrypt from 'bcrypt';
 // 1. Asegurate de que resetPassword esté en esta lista de acá arriba:
 import { register, login, refresh, logout, forgotPassword, resetPassword } from '../controllers/auth.controller';
+import { transporter } from '../utils/mailer'; 
 
 const router = Router();
 
@@ -113,6 +114,83 @@ router.put('/update-profile', async (req, res) => {
   } catch (error) {
     console.error("Error al actualizar perfil:", error);
     res.status(500).json({ error: 'Error al actualizar los datos personales.' });
+  }
+});
+// POST: Paso 1 - Solicitar cambio de email (Genera código y envía mail)
+router.post('/request-email-change', async (req, res) => {
+  try {
+    const { id, newEmail } = req.body;
+
+    // 1. Generar un código aleatorio de 6 dígitos
+    const codigo = Math.floor(100000 + Math.random() * 900000).toString();
+
+    // 2. Guardar el código y el email pendiente en la base de datos
+    await prisma.user.update({
+      where: { id: Number(id) },
+      data: { 
+        codigoVerificacion: codigo,
+        emailPendiente: newEmail
+      }
+    });
+
+    // 3. Enviar el correo usando tu transporter
+    await transporter.sendMail({
+      from: `"AseguraSimple" <${process.env.EMAIL_USER}>`,
+      to: newEmail,
+      subject: "Código de Verificación - AseguraSimple",
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e5e7eb; border-radius: 10px;">
+          <h2 style="color: #15803d; text-align: center;">Verificación de Cambio de Correo</h2>
+          <p style="color: #374151; font-size: 16px;">Hola,</p>
+          <p style="color: #374151; font-size: 16px;">Has solicitado cambiar tu correo de acceso en AseguraSimple. Tu código de verificación es:</p>
+          <div style="background-color: #f3f4f6; padding: 15px; text-align: center; border-radius: 8px; margin: 20px 0;">
+            <span style="font-size: 32px; font-weight: bold; letter-spacing: 5px; color: #111827;">${codigo}</span>
+          </div>
+          <p style="color: #6b7280; font-size: 14px; text-align: center;">Si no solicitaste este cambio, podés ignorar este correo.</p>
+        </div>
+      `
+    });
+
+    res.json({ message: 'Código enviado con éxito.' });
+  } catch (error) {
+    console.error("Error al solicitar cambio de email:", error);
+    res.status(500).json({ error: 'Error al enviar el código de verificación.' });
+  }
+});
+
+// POST: Paso 2 - Verificar código y aplicar el nuevo email
+router.post('/verify-email-change', async (req, res) => {
+  try {
+    const { id, codigo } = req.body;
+
+    const usuario = await prisma.user.findUnique({ where: { id: Number(id) } });
+
+    if (!usuario || usuario.codigoVerificacion !== codigo) {
+      return res.status(400).json({ error: 'El código ingresado es incorrecto o expiró.' });
+    }
+
+    // --> ESTA ES LA VALIDACIÓN QUE LE FALTABA A TYPESCRIPT <--
+    if (!usuario.emailPendiente) {
+      return res.status(400).json({ error: 'No hay un correo pendiente para actualizar.' });
+    }
+
+    // Si el código es correcto, actualizamos el email real y limpiamos los temporales
+    const usuarioActualizado = await prisma.user.update({
+      where: { id: Number(id) },
+      data: { 
+        email: usuario.emailPendiente, // Ahora TS sabe que 100% es un string y no un null
+        codigoVerificacion: null,
+        emailPendiente: null
+      }
+    });
+
+    // Devolvemos el usuario sin la contraseña
+    const { password, ...datosPublicos } = usuarioActualizado;
+    res.json(datosPublicos);
+
+  } catch (error) {
+    console.error("Error al verificar código:", error);
+    res.status(500).json({ error: 'Error interno al verificar el código.' });
   }
 });
 export default router;
