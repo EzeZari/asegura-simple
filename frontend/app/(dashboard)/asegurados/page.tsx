@@ -10,10 +10,9 @@ import ConfirmModal from "@/components/ui/ConfirmModal";
 import PolizasDelAseguradoModal from "@/components/asegurados/PolizasDelAseguradoModal";
 import { useTableSort } from "@/hooks/useTableSort";
 import SortableHeader from "@/components/ui/SortableHeader";
-// PIEZAS DE LEGO
 import PageHeader from "@/components/ui/PageHeader";
-import SearchBar from "@/components/ui/SearchBar";
 import { ActionMenu, ActionMenuItem, ActionMenuDivider } from "@/components/ui/ActionMenu";
+import AlertModal from "@/components/ui/AlertModal";
 
 export default function AseguradosPage() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -24,13 +23,19 @@ export default function AseguradosPage() {
   const [clienteAEditar, setClienteAEditar] = useState<any>(null);
   const [asegurados, setAsegurados] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  
   const [showToast, setShowToast] = useState(false);
+  const [mensajeToast, setMensajeToast] = useState("");
+  
   const [menuAbiertoId, setMenuAbiertoId] = useState<number | null>(null);
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [aseguradoAEliminar, setAseguradoAEliminar] = useState<any>(null);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [mensajeToast, setMensajeToast] = useState("");
   const [aseguradoParaVerPolizas, setAseguradoParaVerPolizas] = useState<any>(null);
+
+  // Estados para el Modal de Alerta (Bloqueos)
+  const [isAlertModalOpen, setIsAlertModalOpen] = useState(false);
+  const [alertModalInfo, setAlertModalInfo] = useState({ title: "", message: "" });
 
   const fetchAsegurados = async () => {
     try {
@@ -56,12 +61,36 @@ export default function AseguradosPage() {
     setIsDeleting(true);
     try {
       const res = await fetch(`http://localhost:3001/api/asegurados/${aseguradoAEliminar.id}`, { method: 'DELETE' });
-      if (!res.ok) throw new Error((await res.json()).error);
+      const data = await res.json();
+      
+      if (!res.ok) throw new Error(data.error || "Error al eliminar");
+      
       fetchAsegurados();
       setMensajeToast("Asegurado eliminado correctamente");
       setShowToast(true);
       setIsConfirmOpen(false);
-    } catch (error: any) { alert(error.message); } finally { setIsDeleting(false); setAseguradoAEliminar(null); }
+    } catch (error: any) { 
+      setIsConfirmOpen(false); // Primero cerramos el modal de confirmación
+      
+      // Chequeamos si el error es el de las pólizas y abrimos el Modal de Alerta
+      if (error.message.includes("pólizas activas")) {
+        setAlertModalInfo({
+          title: "No se puede eliminar",
+          message: "Este asegurado tiene pólizas cargadas en el sistema. Por seguridad, primero debés dar de baja o eliminar sus pólizas vinculadas."
+        });
+      } else {
+        setAlertModalInfo({
+          title: "Error de operación",
+          message: error.message
+        });
+      }
+      
+      // Le damos un mini delay para que la animación fluya bien
+      setTimeout(() => setIsAlertModalOpen(true), 150);
+    } finally { 
+      setIsDeleting(false); 
+      setAseguradoAEliminar(null); 
+    }
   };
 
   const aseguradosFiltrados = asegurados.filter((cliente) => {
@@ -154,9 +183,20 @@ export default function AseguradosPage() {
       </Table>
 
       <NuevoAseguradoModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSuccess={() => { setIsModalOpen(false); fetchAsegurados(); setShowToast(true); setMensajeToast("Asegurado guardado correctamente"); }} clienteAEditar={clienteAEditar} />
+      
       <ConfirmModal isOpen={isConfirmOpen} onClose={() => setIsConfirmOpen(false)} onConfirm={ejecutarEliminacion} isLoading={isDeleting} title="¿Eliminar asegurado?" message={`Esta acción eliminará a "${aseguradoAEliminar?.nombre} ${aseguradoAEliminar?.apellido || ''}" permanentemente. Solo es posible si no tiene pólizas activas.`} />
+      
       <PolizasDelAseguradoModal isOpen={!!aseguradoParaVerPolizas} onClose={() => setAseguradoParaVerPolizas(null)} asegurado={aseguradoParaVerPolizas} />
+      
       <Toast message={mensajeToast} isVisible={showToast} onClose={() => setShowToast(false)} />
+
+      {/* ACÁ ESTÁ EL NUEVO MODAL DE ALERTA/BLOQUEO */}
+      <AlertModal 
+        isOpen={isAlertModalOpen} 
+        onClose={() => setIsAlertModalOpen(false)} 
+        title={alertModalInfo.title}
+        message={alertModalInfo.message}
+      />
     </div>
   );
 }
