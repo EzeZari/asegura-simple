@@ -91,4 +91,28 @@ router.delete('/wipe-data', async (req, res) => {
     res.status(500).json({ error: 'Error interno al vaciar la base de datos.' });
   }
 });
+// PUT: Actualizar datos del perfil personal
+router.put('/update-profile', async (req, res) => {
+  try {
+    const { id, nombre, email } = req.body;
+
+    if (!id || !nombre || !email) {
+      return res.status(400).json({ error: 'ID, nombre y email son obligatorios.' });
+    }
+
+    // Actualizamos el usuario
+    const usuarioActualizado = await prisma.user.update({
+      where: { id: Number(id) },
+      data: { nombre, email }
+    });
+
+    // Devolvemos el usuario actualizado (sin la contraseña por seguridad)
+    const { password, ...datosPublicos } = usuarioActualizado;
+    res.json(datosPublicos);
+
+  } catch (error) {
+    console.error("Error al actualizar perfil:", error);
+    res.status(500).json({ error: 'Error al actualizar los datos personales.' });
+  }
+});
 export default router;

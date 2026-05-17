@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { Building2, MessageSquare, Bell, Users, Shield } from "lucide-react";
+import { UserCircle, Building2, MessageSquare, Bell, Users, Shield } from "lucide-react"; // Sumamos UserCircle
 
+import MiPerfilSettings from "@/components/configuracion/MiPerfilSettings"; // Importamos el nuevo
 import PerfilSettings from "@/components/configuracion/PerfilSettings";
 import PlantillasSettings from "@/components/configuracion/PlantillasSettings";
 import NotificacionesSettings from "@/components/configuracion/NotificacionesSettings";
@@ -10,9 +11,10 @@ import EquipoSettings from "@/components/configuracion/EquipoSettings";
 import SeguridadSettings from "@/components/configuracion/SeguridadSettings";
 
 export default function ConfiguracionPage() {
-  const [activeTab, setActiveTab] = useState("perfil");
+  const [activeTab, setActiveTab] = useState("mi-perfil"); // Cambiamos el inicio a mi-perfil
 
   const tabs = [
+    { id: "mi-perfil", label: "Mi Perfil", icon: UserCircle }, // Nueva pestaña
     { id: "perfil", label: "Perfil de Agencia", icon: Building2 },
     { id: "plantillas", label: "Plantillas", icon: MessageSquare },
     { id: "notificaciones", label: "Notificaciones", icon: Bell },
@@ -27,8 +29,6 @@ export default function ConfiguracionPage() {
         <p className="text-gray-500 mt-1">Administrá los ajustes de tu plataforma y automatizaciones.</p>
       </div>
 
-      {/* BARRA DE NAVEGACIÓN (TABS) */}
-      {/* Se agregó overflow-y-hidden y clases para ocultar el scrollbar visualmente pero permitir el touch en celu */}
       <div className="flex border-b border-gray-200 mt-2 overflow-x-auto overflow-y-hidden [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
         {tabs.map((tab) => {
           const Icon = tab.icon;
@@ -47,8 +47,8 @@ export default function ConfiguracionPage() {
         })}
       </div>
 
-      {/* CONTENEDOR DINÁMICO */}
       <div className="mt-4 max-w-4xl">
+        {activeTab === "mi-perfil" && <MiPerfilSettings />}
         {activeTab === "perfil" && <PerfilSettings />}
         {activeTab === "plantillas" && <PlantillasSettings />}
         {activeTab === "notificaciones" && <NotificacionesSettings />}
