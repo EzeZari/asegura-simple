@@ -34,7 +34,7 @@ export default function PolizaDetallePage() {
 
   const handleEditSuccess = () => {
     setIsModalOpen(false);
-    fetchPoliza(); // Recargamos los datos para ver los cambios
+    fetchPoliza(); 
     setShowToast(true);
   };
 
@@ -44,6 +44,7 @@ export default function PolizaDetallePage() {
   const getStatusStyle = (estado: string) => {
     switch (estado) {
       case "Vigente": return "text-emerald-700 bg-emerald-50 border-emerald-100";
+      case "Renovada": return "text-blue-700 bg-blue-50 border-blue-100";
       case "Anulada": return "text-red-700 bg-red-50 border-red-100";
       case "Pendiente de Pago": return "text-amber-700 bg-amber-50 border-amber-100";
       default: return "text-gray-600 bg-gray-50 border-gray-100";
@@ -105,13 +106,28 @@ export default function PolizaDetallePage() {
             
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-12 gap-y-8">
               <DataField label="Rama / Riesgo" value={poliza.tipoPoliza} />
-              <DataField label="Plan / Cobertura" value={poliza.cobertura || "Terceros Completo (Básico)"} />
+              <DataField label="Plan / Cobertura" value={poliza.cobertura || "Según condiciones"} />
               <DataField label="Vigencia Inicio" value={new Date(poliza.fechaInicio).toLocaleDateString("es-AR")} />
               <DataField label="Vigencia Fin" value={new Date(poliza.fechaVencimiento).toLocaleDateString("es-AR")} />
+              
+              {/* CAMPOS CONDICIONALES AÑADIDOS ACÁ */}
+              {(poliza.tipoPoliza === "Automotor" || poliza.tipoPoliza === "Motovehículo") && (
+                <>
+                  <DataField label="Dominio / Patente" value={poliza.patente?.toUpperCase() || "-"} />
+                  <DataField label="Marca y Modelo" value={`${poliza.marca || ""} ${poliza.modelo || ""}`.trim() || "-"} />
+                </>
+              )}
+
+              {(poliza.tipoPoliza === "Combinado Familiar" || poliza.tipoPoliza === "Integral de Comercio") && (
+                <DataField label="Ubicación del Riesgo" value={poliza.ubicacionRiesgo || "-"} />
+              )}
+
+              {poliza.tipoPoliza === "ART" && (
+                <DataField label="Personal Declarado" value={poliza.cantidadEmpleados ? `${poliza.cantidadEmpleados} Empleados` : "-"} />
+              )}
             </div>
           </div>
 
-          {/* Historial de Notas (Placeholder para futuro) */}
           <div className="p-8 border border-gray-100 rounded-3xl bg-gray-50/30 border-dashed">
             <h3 className="text-sm font-bold text-gray-400 uppercase tracking-widest mb-4">Observaciones y Notas</h3>
             <p className="text-gray-400 italic text-sm">
