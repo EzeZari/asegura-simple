@@ -1,6 +1,6 @@
 "use client";
 
-import { MessageCircle, Shield, Trash2, RefreshCcw, Mail, CheckCircle2, Loader2 } from "lucide-react";
+import { MessageCircle, Shield, Trash2, RefreshCcw, Mail, CheckCircle2, Loader2, MapPin, Users } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import ConfirmModal from "../ui/ConfirmModal"; 
@@ -53,7 +53,6 @@ export default function AlertaCard({ poliza, nivel }: Props) {
     }
   };
 
-  // Función para saber si ya se mandó el aviso hoy
   const yaAvisadoHoy = () => {
     if (!poliza.ultimoAviso) return false;
     const hoy = new Date().toLocaleDateString("es-AR");
@@ -74,10 +73,7 @@ export default function AlertaCard({ poliza, nivel }: Props) {
       if (!res.ok) throw new Error(data.error || "Error al enviar");
       
       setEstadoEmail("success");
-      
-      // Truco UI: actualizamos la fecha localmente para que se bloquee al instante
       poliza.ultimoAviso = new Date().toISOString(); 
-
       setTimeout(() => setEstadoEmail("idle"), 3000);
     } catch (error: any) {
       console.error(error.message);
@@ -110,15 +106,45 @@ export default function AlertaCard({ poliza, nivel }: Props) {
           <h3 className="text-lg font-bold text-gray-900 leading-tight">
             {poliza.asegurado?.nombre} {poliza.asegurado?.apellido}
           </h3>
-          <div className="flex items-center gap-1.5 text-sm text-gray-600 mt-1.5">
+          
+          <div className="flex items-center gap-1.5 text-sm mt-2">
             <Shield size={14} className="text-gray-400" />
-            <span>{poliza.compania?.nombre} • {poliza.tipoPoliza}</span>
+            <span className="font-semibold text-gray-800">{poliza.tipoPoliza}</span>
+            <span className="text-gray-300">•</span>
+            <span className="text-gray-600 truncate">{poliza.compania?.nombre || "Sin Compañía"}</span>
           </div>
-          <p className="text-xs text-gray-500 mt-1">Vence: {fechaFormat}</p>
+
+          <div className="ml-5 mt-1.5 mb-1 min-h-[24px]">
+            {(poliza.tipoPoliza === "Automotor" || poliza.tipoPoliza === "Motovehículo") && (poliza.patente || poliza.marca || poliza.modelo) && (
+              <div className="flex items-center gap-2">
+                {poliza.patente && (
+                  <span className="bg-gray-100 border border-gray-300 px-2 py-0.5 rounded font-mono font-bold uppercase text-gray-800 text-[10px] tracking-wider">
+                    {poliza.patente}
+                  </span>
+                )}
+                <span className="text-xs text-gray-600 font-medium truncate">{poliza.marca} {poliza.modelo}</span>
+              </div>
+            )}
+
+            {(poliza.tipoPoliza === "Combinado Familiar" || poliza.tipoPoliza === "Integral de Comercio") && poliza.ubicacionRiesgo && (
+              <div className="text-xs text-gray-600 flex items-center gap-1.5">
+                <MapPin size={14} className="text-gray-400" /> 
+                <span className="truncate">{poliza.ubicacionRiesgo}</span>
+              </div>
+            )}
+
+            {poliza.tipoPoliza === "ART" && poliza.cantidadEmpleados && (
+              <div className="text-xs text-gray-600 flex items-center gap-1.5">
+                <Users size={14} className="text-gray-400" /> 
+                <span>{poliza.cantidadEmpleados} Empleados</span>
+              </div>
+            )}
+          </div>
+
+          <p className="text-xs text-gray-500 mt-2 ml-5 font-medium">Vence el {fechaFormat}</p>
         </div>
 
         <div className="mt-auto ml-2 flex gap-2 pt-4 border-t border-gray-50">
-          
           {nivel === "vencida" ? (
             <button 
               onClick={() => setShowConfirmModal(true)}
@@ -146,7 +172,6 @@ export default function AlertaCard({ poliza, nivel }: Props) {
             <MessageCircle size={16} /> <span className="hidden sm:inline">Wsp</span>
           </a>
 
-          {/* BOTÓN ACTUALIZADO CON BLOQUEO ANTI-SPAM */}
           <button 
             onClick={enviarAvisoEmail}
             disabled={estadoEmail !== "idle" || !poliza.asegurado.email || yaAvisadoHoy()}
@@ -166,7 +191,6 @@ export default function AlertaCard({ poliza, nivel }: Props) {
                {yaAvisadoHoy() ? "Avisado" : estadoEmail === "success" ? "Enviado" : "Mail"}
              </span>
           </button>
-          
         </div>
       </div>
 
