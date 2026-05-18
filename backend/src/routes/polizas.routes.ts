@@ -192,15 +192,21 @@ router.post('/:id/avisar-vencimiento', async (req, res) => {
 
     const fechaVencimientoFormateada = new Date(poliza.fechaVencimiento).toLocaleDateString("es-AR");
 
-    // 🔥 ACÁ ESTÁ EL ARREGLO: Pasamos los 7 parámetros exactos
+    // 🔥 ACÁ ESTÁ EL ARREGLO: Pasamos los datos específicos del riesgo
     await enviarAvisoVencimiento(
       poliza.asegurado.email, 
       `${poliza.asegurado.nombre} ${poliza.asegurado.apellido || ''}`.trim(), 
       poliza.nroPoliza, 
       poliza.compania?.nombre || "Sin Compañía", 
-      poliza.tipoPoliza, // Param 5: Ramo
-      poliza.cobertura || "", // Param 6: Cobertura
-      fechaVencimientoFormateada // Param 7: Fecha
+      poliza.tipoPoliza, 
+      poliza.cobertura || "", 
+      fechaVencimientoFormateada,
+      // Los 5 nuevos:
+      poliza.patente,
+      poliza.marca,
+      poliza.modelo,
+      poliza.ubicacionRiesgo,
+      poliza.cantidadEmpleados
     );
 
     // Guardamos la fecha exacta del envío para bloquear futuras acciones hoy

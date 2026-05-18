@@ -42,9 +42,39 @@ export const enviarAvisoVencimiento = async (
   compania: string, 
   tipoPoliza: string, 
   cobertura: string, 
-  fechaVencimiento: string
+  fechaVencimiento: string,
+  patente?: string | null,
+  marca?: string | null,
+  modelo?: string | null,
+  ubicacionRiesgo?: string | null,
+  cantidadEmpleados?: string | null
 ) => {
   if (!email || !email.includes('@')) return;
+
+  // Lógica para armar la fila extra según el tipo de riesgo
+  let filaDetalleExtra = '';
+  if ((tipoPoliza === "Automotor" || tipoPoliza === "Motovehículo") && (patente || marca || modelo)) {
+    filaDetalleExtra = `
+      <tr>
+        <td style="padding: 6px 0; font-weight: bold; color: #9a3412;">Vehículo:</td>
+        <td style="padding: 6px 0; color: #1f2937;">${marca || ''} ${modelo || ''} <span style="background-color: #f3f4f6; padding: 2px 6px; border-radius: 4px; border: 1px solid #e5e7eb; font-family: monospace; font-weight: bold; font-size: 12px; margin-left: 5px;">${patente ? patente.toUpperCase() : 'S/P'}</span></td>
+      </tr>
+    `;
+  } else if ((tipoPoliza === "Combinado Familiar" || tipoPoliza === "Integral de Comercio") && ubicacionRiesgo) {
+    filaDetalleExtra = `
+      <tr>
+        <td style="padding: 6px 0; font-weight: bold; color: #9a3412;">Ubicación:</td>
+        <td style="padding: 6px 0; color: #1f2937;">${ubicacionRiesgo}</td>
+      </tr>
+    `;
+  } else if (tipoPoliza === "ART" && cantidadEmpleados) {
+    filaDetalleExtra = `
+      <tr>
+        <td style="padding: 6px 0; font-weight: bold; color: #9a3412;">Personal:</td>
+        <td style="padding: 6px 0; color: #1f2937;">${cantidadEmpleados} Empleados declarados</td>
+      </tr>
+    `;
+  }
 
   try {
     await transporter.sendMail({
@@ -75,6 +105,9 @@ export const enviarAvisoVencimiento = async (
                 <td style="padding: 6px 0; font-weight: bold; color: #9a3412;">Ramo / Riesgo:</td>
                 <td style="padding: 6px 0; color: #1f2937;">${tipoPoliza}</td>
               </tr>
+              
+              ${filaDetalleExtra /* ACÁ INYECTAMOS LA FILA MAGICA */}
+              
               <tr>
                 <td style="padding: 6px 0; font-weight: bold; color: #9a3412;">Plan / Cobertura:</td>
                 <td style="padding: 6px 0; color: #1f2937; italic;">${cobertura || 'Detalle según condiciones generales'}</td>
