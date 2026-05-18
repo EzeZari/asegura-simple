@@ -1,10 +1,10 @@
 "use client";
 
-import { MessageCircle, Shield, ArrowRight, Trash2, RefreshCcw } from "lucide-react";
+import { MessageCircle, Shield, Trash2, RefreshCcw, Mail, CheckCircle2, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import ConfirmModal from "../ui/ConfirmModal"; 
-import NuevaPolizaModal from "../polizas/NuevaPolizaModal"; // Importamos el modal de pólizas
+import NuevaPolizaModal from "../polizas/NuevaPolizaModal";
 
 interface Props {
   poliza: any;
@@ -16,6 +16,8 @@ export default function AlertaCard({ poliza, nivel }: Props) {
   const [isBajaLoading, setIsBajaLoading] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [showRenovarModal, setShowRenovarModal] = useState(false);
+  
+  const [estadoEmail, setEstadoEmail] = useState<"idle" | "loading" | "success" | "error">("idle");
 
   const calcularDias = (fechaVencimiento: string) => {
     const hoy = new Date().getTime();
@@ -48,6 +50,39 @@ export default function AlertaCard({ poliza, nivel }: Props) {
       console.error("Error al anular", error);
       setIsBajaLoading(false);
       setShowConfirmModal(false);
+    }
+  };
+
+  // Función para saber si ya se mandó el aviso hoy
+  const yaAvisadoHoy = () => {
+    if (!poliza.ultimoAviso) return false;
+    const hoy = new Date().toLocaleDateString("es-AR");
+    const ultimoAviso = new Date(poliza.ultimoAviso).toLocaleDateString("es-AR");
+    return hoy === ultimoAviso;
+  };
+
+  const enviarAvisoEmail = async () => {
+    if (!poliza.asegurado?.email || yaAvisadoHoy()) return;
+    
+    setEstadoEmail("loading");
+    try {
+      const res = await fetch(`http://localhost:3001/api/polizas/${poliza.id}/avisar-vencimiento`, { 
+        method: "POST" 
+      });
+      
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Error al enviar");
+      
+      setEstadoEmail("success");
+      
+      // Truco UI: actualizamos la fecha localmente para que se bloquee al instante
+      poliza.ultimoAviso = new Date().toISOString(); 
+
+      setTimeout(() => setEstadoEmail("idle"), 3000);
+    } catch (error: any) {
+      console.error(error.message);
+      setEstadoEmail("error");
+      setTimeout(() => setEstadoEmail("idle"), 3000);
     }
   };
 
@@ -88,29 +123,53 @@ export default function AlertaCard({ poliza, nivel }: Props) {
             <button 
               onClick={() => setShowConfirmModal(true)}
               className="flex-1 flex justify-center items-center gap-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 py-2 rounded-xl text-sm font-bold transition-colors"
+              title="Anular póliza"
             >
-              <Trash2 size={16} /> Anular
+              <Trash2 size={16} /> <span className="hidden sm:inline">Anular</span>
             </button>
           ) : (
             <button 
               onClick={() => setShowRenovarModal(true)}
               className="flex-1 flex justify-center items-center gap-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 py-2 rounded-xl text-sm font-bold transition-colors"
+              title="Renovar póliza"
             >
-              <RefreshCcw size={16} /> Renovar
+              <RefreshCcw size={16} /> <span className="hidden sm:inline">Renovar</span>
             </button>
           )}
 
           <a 
             href={generarLinkWhatsApp(poliza.asegurado.telefono, poliza.asegurado.nombre, poliza.compania.nombre, fechaFormat)} 
             target="_blank" rel="noopener noreferrer"
-            className="flex-1 flex justify-center items-center gap-1.5 bg-green-50 hover:bg-green-100 text-green-700 py-2 rounded-xl text-sm font-bold transition-colors"
+            className={`flex-1 flex justify-center items-center gap-1.5 bg-green-50 hover:bg-green-100 text-green-700 py-2 rounded-xl text-sm font-bold transition-colors ${!poliza.asegurado.telefono ? 'opacity-50 pointer-events-none' : ''}`}
+            title={poliza.asegurado.telefono ? "Avisar por WhatsApp" : "Cliente sin teléfono"}
           >
-            <MessageCircle size={16} /> Avisar
+            <MessageCircle size={16} /> <span className="hidden sm:inline">Wsp</span>
           </a>
+
+          {/* BOTÓN ACTUALIZADO CON BLOQUEO ANTI-SPAM */}
+          <button 
+            onClick={enviarAvisoEmail}
+            disabled={estadoEmail !== "idle" || !poliza.asegurado.email || yaAvisadoHoy()}
+            className={`flex-1 flex justify-center items-center gap-1.5 py-2 rounded-xl text-sm font-bold transition-colors ${
+              yaAvisadoHoy() ? "bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200" :
+              estadoEmail === "success" ? "bg-emerald-500 text-white" :
+              estadoEmail === "error" ? "bg-red-500 text-white" :
+              !poliza.asegurado.email ? "bg-gray-50 text-gray-400 cursor-not-allowed" :
+              "bg-blue-50 hover:bg-blue-100 text-blue-700"
+            }`}
+            title={yaAvisadoHoy() ? "Ya se envió un recordatorio hoy" : !poliza.asegurado.email ? "Cliente sin email" : "Enviar correo formal"}
+          >
+            {estadoEmail === "loading" ? <Loader2 size={16} className="animate-spin" /> :
+             estadoEmail === "success" ? <CheckCircle2 size={16} /> :
+             <Mail size={16} />}
+             <span className="hidden sm:inline">
+               {yaAvisadoHoy() ? "Avisado" : estadoEmail === "success" ? "Enviado" : "Mail"}
+             </span>
+          </button>
+          
         </div>
       </div>
 
-      {/* Modal de Confirmación para anular */}
       <ConfirmModal 
         isOpen={showConfirmModal}
         onClose={() => setShowConfirmModal(false)}
@@ -121,7 +180,6 @@ export default function AlertaCard({ poliza, nivel }: Props) {
         confirmText="Anular"
       />
 
-      {/* Modal de Renovación Rápida */}
       <NuevaPolizaModal 
         isOpen={showRenovarModal}
         onClose={() => setShowRenovarModal(false)}

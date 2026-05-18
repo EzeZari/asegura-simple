@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { prisma } from '../config/db';
+import { enviarAvisoVencimiento } from '../services/email.service';
 
 const router = Router();
 
@@ -145,5 +146,65 @@ router.delete('/:id', async (req, res) => {
     res.status(500).json({ error: 'Error al eliminar.' });
   }
 });
+// RUTA: POST /api/polizas/:id/avisar-vencimiento
+router.post('/:id/avisar-vencimiento', async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const poliza = await prisma.poliza.findUnique({
+      where: { id: parseInt(id) },
+      include: { asegurado: true, compania: true }
+    });
 
+    if (!poliza || !poliza.asegurado?.email) {
+      return res.status(400).json({ error: 'La póliza no existe o el cliente no tiene email registrado.' });
+    }
+
+    // 🔥 CONTROL ANTI-SPAM: Validamos si ya se mandó un mail hoy
+    const hoy = new Date();
+    hoy.setHours(0, 0, 0, 0); 
+
+    if (poliza.ultimoAviso) {
+      const fechaUltimoAviso = new Date(poliza.ultimoAviso);
+      fechaUltimoAviso.setHours(0, 0, 0, 0);
+
+      if (fechaUltimoAviso.getTime() === hoy.getTime()) {
+        return res.status(400).json({ error: 'Ya se envió un correo de aviso para esta póliza el día de hoy.' });
+      }
+    }
+
+    const fechaVencimientoFormateada = new Date(poliza.fechaVencimiento).toLocaleDateString("es-AR");
+
+    // 🔥 ACÁ ESTÁ EL ARREGLO: Pasamos los 7 parámetros exactos
+    await enviarAvisoVencimiento(
+      poliza.asegurado.email, 
+      `${poliza.asegurado.nombre} ${poliza.asegurado.apellido || ''}`.trim(), 
+      poliza.nroPoliza, 
+      poliza.compania?.nombre || "Sin Compañía", 
+      poliza.tipoPoliza, // Param 5: Ramo
+      poliza.cobertura || "", // Param 6: Cobertura
+      fechaVencimientoFormateada // Param 7: Fecha
+    );
+
+    // Guardamos la fecha exacta del envío para bloquear futuras acciones hoy
+    await prisma.poliza.update({
+      where: { id: poliza.id },
+      data: { ultimoAviso: new Date() }
+    });
+
+    await prisma.actividad.create({
+      data: {
+        accion: "Edición",
+        entidad: "Póliza",
+        descripcion: `Aviso de vencimiento enviado por correo (Póliza #${poliza.nroPoliza})`,
+        cliente: `${poliza.asegurado.nombre} ${poliza.asegurado.apellido || ''}`.trim()
+      }
+    });
+
+    res.json({ message: 'Aviso enviado correctamente.' });
+  } catch (error) {
+    console.error("Error en el endpoint de aviso:", error);
+    res.status(500).json({ error: 'Error interno al enviar el aviso.' });
+  }
+});
 export default router;

@@ -71,6 +71,7 @@ model Poliza {
 
   siniestros       Siniestro[]
   alertas          Alerta[]
+  ultimoAviso DateTime?
 }
 
 model Alerta {
