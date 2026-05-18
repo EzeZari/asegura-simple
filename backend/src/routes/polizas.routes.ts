@@ -1,8 +1,37 @@
 import { Router } from 'express';
 import { prisma } from '../config/db';
 import { enviarAvisoVencimiento } from '../services/email.service';
+import multer from 'multer';
+import path from 'path';
+import fs from 'fs';
 
 const router = Router();
+
+// ----------------------------------------------------------------------
+// CONFIGURACIÓN DE MULTER PARA SUBIDA DE ARCHIVOS
+// ----------------------------------------------------------------------
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, 'uploads/'); // Los PDFs se guardan en la carpeta uploads
+  },
+  filename: (req, file, cb) => {
+    // Generamos un nombre único: poliza-1678901234-5678.pdf
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, `poliza-${uniqueSuffix}${path.extname(file.originalname)}`);
+  }
+});
+
+const upload = multer({ 
+  storage: storage,
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype === 'application/pdf') {
+      cb(null, true);
+    } else {
+      cb(new Error('Solo se permiten archivos en formato PDF.'));
+    }
+  }
+});
+// ----------------------------------------------------------------------
 
 // RUTA: GET /api/polizas
 router.get('/', async (req, res) => {
@@ -38,7 +67,7 @@ router.post('/', async (req, res) => {
     const { 
       nroPoliza, tipoPoliza, fechaInicio, fechaVencimiento, estado, 
       cobertura, aseguradoId, companiaId,
-      patente, marca, modelo, ubicacionRiesgo, cantidadEmpleados // <-- Campos nuevos opcionales
+      patente, marca, modelo, ubicacionRiesgo, cantidadEmpleados 
     } = req.body;
 
     const nuevaPoliza = await prisma.poliza.create({
@@ -49,7 +78,6 @@ router.post('/', async (req, res) => {
         estado, cobertura, 
         aseguradoId: parseInt(aseguradoId), 
         companiaId: parseInt(companiaId),
-        // Agregamos los campos condicionales:
         patente: patente || null,
         marca: marca || null,
         modelo: modelo || null,
@@ -59,7 +87,6 @@ router.post('/', async (req, res) => {
       include: { asegurado: true }
     });
 
-    // REGISTRO SEPARADO: Detalle y Cliente
     await prisma.actividad.create({
       data: {
         accion: "Alta",
@@ -81,13 +108,11 @@ router.put('/:id', async (req, res) => {
     const { id } = req.params;
     const data = req.body;
 
-    // 1. Buscamos la versión anterior
     const vieja = await prisma.poliza.findUnique({ 
       where: { id: parseInt(id) },
       include: { asegurado: true, compania: true }
     });
 
-    // 2. Actualizamos
     const actualizada = await prisma.poliza.update({
       where: { id: parseInt(id) },
       data: {
@@ -99,7 +124,6 @@ router.put('/:id', async (req, res) => {
         cobertura: data.cobertura,
         aseguradoId: parseInt(data.aseguradoId),
         companiaId: parseInt(data.companiaId),
-        // Agregamos los campos condicionales:
         patente: data.patente || null,
         marca: data.marca || null,
         modelo: data.modelo || null,
@@ -109,7 +133,6 @@ router.put('/:id', async (req, res) => {
       include: { asegurado: true, compania: true }
     });
 
-    // 3. Comparamos cambios (se pueden agregar más comparaciones acá si querés que aparezcan en el log)
     let cambios = [];
     if (vieja && vieja.estado !== data.estado) cambios.push(`Estado: ${vieja.estado} -> ${data.estado}`);
     if (vieja && vieja.nroPoliza !== data.nroPoliza) cambios.push(`Nro: ${vieja.nroPoliza} -> ${data.nroPoliza}`);
@@ -117,7 +140,6 @@ router.put('/:id', async (req, res) => {
     
     let textoDetalle = cambios.length > 0 ? cambios.join(" | ") : "Actualización de datos técnicos";
 
-    // 4. Registro en historial
     await prisma.actividad.create({
       data: {
         accion: "Edición",
@@ -145,8 +167,15 @@ router.delete('/:id', async (req, res) => {
     
     await prisma.poliza.delete({ where: { id: parseInt(id) } });
 
-    // REGISTRO SEPARADO: Detalle y Cliente
     if (polizaABorrar) {
+      // Si tenía un PDF asociado, lo borramos del disco
+      if (polizaABorrar.pdfUrl) {
+        const rutaPdfViejo = path.join(__dirname, '../../', polizaABorrar.pdfUrl);
+        if (fs.existsSync(rutaPdfViejo)) {
+          fs.unlinkSync(rutaPdfViejo);
+        }
+      }
+
       await prisma.actividad.create({
         data: {
           accion: "Baja",
@@ -177,7 +206,6 @@ router.post('/:id/avisar-vencimiento', async (req, res) => {
       return res.status(400).json({ error: 'La póliza no existe o el cliente no tiene email registrado.' });
     }
 
-    // 🔥 CONTROL ANTI-SPAM: Validamos si ya se mandó un mail hoy
     const hoy = new Date();
     hoy.setHours(0, 0, 0, 0); 
 
@@ -192,7 +220,6 @@ router.post('/:id/avisar-vencimiento', async (req, res) => {
 
     const fechaVencimientoFormateada = new Date(poliza.fechaVencimiento).toLocaleDateString("es-AR");
 
-    // 🔥 ACÁ ESTÁ EL ARREGLO: Pasamos los datos específicos del riesgo
     await enviarAvisoVencimiento(
       poliza.asegurado.email, 
       `${poliza.asegurado.nombre} ${poliza.asegurado.apellido || ''}`.trim(), 
@@ -201,7 +228,6 @@ router.post('/:id/avisar-vencimiento', async (req, res) => {
       poliza.tipoPoliza, 
       poliza.cobertura || "", 
       fechaVencimientoFormateada,
-      // Los 5 nuevos:
       poliza.patente,
       poliza.marca,
       poliza.modelo,
@@ -209,7 +235,6 @@ router.post('/:id/avisar-vencimiento', async (req, res) => {
       poliza.cantidadEmpleados
     );
 
-    // Guardamos la fecha exacta del envío para bloquear futuras acciones hoy
     await prisma.poliza.update({
       where: { id: poliza.id },
       data: { ultimoAviso: new Date() }
@@ -228,6 +253,54 @@ router.post('/:id/avisar-vencimiento', async (req, res) => {
   } catch (error) {
     console.error("Error en el endpoint de aviso:", error);
     res.status(500).json({ error: 'Error interno al enviar el aviso.' });
+  }
+});
+
+// RUTA: POST /api/polizas/:id/subir-pdf
+router.post('/:id/subir-pdf', upload.single('pdf'), async (req, res) => {
+  try {
+    // 🔥 EL ARREGLO ESTÁ ACÁ: Le aclaramos a TypeScript que es un string
+    const id = req.params.id as string; 
+
+    if (!req.file) {
+      return res.status(400).json({ error: 'No se seleccionó ningún archivo o el formato no es PDF.' });
+    }
+
+    // Buscamos si la póliza ya tenía un PDF viejo para borrarlo del disco
+    const polizaExistente = await prisma.poliza.findUnique({
+      where: { id: parseInt(id) }
+    });
+
+    if (polizaExistente?.pdfUrl) {
+      const rutaPdfViejo = path.join(__dirname, '../../', polizaExistente.pdfUrl);
+      if (fs.existsSync(rutaPdfViejo)) {
+        fs.unlinkSync(rutaPdfViejo); 
+      }
+    }
+
+    // Guardamos la ruta relativa en la base de datos (ej: uploads/poliza-123.pdf)
+    // Multer en Windows puede guardar con '\', así que normalizamos la ruta para que siempre use '/'
+    const rutaNormalizada = req.file.path.replace(/\\/g, '/');
+
+    const polizaActualizada = await prisma.poliza.update({
+      where: { id: parseInt(id) },
+      data: { pdfUrl: rutaNormalizada },
+      include: { asegurado: true }
+    });
+
+    await prisma.actividad.create({
+      data: {
+        accion: "Edición",
+        entidad: "Póliza",
+        descripcion: `Se adjuntó copia digital PDF a la Póliza #${polizaActualizada.nroPoliza}`,
+        cliente: `${polizaActualizada.asegurado.nombre} ${polizaActualizada.asegurado.apellido || ''}`.trim()
+      }
+    });
+
+    res.json({ message: 'PDF subido correctamente', pdfUrl: rutaNormalizada });
+  } catch (error: any) {
+    console.error("Error al subir PDF:", error);
+    res.status(500).json({ error: error.message || 'Error interno al procesar el archivo.' });
   }
 });
 

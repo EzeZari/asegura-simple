@@ -4,6 +4,7 @@ import cookieParser from 'cookie-parser';
 import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
+import path from 'path';
 
 import authRoutes from './routes/auth.routes';
 import aseguradosRoutes from './routes/asegurados.routes'; // Ajustá la ruta según tu carpeta
@@ -33,7 +34,8 @@ const limiter = rateLimit({
   message: 'Demasiadas peticiones desde esta IP, por favor intenta de nuevo en 15 minutos.'
 });
 app.use('/api', limiter); // Se lo aplicamos a todas las rutas de la API
-
+// Hacer pública la carpeta de uploads para poder acceder a los archivos desde el navegador
+app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 // --- MIDDLEWARES CLÁSICOS ---
 app.use(express.json());
 app.use(cookieParser());

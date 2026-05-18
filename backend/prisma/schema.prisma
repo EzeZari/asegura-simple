@@ -71,7 +71,7 @@ model Poliza {
 
   siniestros       Siniestro[]
   alertas          Alerta[]
-  
+
 // Datos específicos condicionales
   patente           String?
   marca             String?
@@ -80,6 +80,8 @@ model Poliza {
   cantidadEmpleados String?
 
   ultimoAviso DateTime?
+
+  pdfUrl        String?
 }
 
 model Alerta {

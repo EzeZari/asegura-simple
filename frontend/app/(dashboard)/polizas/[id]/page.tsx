@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { 
   ArrowLeft, FileText, User, Building, 
-  Calendar, Shield, Mail, Phone, Edit, CheckCircle2 
+  Shield, Mail, Phone, Edit, UploadCloud, Loader2
 } from "lucide-react";
 import NuevaPolizaModal from "@/components/polizas/NuevaPolizaModal";
 import Toast from "@/components/ui/Toast";
@@ -17,6 +17,11 @@ export default function PolizaDetallePage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [showToast, setShowToast] = useState(false);
+  const [mensajeToast, setMensajeToast] = useState("");
+  
+  // Estados y refs para el manejo del PDF
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const fetchPoliza = async () => {
     try {
@@ -35,7 +40,42 @@ export default function PolizaDetallePage() {
   const handleEditSuccess = () => {
     setIsModalOpen(false);
     fetchPoliza(); 
+    setMensajeToast("Póliza actualizada con éxito");
     setShowToast(true);
+  };
+
+  // Función para manejar la subida del archivo a nuestro nuevo endpoint
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.type !== "application/pdf") {
+      alert("Solo se permiten archivos en formato PDF.");
+      return;
+    }
+
+    setIsUploading(true);
+    const formData = new FormData();
+    formData.append("pdf", file);
+
+    try {
+      const res = await fetch(`http://localhost:3001/api/polizas/${id}/subir-pdf`, {
+        method: "POST",
+        body: formData, // No hace falta poner 'Content-Type', el navegador lo calcula solo al mandar FormData
+      });
+      
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Error al subir el archivo");
+
+      setMensajeToast("Póliza digital guardada con éxito");
+      setShowToast(true);
+      fetchPoliza(); // Recargamos para que aparezca el botón de "Ver Póliza"
+    } catch (error: any) {
+      alert(error.message);
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = ''; // Reseteamos el input
+    }
   };
 
   if (isLoading) return <div className="p-8 text-gray-500 animate-pulse">Cargando ficha técnica...</div>;
@@ -110,7 +150,6 @@ export default function PolizaDetallePage() {
               <DataField label="Vigencia Inicio" value={new Date(poliza.fechaInicio).toLocaleDateString("es-AR")} />
               <DataField label="Vigencia Fin" value={new Date(poliza.fechaVencimiento).toLocaleDateString("es-AR")} />
               
-              {/* CAMPOS CONDICIONALES AÑADIDOS ACÁ */}
               {(poliza.tipoPoliza === "Automotor" || poliza.tipoPoliza === "Motovehículo") && (
                 <>
                   <DataField label="Dominio / Patente" value={poliza.patente?.toUpperCase() || "-"} />
@@ -136,8 +175,58 @@ export default function PolizaDetallePage() {
           </div>
         </div>
 
-        {/* Columna Lateral: Contacto rápido */}
+        {/* Columna Lateral */}
         <div className="flex flex-col gap-6">
+          
+          {/* 🔥 NUEVA TARJETA: DOCUMENTACIÓN */}
+          <div className="p-8 border border-gray-100 rounded-3xl bg-white shadow-sm">
+            <h3 className="font-bold text-gray-400 uppercase text-xs tracking-widest mb-6">Documentación</h3>
+            
+            <input 
+              type="file" 
+              ref={fileInputRef} 
+              onChange={handleFileUpload} 
+              accept="application/pdf" 
+              className="hidden" 
+            />
+
+            {poliza.pdfUrl ? (
+              <div className="flex flex-col gap-3">
+                <a 
+                  href={`http://localhost:3001/${poliza.pdfUrl}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex justify-center items-center gap-2 bg-blue-50 hover:bg-blue-100 text-blue-700 py-4 rounded-xl font-bold transition-colors"
+                >
+                  <FileText size={20} /> Ver Póliza Digital
+                </a>
+                <button 
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isUploading}
+                  className="text-xs text-gray-400 hover:text-gray-700 text-center font-medium transition-colors"
+                >
+                  {isUploading ? "Subiendo..." : "¿Querés reemplazar el archivo?"}
+                </button>
+              </div>
+            ) : (
+              <div className="flex flex-col gap-3">
+                <button 
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isUploading}
+                  className="flex flex-col justify-center items-center gap-2 border-2 border-dashed border-gray-200 hover:border-green-400 hover:bg-green-50 text-gray-500 hover:text-green-700 py-8 rounded-xl font-medium transition-all"
+                >
+                  {isUploading ? (
+                    <Loader2 size={28} className="animate-spin text-green-600 mb-1" />
+                  ) : (
+                    <UploadCloud size={28} className="mb-1" />
+                  )}
+                  {isUploading ? "Procesando archivo..." : "Cargar copia en PDF"}
+                </button>
+                <p className="text-[10px] text-center text-gray-400 uppercase tracking-wider">Solo formato PDF</p>
+              </div>
+            )}
+          </div>
+
           <div className="p-8 border border-gray-100 rounded-3xl bg-white shadow-sm">
             <h3 className="font-bold text-gray-400 uppercase text-xs tracking-widest mb-6">Asegurado Titular</h3>
             <div className="flex flex-col gap-4">
@@ -178,12 +267,11 @@ export default function PolizaDetallePage() {
         polizaAEditar={poliza} 
       />
 
-      <Toast message="Póliza actualizada con éxito" isVisible={showToast} onClose={() => setShowToast(false)} />
+      <Toast message={mensajeToast} isVisible={showToast} onClose={() => setShowToast(false)} />
     </div>
   );
 }
 
-// Componente auxiliar para mantener el código limpio
 function DataField({ label, value }: { label: string, value: string }) {
   return (
     <div className="flex flex-col gap-1">
