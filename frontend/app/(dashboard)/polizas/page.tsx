@@ -83,6 +83,20 @@ export default function PolizasPage() {
     }
   };
 
+  // 🔥 AGREGAMOS LA FUNCIÓN ACÁ PARA PODER USARLA EN EL FILTRO
+  const getEstadoInteligente = (poliza: any) => {
+    if (poliza.estado === "Anulada" || poliza.estado === "Renovada") return poliza.estado;
+    const hoy = new Date();
+    hoy.setHours(0, 0, 0, 0); 
+    const vencimiento = new Date(poliza.fechaVencimiento);
+    const diffTime = vencimiento.getTime() - hoy.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+    if (diffDays < 0) return "Vencida";
+    if (diffDays <= 15) return "Próxima a Vencer"; 
+    return poliza.estado; 
+  };
+
   const polizasFiltradas = polizas.filter((poliza) => {
     const busqueda = searchTerm.toLowerCase();
     const matchBusqueda = 
@@ -94,7 +108,11 @@ export default function PolizasPage() {
       (poliza.ubicacionRiesgo && poliza.ubicacionRiesgo.toLowerCase().includes(busqueda));
 
     const matchRama = filtroRama === "Todas" || poliza.tipoPoliza === filtroRama;
-    const matchEstado = filtroEstado === "Todos" || poliza.estado === filtroEstado;
+    
+    // 🔥 USAMOS EL ESTADO CALCULADO PARA QUE COINCIDA CON EL SELECTOR
+    const estadoReal = getEstadoInteligente(poliza);
+    const matchEstado = filtroEstado === "Todos" || estadoReal === filtroEstado;
+    
     return matchBusqueda && matchRama && matchEstado;
   });
 

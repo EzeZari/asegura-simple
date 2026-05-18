@@ -12,12 +12,7 @@ interface FiltrosProps {
 }
 
 export default function PolizasFiltros({
-  searchTerm,
-  setSearchTerm,
-  filtroRama,
-  setFiltroRama,
-  filtroEstado,
-  setFiltroEstado,
+  searchTerm, setSearchTerm, filtroRama, setFiltroRama, filtroEstado, setFiltroEstado,
 }: FiltrosProps) {
   return (
     <div className="flex flex-col lg:flex-row items-center gap-4 bg-white p-4 rounded-xl border border-gray-100 shadow-sm w-full">
@@ -25,7 +20,7 @@ export default function PolizasFiltros({
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
         <input 
           type="text" 
-          placeholder="Buscar por nro de póliza o nombre del titular..." 
+          placeholder="Buscar por titular, patente, ubicación o póliza..." 
           value={searchTerm} 
           onChange={(e) => setSearchTerm(e.target.value)} 
           className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-600 transition-all" 
@@ -42,19 +37,20 @@ export default function PolizasFiltros({
           >
             <option value="Todas">Todas las ramas</option>
             <option value="Automotor">Automotor</option>
-            <option value="Moto">Motovehículo</option>
-            <option value="Hogar">Combinado Familiar</option>
+            <option value="Motovehículo">Motovehículo</option>
+            <option value="Combinado Familiar">Combinado Familiar</option>
             <option value="Vida">Vida</option>
             <option value="ART">ART</option>
-            <option value="Comercio">Integral de Comercio</option>
+            <option value="Integral de Comercio">Integral de Comercio</option>
           </select>
         </div>
 
         <div className="flex items-center gap-2 bg-gray-50 px-3 py-2 rounded-lg border border-gray-200">
           <div className={`w-2 h-2 rounded-full ${
-            filtroEstado === 'Vigente' || filtroEstado === 'Renovada' ? 'bg-green-500' : 
+            filtroEstado === 'Vigente' || filtroEstado === 'Renovada' ? 'bg-emerald-500' : 
+            filtroEstado === 'Próxima a Vencer' ? 'bg-orange-500' : 
             filtroEstado === 'Pendiente de Pago' ? 'bg-amber-500' : 
-            filtroEstado === 'Anulada' ? 'bg-red-500' : 'bg-gray-400'
+            filtroEstado === 'Vencida' || filtroEstado === 'Anulada' ? 'bg-red-500' : 'bg-gray-400'
           }`}></div>
           <select 
             value={filtroEstado} 
@@ -63,6 +59,8 @@ export default function PolizasFiltros({
           >
             <option value="Todos">Todos los estados</option>
             <option value="Vigente">Vigente</option>
+            <option value="Próxima a Vencer">Próxima a Vencer</option>
+            <option value="Vencida">Vencida</option>
             <option value="Pendiente de Pago">Pendiente de Pago</option>
             <option value="Renovada">Renovada</option>
             <option value="Anulada">Anulada</option>
