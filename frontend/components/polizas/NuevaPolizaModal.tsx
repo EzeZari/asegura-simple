@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { X } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { X, UploadCloud, FileText } from "lucide-react";
 
 interface Props {
   isOpen: boolean;
@@ -33,6 +33,10 @@ export default function NuevaPolizaModal({ isOpen, onClose, onSuccess, polizaAEd
   const [companias, setCompanias] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+  
+  // 🔥 ESTADOS NUEVOS PARA EL PDF
+  const [pdfFile, setPdfFile] = useState<File | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (isOpen) {
@@ -48,7 +52,6 @@ export default function NuevaPolizaModal({ isOpen, onClose, onSuccess, polizaAEd
 
       if (polizaAEditar) {
         if (isRenovacion) {
-          // LÓGICA DE RENOVACIÓN
           const fechaInicioNueva = polizaAEditar.fechaVencimiento.split('T')[0];
           const vDate = new Date(polizaAEditar.fechaVencimiento);
           vDate.setMonth(vDate.getMonth() + 6);
@@ -64,7 +67,6 @@ export default function NuevaPolizaModal({ isOpen, onClose, onSuccess, polizaAEd
             companiaId: polizaAEditar.companiaId?.toString() || "",
           });
         } else {
-          // LÓGICA DE EDICIÓN NORMAL
           setFormData({
             ...polizaAEditar,
             fechaInicio: polizaAEditar.fechaInicio.split('T')[0],
@@ -76,7 +78,11 @@ export default function NuevaPolizaModal({ isOpen, onClose, onSuccess, polizaAEd
       } else {
         setFormData(ESTADO_INICIAL);
       }
+      
+      // Reseteamos errores y archivo seleccionado
       setError("");
+      setPdfFile(null);
+      if (fileInputRef.current) fileInputRef.current.value = '';
     }
   }, [isOpen, polizaAEditar, isRenovacion]);
 
@@ -84,6 +90,18 @@ export default function NuevaPolizaModal({ isOpen, onClose, onSuccess, polizaAEd
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      if (file.type !== "application/pdf") {
+        setError("Solo se permiten archivos en formato PDF.");
+        return;
+      }
+      setPdfFile(file);
+      setError(""); // Limpiamos errores si sube uno válido
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -105,6 +123,7 @@ export default function NuevaPolizaModal({ isOpen, onClose, onSuccess, polizaAEd
       
       const method = isEditMode ? "PUT" : "POST";
 
+      // PASO 1: Guardamos los datos de texto
       const response = await fetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
@@ -114,6 +133,24 @@ export default function NuevaPolizaModal({ isOpen, onClose, onSuccess, polizaAEd
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Error al guardar la póliza");
 
+      const polizaGuardadaId = isEditMode ? polizaAEditar.id : data.id;
+
+      // PASO 2: Si el usuario seleccionó un PDF, lo subimos
+      if (pdfFile) {
+        const fileData = new FormData();
+        fileData.append("pdf", pdfFile);
+        
+        const uploadRes = await fetch(`http://localhost:3001/api/polizas/${polizaGuardadaId}/subir-pdf`, {
+          method: "POST",
+          body: fileData,
+        });
+
+        if (!uploadRes.ok) {
+          throw new Error("La póliza se guardó bien, pero hubo un error al subir el PDF.");
+        }
+      }
+
+      // Si es renovación, damos de baja la vieja
       if (isRenovacion && polizaAEditar) {
         await fetch(`http://localhost:3001/api/polizas/${polizaAEditar.id}`, {
           method: "PUT",
@@ -225,9 +262,7 @@ export default function NuevaPolizaModal({ isOpen, onClose, onSuccess, polizaAEd
               </div>
             </div>
 
-            {/* ---> MAGIA CONDICIONAL SEGÚN EL TIPO DE PÓLIZA <--- */}
-            
-            {/* BLOQUE 1: VEHÍCULOS */}
+            {/* CAMPOS CONDICIONALES */}
             {(formData.tipoPoliza === "Automotor" || formData.tipoPoliza === "Motovehículo") && (
               <div className="space-y-4 pt-4 border-t border-gray-100 mt-4 animate-in fade-in slide-in-from-top-2 duration-300">
                 <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider flex items-center gap-2">
@@ -250,7 +285,6 @@ export default function NuevaPolizaModal({ isOpen, onClose, onSuccess, polizaAEd
               </div>
             )}
 
-            {/* BLOQUE 2: HOGAR Y COMERCIO */}
             {(formData.tipoPoliza === "Combinado Familiar" || formData.tipoPoliza === "Integral de Comercio") && (
               <div className="space-y-4 pt-4 border-t border-gray-100 mt-4 animate-in fade-in slide-in-from-top-2 duration-300">
                  <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider flex items-center gap-2">
@@ -263,7 +297,6 @@ export default function NuevaPolizaModal({ isOpen, onClose, onSuccess, polizaAEd
               </div>
             )}
 
-            {/* BLOQUE 3: ART */}
             {formData.tipoPoliza === "ART" && (
               <div className="space-y-4 pt-4 border-t border-gray-100 mt-4 animate-in fade-in slide-in-from-top-2 duration-300">
                  <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider flex items-center gap-2">
@@ -276,14 +309,59 @@ export default function NuevaPolizaModal({ isOpen, onClose, onSuccess, polizaAEd
               </div>
             )}
 
+            {/* 🔥 BLOQUE NUEVO: SUBIDA DE ARCHIVO PDF EN LA CREACIÓN */}
+            <div className="space-y-4 pt-4 border-t border-gray-100 mt-4">
+              <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider flex items-center gap-2">
+                Póliza Digital <span className="text-[10px] bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full normal-case">Opcional</span>
+              </h3>
+              
+              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                <input 
+                  type="file" 
+                  ref={fileInputRef} 
+                  onChange={handleFileChange} 
+                  accept="application/pdf" 
+                  className="hidden" 
+                />
+                
+                <button 
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="flex items-center gap-2 px-4 py-2 bg-gray-50 hover:bg-gray-100 border border-gray-200 text-gray-700 rounded-lg font-medium transition-colors"
+                >
+                  <UploadCloud size={18} />
+                  {pdfFile ? "Cambiar archivo" : "Adjuntar PDF"}
+                </button>
+
+                {pdfFile && (
+                  <div className="flex items-center gap-2 text-sm text-green-700 bg-green-50 px-3 py-1.5 rounded-lg border border-green-200">
+                    <FileText size={16} />
+                    <span className="font-medium truncate max-w-[200px]">{pdfFile.name}</span>
+                    <button 
+                      type="button" 
+                      onClick={() => { setPdfFile(null); if (fileInputRef.current) fileInputRef.current.value = ''; }}
+                      className="ml-2 text-green-600 hover:text-red-500"
+                    >
+                      <X size={16} />
+                    </button>
+                  </div>
+                )}
+                
+                {!pdfFile && polizaAEditar?.pdfUrl && (
+                  <span className="text-sm text-gray-500 italic">Ya tiene un PDF guardado.</span>
+                )}
+              </div>
+            </div>
+
           </div>
 
           <div className="mt-4 flex justify-end gap-3 pt-6 border-t border-gray-100">
             <button type="button" onClick={onClose} disabled={isLoading} className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg font-medium transition-colors">
               Cancelar
             </button>
-            <button type="submit" disabled={isLoading} className="px-4 py-2 bg-green-700 hover:bg-green-800 text-white rounded-lg font-medium transition-colors disabled:opacity-50">
-              {isLoading ? "Guardando..." : (isRenovacion ? "Crear Renovación" : polizaAEditar ? "Actualizar Póliza" : "Guardar Póliza")}
+            <button type="submit" disabled={isLoading} className="px-4 py-2 bg-green-700 hover:bg-green-800 text-white rounded-lg font-medium transition-colors disabled:opacity-50 flex items-center gap-2">
+              {isLoading && <UploadCloud size={16} className="animate-bounce" />}
+              {isLoading ? "Procesando..." : (isRenovacion ? "Crear Renovación" : polizaAEditar ? "Actualizar Póliza" : "Guardar Póliza")}
             </button>
           </div>
         </form>
