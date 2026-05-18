@@ -35,7 +35,11 @@ router.get('/:id', async (req, res) => {
 // RUTA: POST /api/polizas (Crea una póliza nueva)
 router.post('/', async (req, res) => {
   try {
-    const { nroPoliza, tipoPoliza, fechaInicio, fechaVencimiento, estado, cobertura, aseguradoId, companiaId } = req.body;
+    const { 
+      nroPoliza, tipoPoliza, fechaInicio, fechaVencimiento, estado, 
+      cobertura, aseguradoId, companiaId,
+      patente, marca, modelo, ubicacionRiesgo, cantidadEmpleados // <-- Campos nuevos opcionales
+    } = req.body;
 
     const nuevaPoliza = await prisma.poliza.create({
       data: {
@@ -45,6 +49,12 @@ router.post('/', async (req, res) => {
         estado, cobertura, 
         aseguradoId: parseInt(aseguradoId), 
         companiaId: parseInt(companiaId),
+        // Agregamos los campos condicionales:
+        patente: patente || null,
+        marca: marca || null,
+        modelo: modelo || null,
+        ubicacionRiesgo: ubicacionRiesgo || null,
+        cantidadEmpleados: cantidadEmpleados || null,
       },
       include: { asegurado: true }
     });
@@ -88,12 +98,18 @@ router.put('/:id', async (req, res) => {
         estado: data.estado,
         cobertura: data.cobertura,
         aseguradoId: parseInt(data.aseguradoId),
-        companiaId: parseInt(data.companiaId) 
+        companiaId: parseInt(data.companiaId),
+        // Agregamos los campos condicionales:
+        patente: data.patente || null,
+        marca: data.marca || null,
+        modelo: data.modelo || null,
+        ubicacionRiesgo: data.ubicacionRiesgo || null,
+        cantidadEmpleados: data.cantidadEmpleados || null,
       },
       include: { asegurado: true, compania: true }
     });
 
-    // 3. Comparamos cambios
+    // 3. Comparamos cambios (se pueden agregar más comparaciones acá si querés que aparezcan en el log)
     let cambios = [];
     if (vieja && vieja.estado !== data.estado) cambios.push(`Estado: ${vieja.estado} -> ${data.estado}`);
     if (vieja && vieja.nroPoliza !== data.nroPoliza) cambios.push(`Nro: ${vieja.nroPoliza} -> ${data.nroPoliza}`);
@@ -146,6 +162,7 @@ router.delete('/:id', async (req, res) => {
     res.status(500).json({ error: 'Error al eliminar.' });
   }
 });
+
 // RUTA: POST /api/polizas/:id/avisar-vencimiento
 router.post('/:id/avisar-vencimiento', async (req, res) => {
   try {
@@ -207,4 +224,5 @@ router.post('/:id/avisar-vencimiento', async (req, res) => {
     res.status(500).json({ error: 'Error interno al enviar el aviso.' });
   }
 });
+
 export default router;

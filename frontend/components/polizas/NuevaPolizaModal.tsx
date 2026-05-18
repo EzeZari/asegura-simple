@@ -8,7 +8,7 @@ interface Props {
   onClose: () => void;
   onSuccess: () => void;
   polizaAEditar?: any; 
-  isRenovacion?: boolean; // <-- NUEVA PROP
+  isRenovacion?: boolean; 
 }
 
 const ESTADO_INICIAL = {
@@ -20,6 +20,11 @@ const ESTADO_INICIAL = {
   cobertura: "",
   aseguradoId: "", 
   companiaId: "", 
+  patente: "", 
+  marca: "",   
+  modelo: "",  
+  ubicacionRiesgo: "",
+  cantidadEmpleados: "",
 };
 
 export default function NuevaPolizaModal({ isOpen, onClose, onSuccess, polizaAEditar, isRenovacion = false }: Props) {
@@ -43,20 +48,18 @@ export default function NuevaPolizaModal({ isOpen, onClose, onSuccess, polizaAEd
 
       if (polizaAEditar) {
         if (isRenovacion) {
-          // LÓGICA DE RENOVACIÓN: Pre-calculamos fechas
+          // LÓGICA DE RENOVACIÓN
           const fechaInicioNueva = polizaAEditar.fechaVencimiento.split('T')[0];
-          
-          // Le sumamos 6 meses por defecto a la nueva vigencia
           const vDate = new Date(polizaAEditar.fechaVencimiento);
           vDate.setMonth(vDate.getMonth() + 6);
           const fechaVencimientoNueva = vDate.toISOString().split('T')[0];
 
           setFormData({
             ...polizaAEditar,
-            nroPoliza: "", // Vaciamos para el número nuevo
+            nroPoliza: "", 
             fechaInicio: fechaInicioNueva,
             fechaVencimiento: fechaVencimientoNueva,
-            estado: "Vigente", // La nueva nace vigente
+            estado: "Vigente", 
             aseguradoId: polizaAEditar.aseguradoId.toString(),
             companiaId: polizaAEditar.companiaId?.toString() || "",
           });
@@ -95,7 +98,6 @@ export default function NuevaPolizaModal({ isOpen, onClose, onSuccess, polizaAEd
     setError("");
 
     try {
-      // Si estamos editando normalmente es PUT, si es nueva o renovación es POST
       const isEditMode = polizaAEditar && !isRenovacion;
       const url = isEditMode 
         ? `http://localhost:3001/api/polizas/${polizaAEditar.id}`
@@ -112,7 +114,6 @@ export default function NuevaPolizaModal({ isOpen, onClose, onSuccess, polizaAEd
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Error al guardar la póliza");
 
-      // EL 2x1: Si fue una renovación exitosa, pasamos la póliza vieja a estado "Renovada"
       if (isRenovacion && polizaAEditar) {
         await fetch(`http://localhost:3001/api/polizas/${polizaAEditar.id}`, {
           method: "PUT",
@@ -154,7 +155,7 @@ export default function NuevaPolizaModal({ isOpen, onClose, onSuccess, polizaAEd
                 <select 
                   required name="aseguradoId" value={formData.aseguradoId} onChange={handleChange} 
                   className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-600 outline-none bg-white"
-                  disabled={isRenovacion} // Bloqueamos cambiar de cliente si estamos renovando
+                  disabled={isRenovacion} 
                 >
                   <option value="" disabled>-- Seleccioná un cliente --</option>
                   {clientes.map((cliente) => (
@@ -188,11 +189,11 @@ export default function NuevaPolizaModal({ isOpen, onClose, onSuccess, polizaAEd
                 <label className="block text-sm font-medium text-gray-700 mb-1">Rama / Tipo</label>
                 <select name="tipoPoliza" value={formData.tipoPoliza} onChange={handleChange} className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-600 outline-none bg-white">
                   <option value="Automotor">Automotor</option>
-                  <option value="Moto">Motovehículo</option>
-                  <option value="Hogar">Combinado Familiar</option>
+                  <option value="Motovehículo">Motovehículo</option>
+                  <option value="Combinado Familiar">Combinado Familiar</option>
                   <option value="Vida">Vida</option>
                   <option value="ART">ART</option>
-                  <option value="Comercio">Integral de Comercio</option>
+                  <option value="Integral de Comercio">Integral de Comercio</option>
                 </select>
               </div>
             </div>
@@ -223,6 +224,58 @@ export default function NuevaPolizaModal({ isOpen, onClose, onSuccess, polizaAEd
                 <input type="text" name="cobertura" value={formData.cobertura} onChange={handleChange} placeholder="Ej: Terceros Completo" className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-600 outline-none" />
               </div>
             </div>
+
+            {/* ---> MAGIA CONDICIONAL SEGÚN EL TIPO DE PÓLIZA <--- */}
+            
+            {/* BLOQUE 1: VEHÍCULOS */}
+            {(formData.tipoPoliza === "Automotor" || formData.tipoPoliza === "Motovehículo") && (
+              <div className="space-y-4 pt-4 border-t border-gray-100 mt-4 animate-in fade-in slide-in-from-top-2 duration-300">
+                <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider flex items-center gap-2">
+                  Datos del Vehículo <span className="text-[10px] bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full normal-case">Opcional</span>
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Patente</label>
+                    <input type="text" name="patente" value={formData.patente || ""} onChange={handleChange} placeholder="Ej: AB123CD" className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-600 outline-none uppercase" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Marca</label>
+                    <input type="text" name="marca" value={formData.marca || ""} onChange={handleChange} placeholder="Ej: Toyota" className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-600 outline-none" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Modelo</label>
+                    <input type="text" name="modelo" value={formData.modelo || ""} onChange={handleChange} placeholder="Ej: Corolla 2023" className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-600 outline-none" />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* BLOQUE 2: HOGAR Y COMERCIO */}
+            {(formData.tipoPoliza === "Combinado Familiar" || formData.tipoPoliza === "Integral de Comercio") && (
+              <div className="space-y-4 pt-4 border-t border-gray-100 mt-4 animate-in fade-in slide-in-from-top-2 duration-300">
+                 <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider flex items-center gap-2">
+                  Ubicación del Riesgo <span className="text-[10px] bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full normal-case">Opcional</span>
+                </h3>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Dirección Asegurada</label>
+                  <input type="text" name="ubicacionRiesgo" value={formData.ubicacionRiesgo || ""} onChange={handleChange} placeholder="Ej: Av. San Martín 1234" className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-600 outline-none" />
+                </div>
+              </div>
+            )}
+
+            {/* BLOQUE 3: ART */}
+            {formData.tipoPoliza === "ART" && (
+              <div className="space-y-4 pt-4 border-t border-gray-100 mt-4 animate-in fade-in slide-in-from-top-2 duration-300">
+                 <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider flex items-center gap-2">
+                  Datos Laborales <span className="text-[10px] bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full normal-case">Opcional</span>
+                </h3>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Cantidad de Empleados</label>
+                  <input type="number" name="cantidadEmpleados" value={formData.cantidadEmpleados || ""} onChange={handleChange} placeholder="Ej: 15" className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-600 outline-none" />
+                </div>
+              </div>
+            )}
+
           </div>
 
           <div className="mt-4 flex justify-end gap-3 pt-6 border-t border-gray-100">

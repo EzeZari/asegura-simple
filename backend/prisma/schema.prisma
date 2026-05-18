@@ -71,6 +71,14 @@ model Poliza {
 
   siniestros       Siniestro[]
   alertas          Alerta[]
+  
+// Datos específicos condicionales
+  patente           String?
+  marca             String?
+  modelo            String?
+  ubicacionRiesgo   String?
+  cantidadEmpleados String?
+
   ultimoAviso DateTime?
 }
 
