@@ -1,18 +1,17 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { FileText } from "lucide-react";
+import { FileText, Download } from "lucide-react";
 import { useRouter } from "next/navigation";
 import NuevaPolizaModal from "@/components/polizas/NuevaPolizaModal";
 import PolizasFiltros from "@/components/polizas/PolizasFiltros";
+import ExportarExcelModal from "@/components/ui/ExportarExcelModal"; // <-- Importamos el nuevo modal
 import Toast from "@/components/ui/Toast";
 import Table, { TableColumn } from "@/components/ui/Table";
 import ConfirmModal from "@/components/ui/ConfirmModal";
 import { useTableSort } from "@/hooks/useTableSort";
 import SortableHeader from "@/components/ui/SortableHeader";
 import PageHeader from "@/components/ui/PageHeader";
-
-// IMPORTAMOS NUESTRO NUEVO COMPONENTE LIMPIO
 import PolizaTableRow from "@/components/polizas/PolizaTableRow";
 
 export default function PolizasPage() {
@@ -22,6 +21,7 @@ export default function PolizasPage() {
   const [filtroEstado, setFiltroEstado] = useState("Todos");
   
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false); // <-- Estado para el modal de Excel
   const [polizaAEditar, setPolizaAEditar] = useState<any>(null);
   const [menuAbiertoId, setMenuAbiertoId] = useState<number | null>(null);
   
@@ -83,7 +83,6 @@ export default function PolizasPage() {
     }
   };
 
-  // 🔥 AGREGAMOS LA FUNCIÓN ACÁ PARA PODER USARLA EN EL FILTRO
   const getEstadoInteligente = (poliza: any) => {
     if (poliza.estado === "Anulada" || poliza.estado === "Renovada") return poliza.estado;
     const hoy = new Date();
@@ -108,8 +107,6 @@ export default function PolizasPage() {
       (poliza.ubicacionRiesgo && poliza.ubicacionRiesgo.toLowerCase().includes(busqueda));
 
     const matchRama = filtroRama === "Todas" || poliza.tipoPoliza === filtroRama;
-    
-    // 🔥 USAMOS EL ESTADO CALCULADO PARA QUE COINCIDA CON EL SELECTOR
     const estadoReal = getEstadoInteligente(poliza);
     const matchEstado = filtroEstado === "Todos" || estadoReal === filtroEstado;
     
@@ -117,6 +114,25 @@ export default function PolizasPage() {
   });
 
   const { items: polizasOrdenadas, requestSort, sortConfig } = useTableSort(polizasFiltradas);
+
+  // 🔥 Preparamos los datos limpios para pasárselos al Modal de Exportación
+  const prepararDatosParaExcel = () => {
+    return polizasOrdenadas.map((p) => ({
+      "Nro Póliza": p.nroPoliza,
+      "Asegurado": `${p.asegurado?.nombre || ""} ${p.asegurado?.apellido || ""}`.trim(),
+      "DNI / CUIT": p.asegurado?.dni || "",
+      "Compañía": p.compania?.nombre || "",
+      "Rama / Riesgo": p.tipoPoliza,
+      "Cobertura": p.cobertura || "",
+      "Patente": p.patente?.toUpperCase() || "",
+      "Marca / Modelo": `${p.marca || ""} ${p.modelo || ""}`.trim(),
+      "Ubicación": p.ubicacionRiesgo || "",
+      "Empleados": p.cantidadEmpleados?.toString() || "",
+      "Vigencia Desde": new Date(p.fechaInicio).toLocaleDateString("es-AR"),
+      "Vigencia Hasta": new Date(p.fechaVencimiento).toLocaleDateString("es-AR"),
+      "Estado": getEstadoInteligente(p),
+    }));
+  };
 
   const columnas: TableColumn[] = [
     { label: <SortableHeader label="Nro Póliza" sortKey="nroPoliza" currentSort={sortConfig} requestSort={requestSort} /> },
@@ -145,6 +161,19 @@ export default function PolizasPage() {
         filtroEstado={filtroEstado} setFiltroEstado={setFiltroEstado}
       />
 
+      {/* Botón para abrir el Modal de Exportación */}
+      <div className="flex justify-end w-full -mb-4">
+        <button
+          onClick={() => {
+            if(polizasOrdenadas.length === 0) return alert("No hay datos para exportar.");
+            setIsExportModalOpen(true);
+          }}
+          className="flex items-center gap-2 px-4 py-2 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-700 rounded-xl text-sm font-bold transition-all active:scale-95 shadow-sm"
+        >
+          <Download size={16} /> Exportar a Excel
+        </button>
+      </div>
+
       <Table columns={columnas} isLoading={isLoading} isEmpty={polizasOrdenadas.length === 0} emptyContent={<div className="flex flex-col items-center justify-center text-gray-500 py-6"><FileText size={32} className="text-gray-300 mb-3" /><p className="font-medium text-gray-900">No se encontraron pólizas</p></div>}>
         {polizasOrdenadas.map((poliza) => (
           <PolizaTableRow 
@@ -162,6 +191,15 @@ export default function PolizasPage() {
       </Table>
 
       <NuevaPolizaModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSuccess={() => { setIsModalOpen(false); fetchPolizas(); setShowToast(true); setMensajeToast("Póliza guardada con éxito"); }} polizaAEditar={polizaAEditar} />
+      
+      {/* RENDEREAMOS EL MODAL AQUÍ */}
+      <ExportarExcelModal 
+        isOpen={isExportModalOpen} 
+        onClose={() => setIsExportModalOpen(false)} 
+        datos={prepararDatosParaExcel()} 
+        nombreArchivo={`Reporte_Polizas_${new Date().toISOString().split("T")[0]}`} 
+      />
+
       <ConfirmModal isOpen={isConfirmOpen} onClose={() => setIsConfirmOpen(false)} onConfirm={ejecutarEliminacion} isLoading={isDeleting} title="¿Eliminar póliza?" message={`Esta acción eliminará la póliza #${polizaAEliminar?.nroPoliza} permanentemente.`} />
       <Toast message={mensajeToast} isVisible={showToast} onClose={() => setShowToast(false)} />
     </div>
