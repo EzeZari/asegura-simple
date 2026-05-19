@@ -1,9 +1,10 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Shield, Building2, User, Trash2, Edit, Search } from "lucide-react";
+import { Shield, Building2, User, Trash2, Edit, Search, Download } from "lucide-react"; // <-- Sumamos Download
 import NuevoAseguradoModal from "@/components/asegurados/NuevoAseguradoModal";
 import AseguradosFiltros from "@/components/asegurados/AseguradosFiltros";
+import ExportarExcelModal from "@/components/ui/ExportarExcelModal"; // <-- Importamos el modal genérico
 import Toast from "@/components/ui/Toast";
 import Table, { TableColumn } from "@/components/ui/Table";
 import ConfirmModal from "@/components/ui/ConfirmModal";
@@ -20,6 +21,7 @@ export default function AseguradosPage() {
   const [filtroEstado, setFiltroEstado] = useState("Todos");
   
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false); // <-- Estado para el modal de Excel
   const [clienteAEditar, setClienteAEditar] = useState<any>(null);
   const [asegurados, setAsegurados] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -33,7 +35,6 @@ export default function AseguradosPage() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [aseguradoParaVerPolizas, setAseguradoParaVerPolizas] = useState<any>(null);
 
-  // Estados para el Modal de Alerta (Bloqueos)
   const [isAlertModalOpen, setIsAlertModalOpen] = useState(false);
   const [alertModalInfo, setAlertModalInfo] = useState({ title: "", message: "" });
 
@@ -70,9 +71,8 @@ export default function AseguradosPage() {
       setShowToast(true);
       setIsConfirmOpen(false);
     } catch (error: any) { 
-      setIsConfirmOpen(false); // Primero cerramos el modal de confirmación
+      setIsConfirmOpen(false); 
       
-      // Chequeamos si el error es el de las pólizas y abrimos el Modal de Alerta
       if (error.message.includes("pólizas activas")) {
         setAlertModalInfo({
           title: "No se puede eliminar",
@@ -85,7 +85,6 @@ export default function AseguradosPage() {
         });
       }
       
-      // Le damos un mini delay para que la animación fluya bien
       setTimeout(() => setIsAlertModalOpen(true), 150);
     } finally { 
       setIsDeleting(false); 
@@ -103,6 +102,20 @@ export default function AseguradosPage() {
   });
 
   const { items: aseguradosOrdenados, requestSort, sortConfig } = useTableSort(aseguradosFiltrados);
+
+  // 🔥 Función para limpiar y ordenar los datos antes de exportarlos
+  const prepararDatosParaExcel = () => {
+    return aseguradosOrdenados.map((cliente) => ({
+      "Nombre / Razón Social": `${cliente.nombre} ${cliente.apellido || ""}`.trim(),
+      "DNI / CUIT": cliente.dni,
+      "Teléfono": cliente.telefono || "-",
+      "Email": cliente.email || "-",
+      "Tipo de Cliente": cliente.tipo,
+      "Fecha de Alta": new Date(cliente.fechaRegistro).toLocaleDateString("es-AR"),
+      "Cant. Pólizas Activas": cliente._count?.polizas || 0,
+      "Estado en Sistema": cliente.activo ? "Activo" : "Inactivo",
+    }));
+  };
 
   const columnas: TableColumn[] = [
     { label: <SortableHeader label="Nombre / Razón Social" sortKey="nombre" currentSort={sortConfig} requestSort={requestSort} /> },
@@ -130,6 +143,19 @@ export default function AseguradosPage() {
         filtroTipo={filtroTipo} setFiltroTipo={setFiltroTipo}
         filtroEstado={filtroEstado} setFiltroEstado={setFiltroEstado}
       />
+
+      {/* 🔥 BOTÓN PARA ABRIR EL MODAL DE EXCEL */}
+      <div className="flex justify-end w-full -mb-4">
+        <button
+          onClick={() => {
+            if(aseguradosOrdenados.length === 0) return alert("No hay datos para exportar.");
+            setIsExportModalOpen(true);
+          }}
+          className="flex items-center gap-2 px-4 py-2 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-700 rounded-xl text-sm font-bold transition-all active:scale-95 shadow-sm"
+        >
+          <Download size={16} /> Exportar a Excel
+        </button>
+      </div>
 
       <Table columns={columnas} isLoading={isLoading} isEmpty={aseguradosOrdenados.length === 0} emptyContent={<div className="flex flex-col items-center justify-center text-gray-500 py-6"><Search size={32} className="text-gray-300 mb-3" /><p className="font-medium text-gray-900">No se encontraron clientes</p></div>}>
         {aseguradosOrdenados.map((cliente) => (
@@ -184,13 +210,20 @@ export default function AseguradosPage() {
 
       <NuevoAseguradoModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSuccess={() => { setIsModalOpen(false); fetchAsegurados(); setShowToast(true); setMensajeToast("Asegurado guardado correctamente"); }} clienteAEditar={clienteAEditar} />
       
+      {/* 🔥 RENDERIZAMOS EL MODAL DE EXCEL */}
+      <ExportarExcelModal 
+        isOpen={isExportModalOpen} 
+        onClose={() => setIsExportModalOpen(false)} 
+        datos={prepararDatosParaExcel()} 
+        nombreArchivo={`Reporte_Clientes_${new Date().toISOString().split("T")[0]}`} 
+      />
+
       <ConfirmModal isOpen={isConfirmOpen} onClose={() => setIsConfirmOpen(false)} onConfirm={ejecutarEliminacion} isLoading={isDeleting} title="¿Eliminar asegurado?" message={`Esta acción eliminará a "${aseguradoAEliminar?.nombre} ${aseguradoAEliminar?.apellido || ''}" permanentemente. Solo es posible si no tiene pólizas activas.`} />
       
       <PolizasDelAseguradoModal isOpen={!!aseguradoParaVerPolizas} onClose={() => setAseguradoParaVerPolizas(null)} asegurado={aseguradoParaVerPolizas} />
       
       <Toast message={mensajeToast} isVisible={showToast} onClose={() => setShowToast(false)} />
 
-      {/* ACÁ ESTÁ EL NUEVO MODAL DE ALERTA/BLOQUEO */}
       <AlertModal 
         isOpen={isAlertModalOpen} 
         onClose={() => setIsAlertModalOpen(false)} 
