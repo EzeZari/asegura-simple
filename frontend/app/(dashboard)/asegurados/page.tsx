@@ -1,11 +1,11 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Shield, Building2, User, Trash2, Edit, Search, Download, UploadCloud } from "lucide-react"; 
+import { Search, Download, UploadCloud } from "lucide-react"; 
 import NuevoAseguradoModal from "@/components/asegurados/NuevoAseguradoModal";
 import AseguradosFiltros from "@/components/asegurados/AseguradosFiltros";
 import ExportarExcelModal from "@/components/ui/ExportarExcelModal"; 
-import ImportarAseguradosModal from "@/components/asegurados/ImportarAseguradosModal"; // <-- NUEVO IMPORT
+import ImportarAseguradosModal from "@/components/asegurados/ImportarAseguradosModal"; 
 import Toast from "@/components/ui/Toast";
 import Table, { TableColumn } from "@/components/ui/Table";
 import ConfirmModal from "@/components/ui/ConfirmModal";
@@ -13,8 +13,10 @@ import PolizasDelAseguradoModal from "@/components/asegurados/PolizasDelAsegurad
 import { useTableSort } from "@/hooks/useTableSort";
 import SortableHeader from "@/components/ui/SortableHeader";
 import PageHeader from "@/components/ui/PageHeader";
-import { ActionMenu, ActionMenuItem, ActionMenuDivider } from "@/components/ui/ActionMenu";
 import AlertModal from "@/components/ui/AlertModal";
+
+// 🔥 IMPORTAMOS LA FILA LIMPIA
+import AseguradoTableRow from "@/components/asegurados/AseguradoTableRow";
 
 export default function AseguradosPage() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -23,7 +25,7 @@ export default function AseguradosPage() {
   
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false); 
-  const [isImportModalOpen, setIsImportModalOpen] = useState(false); // <-- NUEVO ESTADO
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false); 
   const [clienteAEditar, setClienteAEditar] = useState<any>(null);
   const [asegurados, setAsegurados] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -96,7 +98,7 @@ export default function AseguradosPage() {
 
   const handleImportSuccess = (mensaje: string) => {
     setIsImportModalOpen(false);
-    fetchAsegurados(); // Recargamos la lista completa
+    fetchAsegurados(); 
     setMensajeToast(mensaje);
     setShowToast(true);
   };
@@ -152,7 +154,6 @@ export default function AseguradosPage() {
         filtroEstado={filtroEstado} setFiltroEstado={setFiltroEstado}
       />
 
-      {/* BARRA DE ACCIONES CON EXPORTAR E IMPORTAR */}
       <div className="flex justify-end items-center gap-3 w-full -mb-4">
         <button
           onClick={() => setIsImportModalOpen(true)}
@@ -173,52 +174,17 @@ export default function AseguradosPage() {
 
       <Table columns={columnas} isLoading={isLoading} isEmpty={aseguradosOrdenados.length === 0} emptyContent={<div className="flex flex-col items-center justify-center text-gray-500 py-6"><Search size={32} className="text-gray-300 mb-3" /><p className="font-medium text-gray-900">No se encontraron clientes</p></div>}>
         {aseguradosOrdenados.map((cliente) => (
-          <tr key={cliente.id} className="hover:bg-gray-50/50 transition-colors group">
-            <td className="px-6 py-4 font-medium text-gray-900">{cliente.nombre} {cliente.apellido}</td>
-            <td className="px-6 py-4 text-gray-600 font-mono text-xs">{cliente.dni}</td>
-            <td className="px-6 py-4">
-              <div className="flex flex-col">
-                <span className="text-gray-900">{cliente.telefono || "-"}</span>
-                <span className="text-gray-400 text-xs">{cliente.email || "-"}</span>
-              </div>
-            </td>
-            <td className="px-6 py-4">
-              <div className="flex items-center gap-1.5 text-gray-600">
-                {cliente.tipo === "Empresa" ? <Building2 size={16} className="text-blue-500"/> : <User size={16} className="text-gray-400"/>}
-                <span>{cliente.tipo}</span>
-              </div>
-            </td>
-            <td className="px-6 py-4 text-gray-500 italic">{new Date(cliente.fechaRegistro).toLocaleDateString("es-AR")}</td>
-            <td className="px-6 py-4 text-center">
-              <button 
-                onClick={() => setAseguradoParaVerPolizas(cliente)} 
-                className="inline-flex items-center justify-center bg-green-50 hover:bg-green-100 text-green-700 px-3 py-1 rounded-full font-bold gap-1.5 border border-green-100 hover:border-green-200 text-xs transition-colors cursor-pointer"
-              >
-                <Shield size={14} /> {cliente._count?.polizas || 0}
-              </button>
-            </td>
-            <td className="px-6 py-4">
-              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${cliente.activo ? "bg-emerald-100 text-emerald-800" : "bg-red-100 text-red-800"}`}>
-                {cliente.activo ? "Activo" : "Inactivo"}
-              </span>
-            </td>
-            <td className="px-6 py-4 text-right relative">
-              <ActionMenu isOpen={menuAbiertoId === cliente.id} onToggle={() => setMenuAbiertoId(menuAbiertoId === cliente.id ? null : cliente.id)}>
-                <ActionMenuItem icon={Edit} label="Editar" onClick={() => { setClienteAEditar(cliente); setMenuAbiertoId(null); setIsModalOpen(true); }} />
-                <ActionMenuItem 
-                  icon={cliente.activo ? Trash2 : Shield} 
-                  label={cliente.activo ? "Desactivar" : "Activar"} 
-                  color={cliente.activo ? "amber" : "green"} 
-                  onClick={() => toggleEstado(cliente)} 
-                />
-                <ActionMenuDivider />
-                <ActionMenuItem 
-                  icon={Trash2} label="Eliminar" color="red" 
-                  onClick={() => { setAseguradoAEliminar(cliente); setMenuAbiertoId(null); setIsConfirmOpen(true); }} 
-                />
-              </ActionMenu>
-            </td>
-          </tr>
+          /* 🔥 ACÁ SE REDUCE LA MAGIA A UN SOLO COMPONENTE */
+          <AseguradoTableRow 
+            key={cliente.id}
+            cliente={cliente}
+            onClickPolizas={(c) => setAseguradoParaVerPolizas(c)}
+            menuAbiertoId={menuAbiertoId}
+            onToggleMenu={setMenuAbiertoId}
+            onEdit={(c) => { setClienteAEditar(c); setMenuAbiertoId(null); setIsModalOpen(true); }}
+            onToggleEstado={toggleEstado}
+            onEliminar={(c) => { setAseguradoAEliminar(c); setMenuAbiertoId(null); setIsConfirmOpen(true); }}
+          />
         ))}
       </Table>
 
@@ -231,7 +197,6 @@ export default function AseguradosPage() {
         nombreArchivo={`Reporte_Clientes_${new Date().toISOString().split("T")[0]}`} 
       />
 
-      {/* NUEVO MODAL DE IMPORTACIÓN */}
       <ImportarAseguradosModal 
         isOpen={isImportModalOpen} 
         onClose={() => setIsImportModalOpen(false)} 
