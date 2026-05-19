@@ -1,11 +1,12 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { FileText, Download } from "lucide-react";
+import { FileText, Download, UploadCloud } from "lucide-react";
 import { useRouter } from "next/navigation";
 import NuevaPolizaModal from "@/components/polizas/NuevaPolizaModal";
 import PolizasFiltros from "@/components/polizas/PolizasFiltros";
-import ExportarExcelModal from "@/components/ui/ExportarExcelModal"; // <-- Importamos el nuevo modal
+import ExportarExcelModal from "@/components/ui/ExportarExcelModal"; 
+import ImportarPolizasModal from "@/components/polizas/ImportarPolizasModal";
 import Toast from "@/components/ui/Toast";
 import Table, { TableColumn } from "@/components/ui/Table";
 import ConfirmModal from "@/components/ui/ConfirmModal";
@@ -21,7 +22,8 @@ export default function PolizasPage() {
   const [filtroEstado, setFiltroEstado] = useState("Todos");
   
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isExportModalOpen, setIsExportModalOpen] = useState(false); // <-- Estado para el modal de Excel
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false); 
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false); // <-- Estado acomodado
   const [polizaAEditar, setPolizaAEditar] = useState<any>(null);
   const [menuAbiertoId, setMenuAbiertoId] = useState<number | null>(null);
   
@@ -115,7 +117,6 @@ export default function PolizasPage() {
 
   const { items: polizasOrdenadas, requestSort, sortConfig } = useTableSort(polizasFiltradas);
 
-  // 🔥 Preparamos los datos limpios para pasárselos al Modal de Exportación
   const prepararDatosParaExcel = () => {
     return polizasOrdenadas.map((p) => ({
       "Nro Póliza": p.nroPoliza,
@@ -161,8 +162,14 @@ export default function PolizasPage() {
         filtroEstado={filtroEstado} setFiltroEstado={setFiltroEstado}
       />
 
-      {/* Botón para abrir el Modal de Exportación */}
-      <div className="flex justify-end w-full -mb-4">
+      {/* 🔥 BARRA DE ACCIONES CON IMPORTAR Y EXPORTAR */}
+      <div className="flex justify-end items-center gap-3 w-full -mb-4">
+        <button
+          onClick={() => setIsImportModalOpen(true)}
+          className="flex items-center gap-2 px-4 py-2 bg-gray-50 hover:bg-gray-100 border border-gray-200 text-gray-700 rounded-xl text-sm font-bold transition-all active:scale-95 shadow-sm"
+        >
+          <UploadCloud size={16} /> Importar Excel
+        </button>
         <button
           onClick={() => {
             if(polizasOrdenadas.length === 0) return alert("No hay datos para exportar.");
@@ -192,7 +199,18 @@ export default function PolizasPage() {
 
       <NuevaPolizaModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSuccess={() => { setIsModalOpen(false); fetchPolizas(); setShowToast(true); setMensajeToast("Póliza guardada con éxito"); }} polizaAEditar={polizaAEditar} />
       
-      {/* RENDEREAMOS EL MODAL AQUÍ */}
+      {/* MODAL DE IMPORTACIÓN */}
+      <ImportarPolizasModal 
+        isOpen={isImportModalOpen} 
+        onClose={() => setIsImportModalOpen(false)} 
+        onSuccess={(mensaje) => {
+          setIsImportModalOpen(false);
+          fetchPolizas();
+          setMensajeToast(mensaje);
+          setShowToast(true);
+        }} 
+      />
+
       <ExportarExcelModal 
         isOpen={isExportModalOpen} 
         onClose={() => setIsExportModalOpen(false)} 

@@ -9,6 +9,7 @@ router.get('/:id', polizasController.obtenerPorId);
 router.post('/', polizasController.crearPoliza);
 router.put('/:id', polizasController.actualizarPoliza);
 router.delete('/:id', polizasController.eliminarPoliza);
+router.post('/importar', polizasController.importarPolizas);
 router.post('/:id/avisar-vencimiento', polizasController.avisarVencimiento);
 router.post('/:id/subir-pdf', upload.single('pdf'), polizasController.subirPdf);
 
