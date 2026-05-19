@@ -5,12 +5,13 @@ import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import path from 'path';
+import { iniciarTareasProgramadas } from './services/cron.service';
 
 import authRoutes from './routes/auth.routes';
-import aseguradosRoutes from './routes/asegurados.routes'; // Ajustá la ruta según tu carpeta
+import aseguradosRoutes from './routes/asegurados.routes';
 import polizasRoutes from './routes/polizas.routes';
 import companiasRoutes from './routes/companias.routes';
-import dashboardRoutes from './routes/dashboard.routes'; // <-- Agregá esto arriba
+import dashboardRoutes from './routes/dashboard.routes';
 import alertasRoutes from './routes/alertas.routes';
 import agenciaRoutes from './routes/agencia.routes';
 
@@ -27,15 +28,17 @@ app.use(cors({
   credentials: true // Fundamental para que pasen las cookies
 }));
 
-// 3. RATE LIMIT: Evita ataques de fuerza bruta (ej: alguien intentando adivinar contraseñas 1000 veces por segundo).
+// 3. RATE LIMIT: Evita ataques de fuerza bruta.
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutos
   max: 100, // Límite de 100 peticiones por IP cada 15 minutos
   message: 'Demasiadas peticiones desde esta IP, por favor intenta de nuevo en 15 minutos.'
 });
 app.use('/api', limiter); // Se lo aplicamos a todas las rutas de la API
+
 // Hacer pública la carpeta de uploads para poder acceder a los archivos desde el navegador
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+
 // --- MIDDLEWARES CLÁSICOS ---
 app.use(express.json());
 app.use(cookieParser());
@@ -51,6 +54,10 @@ app.use('/api/agencia', agenciaRoutes);
 
 const PORT = process.env.PORT || 3001;
 
+// 🔥 Arrancamos el robot automático (Cron Job)
+iniciarTareasProgramadas();
+
+// 🔥 Levantamos el servidor una sola vez
 app.listen(PORT, () => {
   console.log(`Servidor Backend corriendo y blindado en http://localhost:${PORT}`);
 });

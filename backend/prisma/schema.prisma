@@ -199,16 +199,22 @@ model Actividad {
   fecha       DateTime @default(now())
 }
 model Agencia {
-  id        Int      @id @default(1) // Siempre será 1, porque es una sola agencia
-  nombre    String   @default("AseguraSimple")
-  cuit      String?
-  email     String?
-  telefono  String?
-  firma     String?
-  logoUrl   String?  // Lo dejamos preparado para cuando hagamos la subida de imágenes
-  mensajeVencimiento String?  @db.Text
-  mensajeBienvenida  String?  @db.Text
+  id                    Int      @id @default(1)
+  nombre                String   @default("AseguraSimple")
+  cuit                  String?
+  email                 String?
+  telefono              String?
+  firma                 String?
+  logoUrl               String?  
+  mensajeVencimiento    String?  @db.Text
+  mensajeBienvenida     String?  @db.Text
   diasAlertaVencimiento Int      @default(30)
-  diasAlertaCritica     Int      @default(7)  // <-- AGREGÁ ESTE CAMPO NUEVO
-  updatedAt DateTime @updatedAt
+  diasAlertaCritica     Int      @default(7)  
+
+  // --- NUEVOS CAMPOS PARA AUTOMATIZACIÓN (CRON JOB) ---
+  envioAutomaticoActivo Boolean  @default(false) // Apagado por defecto por seguridad
+  horaEnvioAutomatico   String   @default("09:00") // Hora a la que el robot se despierta
+  diasAvisoAutomatico   Int      @default(15) // Exactamente cuántos días antes manda el mail
+
+  updatedAt             DateTime @updatedAt
 }

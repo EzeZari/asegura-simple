@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Save, BellRing, AlertTriangle, Clock } from "lucide-react";
+import { Save, BellRing, AlertTriangle, Clock, Bot, Send } from "lucide-react";
 import Toast from "@/components/ui/Toast";
 
 export default function NotificacionesSettings() {
@@ -12,6 +12,9 @@ export default function NotificacionesSettings() {
   const [agencia, setAgencia] = useState<any>({
     diasAlertaCritica: 7,
     diasAlertaVencimiento: 30,
+    envioAutomaticoActivo: false,
+    horaEnvioAutomatico: "09:00",
+    diasAvisoAutomatico: 15
   });
 
   useEffect(() => {
@@ -23,6 +26,9 @@ export default function NotificacionesSettings() {
           ...data,
           diasAlertaCritica: data.diasAlertaCritica ?? 7,
           diasAlertaVencimiento: data.diasAlertaVencimiento ?? 30,
+          envioAutomaticoActivo: data.envioAutomaticoActivo ?? false,
+          horaEnvioAutomatico: data.horaEnvioAutomatico ?? "09:00",
+          diasAvisoAutomatico: data.diasAvisoAutomatico ?? 15
         });
       } catch (error) {
         console.error("Error al cargar notificaciones", error);
@@ -56,8 +62,13 @@ export default function NotificacionesSettings() {
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = parseInt(e.target.value);
-    setAgencia({ ...agencia, [e.target.name]: isNaN(value) ? "" : value });
+    const { name, value, type } = e.target;
+    if (type === "time") {
+      setAgencia({ ...agencia, [name]: value });
+    } else {
+      const num = parseInt(value);
+      setAgencia({ ...agencia, [name]: isNaN(num) ? "" : num });
+    }
   };
 
   if (isLoading) {
@@ -74,6 +85,65 @@ export default function NotificacionesSettings() {
         
         <div className="flex flex-col gap-6 max-w-2xl">
           
+          {/* 🔥 NUEVA SECCIÓN: AUTOMATIZACIÓN (ROBOT) */}
+          <div className={`p-5 rounded-xl border transition-colors duration-300 ${agencia.envioAutomaticoActivo ? 'bg-emerald-50/50 border-emerald-200' : 'bg-gray-50 border-gray-200'}`}>
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <label className={`flex items-center gap-2 text-sm font-bold mb-1 ${agencia.envioAutomaticoActivo ? 'text-emerald-900' : 'text-gray-700'}`}>
+                  <Bot size={18} /> Asistente de Envío Automático
+                </label>
+                <p className="text-xs text-gray-500">
+                  El sistema revisará todos los días y enviará los correos de aviso de vencimiento por vos.
+                </p>
+              </div>
+              
+              {/* Switch estilo iOS */}
+              <button
+                type="button"
+                onClick={() => setAgencia({ ...agencia, envioAutomaticoActivo: !agencia.envioAutomaticoActivo })}
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-300 focus:outline-none ${agencia.envioAutomaticoActivo ? 'bg-emerald-500' : 'bg-gray-300'}`}
+              >
+                <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition duration-300 ${agencia.envioAutomaticoActivo ? 'translate-x-6' : 'translate-x-1'}`} />
+              </button>
+            </div>
+
+            {/* Controles del Robot (Solo se muestran si está prendido) */}
+            {agencia.envioAutomaticoActivo && (
+              <div className="flex flex-wrap gap-4 pt-4 border-t border-emerald-100 animate-in fade-in slide-in-from-top-2">
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs font-bold text-emerald-800 flex items-center gap-1">
+                    <Clock size={14} /> Horario de envío
+                  </label>
+                  <input 
+                    type="time" 
+                    name="horaEnvioAutomatico"
+                    value={agencia.horaEnvioAutomatico}
+                    onChange={handleChange}
+                    className="p-2 border border-emerald-200 rounded-lg text-sm font-bold text-emerald-900 outline-none focus:ring-2 focus:ring-emerald-500 bg-white"
+                  />
+                </div>
+                
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs font-bold text-emerald-800 flex items-center gap-1">
+                    <Send size={14} /> Días de anticipación
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <input 
+                      type="number" 
+                      name="diasAvisoAutomatico"
+                      value={agencia.diasAvisoAutomatico}
+                      onChange={handleChange}
+                      min="1"
+                      max="60"
+                      className="w-20 p-2 text-center border border-emerald-200 rounded-lg text-sm font-bold text-emerald-900 outline-none focus:ring-2 focus:ring-emerald-500 bg-white"
+                    />
+                    <span className="text-xs font-medium text-emerald-700">días antes.</span>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
           {/* Ajuste: Días Críticos */}
           <div className="bg-orange-50/50 border border-orange-100 p-4 rounded-xl">
             <label className="flex items-center gap-2 text-sm font-bold text-orange-900 mb-1">
@@ -89,7 +159,7 @@ export default function NotificacionesSettings() {
                 value={agencia.diasAlertaCritica} 
                 onChange={handleChange}
                 min="1"
-                max={agencia.diasAlertaVencimiento - 1} // No puede ser mayor al máximo
+                max={agencia.diasAlertaVencimiento - 1} 
                 className="w-24 p-2.5 text-center font-bold text-gray-900 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-orange-500" 
               />
               <span className="text-sm font-medium text-gray-600">días antes de la fecha.</span>
@@ -110,7 +180,7 @@ export default function NotificacionesSettings() {
                 name="diasAlertaVencimiento" 
                 value={agencia.diasAlertaVencimiento} 
                 onChange={handleChange}
-                min={agencia.diasAlertaCritica + 1} // No puede ser menor a los críticos
+                min={agencia.diasAlertaCritica + 1} 
                 max="90"
                 className="w-24 p-2.5 text-center font-bold text-gray-900 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500" 
               />
