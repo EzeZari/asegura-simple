@@ -154,5 +154,94 @@ router.delete('/:id', async (req, res) => {
     res.status(500).json({ error: 'Error al eliminar.' });
   }
 });
+// RUTA: POST /api/asegurados/importar (Carga Masiva desde Excel)
+router.post('/importar', async (req, res) => {
+  try {
+    const clientes = req.body; 
 
+    if (!Array.isArray(clientes)) {
+      return res.status(400).json({ error: 'El formato de datos debe ser un arreglo.' });
+    }
+
+    // 🔥 FUNCIÓN MÁGICA: Pasa todas las llaves a minúsculas, saca espacios y acentos
+    const normalizarLlaves = (obj: any) => {
+      const nuevoObj: any = {};
+      for (let key in obj) {
+        const llaveLimpia = key.toLowerCase()
+                               .normalize("NFD").replace(/[\u0300-\u036f]/g, "") // Saca acentos
+                               .replace(/[^a-z0-9]/g, ''); // Saca espacios, puntos, guiones
+        nuevoObj[llaveLimpia] = obj[key];
+      }
+      return nuevoObj;
+    };
+
+    const datosParaInsertar = clientes
+      .map((c: any) => {
+        const row = normalizarLlaves(c);
+
+        // Buscamos el nombre en posibles variaciones
+        const nombreCrudo = row.nombre || row.nombres || row.razonsocial || row.cliente || '';
+        // Buscamos el apellido
+        const apellidoCrudo = row.apellido || row.apellidos || null;
+        // Buscamos DNI / CUIT / Documento
+        const dniCrudo = row.dni || row.cuit || row.documento || row.doc || '';
+
+        const nombreLimpio = String(nombreCrudo).trim();
+        const apellidoLimpio = apellidoCrudo ? String(apellidoCrudo).trim() : null;
+        const dniLimpio = String(dniCrudo).trim().replace(/[^0-9]/g, ''); // Deja solo los números
+
+        // Buscamos contacto
+        const telefonoLimpio = row.telefono || row.celular || row.tel || null;
+        const emailLimpio = row.email || row.correo || row.mail || null;
+
+        // Detectamos el tipo
+        let tipoCalculado = "Individual";
+        const tipoOriginal = String(row.tipo || row.tipocliente || '').toLowerCase();
+        if (tipoOriginal.includes('empresa') || tipoOriginal.includes('juridico') || dniLimpio.length === 11) {
+          tipoCalculado = "Empresa";
+        }
+
+        return {
+          nombre: nombreLimpio,
+          apellido: apellidoLimpio,
+          dni: dniLimpio,
+          telefono: telefonoLimpio ? String(telefonoLimpio).trim() : null,
+          email: emailLimpio ? String(emailLimpio).trim() : null,
+          tipo: tipoCalculado,
+          activo: true,
+          productorId: 1
+        };
+      })
+      .filter((c: any) => c.nombre.length > 0 && c.dni.length > 0); // Filtramos filas que no tengan Nombre y DNI
+
+    if (datosParaInsertar.length === 0) {
+      return res.status(400).json({ error: 'No se encontraron registros válidos. Revisá que las columnas se llamen Nombre y DNI.' });
+    }
+
+    const resultado = await (prisma as any).asegurado.createMany({
+      data: datosParaInsertar,
+      skipDuplicates: true
+    });
+
+    await (prisma as any).actividad.create({
+      data: {
+        accion: "Alta",
+        entidad: "Asegurado",
+        descripcion: `Importación masiva exitosa: se cargaron ${resultado.count} nuevos clientes desde Excel.`,
+        cliente: "Sistema / Excel"
+      }
+    });
+
+    res.json({ 
+      message: 'Importación procesada con éxito', 
+      procesados: datosParaInsertar.length,
+      creados: resultado.count,
+      salteados: datosParaInsertar.length - resultado.count
+    });
+
+  } catch (error: any) {
+    console.error("Error en importación masiva:", error);
+    res.status(500).json({ error: error.message || 'Error interno al procesar la carga masiva.' });
+  }
+});
 export default router;

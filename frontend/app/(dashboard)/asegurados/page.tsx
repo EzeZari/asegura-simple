@@ -1,10 +1,11 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Shield, Building2, User, Trash2, Edit, Search, Download } from "lucide-react"; // <-- Sumamos Download
+import { Shield, Building2, User, Trash2, Edit, Search, Download, UploadCloud } from "lucide-react"; 
 import NuevoAseguradoModal from "@/components/asegurados/NuevoAseguradoModal";
 import AseguradosFiltros from "@/components/asegurados/AseguradosFiltros";
-import ExportarExcelModal from "@/components/ui/ExportarExcelModal"; // <-- Importamos el modal genérico
+import ExportarExcelModal from "@/components/ui/ExportarExcelModal"; 
+import ImportarAseguradosModal from "@/components/asegurados/ImportarAseguradosModal"; // <-- NUEVO IMPORT
 import Toast from "@/components/ui/Toast";
 import Table, { TableColumn } from "@/components/ui/Table";
 import ConfirmModal from "@/components/ui/ConfirmModal";
@@ -21,7 +22,8 @@ export default function AseguradosPage() {
   const [filtroEstado, setFiltroEstado] = useState("Todos");
   
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isExportModalOpen, setIsExportModalOpen] = useState(false); // <-- Estado para el modal de Excel
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false); 
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false); // <-- NUEVO ESTADO
   const [clienteAEditar, setClienteAEditar] = useState<any>(null);
   const [asegurados, setAsegurados] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -92,6 +94,13 @@ export default function AseguradosPage() {
     }
   };
 
+  const handleImportSuccess = (mensaje: string) => {
+    setIsImportModalOpen(false);
+    fetchAsegurados(); // Recargamos la lista completa
+    setMensajeToast(mensaje);
+    setShowToast(true);
+  };
+
   const aseguradosFiltrados = asegurados.filter((cliente) => {
     const busqueda = searchTerm.toLowerCase();
     const nombreCompleto = `${cliente.nombre} ${cliente.apellido || ""}`.toLowerCase();
@@ -103,7 +112,6 @@ export default function AseguradosPage() {
 
   const { items: aseguradosOrdenados, requestSort, sortConfig } = useTableSort(aseguradosFiltrados);
 
-  // 🔥 Función para limpiar y ordenar los datos antes de exportarlos
   const prepararDatosParaExcel = () => {
     return aseguradosOrdenados.map((cliente) => ({
       "Nombre / Razón Social": `${cliente.nombre} ${cliente.apellido || ""}`.trim(),
@@ -144,8 +152,14 @@ export default function AseguradosPage() {
         filtroEstado={filtroEstado} setFiltroEstado={setFiltroEstado}
       />
 
-      {/* 🔥 BOTÓN PARA ABRIR EL MODAL DE EXCEL */}
-      <div className="flex justify-end w-full -mb-4">
+      {/* BARRA DE ACCIONES CON EXPORTAR E IMPORTAR */}
+      <div className="flex justify-end items-center gap-3 w-full -mb-4">
+        <button
+          onClick={() => setIsImportModalOpen(true)}
+          className="flex items-center gap-2 px-4 py-2 bg-gray-50 hover:bg-gray-100 border border-gray-200 text-gray-700 rounded-xl text-sm font-bold transition-all active:scale-95 shadow-sm"
+        >
+          <UploadCloud size={16} /> Importar Excel
+        </button>
         <button
           onClick={() => {
             if(aseguradosOrdenados.length === 0) return alert("No hay datos para exportar.");
@@ -210,12 +224,18 @@ export default function AseguradosPage() {
 
       <NuevoAseguradoModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSuccess={() => { setIsModalOpen(false); fetchAsegurados(); setShowToast(true); setMensajeToast("Asegurado guardado correctamente"); }} clienteAEditar={clienteAEditar} />
       
-      {/* 🔥 RENDERIZAMOS EL MODAL DE EXCEL */}
       <ExportarExcelModal 
         isOpen={isExportModalOpen} 
         onClose={() => setIsExportModalOpen(false)} 
         datos={prepararDatosParaExcel()} 
         nombreArchivo={`Reporte_Clientes_${new Date().toISOString().split("T")[0]}`} 
+      />
+
+      {/* NUEVO MODAL DE IMPORTACIÓN */}
+      <ImportarAseguradosModal 
+        isOpen={isImportModalOpen} 
+        onClose={() => setIsImportModalOpen(false)} 
+        onSuccess={handleImportSuccess} 
       />
 
       <ConfirmModal isOpen={isConfirmOpen} onClose={() => setIsConfirmOpen(false)} onConfirm={ejecutarEliminacion} isLoading={isDeleting} title="¿Eliminar asegurado?" message={`Esta acción eliminará a "${aseguradoAEliminar?.nombre} ${aseguradoAEliminar?.apellido || ''}" permanentemente. Solo es posible si no tiene pólizas activas.`} />
