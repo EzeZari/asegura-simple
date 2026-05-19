@@ -14,7 +14,7 @@ import companiasRoutes from './routes/companias.routes';
 import dashboardRoutes from './routes/dashboard.routes';
 import alertasRoutes from './routes/alertas.routes';
 import agenciaRoutes from './routes/agencia.routes';
-
+import siniestrosRoutes from './routes/siniestros.routes';
 dotenv.config();
 
 const app = express();
@@ -51,6 +51,7 @@ app.use('/api/companias', companiasRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/alertas', alertasRoutes);
 app.use('/api/agencia', agenciaRoutes);
+app.use('/api/siniestros', siniestrosRoutes);
 
 const PORT = process.env.PORT || 3001;
 
