@@ -215,6 +215,8 @@ model Agencia {
   envioAutomaticoActivo Boolean  @default(false) // Apagado por defecto por seguridad
   horaEnvioAutomatico   String   @default("09:00") // Hora a la que el robot se despierta
   diasAvisoAutomatico   Int      @default(15) // Exactamente cuántos días antes manda el mail
+  
+  enviarMailBienvenida  Boolean  @default(true)
 
   updatedAt             DateTime @updatedAt
 }

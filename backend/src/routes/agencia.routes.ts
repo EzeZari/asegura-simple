@@ -29,10 +29,10 @@ router.put('/', async (req, res) => {
       mensajeVencimiento, mensajeBienvenida,
       diasAlertaVencimiento,
       diasAlertaCritica,
-      // 🔥 AGREGAMOS LOS CAMPOS DE AUTOMATIZACIÓN EN EL BODY
       envioAutomaticoActivo,
       horaEnvioAutomatico,
-      diasAvisoAutomatico
+      diasAvisoAutomatico,
+      enviarMailBienvenida // 🔥 LO AGREGAMOS ACÁ
     } = req.body;
     
     const agenciaActualizada = await prisma.agencia.update({
@@ -42,10 +42,10 @@ router.put('/', async (req, res) => {
         mensajeVencimiento, mensajeBienvenida,
         diasAlertaVencimiento,
         diasAlertaCritica,
-        // 🔥 LE DECIMOS A PRISMA QUE LOS AGREGUE A LA CONSULTA UPDATE
         envioAutomaticoActivo,
         horaEnvioAutomatico,
-        diasAvisoAutomatico
+        diasAvisoAutomatico,
+        enviarMailBienvenida // 🔥 Y LO AGREGAMOS ACÁ PARA QUE SE GUARDE
       }
     });
 

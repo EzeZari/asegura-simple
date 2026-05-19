@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { prisma } from '../config/db';
-import { enviarCorreoBienvenida } from '../services/email.service'; // <-- Importamos el servicio
+import { enviarCorreoBienvenida } from '../services/email.service';
 
 const router = Router();
 
@@ -72,8 +72,14 @@ router.post('/', async (req, res) => {
       }
     });
 
-    // Disparamos el email en segundo plano (sin await para no demorar la respuesta)
-    enviarCorreoBienvenida(data.email, data.nombre, data.apellido, data.dni, data.telefono);
+    // 🔥 LÓGICA DEL INTERRUPTOR PARA EL MAIL DE BIENVENIDA
+    const agencia = await prisma.agencia.findUnique({ where: { id: 1 } });
+    const enviarMail = agencia ? agencia.enviarMailBienvenida : true; // Por defecto encendido si no hay agencia
+
+    if (enviarMail && data.email) {
+      // Disparamos el email en segundo plano
+      enviarCorreoBienvenida(data.email, data.nombre, data.apellido, data.dni, data.telefono);
+    }
 
     res.status(201).json(nuevoAsegurado);
 
@@ -154,6 +160,7 @@ router.delete('/:id', async (req, res) => {
     res.status(500).json({ error: 'Error al eliminar.' });
   }
 });
+
 // RUTA: POST /api/asegurados/importar (Carga Masiva desde Excel)
 router.post('/importar', async (req, res) => {
   try {
@@ -163,13 +170,12 @@ router.post('/importar', async (req, res) => {
       return res.status(400).json({ error: 'El formato de datos debe ser un arreglo.' });
     }
 
-    // 🔥 FUNCIÓN MÁGICA: Pasa todas las llaves a minúsculas, saca espacios y acentos
     const normalizarLlaves = (obj: any) => {
       const nuevoObj: any = {};
       for (let key in obj) {
         const llaveLimpia = key.toLowerCase()
-                               .normalize("NFD").replace(/[\u0300-\u036f]/g, "") // Saca acentos
-                               .replace(/[^a-z0-9]/g, ''); // Saca espacios, puntos, guiones
+                               .normalize("NFD").replace(/[\u0300-\u036f]/g, "") 
+                               .replace(/[^a-z0-9]/g, ''); 
         nuevoObj[llaveLimpia] = obj[key];
       }
       return nuevoObj;
@@ -179,22 +185,17 @@ router.post('/importar', async (req, res) => {
       .map((c: any) => {
         const row = normalizarLlaves(c);
 
-        // Buscamos el nombre en posibles variaciones
         const nombreCrudo = row.nombre || row.nombres || row.razonsocial || row.cliente || '';
-        // Buscamos el apellido
         const apellidoCrudo = row.apellido || row.apellidos || null;
-        // Buscamos DNI / CUIT / Documento
         const dniCrudo = row.dni || row.cuit || row.documento || row.doc || '';
 
         const nombreLimpio = String(nombreCrudo).trim();
         const apellidoLimpio = apellidoCrudo ? String(apellidoCrudo).trim() : null;
-        const dniLimpio = String(dniCrudo).trim().replace(/[^0-9]/g, ''); // Deja solo los números
+        const dniLimpio = String(dniCrudo).trim().replace(/[^0-9]/g, ''); 
 
-        // Buscamos contacto
         const telefonoLimpio = row.telefono || row.celular || row.tel || null;
         const emailLimpio = row.email || row.correo || row.mail || null;
 
-        // Detectamos el tipo
         let tipoCalculado = "Individual";
         const tipoOriginal = String(row.tipo || row.tipocliente || '').toLowerCase();
         if (tipoOriginal.includes('empresa') || tipoOriginal.includes('juridico') || dniLimpio.length === 11) {
@@ -212,7 +213,7 @@ router.post('/importar', async (req, res) => {
           productorId: 1
         };
       })
-      .filter((c: any) => c.nombre.length > 0 && c.dni.length > 0); // Filtramos filas que no tengan Nombre y DNI
+      .filter((c: any) => c.nombre.length > 0 && c.dni.length > 0); 
 
     if (datosParaInsertar.length === 0) {
       return res.status(400).json({ error: 'No se encontraron registros válidos. Revisá que las columnas se llamen Nombre y DNI.' });
@@ -244,4 +245,5 @@ router.post('/importar', async (req, res) => {
     res.status(500).json({ error: error.message || 'Error interno al procesar la carga masiva.' });
   }
 });
+
 export default router;

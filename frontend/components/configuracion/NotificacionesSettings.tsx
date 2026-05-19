@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Save, BellRing, AlertTriangle, Clock, Bot, Send } from "lucide-react";
+import { Save, BellRing, AlertTriangle, Clock, Bot, Send, Mail } from "lucide-react";
 import Toast from "@/components/ui/Toast";
 
 export default function NotificacionesSettings() {
@@ -14,7 +14,9 @@ export default function NotificacionesSettings() {
     diasAlertaVencimiento: 30,
     envioAutomaticoActivo: false,
     horaEnvioAutomatico: "09:00",
-    diasAvisoAutomatico: 15
+    diasAvisoAutomatico: 15,
+    // 🔥 Agregamos el estado inicial del nuevo campo
+    enviarMailBienvenida: true 
   });
 
   useEffect(() => {
@@ -28,7 +30,9 @@ export default function NotificacionesSettings() {
           diasAlertaVencimiento: data.diasAlertaVencimiento ?? 30,
           envioAutomaticoActivo: data.envioAutomaticoActivo ?? false,
           horaEnvioAutomatico: data.horaEnvioAutomatico ?? "09:00",
-          diasAvisoAutomatico: data.diasAvisoAutomatico ?? 15
+          diasAvisoAutomatico: data.diasAvisoAutomatico ?? 15,
+          // 🔥 Recuperamos el valor guardado
+          enviarMailBienvenida: data.enviarMailBienvenida ?? true 
         });
       } catch (error) {
         console.error("Error al cargar notificaciones", error);
@@ -80,12 +84,34 @@ export default function NotificacionesSettings() {
       
       <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex flex-col gap-6">
         <h3 className="text-lg font-bold text-gray-900 border-b border-gray-50 pb-2 flex items-center gap-2">
-          <BellRing size={18} className="text-gray-400" /> Preferencias de Alertas
+          <BellRing size={18} className="text-gray-400" /> Preferencias de Alertas y Envíos
         </h3>
         
         <div className="flex flex-col gap-6 max-w-2xl">
           
-          {/* 🔥 NUEVA SECCIÓN: AUTOMATIZACIÓN (ROBOT) */}
+          {/* 🔥 NUEVA SECCIÓN: MAIL DE BIENVENIDA */}
+          <div className={`p-5 rounded-xl border transition-colors duration-300 ${agencia.enviarMailBienvenida ? 'bg-blue-50/50 border-blue-200' : 'bg-gray-50 border-gray-200'}`}>
+            <div className="flex items-center justify-between">
+              <div>
+                <label className={`flex items-center gap-2 text-sm font-bold mb-1 ${agencia.enviarMailBienvenida ? 'text-blue-900' : 'text-gray-700'}`}>
+                  <Mail size={18} /> Bienvenida a Nuevos Clientes
+                </label>
+                <p className="text-xs text-gray-500">
+                  Enviar automáticamente un correo de cortesía cuando se da de alta un nuevo asegurado.
+                </p>
+              </div>
+              
+              <button
+                type="button"
+                onClick={() => setAgencia({ ...agencia, enviarMailBienvenida: !agencia.enviarMailBienvenida })}
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-300 focus:outline-none ${agencia.enviarMailBienvenida ? 'bg-blue-500' : 'bg-gray-300'}`}
+              >
+                <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition duration-300 ${agencia.enviarMailBienvenida ? 'translate-x-6' : 'translate-x-1'}`} />
+              </button>
+            </div>
+          </div>
+
+          {/* SECCIÓN: AUTOMATIZACIÓN (ROBOT) */}
           <div className={`p-5 rounded-xl border transition-colors duration-300 ${agencia.envioAutomaticoActivo ? 'bg-emerald-50/50 border-emerald-200' : 'bg-gray-50 border-gray-200'}`}>
             <div className="flex items-center justify-between mb-4">
               <div>
@@ -97,7 +123,6 @@ export default function NotificacionesSettings() {
                 </p>
               </div>
               
-              {/* Switch estilo iOS */}
               <button
                 type="button"
                 onClick={() => setAgencia({ ...agencia, envioAutomaticoActivo: !agencia.envioAutomaticoActivo })}
@@ -107,7 +132,7 @@ export default function NotificacionesSettings() {
               </button>
             </div>
 
-            {/* Controles del Robot (Solo se muestran si está prendido) */}
+            {/* Controles del Robot */}
             {agencia.envioAutomaticoActivo && (
               <div className="flex flex-wrap gap-4 pt-4 border-t border-emerald-100 animate-in fade-in slide-in-from-top-2">
                 <div className="flex flex-col gap-1">
@@ -167,11 +192,11 @@ export default function NotificacionesSettings() {
           </div>
 
           {/* Ajuste: Días Máximos (Próximos) */}
-          <div className="bg-blue-50/50 border border-blue-100 p-4 rounded-xl">
-            <label className="flex items-center gap-2 text-sm font-bold text-blue-900 mb-1">
+          <div className="bg-orange-50/50 border border-orange-100 p-4 rounded-xl">
+            <label className="flex items-center gap-2 text-sm font-bold text-orange-900 mb-1">
               <Clock size={16} /> Vencimientos Próximos (Límite Máximo)
             </label>
-            <p className="text-xs text-blue-700 mb-3">
+            <p className="text-xs text-orange-700 mb-3">
               ¿Hasta cuántos días en el futuro querés que el sistema busque pólizas por vencer?
             </p>
             <div className="flex items-center gap-3">
@@ -182,7 +207,7 @@ export default function NotificacionesSettings() {
                 onChange={handleChange}
                 min={agencia.diasAlertaCritica + 1} 
                 max="90"
-                className="w-24 p-2.5 text-center font-bold text-gray-900 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500" 
+                className="w-24 p-2.5 text-center font-bold text-gray-900 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-orange-500" 
               />
               <span className="text-sm font-medium text-gray-600">días antes de la fecha.</span>
             </div>
