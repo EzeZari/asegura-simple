@@ -96,3 +96,56 @@ export const deleteSiniestro = async (req: Request, res: Response) => {
     res.status(500).json({ error: 'Error al eliminar el siniestro.' });
   }
 };
+// BUSCAR UN SINIESTRO POR ID (Con todos sus detalles y notas)
+export const getSiniestroById = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const siniestro = await prisma.siniestro.findUnique({
+      where: { id: Number(id) },
+      include: {
+        poliza: {
+          include: {
+            asegurado: true,
+            compania: true
+          }
+        },
+        notas: {
+          orderBy: { fecha: 'desc' } // Traemos las notas ordenadas de la más nueva a la más vieja
+        }
+      }
+    });
+
+    if (!siniestro) {
+      return res.status(404).json({ error: 'Siniestro no encontrado' });
+    }
+
+    res.json(siniestro);
+  } catch (error: any) {
+    res.status(500).json({ error: 'Error al obtener el detalle del siniestro.' });
+  }
+};
+
+// AGREGAR UNA NOTA A LA BITÁCORA DEL SINIESTRO
+export const agregarNota = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { texto } = req.body;
+
+    if (!texto || texto.trim() === "") {
+      return res.status(400).json({ error: 'El texto de la nota no puede estar vacío.' });
+    }
+
+    const nuevaNota = await prisma.notaSiniestro.create({
+      data: {
+        texto,
+        siniestroId: Number(id),
+        productorId: 1 // Asumimos el productor 1 por ahora
+      }
+    });
+
+    res.status(201).json(nuevaNota);
+  } catch (error: any) {
+    console.error("Error al agregar nota:", error);
+    res.status(500).json({ error: 'Error al guardar la nota.' });
+  }
+};

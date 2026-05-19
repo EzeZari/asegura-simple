@@ -62,10 +62,12 @@ export default function SiniestrosPage() {
     return matchBusqueda && matchEstado;
   });
 
+  // 🔥 COLUMNAS SEPARADAS DE FORMA CORRECTA
   const columnas: TableColumn[] = [
     { label: "Nro / Fecha" },
     { label: "Titular / DNI" },
-    { label: "Póliza / Patente" },
+    { label: "Nro Póliza" },
+    { label: "Patente / Riesgo" },
     { label: "Descripción Breve" },
     { label: "Estado del Trámite" },
     { label: "Acciones", align: "right" },
@@ -81,25 +83,25 @@ export default function SiniestrosPage() {
         onNuevo={() => { setSiniestroAEditar(null); setIsModalOpen(true); }} 
       />
 
-      {/* Mini Barra de Filtros */}
       <div className="flex flex-col md:flex-row gap-4 bg-gray-50/50 p-4 rounded-2xl border border-gray-100">
         <div className="flex-1 relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
           <input 
             type="text" placeholder="Buscar por patente, cliente o nro reclamo..." 
             value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 outline-none bg-white"
+            className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 outline-none bg-white font-medium"
           />
         </div>
         <select 
           value={filtroEstado} onChange={(e) => setFiltroEstado(e.target.value)}
-          className="w-full md:w-64 px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 outline-none bg-white font-medium text-gray-700"
+          className="w-full md:w-64 px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 outline-none bg-white font-bold text-gray-700"
         >
           <option value="Todos">Todos los estados</option>
           <option value="Denuncia Pendiente">Pendientes</option>
           <option value="En Análisis">En Análisis</option>
           <option value="Aprobado">Aprobados</option>
           <option value="Pagado">Pagados</option>
+          <option value="Rechazado">Rechazados</option>
         </select>
       </div>
 

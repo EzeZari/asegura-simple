@@ -1,0 +1,313 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import { useParams, useRouter } from "next/navigation";
+import { 
+  ArrowLeft, AlertTriangle, User, Building, 
+  CarFront, Clock, CheckCircle, MessageSquare, Send, 
+  FileText, Calendar, Activity, ShieldCheck, ShieldAlert
+} from "lucide-react";
+import Toast from "@/components/ui/Toast";
+
+export default function SiniestroDetallePage() {
+  const { id } = useParams();
+  const router = useRouter();
+  
+  const [siniestro, setSiniestro] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [nuevaNota, setNuevaNota] = useState("");
+  const [isSubmittingNota, setIsSubmittingNota] = useState(false);
+  const [isUpdatingEstado, setIsUpdatingEstado] = useState(false);
+  
+  const [showToast, setShowToast] = useState(false);
+  const [mensajeToast, setMensajeToast] = useState("");
+
+  const fetchSiniestro = async () => {
+    try {
+      const res = await fetch(`http://localhost:3001/api/siniestros/${id}`);
+      const data = await res.json();
+      if (res.ok) setSiniestro(data);
+    } catch (err) {
+      console.error("Error al cargar el siniestro:", err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => { fetchSiniestro(); }, [id]);
+
+  const handleAgregarNota = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!nuevaNota.trim()) return;
+
+    setIsSubmittingNota(true);
+    try {
+      const res = await fetch(`http://localhost:3001/api/siniestros/${id}/notas`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ texto: nuevaNota })
+      });
+
+      if (!res.ok) throw new Error("Error al guardar la nota");
+
+      setNuevaNota("");
+      fetchSiniestro(); 
+      setMensajeToast("Nota guardada en el historial de seguimiento");
+      setShowToast(true);
+    } catch (error) {
+      alert("Error al intentar procesar la nota.");
+    } finally {
+      setIsSubmittingNota(false);
+    }
+  };
+
+  const handleCambiarEstadoRapido = async (nuevoEstado: string) => {
+    setIsUpdatingEstado(true);
+    try {
+      const res = await fetch(`http://localhost:3001/api/siniestros/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...siniestro, estadoSiniestro: nuevoEstado })
+      });
+
+      if (!res.ok) throw new Error();
+
+      fetchSiniestro();
+      setMensajeToast(`Estado del trámite actualizado a: ${nuevoEstado}`);
+      setShowToast(true);
+    } catch (error) {
+      alert("No se pudo actualizar el estado.");
+    } finally {
+      setIsUpdatingEstado(false);
+    }
+  };
+
+  if (isLoading) return <div className="p-8 text-gray-500 animate-pulse font-medium">Cargando expediente integral...</div>;
+  if (!siniestro) return <div className="p-8 text-red-500 font-bold">Error: El siniestro solicitado no existe.</div>;
+
+  // Cálculo de días transcurridos desde el accidente
+  const fechaHechoDate = new Date(siniestro.fechaHecho);
+  const hoy = new Date();
+  const diffTime = Math.abs(hoy.getTime() - fechaHechoDate.getTime());
+  const diasTranscurridos = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+  const getStatusStyle = (estado: string) => {
+    switch (estado) {
+      case "Denuncia Pendiente": return "text-orange-700 bg-orange-50 border-orange-200";
+      case "En Análisis": return "text-blue-700 bg-blue-50 border-blue-200";
+      case "Aprobado": return "text-green-700 bg-green-50 border-green-200";
+      case "Pagado": return "text-emerald-700 bg-emerald-50 border-emerald-200";
+      case "Rechazado": return "text-red-700 bg-red-50 border-red-200";
+      default: return "text-gray-600 bg-gray-50 border-gray-200";
+    }
+  };
+
+  const poliza = siniestro.poliza || {};
+  const asegurado = poliza.asegurado || {};
+  const compania = poliza.compania || {};
+
+  return (
+    <div className="flex flex-col p-8 w-full gap-8 bg-white min-h-screen animate-in fade-in duration-300">
+      
+      {/* Barra de Navegación Superior */}
+      <div className="flex flex-col gap-4">
+        <button 
+          onClick={() => router.back()}
+          className="flex items-center gap-2 text-gray-400 hover:text-orange-600 transition-all w-fit font-bold group text-sm"
+        >
+          <ArrowLeft size={16} className="group-hover:-translate-x-1 transition-transform" /> 
+          Volver a Siniestros
+        </button>
+        
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-gray-50/40 p-6 rounded-2xl border border-gray-100">
+          <div className="flex items-center gap-5">
+            <div className="p-4 bg-orange-600 text-white rounded-2xl shadow-md shadow-orange-100">
+              <AlertTriangle size={28} />
+            </div>
+            <div>
+              <div className="flex items-center gap-3">
+                <h1 className="text-2xl font-black text-gray-950">Expediente {siniestro.nroSiniestro}</h1>
+                <span className={`px-3 py-1 rounded-full text-xs font-extrabold border ${getStatusStyle(siniestro.estadoSiniestro)}`}>
+                  {siniestro.estadoSiniestro.toUpperCase()}
+                </span>
+              </div>
+              <p className="text-gray-400 text-sm mt-1 flex items-center gap-2 font-medium">
+                <Calendar size={14} /> Sucedido el {new Date(siniestro.fechaHecho).toLocaleDateString("es-AR")} 
+                <span className="text-gray-300">|</span> 
+                <span className="text-orange-700 font-bold bg-orange-50 px-2 py-0.5 rounded text-xs">{diasTranscurridos} días transcurridos</span>
+              </p>
+            </div>
+          </div>
+
+          {/* Selector de cambio de estado rápido */}
+          <div className="flex items-center gap-2 bg-white p-2 rounded-xl border border-gray-200 shadow-sm">
+            <span className="text-xs font-bold text-gray-400 uppercase pl-2">Estado:</span>
+            <select
+              value={siniestro.estadoSiniestro}
+              disabled={isUpdatingEstado}
+              onChange={(e) => handleCambiarEstadoRapido(e.target.value)}
+              className="text-sm font-bold text-gray-700 bg-transparent outline-none cursor-pointer pr-2"
+            >
+              <option value="Denuncia Pendiente">Denuncia Pendiente</option>
+              <option value="En Análisis">En Análisis</option>
+              <option value="Aprobado">Aprobado</option>
+              <option value="Pagado">Pagado / Liquidado</option>
+              <option value="Rechazado">Rechazado</option>
+              <option value="Cerrado">Cerrado Administrativo</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        
+        {/* Columna Principal */}
+        <div className="lg:col-span-2 flex flex-col gap-8">
+          
+          {/* Detalles Técnicos Iniciales */}
+          <div className="p-6 border border-gray-100 rounded-3xl bg-white shadow-sm flex flex-col gap-5">
+            <h3 className="text-base font-bold text-gray-900 flex items-center gap-2 border-b border-gray-50 pb-3">
+              <FileText size={18} className="text-orange-600" /> Declaración Inicial del Siniestro
+            </h3>
+            <div className="bg-gray-50/60 p-5 rounded-2xl border border-gray-200/50">
+              <p className="text-gray-700 leading-relaxed text-sm whitespace-pre-wrap font-medium">
+                {siniestro.descripcionInicial}
+              </p>
+            </div>
+          </div>
+
+          {/* Bitácora de Gestión Interactiva */}
+          <div className="flex flex-col gap-4">
+            <h3 className="text-base font-bold text-gray-900 flex items-center gap-2">
+              <MessageSquare size={18} className="text-orange-600" /> Historial de Seguimiento / Notas
+            </h3>
+            
+            <form onSubmit={handleAgregarNota} className="flex gap-3">
+              <input 
+                type="text" 
+                placeholder="Añadir una novedad interna (ej: 'Documentación enviada a la compañía')..." 
+                value={nuevaNota}
+                onChange={(e) => setNuevaNota(e.target.value)}
+                className="flex-1 px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 outline-none text-sm font-medium"
+              />
+              <button 
+                type="submit" 
+                disabled={isSubmittingNota || !nuevaNota.trim()}
+                className="bg-gray-900 hover:bg-gray-800 text-white px-5 py-3 rounded-xl font-bold transition-colors disabled:opacity-40 flex items-center gap-1.5 text-sm"
+              >
+                <Send size={14} /> Registrar
+              </button>
+            </form>
+
+            <div className="flex flex-col gap-3 mt-2">
+              {siniestro.notas?.length === 0 ? (
+                <div className="text-center py-10 text-gray-400 border-2 border-dashed border-gray-100 rounded-2xl text-sm italic">
+                  No se registran novedades para este siniestro todavía.
+                </div>
+              ) : (
+                siniestro.notas.map((nota: any) => (
+                  <div key={nota.id} className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex flex-col gap-2">
+                    <div className="flex justify-between items-center border-b border-gray-50 pb-1.5">
+                      <span className="text-[11px] font-bold text-gray-400 flex items-center gap-1">
+                        <Clock size={12} />
+                        {new Date(nota.fecha).toLocaleString("es-AR", { dateStyle: 'long', timeStyle: 'short' })}
+                      </span>
+                      <span className="text-[9px] bg-orange-50 text-orange-700 px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">Interno</span>
+                    </div>
+                    <p className="text-gray-800 text-sm font-medium leading-relaxed">{nota.texto}</p>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Columna Lateral de Datos Vinculados */}
+        <div className="flex flex-col gap-6">
+          
+          {/* Tarjeta de Riesgo / Vehículo */}
+          <div className="p-6 border border-gray-100 rounded-3xl bg-white shadow-sm flex flex-col gap-4">
+            <h3 className="font-bold text-gray-400 uppercase text-xs tracking-widest border-b border-gray-50 pb-2">Riesgo Cubierto</h3>
+            <div className="flex flex-col gap-3">
+              <div className="flex items-center gap-3 bg-gray-50 p-3 rounded-xl border border-gray-100">
+                <div className="p-2 bg-white text-gray-600 rounded-lg shadow-sm border border-gray-100">
+                  <CarFront size={18} />
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-gray-400 uppercase">Rama</p>
+                  <p className="text-sm font-bold text-gray-800">{poliza.tipoPoliza}</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                <div className="bg-gray-50/50 p-3 rounded-xl border border-gray-100/70">
+                  <span className="block text-gray-400 font-medium mb-0.5">Nro Póliza</span>
+                  <span className="font-bold text-gray-800">#{poliza.nroPoliza}</span>
+                </div>
+                <div className="bg-gray-50/50 p-3 rounded-xl border border-gray-100/70">
+                  <span className="block text-gray-400 font-medium mb-0.5">Patente</span>
+                  <span className="font-mono font-bold text-gray-900 uppercase bg-white px-1.5 py-0.5 rounded border border-gray-200 shadow-3xs">{poliza.patente || "N/A"}</span>
+                </div>
+              </div>
+
+              {(poliza.marca || poliza.modelo || poliza.cobertura) && (
+                <div className="bg-gray-50/30 p-4 rounded-xl border border-gray-100 flex flex-col gap-2 text-xs font-medium text-gray-600">
+                  {poliza.marca && <p> <span className="text-gray-400">Vehículo:</span> {poliza.marca} {poliza.modelo}</p>}
+                  {poliza.cobertura && <p>• <span className="text-gray-400">Cobertura:</span> {poliza.cobertura}</p>}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Tarjeta de Datos del Asegurado */}
+          <div className="p-6 border border-gray-100 rounded-3xl bg-white shadow-sm flex flex-col gap-4">
+            <h3 className="font-bold text-gray-400 uppercase text-xs tracking-widest border-b border-gray-50 pb-2">Asegurado Titular</h3>
+            <div className="flex flex-col gap-3">
+              <div>
+                <p className="text-base font-black text-gray-900 flex items-center gap-1.5">
+                  <User size={16} className="text-gray-400" /> {asegurado.nombre} {asegurado.apellido}
+                </p>
+                <p className="text-xs text-gray-400 font-mono mt-0.5 ml-5">CUIT/DNI: {asegurado.dni}</p>
+              </div>
+              <div className="flex flex-col gap-1.5 text-xs font-medium text-gray-600 border-t border-gray-50 pt-2 ml-5">
+                {asegurado.telefono && <p><span className="text-gray-400">Tel:</span> {asegurado.telefono}</p>}
+                {asegurado.email && <p className="truncate"><span className="text-gray-400">Email:</span> {asegurado.email}</p>}
+              </div>
+            </div>
+          </div>
+
+          {/* Tarjeta de Compañía */}
+          <div className="p-6 border border-gray-100 rounded-3xl bg-white shadow-sm flex flex-col gap-4">
+            <h3 className="font-bold text-gray-400 uppercase text-xs tracking-widest border-b border-gray-50 pb-2">Compañía Emisora</h3>
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 bg-gray-50 text-gray-500 rounded-xl border border-gray-100">
+                <Building size={18} />
+              </div>
+              <div>
+                <p className="text-sm font-bold text-gray-900">{compania.nombre}</p>
+                <p className="text-[11px] font-mono text-gray-400">CUIT: {compania.cuit || "-"}</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Información de Auditoría Temporal */}
+          <div className="p-4 bg-gray-50/50 rounded-2xl border border-gray-100 flex flex-col gap-1.5 text-[10px] text-gray-400 font-bold uppercase tracking-wider">
+            <div className="flex justify-between">
+              <span>Fecha de Reporte:</span>
+              <span className="text-gray-600">{new Date(siniestro.fechaCreacion).toLocaleDateString("es-AR")}</span>
+            </div>
+            {siniestro.fechaCierre && (
+              <div className="flex justify-between text-emerald-600">
+                <span>Fecha de Resolución:</span>
+                <span>{new Date(siniestro.fechaCierre).toLocaleDateString("es-AR")}</span>
+              </div>
+            )}
+          </div>
+
+        </div>
+      </div>
+
+      <Toast message={mensajeToast} isVisible={showToast} onClose={() => setShowToast(false)} />
+    </div>
+  );
+}
