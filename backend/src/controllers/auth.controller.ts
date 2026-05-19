@@ -2,9 +2,9 @@ import { Request, Response } from 'express';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { z } from 'zod';
-import { prisma } from '../config/db'; // Importamos la DB que separamos recién
-import crypto from 'crypto'; // Viene incluido en Node.js, sirve para generar códigos aleatorios
-import { transporter } from '../utils/mailer'; // Tu cartero
+import { prisma } from '../config/db'; 
+import crypto from 'crypto'; 
+import { transporter } from '../utils/mailer'; 
 
 const registerSchema = z.object({
   nombre: z.string().min(2, "El nombre es muy corto"),
@@ -59,18 +59,15 @@ export const login = async (req: Request, res: Response): Promise<any> => {
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) return res.status(400).json({ error: 'Credenciales incorrectas.' });
 
-    // 🔥 ACÁ EMPIEZA LA MAGIA DEL 2FA 🔥
+    // Si tiene el 2FA activo, frenamos acá y mandamos el código por mail
     if (user.twoFactorEnabled) {
-      // 1. Generamos un código de 6 dígitos
       const codigo2fa = Math.floor(100000 + Math.random() * 900000).toString();
 
-      // 2. Lo guardamos temporalmente en la BD (podemos reusar el campo que ya tenías para los correos)
       await prisma.user.update({
         where: { id: user.id },
         data: { codigoVerificacion: codigo2fa }
       });
 
-      // 3. Le mandamos el correo
       await transporter.sendMail({
         from: `"AseguraSimple Seguridad" <${process.env.EMAIL_USER}>`,
         to: user.email,
@@ -88,7 +85,6 @@ export const login = async (req: Request, res: Response): Promise<any> => {
         `
       });
 
-      // 4. Le avisamos al frontend que frene ahí y pida el código. Le pasamos el userId para que sepa de quién es.
       return res.status(200).json({
         message: 'Código 2FA enviado al correo.',
         require2FA: true,
@@ -96,7 +92,7 @@ export const login = async (req: Request, res: Response): Promise<any> => {
       });
     }
 
-    // SI NO TIENE 2FA, EL FLUJO SIGUE NORMAL COMO ANTES:
+    // Si no tiene 2FA, ingresa directo e incluimos "twoFactorEnabled" en la respuesta
     const { accessToken, refreshToken } = generateTokens(user.id, user.role);
 
     res.cookie('refreshToken', refreshToken, {
@@ -109,7 +105,7 @@ export const login = async (req: Request, res: Response): Promise<any> => {
     res.status(200).json({ 
       message: 'Ingreso exitoso', 
       accessToken, 
-      user: { id: user.id, nombre: user.nombre, email: user.email, role: user.role } 
+      user: { id: user.id, nombre: user.nombre, email: user.email, role: user.role, twoFactorEnabled: user.twoFactorEnabled } 
     });
   } catch (error) {
     console.error(error);
@@ -129,10 +125,10 @@ export const refresh = async (req: Request, res: Response): Promise<any> => {
 
     const accessToken = jwt.sign({ userId: user.id, role: user.role }, process.env.JWT_SECRET as string, { expiresIn: '15m' });
     
-    // ESTA ES LA LÍNEA QUE FALTA:
+    // Devolvemos el estado del 2FA para que no se resetee el botón al apretar F5
     res.status(200).json({ 
       accessToken,
-      user: { id: user.id, nombre: user.nombre, email: user.email, role: user.role }
+      user: { id: user.id, nombre: user.nombre, email: user.email, role: user.role, twoFactorEnabled: user.twoFactorEnabled }
     });
   } catch (error) {
     res.status(403).json({ error: 'Token inválido o expirado.' });
@@ -146,23 +142,22 @@ export const logout = (req: Request, res: Response) => {
     sameSite: 'strict',
   });
   res.status(200).json({ message: 'Sesión cerrada exitosamente.' });
-};export const forgotPassword = async (req: Request, res: Response): Promise<any> => {
+};
+
+export const forgotPassword = async (req: Request, res: Response): Promise<any> => {
   const { email } = req.body;
   if (!email) return res.status(400).json({ error: 'El email es obligatorio' });
 
   try {
     const user = await prisma.user.findUnique({ where: { email } });
     
-    // Por seguridad, si el usuario no existe, devolvemos OK igual para que los hackers no puedan adivinar qué correos están registrados.
     if (!user) {
       return res.status(200).json({ message: 'Si el email está registrado, recibirás un enlace de recuperación.' });
     }
 
-    // 1. Generamos un código secreto temporal
     const resetToken = crypto.randomBytes(32).toString('hex');
-    const tokenExpiry = new Date(Date.now() + 3600000); // Vence en 1 hora
+    const tokenExpiry = new Date(Date.now() + 3600000); 
 
-    // 2. Lo guardamos en la base de datos de este usuario
     await prisma.user.update({
       where: { id: user.id },
       data: {
@@ -171,10 +166,8 @@ export const logout = (req: Request, res: Response) => {
       }
     });
 
-    // 3. Armamos el enlace que lo va a llevar de vuelta a tu frontend
     const resetUrl = `http://localhost:3000/nueva-contrasena?token=${resetToken}`;
 
-    // 4. Le mandamos el correo usando tu Gmail
     await transporter.sendMail({
       from: `"AseguraSimple" <${process.env.EMAIL_USER}>`,
       to: user.email,
@@ -193,10 +186,11 @@ export const logout = (req: Request, res: Response) => {
 
     res.status(200).json({ message: 'Si el email está registrado, recibirás un enlace de recuperación.' });
   } catch (error) {
-    console.error('Error enviando email:', error);
+    console.error('Error sending email:', error);
     res.status(500).json({ error: 'Ocurrió un error al intentar enviar el correo.' });
   }
 };
+
 export const resetPassword = async (req: Request, res: Response): Promise<any> => {
   const { token, newPassword } = req.body;
 
@@ -205,11 +199,10 @@ export const resetPassword = async (req: Request, res: Response): Promise<any> =
   }
 
   try {
-    // 1. Buscamos al usuario que tenga ese token y que NO esté vencido
     const user = await prisma.user.findFirst({
       where: {
         resetPasswordToken: token,
-        resetPasswordExpires: { gt: new Date() } // "gt" significa mayor que (no vencido)
+        resetPasswordExpires: { gt: new Date() } 
       }
     });
 
@@ -217,16 +210,14 @@ export const resetPassword = async (req: Request, res: Response): Promise<any> =
       return res.status(400).json({ error: 'El enlace es inválido o ha expirado.' });
     }
 
-    // 2. Hasheamos la nueva contraseña (igual que en el registro)
     const hashedPassword = await bcrypt.hash(newPassword, 10);
 
-    // 3. Actualizamos al usuario y LIMPIAMOS los campos del token
     await prisma.user.update({
       where: { id: user.id },
       data: {
         password: hashedPassword,
-        resetPasswordToken: null,    // Ya no sirve más
-        resetPasswordExpires: null   // Ya no sirve más
+        resetPasswordToken: null,    
+        resetPasswordExpires: null   
       }
     });
 
@@ -236,6 +227,8 @@ export const resetPassword = async (req: Request, res: Response): Promise<any> =
     res.status(500).json({ error: 'Error al actualizar la contraseña.' });
   }
 };
+
+// Verificación del código enviado por el login
 export const verify2FALogin = async (req: Request, res: Response): Promise<any> => {
   const { userId, codigo } = req.body;
 
@@ -250,13 +243,11 @@ export const verify2FALogin = async (req: Request, res: Response): Promise<any> 
       return res.status(400).json({ error: 'Código de seguridad incorrecto.' });
     }
 
-    // Si el código es correcto, limpiamos la base de datos
     await prisma.user.update({
       where: { id: user.id },
       data: { codigoVerificacion: null }
     });
 
-    // Y ahora sí, lo dejamos entrar
     const { accessToken, refreshToken } = generateTokens(user.id, user.role);
 
     res.cookie('refreshToken', refreshToken, {
@@ -269,7 +260,7 @@ export const verify2FALogin = async (req: Request, res: Response): Promise<any> 
     res.status(200).json({ 
       message: 'Ingreso exitoso', 
       accessToken, 
-      user: { id: user.id, nombre: user.nombre, email: user.email, role: user.role } 
+      user: { id: user.id, nombre: user.nombre, email: user.email, role: user.role, twoFactorEnabled: user.twoFactorEnabled } 
     });
 
   } catch (error) {

@@ -7,6 +7,9 @@ import Toast from "@/components/ui/Toast";
 
 export default function OpcionesAvanzadas() {
   const user = useAuthStore((state) => state.user);
+  // 🔥 Importamos la función para actualizar el estado del usuario localmente
+  const setUser = useAuthStore((state: any) => state.setUser); 
+
   const [twoFactorEnabled, setTwoFactorEnabled] = useState(false);
   
   const [showToast, setShowToast] = useState(false);
@@ -17,7 +20,7 @@ export default function OpcionesAvanzadas() {
   const [palabraConfirmacion, setPalabraConfirmacion] = useState("");
   const [isDeleting, setIsDeleting] = useState(false);
 
-  // Cuando carga el componente, seteamos el 2FA si el usuario ya lo tenía activado (si viene en el store)
+  // Cuando carga el componente, seteamos el 2FA
   useEffect(() => {
     if (user && typeof user.twoFactorEnabled === 'boolean') {
       setTwoFactorEnabled(user.twoFactorEnabled);
@@ -29,13 +32,23 @@ export default function OpcionesAvanzadas() {
     setTwoFactorEnabled(newState); // Cambio visual rápido
 
     try {
-      await fetch("http://localhost:3001/api/auth/2fa", {
+      const res = await fetch("http://localhost:3001/api/auth/2fa", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: user?.email, enabled: newState })
       });
-      setToastMessage(newState ? "2FA Activado" : "2FA Desactivado");
-      setShowToast(true);
+
+      if (res.ok) {
+        // 🔥 ESTA ES LA MAGIA: Actualizamos el store local para que el F5 funcione bien
+        if (user) {
+          setUser({ ...user, twoFactorEnabled: newState });
+        }
+        setToastMessage(newState ? "2FA Activado" : "2FA Desactivado");
+        setShowToast(true);
+      } else {
+        throw new Error("Error en el servidor");
+      }
+
     } catch (error) {
       setTwoFactorEnabled(!newState); // Si falla, lo volvemos a como estaba
       alert("Error al guardar la preferencia.");
