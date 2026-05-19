@@ -1,35 +1,17 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-// Actualizamos la ruta para que coincida con tu estructura de carpetas:
-import AuthProvider from "@/components/auth/AuthProvider";
-
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
 
 export const metadata: Metadata = {
   title: "AseguraSimple",
-  description: "Sistema de gestión para productores de seguros",
+  description: "Sistema de Gestión de Seguros",
 };
 
-export default function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="es">
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased bg-gray-50 flex min-h-screen`}>
-        <AuthProvider>
-          {children}
-        </AuthProvider>
+      <body className="antialiased bg-gray-50 text-gray-900">
+        {/* Aquí va el contenido limpio, sin Sidebar */}
+        {children}
       </body>
     </html>
   );

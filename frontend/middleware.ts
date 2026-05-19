@@ -5,11 +5,17 @@ export function middleware(request: NextRequest) {
   // 1. Buscamos la pulsera VIP (la cookie que nos dio el backend)
   const token = request.cookies.get('refreshToken')?.value;
 
-  // 2. Identificamos qué rutas son de acceso libre (Login, Registro y Recuperar)
+  // 🔥 NUEVA REGLA: Rutas 100% Públicas (El patovica mira para otro lado)
+  const isPublicRoute = request.nextUrl.pathname.startsWith('/consulta');
+  if (isPublicRoute) {
+    return NextResponse.next();
+  }
+
+  // 2. Identificamos qué rutas son exclusivas para loguearse/registrarse
   const isAuthRoute = request.nextUrl.pathname.startsWith('/login') || 
                       request.nextUrl.pathname.startsWith('/registro') ||
                       request.nextUrl.pathname.startsWith('/recuperar')||
-                      request.nextUrl.pathname.startsWith('/nueva-contrasena'); // <--- AGREGAMOS ESTO
+                      request.nextUrl.pathname.startsWith('/nueva-contrasena'); 
 
   // 3. REGLA A: Si NO tiene token y quiere entrar a la plataforma -> Lo pateamos al Login
   if (!token && !isAuthRoute) {

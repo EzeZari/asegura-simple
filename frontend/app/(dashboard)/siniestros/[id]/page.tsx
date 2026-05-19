@@ -22,6 +22,8 @@ export default function SiniestroDetallePage() {
   const [showToast, setShowToast] = useState(false);
   const [mensajeToast, setMensajeToast] = useState("");
 
+  const [linkGenerado, setLinkGenerado] = useState("");
+  const [isGenerandoLink, setIsGenerandoLink] = useState(false);
   const fetchSiniestro = async () => {
     try {
       const res = await fetch(`http://localhost:3001/api/siniestros/${id}`);
@@ -105,6 +107,27 @@ export default function SiniestroDetallePage() {
   const poliza = siniestro.poliza || {};
   const asegurado = poliza.asegurado || {};
   const compania = poliza.compania || {};
+
+  const handleGenerarLink = async () => {
+    setIsGenerandoLink(true);
+    try {
+      const res = await fetch(`http://localhost:3001/api/siniestros/${id}/generar-link`, { method: "POST" });
+      const data = await res.json();
+      setLinkGenerado(data.urlPublica);
+      setMensajeToast("Enlace de seguimiento generado y listo");
+      setShowToast(true);
+    } catch (err) {
+      alert("Error al generar el link.");
+    } finally {
+      setIsGenerandoLink(false);
+    }
+  };
+
+  const copiarAlPortapapeles = () => {
+    navigator.clipboard.writeText(linkGenerado);
+    setMensajeToast("¡Enlace copiado al portapapeles!");
+    setShowToast(true);
+  };
 
   return (
     <div className="flex flex-col p-8 w-full gap-8 bg-white min-h-screen animate-in fade-in duration-300">
@@ -288,6 +311,44 @@ export default function SiniestroDetallePage() {
                 <p className="text-[11px] font-mono text-gray-400">CUIT: {compania.cuit || "-"}</p>
               </div>
             </div>
+          </div>
+
+          {/* 🔥 NUEVA TARJETA: Link de Seguimiento Público */}
+          <div className="p-6 border border-gray-100 rounded-3xl bg-gray-900 text-white shadow-lg flex flex-col gap-4 relative overflow-hidden">
+            <div className="absolute top-0 right-0 p-4 opacity-10 pointer-events-none">
+              <ShieldCheck size={80} />
+            </div>
+            
+            <h3 className="font-bold text-gray-400 uppercase text-xs tracking-widest border-b border-gray-700 pb-2">Acceso Cliente</h3>
+            
+            <p className="text-xs text-gray-300 font-medium leading-relaxed">
+              Generá un link público y seguro para que el cliente siga el estado de su siniestro sin necesidad de usuario y contraseña.
+            </p>
+
+            {!linkGenerado ? (
+              <button 
+                onClick={handleGenerarLink}
+                disabled={isGenerandoLink}
+                className="mt-2 w-full bg-white text-gray-900 hover:bg-gray-100 px-4 py-2.5 rounded-xl font-bold text-sm transition-colors disabled:opacity-50"
+              >
+                {isGenerandoLink ? "Generando..." : "Crear Link de Seguimiento"}
+              </button>
+            ) : (
+              <div className="flex flex-col gap-2 mt-2">
+                <input 
+                  type="text" 
+                  readOnly 
+                  value={linkGenerado} 
+                  className="w-full bg-gray-800 border border-gray-700 text-gray-300 text-xs p-3 rounded-xl outline-none truncate font-mono"
+                />
+                <button 
+                  onClick={copiarAlPortapapeles}
+                  className="w-full bg-orange-600 hover:bg-orange-500 text-white px-4 py-2.5 rounded-xl font-bold text-sm transition-colors"
+                >
+                  Copiar Enlace
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Información de Auditoría Temporal */}
