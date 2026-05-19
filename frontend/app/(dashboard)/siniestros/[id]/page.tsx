@@ -5,7 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { 
   ArrowLeft, AlertTriangle, User, Building, 
   CarFront, Clock, CheckCircle, MessageSquare, Send, 
-  FileText, Calendar, Activity, ShieldCheck, ShieldAlert
+  FileText, Calendar, ShieldCheck, MessageCircle // <-- Agregado acá
 } from "lucide-react";
 import Toast from "@/components/ui/Toast";
 
@@ -127,6 +127,21 @@ export default function SiniestroDetallePage() {
     navigator.clipboard.writeText(linkGenerado);
     setMensajeToast("¡Enlace copiado al portapapeles!");
     setShowToast(true);
+  };
+  const enviarPorWhatsApp = () => {
+    if (!asegurado.telefono) {
+      setMensajeToast("El asegurado no tiene un teléfono registrado.");
+      setShowToast(true);
+      return;
+    }
+    
+    // Limpiamos el número para que WhatsApp no se queje de guiones o espacios
+    const numeroLimpio = asegurado.telefono.replace(/\D/g, '');
+    const mensaje = `Hola ${asegurado.nombre}, te comparto el link seguro de tu portal de cliente para que sigas el avance de tu siniestro en tiempo real:\n\n${linkGenerado}`;
+    
+    // Abrimos la pestaña de WhatsApp Web / App
+    const url = `https://wa.me/${numeroLimpio}?text=${encodeURIComponent(mensaje)}`;
+    window.open(url, '_blank');
   };
 
   return (
@@ -334,19 +349,27 @@ export default function SiniestroDetallePage() {
                 {isGenerandoLink ? "Generando..." : "Crear Link de Seguimiento"}
               </button>
             ) : (
-              <div className="flex flex-col gap-2 mt-2">
+              <div className="flex flex-col gap-3 mt-2">
                 <input 
                   type="text" 
                   readOnly 
                   value={linkGenerado} 
                   className="w-full bg-gray-800 border border-gray-700 text-gray-300 text-xs p-3 rounded-xl outline-none truncate font-mono"
                 />
-                <button 
-                  onClick={copiarAlPortapapeles}
-                  className="w-full bg-orange-600 hover:bg-orange-500 text-white px-4 py-2.5 rounded-xl font-bold text-sm transition-colors"
-                >
-                  Copiar Enlace
-                </button>
+                <div className="flex gap-2">
+                  <button 
+                    onClick={copiarAlPortapapeles}
+                    className="flex-1 bg-gray-700 hover:bg-gray-600 text-white px-3 py-2.5 rounded-xl font-bold text-xs transition-colors"
+                  >
+                    Copiar
+                  </button>
+                  <button 
+                    onClick={enviarPorWhatsApp}
+                    className="flex-[2] bg-green-500 hover:bg-green-400 text-gray-900 px-3 py-2.5 rounded-xl font-black text-xs transition-colors flex items-center justify-center gap-1.5"
+                  >
+                    <MessageCircle size={14} /> WhatsApp
+                  </button>
+                </div>
               </div>
             )}
           </div>

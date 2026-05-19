@@ -51,7 +51,6 @@ export const enviarAvisoVencimiento = async (
 ) => {
   if (!email || !email.includes('@')) return;
 
-  // Lógica para armar la fila extra según el tipo de riesgo
   let filaDetalleExtra = '';
   if ((tipoPoliza === "Automotor" || tipoPoliza === "Motovehículo") && (patente || marca || modelo)) {
     filaDetalleExtra = `
@@ -106,7 +105,7 @@ export const enviarAvisoVencimiento = async (
                 <td style="padding: 6px 0; color: #1f2937;">${tipoPoliza}</td>
               </tr>
               
-              ${filaDetalleExtra /* ACÁ INYECTAMOS LA FILA MAGICA */}
+              ${filaDetalleExtra}
               
               <tr>
                 <td style="padding: 6px 0; font-weight: bold; color: #9a3412;">Plan / Cobertura:</td>
@@ -128,5 +127,77 @@ export const enviarAvisoVencimiento = async (
     });
   } catch (error) {
     console.error("Error en el email service:", error);
+  }
+};
+
+// 🔥 NUEVA FUNCIÓN EXCLUSIVA PARA NOTIFICAR SINIESTROS
+export const enviarNotificacionSiniestro = async (
+  email: string,
+  nombre: string,
+  nroSiniestro: string,
+  nroPoliza: string,
+  compania: string,
+  tipoPoliza: string,
+  patente: string | null,
+  asuntoPersonalizado: string,
+  descripcionNovedad: string,
+  urlSeguimiento: string
+) => {
+  if (!email || !email.includes('@')) return;
+
+  try {
+    await transporter.sendMail({
+      from: `"AseguraSimple" <${process.env.EMAIL_USER}>`,
+      to: email,
+      subject: `${asuntoPersonalizado} - Trámite #${nroSiniestro}`,
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 25px; border: 1px solid #e5e7eb; border-radius: 16px; border-top: 6px solid #ea580c;">
+          <div style="text-align: center; margin-bottom: 25px;">
+            <h2 style="color: #ea580c; margin: 0; font-size: 22px;">Seguimiento de Siniestro</h2>
+            <p style="color: #6b7280; font-size: 14px; margin-top: 5px;">Tu reclamo se encuentra activo y en gestión</p>
+          </div>
+          
+          <p style="color: #374151; font-size: 16px; line-height: 1.6;">Hola <strong>${nombre}</strong>,</p>
+          <p style="color: #374151; font-size: 16px; line-height: 1.6;">Te notificamos que se ha registrado una novedad importante en el expediente de tu siniestro administrado por nuestra agencia:</p>
+          
+          <div style="background-color: #fff7ed; border: 1px solid #ffedd5; padding: 20px; border-radius: 12px; margin: 24px 0;">
+            <table style="width: 100%; font-size: 14px; color: #4b5563; border-collapse: collapse;">
+              <tr>
+                <td style="padding: 6px 0; font-weight: bold; color: #9a3412; width: 35%;">Expediente Nro:</td>
+                <td style="padding: 6px 0; color: #1f2937; font-weight: bold; font-family: monospace;">#${nroSiniestro}</td>
+              </tr>
+              <tr>
+                <td style="padding: 6px 0; font-weight: bold; color: #9a3412;">Póliza Afectada:</td>
+                <td style="padding: 6px 0; color: #1f2937; font-family: monospace;">#${nroPoliza}</td>
+              </tr>
+              <tr>
+                <td style="padding: 6px 0; font-weight: bold; color: #9a3412;">Compañía:</td>
+                <td style="padding: 6px 0; color: #1f2937; font-weight: 600;">${compania}</td>
+              </tr>
+              <tr>
+                <td style="padding: 6px 0; font-weight: bold; color: #9a3412;">Riesgo / Objeto:</td>
+                <td style="padding: 6px 0; color: #1f2937;">${tipoPoliza} ${patente ? `[${patente.toUpperCase()}]` : ''}</td>
+              </tr>
+            </table>
+            
+            <div style="margin-top: 15px; padding-top: 15px; border-top: 1px dashed #fed7aa; color: #1f2937; font-size: 14px; line-height: 1.5;">
+              <strong>Detalle de la actualización registrada:</strong>
+              <p style="margin: 6px 0 0 0; color: #4b5563; font-style: italic; background-color: #white; padding: 10px; border-radius: 6px; border: 1px solid #ffedd5;">"${descripcionNovedad}"</p>
+            </div>
+          </div>
+
+          <p style="color: #374151; font-size: 16px; line-height: 1.6;"><strong>¿Cómo seguir el avance en vivo?</strong><br>No necesitás recordar usuarios ni claves. Haciendo clic en el botón de abajo podés entrar de forma directa y segura a tu portal de asegurado para ver el historial cronológico completo de gestiones:</p>
+          
+          <div style="text-align: center; margin: 25px 0;">
+            <a href="${urlSeguimiento}" target="_blank" style="background-color: #ea580c; color: white; padding: 12px 24px; border-radius: 10px; text-decoration: none; font-weight: bold; display: inline-block; font-size: 15px;">Ver el Estado de mi Trámite</a>
+          </div>
+          
+          <hr style="border: 0; border-top: 1px solid #f3f4f6; margin: 30px 0;" />
+          <p style="color: #9ca3af; font-size: 11px; text-align: center; margin: 0;">Este es un aviso automático de cortesía enviado a través de AseguraSimple.</p>
+        </div>
+      `
+    });
+  } catch (error) {
+    console.error("Error en el servicio de email al enviar alerta de siniestro:", error);
   }
 };

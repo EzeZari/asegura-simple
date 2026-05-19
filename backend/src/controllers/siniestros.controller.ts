@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { prisma } from '../config/db';
 import crypto from 'crypto';
-import { enviarAvisoVencimiento } from '../services/email.service'; // <-- Ruta corregida
+import { enviarNotificacionSiniestro } from '../services/email.service';
 
 export const getSiniestros = async (req: Request, res: Response) => {
   try {
@@ -30,6 +30,7 @@ export const createSiniestro = async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Faltan datos obligatorios (Póliza, Fecha o Descripción).' });
     }
 
+    // 1. Solo guardamos el siniestro en la base (SIN mandar mail todavía)
     const nuevoSiniestro = await prisma.siniestro.create({
       data: {
         nroSiniestro: nroSiniestro || `SIN-${Date.now().toString().slice(-6)}`,
@@ -40,6 +41,7 @@ export const createSiniestro = async (req: Request, res: Response) => {
       }
     });
 
+    // 2. Dejamos el registro en la tabla de actividad
     await prisma.actividad.create({
       data: {
         accion: "Alta",
@@ -146,7 +148,7 @@ export const agregarNota = async (req: Request, res: Response) => {
     const siniestroCompleto = await prisma.siniestro.findUnique({
       where: { id: Number(id) },
       include: {
-        poliza: { include: { asegurado: true } },
+        poliza: { include: { asegurado: true, compania: true } },
         linksConsulta: { where: { activo: true, expiracion: { gte: new Date() } } }
       }
     });
@@ -154,6 +156,7 @@ export const agregarNota = async (req: Request, res: Response) => {
     const emailCliente = siniestroCompleto?.poliza?.asegurado?.email;
     const tokenActivo = siniestroCompleto?.linksConsulta[0]?.token;
 
+    // Si el cliente tiene mail cargado, le mandamos el correo con la novedad
     if (emailCliente) {
       const urlSeguimiento = tokenActivo 
         ? `http://localhost:3000/consulta/${tokenActivo}`
@@ -170,25 +173,31 @@ export const agregarNota = async (req: Request, res: Response) => {
         }
       });
 
-      await enviarAvisoVencimiento(
+      // Usamos la nueva plantilla limpia para avisar la nueva nota de la bitácora
+      await enviarNotificacionSiniestro(
         emailCliente,
         `${siniestroCompleto.poliza.asegurado.nombre} ${siniestroCompleto.poliza.asegurado.apellido || ''}`.trim(),
+        siniestroCompleto.nroSiniestro,
         siniestroCompleto.poliza.nroPoliza,
-        `ACTUALIZACIÓN DE TRÁMITE (Siniestro #${siniestroCompleto.nroSiniestro})`,
-        `Nueva novedad registrada: "${texto}". Podés seguir el avance en vivo desde tu link de acceso rápido de asegurado.`,
-        urlSeguimiento,
-        new Date().toLocaleDateString("es-AR")
+        siniestroCompleto.poliza.compania?.nombre || 'Compañía Asignada',
+        siniestroCompleto.poliza.tipoPoliza,
+        siniestroCompleto.poliza.patente,
+        `NUEVA ACTUALIZACIÓN DE SEGUIMIENTO`,
+        texto, 
+        urlSeguimiento
       );
     }
 
+    // Devolvemos la nota creada al Frontend
     res.status(201).json(nuevaNota);
+
   } catch (error: any) {
     console.error("Error en bitácora con notificación:", error);
     res.status(500).json({ error: 'Error al registrar la nota y enviar la notificación.' });
   }
 };
 
-// GENERAR O OBTENER EL LINK DE CONSULTA PÚBLICO
+// GENERAR O OBTENER EL LINK DE CONSULTA PÚBLICO (Acá se manda el mail inicial)
 export const obtenerOGenerarLink = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
@@ -201,6 +210,7 @@ export const obtenerOGenerarLink = async (req: Request, res: Response) => {
       }
     });
 
+    // Si NO existe el link, lo creamos y MANDAMOS EL MAIL POR ÚNICA VEZ
     if (!linkConsulta) {
       const tokenUnico = crypto.randomBytes(24).toString('hex');
       const fechaExpiracion = new Date();
@@ -213,6 +223,42 @@ export const obtenerOGenerarLink = async (req: Request, res: Response) => {
           siniestroId: Number(id)
         }
       });
+
+      const urlSeguimiento = `http://localhost:3000/consulta/${tokenUnico}`;
+
+      // Buscamos los datos completos para armar el correo
+      const siniestroCompleto = await prisma.siniestro.findUnique({
+        where: { id: Number(id) },
+        include: { poliza: { include: { asegurado: true, compania: true } } }
+      });
+
+      const emailCliente = siniestroCompleto?.poliza?.asegurado?.email;
+
+      if (emailCliente && siniestroCompleto) {
+        await prisma.notificacion.create({
+          data: {
+            canal: "EMAIL",
+            destinatario: emailCliente,
+            motivo: "Apertura de Siniestro",
+            mensaje: "Se generó el link de seguimiento del reclamo.",
+            estadoEnvio: "ENVIADO",
+            siniestroId: Number(id)
+          }
+        });
+
+        await enviarNotificacionSiniestro(
+          emailCliente,
+          `${siniestroCompleto.poliza.asegurado.nombre} ${siniestroCompleto.poliza.asegurado.apellido || ''}`.trim(),
+          siniestroCompleto.nroSiniestro,
+          siniestroCompleto.poliza.nroPoliza,
+          siniestroCompleto.poliza.compania?.nombre || 'Compañía Asignada',
+          siniestroCompleto.poliza.tipoPoliza,
+          siniestroCompleto.poliza.patente,
+          `ALERTA: Apertura de Expediente`,
+          `Hemos generado el acceso seguro para que puedas seguir tu reclamo. Ya iniciamos las gestiones administrativas correspondientes frente a la aseguradora.`,
+          urlSeguimiento
+        );
+      }
     }
 
     res.json({
@@ -220,14 +266,14 @@ export const obtenerOGenerarLink = async (req: Request, res: Response) => {
       urlPublica: `http://localhost:3000/consulta/${linkConsulta.token}`
     });
   } catch (error: any) {
-    res.status(500).json({ error: 'Error al procesar el link de consulta.' });
+    console.error(error);
+    res.status(500).json({ error: 'Error al procesar el link de consulta y enviar el correo.' });
   }
 };
 
 // ENDPOINT PÚBLICO
 export const getSiniestroPublicoPorToken = async (req: Request, res: Response) => {
   try {
-    // 🔥 CORRECCIÓN: Le aclaramos a TypeScript que esto es estrictamente un String
     const token = req.params.token as string; 
 
     const linkValido = await prisma.linkConsulta.findUnique({
