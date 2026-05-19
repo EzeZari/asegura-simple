@@ -2,13 +2,14 @@ import { Router } from 'express';
 import { prisma } from '../config/db'
 import bcrypt from 'bcrypt';
 // 1. Asegurate de que resetPassword esté en esta lista de acá arriba:
-import { register, login, refresh, logout, forgotPassword, resetPassword } from '../controllers/auth.controller';
+import { register, login, refresh, logout, forgotPassword, resetPassword, verify2FALogin } from '../controllers/auth.controller'; // <--- Fijate que sumé verify2FALogin al final
 import { transporter } from '../utils/mailer'; 
 
 const router = Router();
 
 router.post('/register', register);
 router.post('/login', login);
+router.post('/verify-2fa', verify2FALogin); 
 router.post('/refresh', refresh);
 router.post('/logout', logout);
 router.post('/forgot-password', forgotPassword);
