@@ -41,7 +41,64 @@ router.post('/', async (req, res) => {
     res.status(201).json(nuevaCompania);
   } catch (error: any) {
     console.error("Error al guardar la compañía:", error);
-    res.status(500).json({ error: 'Hubo un error al guardar la compañía.' }); // ¡Acá estaba el texto viejo!
+    res.status(500).json({ error: 'Hubo un error al guardar la compañía.' });
+  }
+});
+
+// RUTA: POST /api/companias/importar (Importar compañías desde Excel)
+// 🔥 TIENE QUE ESTAR ACÁ, ANTES DE LAS RUTAS CON /:id
+router.post('/importar', async (req, res): Promise<any> => {
+  try {
+    const { companias } = req.body;
+
+    if (!companias || !Array.isArray(companias) || companias.length === 0) {
+      return res.status(400).json({ error: 'No se enviaron compañías para importar.' });
+    }
+
+    let importadosCount = 0;
+
+    for (const data of companias) {
+      if (!data.nombre) continue;
+
+      const existeCompania = await prisma.compania.findFirst({
+        where: { nombre: data.nombre }
+      });
+
+      if (!existeCompania) {
+        await prisma.compania.create({
+          data: {
+            nombre: data.nombre,
+            cuit: data.cuit || null,
+            telefonoSiniestros: data.telefonoSiniestros || null,
+            email: data.email || null,
+          }
+        });
+      } else {
+        await prisma.compania.update({
+          where: { id: existeCompania.id },
+          data: {
+            cuit: data.cuit || existeCompania.cuit,
+            telefonoSiniestros: data.telefonoSiniestros || existeCompania.telefonoSiniestros,
+            email: data.email || existeCompania.email,
+          }
+        });
+      }
+      importadosCount++;
+    }
+
+    // REGISTRO DE ACTIVIDAD
+    await prisma.actividad.create({
+      data: {
+        accion: 'Importó',
+        entidad: 'Compañías',
+        descripcion: `Se importaron ${importadosCount} compañías desde archivo Excel.`,
+      }
+    });
+
+    res.status(201).json({ message: 'Importación exitosa', importados: importadosCount });
+  } catch (error) {
+    console.error("Error al importar compañías:", error);
+    res.status(500).json({ error: 'Hubo un error al procesar el archivo Excel.' });
   }
 });
 
@@ -73,7 +130,7 @@ router.put('/:id', async (req, res) => {
         accion: "Edición",
         entidad: "Compañía",
         descripcion: cambios.length > 0 ? cambios.join(" | ") : "Actualización de contacto",
-        cliente: actualizada.nombre // En compañías usamos el nombre de la empresa como 'cliente'
+        cliente: actualizada.nombre
       }
     });
 
@@ -107,7 +164,6 @@ router.delete('/:id', async (req, res) => {
 
     res.json({ message: 'Compañía eliminada' });
   } catch (error: any) {
-    // Si da error porque tiene pólizas asociadas, atajamos el código P2003 de Prisma
     if (error.code === 'P2003') {
       return res.status(400).json({ error: 'No podés eliminar una compañía que tiene pólizas activas.' });
     }

@@ -8,6 +8,17 @@ import Toast from "@/components/ui/Toast";
 import Table, { TableColumn } from "@/components/ui/Table";
 import ConfirmModal from "@/components/ui/ConfirmModal";
 import PageHeader from "@/components/ui/PageHeader";
+import { useTableSort } from "@/hooks/useTableSort"; // 🔥 Importamos el hook
+import SortableHeader from "@/components/ui/SortableHeader"; // 🔥 Importamos el header ordenable
+import SelectOrdenamiento from "@/components/ui/SelectOrdenamiento"; // 🔥 Importamos el select visual
+
+// Opciones de ordenamiento para Siniestros
+const OPCIONES_ORDEN = [
+  { value: "mas_recientes", label: "Carga más reciente" },
+  { value: "fecha_hecho_reciente", label: "Fecha del hecho (más reciente)" },
+  { value: "fecha_hecho_antiguo", label: "Fecha del hecho (más antigua)" },
+  { value: "alfabetico", label: "A-Z (Titular)" },
+];
 
 export default function SiniestrosPage() {
   const [siniestros, setSiniestros] = useState<any[]>([]);
@@ -15,6 +26,9 @@ export default function SiniestrosPage() {
   
   const [searchTerm, setSearchTerm] = useState("");
   const [filtroEstado, setFiltroEstado] = useState("Todos");
+
+  // 🔥 Nuevo estado para controlar el orden actual
+  const [ordenActual, setOrdenActual] = useState("mas_recientes");
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [siniestroAEditar, setSiniestroAEditar] = useState<any>(null);
@@ -50,9 +64,10 @@ export default function SiniestrosPage() {
     } catch (error: any) { alert(error.message); } finally { setIsDeleting(false); setSiniestroAEliminar(null); }
   };
 
-  const siniestrosFiltrados = siniestros.filter((s) => {
+  // 1. Filtramos los siniestros (Búsqueda y Estado)
+  let siniestrosFiltrados = siniestros.filter((s) => {
     const busqueda = searchTerm.toLowerCase();
-    const cliente = `${s.poliza?.asegurado?.nombre} ${s.poliza?.asegurado?.apellido}`.toLowerCase();
+    const cliente = `${s.poliza?.asegurado?.nombre} ${s.poliza?.asegurado?.apellido || ""}`.toLowerCase();
     
     const matchBusqueda = s.nroSiniestro.toLowerCase().includes(busqueda) || 
                           cliente.includes(busqueda) || 
@@ -62,14 +77,35 @@ export default function SiniestrosPage() {
     return matchBusqueda && matchEstado;
   });
 
-  // 🔥 COLUMNAS SEPARADAS DE FORMA CORRECTA
+  // 🔥 2. Aplicamos el ordenamiento lógico
+  siniestrosFiltrados = siniestrosFiltrados.sort((a, b) => {
+    switch (ordenActual) {
+      case "mas_recientes": // Orden de carga en el sistema
+        return b.id - a.id;
+      case "fecha_hecho_reciente": // Fecha en la que ocurrió el accidente
+        return new Date(b.fechaHecho).getTime() - new Date(a.fechaHecho).getTime();
+      case "fecha_hecho_antiguo":
+        return new Date(a.fechaHecho).getTime() - new Date(b.fechaHecho).getTime();
+      case "alfabetico":
+        const nombreA = `${a.poliza?.asegurado?.nombre} ${a.poliza?.asegurado?.apellido || ""}`.toLowerCase().trim();
+        const nombreB = `${b.poliza?.asegurado?.nombre} ${b.poliza?.asegurado?.apellido || ""}`.toLowerCase().trim();
+        return nombreA.localeCompare(nombreB);
+      default:
+        return 0;
+    }
+  });
+
+  // 3. Pasamos todo listo al useTableSort
+  const { items: siniestrosOrdenados, requestSort, sortConfig } = useTableSort(siniestrosFiltrados);
+
+  // 🔥 COLUMNAS ACTUALIZADAS PARA QUE SEAN ORDENABLES AL HACER CLIC
   const columnas: TableColumn[] = [
-    { label: "Nro / Fecha" },
+    { label: <SortableHeader label="Nro / Fecha" sortKey="nroSiniestro" currentSort={sortConfig} requestSort={requestSort} /> },
     { label: "Titular / DNI" },
     { label: "Nro Póliza" },
     { label: "Patente / Riesgo" },
     { label: "Descripción Breve" },
-    { label: "Estado del Trámite" },
+    { label: <SortableHeader label="Estado del Trámite" sortKey="estadoSiniestro" currentSort={sortConfig} requestSort={requestSort} /> },
     { label: "Acciones", align: "right" },
   ];
 
@@ -83,6 +119,7 @@ export default function SiniestrosPage() {
         onNuevo={() => { setSiniestroAEditar(null); setIsModalOpen(true); }} 
       />
 
+      {/* FILTROS Y BÚSQUEDA */}
       <div className="flex flex-col md:flex-row gap-4 bg-gray-50/50 p-4 rounded-2xl border border-gray-100">
         <div className="flex-1 relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
@@ -105,14 +142,25 @@ export default function SiniestrosPage() {
         </select>
       </div>
 
-      <Table columns={columnas} isLoading={isLoading} isEmpty={siniestrosFiltrados.length === 0} emptyContent={
+      {/* 🔥 BARRA DE ACCIONES (Ordenamiento) */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 w-full -mb-4">
+        <div className="w-full md:w-auto">
+          <SelectOrdenamiento 
+            opciones={OPCIONES_ORDEN}
+            valorActual={ordenActual}
+            onChange={setOrdenActual}
+          />
+        </div>
+      </div>
+
+      <Table columns={columnas} isLoading={isLoading} isEmpty={siniestrosOrdenados.length === 0} emptyContent={
         <div className="flex flex-col items-center justify-center text-gray-500 py-10">
           <AlertTriangle size={40} className="text-gray-300 mb-4" />
           <p className="font-medium text-gray-900 text-lg">No se encontraron siniestros</p>
           <p className="text-sm">Tranquilidad pura. Tus clientes están a salvo.</p>
         </div>
       }>
-        {siniestrosFiltrados.map((siniestro) => (
+        {siniestrosOrdenados.map((siniestro) => (
           <SiniestroTableRow 
             key={siniestro.id}
             siniestro={siniestro}

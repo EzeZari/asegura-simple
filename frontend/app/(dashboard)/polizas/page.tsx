@@ -14,6 +14,15 @@ import { useTableSort } from "@/hooks/useTableSort";
 import SortableHeader from "@/components/ui/SortableHeader";
 import PageHeader from "@/components/ui/PageHeader";
 import PolizaTableRow from "@/components/polizas/PolizaTableRow";
+import SelectOrdenamiento from "@/components/ui/SelectOrdenamiento"; // <-- Importamos el componente
+
+// Opciones disponibles para el selector
+const OPCIONES_ORDEN = [
+  { value: "mas_recientes", label: "Más recientes primero" },
+  { value: "mas_antiguas", label: "Más antiguas primero" },
+  { value: "vencimiento_proximo", label: "Próximas a vencer" },
+  { value: "alfabetico_asegurado", label: "A-Z (Asegurado)" },
+];
 
 export default function PolizasPage() {
   const router = useRouter();
@@ -21,9 +30,12 @@ export default function PolizasPage() {
   const [filtroRama, setFiltroRama] = useState("Todas");
   const [filtroEstado, setFiltroEstado] = useState("Todos");
   
+  // 🔥 Nuevo estado para el ordenamiento (arranca en más recientes)
+  const [ordenActual, setOrdenActual] = useState("mas_recientes");
+  
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false); 
-  const [isImportModalOpen, setIsImportModalOpen] = useState(false); // <-- Estado acomodado
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [polizaAEditar, setPolizaAEditar] = useState<any>(null);
   const [menuAbiertoId, setMenuAbiertoId] = useState<number | null>(null);
   
@@ -98,7 +110,8 @@ export default function PolizasPage() {
     return poliza.estado; 
   };
 
-  const polizasFiltradas = polizas.filter((poliza) => {
+  // 1. Filtramos las pólizas como siempre
+  let polizasFiltradas = polizas.filter((poliza) => {
     const busqueda = searchTerm.toLowerCase();
     const matchBusqueda = 
       poliza.nroPoliza.toLowerCase().includes(busqueda) || 
@@ -115,6 +128,29 @@ export default function PolizasPage() {
     return matchBusqueda && matchRama && matchEstado;
   });
 
+  // 🔥 2. Aplicamos el ordenamiento lógico antes de pasarlas a la tabla
+  polizasFiltradas = polizasFiltradas.sort((a, b) => {
+    switch (ordenActual) {
+      case "mas_recientes":
+        // Compara por ID descendente (el ID más alto es el más nuevo en la BD)
+        return b.id - a.id;
+      case "mas_antiguas":
+        // Compara por ID ascendente
+        return a.id - b.id;
+      case "vencimiento_proximo":
+        // Ordena por fecha de vencimiento más cercana (solo si no están vencidas/anuladas idealmente)
+        return new Date(a.fechaVencimiento).getTime() - new Date(b.fechaVencimiento).getTime();
+      case "alfabetico_asegurado":
+        // Ordena alfabéticamente por el nombre del asegurado
+        const nombreA = `${a.asegurado?.nombre} ${a.asegurado?.apellido}`.toLowerCase();
+        const nombreB = `${b.asegurado?.nombre} ${b.asegurado?.apellido}`.toLowerCase();
+        return nombreA.localeCompare(nombreB);
+      default:
+        return 0;
+    }
+  });
+
+  // 3. El useTableSort sigue funcionando por si el usuario hace clic en los headers de las columnas
   const { items: polizasOrdenadas, requestSort, sortConfig } = useTableSort(polizasFiltradas);
 
   const prepararDatosParaExcel = () => {
@@ -162,23 +198,36 @@ export default function PolizasPage() {
         filtroEstado={filtroEstado} setFiltroEstado={setFiltroEstado}
       />
 
-      {/* 🔥 BARRA DE ACCIONES CON IMPORTAR Y EXPORTAR */}
-      <div className="flex justify-end items-center gap-3 w-full -mb-4">
-        <button
-          onClick={() => setIsImportModalOpen(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-gray-50 hover:bg-gray-100 border border-gray-200 text-gray-700 rounded-xl text-sm font-bold transition-all active:scale-95 shadow-sm"
-        >
-          <UploadCloud size={16} /> Importar Excel
-        </button>
-        <button
-          onClick={() => {
-            if(polizasOrdenadas.length === 0) return alert("No hay datos para exportar.");
-            setIsExportModalOpen(true);
-          }}
-          className="flex items-center gap-2 px-4 py-2 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-700 rounded-xl text-sm font-bold transition-all active:scale-95 shadow-sm"
-        >
-          <Download size={16} /> Exportar a Excel
-        </button>
+      {/* 🔥 BARRA DE ACCIONES (Ordenamiento a la Izquierda, Botones a la Derecha) */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 w-full -mb-4">
+        
+        {/* Selector de Ordenamiento */}
+        <div className="w-full md:w-auto">
+          <SelectOrdenamiento 
+            opciones={OPCIONES_ORDEN}
+            valorActual={ordenActual}
+            onChange={setOrdenActual}
+          />
+        </div>
+
+        {/* Botones de Importar/Exportar */}
+        <div className="flex items-center gap-3 w-full md:w-auto">
+          <button
+            onClick={() => setIsImportModalOpen(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-gray-50 hover:bg-gray-100 border border-gray-200 text-gray-700 rounded-xl text-sm font-bold transition-all active:scale-95 shadow-sm"
+          >
+            <UploadCloud size={16} /> Importar Excel
+          </button>
+          <button
+            onClick={() => {
+              if(polizasOrdenadas.length === 0) return alert("No hay datos para exportar.");
+              setIsExportModalOpen(true);
+            }}
+            className="flex items-center gap-2 px-4 py-2 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-700 rounded-xl text-sm font-bold transition-all active:scale-95 shadow-sm"
+          >
+            <Download size={16} /> Exportar a Excel
+          </button>
+        </div>
       </div>
 
       <Table columns={columnas} isLoading={isLoading} isEmpty={polizasOrdenadas.length === 0} emptyContent={<div className="flex flex-col items-center justify-center text-gray-500 py-6"><FileText size={32} className="text-gray-300 mb-3" /><p className="font-medium text-gray-900">No se encontraron pólizas</p></div>}>
@@ -199,7 +248,6 @@ export default function PolizasPage() {
 
       <NuevaPolizaModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSuccess={() => { setIsModalOpen(false); fetchPolizas(); setShowToast(true); setMensajeToast("Póliza guardada con éxito"); }} polizaAEditar={polizaAEditar} />
       
-      {/* MODAL DE IMPORTACIÓN */}
       <ImportarPolizasModal 
         isOpen={isImportModalOpen} 
         onClose={() => setIsImportModalOpen(false)} 
