@@ -3,14 +3,7 @@
 import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation'; // <-- Sumamos usePathname
 import { 
-  Home, 
-  Users, 
-  FileText, 
-  Building, 
-  CarFront, // <-- Icono para siniestros
-  Bell, 
-  Settings,
-  LogOut
+  Home, Users, FileText, Building, CarFront, Bell, Settings, LogOut, BarChart3 
 } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 
@@ -21,6 +14,7 @@ const menuItems = [
   { name: 'Siniestros', icon: CarFront, path: '/siniestros' }, // <-- Nuestro nuevo módulo
   { name: 'Compañías', icon: Building, path: '/companias' }, 
   { name: 'Alertas', icon: Bell, path: '/alertas' },
+  { name: 'Estadísticas', icon: BarChart3, path: '/estadisticas' },
   { name: 'Configuración', icon: Settings, path: '/configuracion' },
 ];
 
