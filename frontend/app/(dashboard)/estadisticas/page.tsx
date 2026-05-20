@@ -1,48 +1,38 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { 
-  PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend, 
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, LabelList 
-} from "recharts";
-import { AlertTriangle, Loader2, RefreshCw, TrendingUp } from "lucide-react";
-
-// Paletas de colores vibrantes
-const COLORES_COMPANIAS = ['#0ea5e9', '#8b5cf6', '#f59e0b', '#10b981', '#f43f5e', '#6366f1'];
-const COLORES_ESTADOS = { 
-  'Vigente': '#10b981', // Verde esmeralda
-  'Vencida': '#ef4444', // Rojo fuerte
-  'Pendiente': '#f59e0b', // Naranja/Amarillo
-  'Anulada': '#64748b'  // Gris
-};
-const COLORES_BARRAS = ['#3b82f6', '#8b5cf6', '#ec4899', '#14b8a6'];
-
-// Función matemática para dibujar los porcentajes ADENTRO de la dona
-const RADIAN = Math.PI / 180;
-const renderPorcentaje = ({ cx, cy, midAngle, innerRadius, outerRadius, percent }: any) => {
-  const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
-  const x = cx + radius * Math.cos(-midAngle * RADIAN);
-  const y = cy + radius * Math.sin(-midAngle * RADIAN);
-
-  if (percent * 100 < 5) return null; // No dibuja el % si la porción es muy chiquita
-
-  return (
-    <text x={x} y={y} fill="white" textAnchor="middle" dominantBaseline="central" className="font-bold text-xs drop-shadow-md">
-      {`${(percent * 100).toFixed(0)}%`}
-    </text>
-  );
-};
+import { RefreshCw, TrendingUp, AlertTriangle, Eye, EyeOff, LayoutGrid, Calendar, FileText, ArrowUpRight, ArrowDownRight, Search } from "lucide-react";
+import GraficosGrid from "@/components/estadisticas/GraficosGrid";
 
 export default function EstadisticasPage() {
   const [data, setData] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isPrinting, setIsPrinting] = useState(false);
+
+  // FILTRO DE TIEMPO
+  const [periodo, setPeriodo] = useState<"mes" | "trimestre" | "anio" | "historico" | "personalizado">("historico");
+  const [fechaInicio, setFechaInicio] = useState("");
+  const [fechaFin, setFechaFin] = useState("");
+
+  const [visibilidad, setVisibilidad] = useState({
+    salud: true, companias: true, ramas: true,
+  });
 
   const fetchEstadisticas = async () => {
+    // Si eligió personalizado pero no puso fechas, no disparamos la búsqueda
+    if (periodo === "personalizado" && (!fechaInicio || !fechaFin)) return;
+
     try {
       setIsRefreshing(true);
-      const res = await fetch("http://localhost:3001/api/dashboard/graficos");
+      
+      let url = `http://localhost:3001/api/dashboard/graficos?periodo=${periodo}`;
+      if (periodo === "personalizado") {
+        url += `&inicio=${fechaInicio}&fin=${fechaFin}`;
+      }
+
+      const res = await fetch(url);
       if (!res.ok) throw new Error("Error al cargar los datos");
       
       const json = await res.json();
@@ -56,182 +46,208 @@ export default function EstadisticasPage() {
   };
 
   useEffect(() => {
-    fetchEstadisticas();
-  }, []);
+    // Solo busca automático si NO es personalizado (para personalizado requiere clic en el botón)
+    if (periodo !== "personalizado") {
+      fetchEstadisticas();
+    }
+  }, [periodo]);
+
+  // LA MAGIA DEL PDF CON HTML-TO-IMAGE
+  const descargarPDF = async () => {
+    try {
+      setIsPrinting(true);
+      const element = document.getElementById("reporte-completo");
+      if (!element) return;
+
+      const { toPng } = await import("html-to-image");
+      const jsPDF = (await import("jspdf")).default;
+
+      // Saca la foto y le pone fondo blanco para que no salga transparente
+      const dataUrl = await toPng(element, { quality: 0.95, backgroundColor: '#f9fafb' });
+      
+      // Calculamos la proporción perfecta para que no corte los gráficos
+      const imgWidth = 210; 
+      const imgHeight = (element.offsetHeight * imgWidth) / element.offsetWidth;
+      const alturaPagina = imgHeight > 297 ? imgHeight : 297; // Si es muy largo, estira el PDF
+
+      const pdf = new jsPDF("p", "mm", [210, alturaPagina]);
+      pdf.addImage(dataUrl, "PNG", 0, 0, imgWidth, imgHeight);
+      pdf.save(`Reporte_Agencia_${new Date().toLocaleDateString('es-AR')}.pdf`);
+    } catch (err) {
+      console.error("Error al generar PDF:", err);
+      alert("Hubo un error al generar el PDF.");
+    } finally {
+      setIsPrinting(false);
+    }
+  };
 
   if (isLoading && !data) {
     return (
       <div className="flex h-full items-center justify-center p-8">
-        <Loader2 className="animate-spin text-green-600" size={48} />
+        <RefreshCw className="animate-spin text-green-600" size={48} />
       </div>
     );
   }
 
-  if (error) {
-    return (
-      <div className="p-8">
-        <div className="bg-red-50 text-red-600 p-4 rounded-xl border border-red-200">{error}</div>
-      </div>
-    );
-  }
-
-  // Calculamos el total de pólizas para mostrarlo arriba
   const totalPolizas = data?.porEstado?.reduce((acc: number, curr: any) => acc + curr.value, 0) || 0;
 
   return (
-    <div className="p-8 flex flex-col gap-6 animate-in fade-in duration-300 bg-gray-50/50 min-h-screen">
+    <div id="reporte-completo" className="p-8 flex flex-col gap-6 bg-gray-50/50 min-h-screen">
       
-      {/* ENCABEZADO HECHO A MANO (Para asegurar que no salga el botón "+" fantasma) */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-2">
+      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
         <div>
           <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Estadísticas de Cartera</h1>
-          <p className="text-gray-500 text-sm mt-1">Analizá el rendimiento, porcentajes y distribución de tus pólizas.</p>
+          <p className="text-gray-500 text-sm mt-1">Métricas avanzadas, tendencias de crecimiento e informes exportables.</p>
         </div>
         
-        <button 
-          onClick={fetchEstadisticas}
-          disabled={isRefreshing}
-          className="flex items-center gap-2 bg-white border border-gray-200 text-gray-700 px-4 py-2.5 rounded-lg font-medium hover:bg-gray-50 transition-all shadow-sm active:scale-95"
-        >
-          <RefreshCw size={18} className={isRefreshing ? "animate-spin text-green-600" : "text-gray-500"} />
-          {isRefreshing ? "Actualizando..." : "Actualizar Datos"}
-        </button>
+        <div className="flex flex-wrap gap-2 w-full lg:w-auto">
+          <button 
+            onClick={descargarPDF}
+            disabled={isPrinting}
+            className="flex items-center gap-2 bg-green-700 text-white px-4 py-2.5 rounded-lg font-medium hover:bg-green-800 transition-all shadow-sm active:scale-95 disabled:bg-green-600/50"
+          >
+            <FileText size={18} />
+            {isPrinting ? "Generando PDF..." : "Exportar Reporte PDF"}
+          </button>
+          <button 
+            onClick={fetchEstadisticas}
+            disabled={isRefreshing}
+            className="flex items-center gap-2 bg-white border border-gray-200 text-gray-700 px-4 py-2.5 rounded-lg font-medium hover:bg-gray-50 transition-all shadow-sm active:scale-95"
+          >
+            <RefreshCw size={18} className={isRefreshing ? "animate-spin text-green-600" : "text-gray-500"} />
+            Actualizar
+          </button>
+        </div>
       </div>
 
-      {/* Tarjetas de Resumen Rápido */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      {/* FILTROS INTERACTIVOS */}
+      <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4">
+        <div className="flex items-center gap-2 text-sm font-bold text-gray-700">
+          <Calendar size={18} className="text-green-600" />
+          <span>Período bajo análisis:</span>
+        </div>
         
-        {/* KPI: Volumen Total */}
+        <div className="flex flex-col md:flex-row items-start md:items-center gap-4 w-full xl:w-auto">
+          <div className="flex flex-wrap bg-gray-100 p-1 rounded-xl gap-1 w-full md:w-auto">
+            {(["mes", "trimestre", "anio", "historico", "personalizado"] as const).map((p) => (
+              <button
+                key={p}
+                onClick={() => setPeriodo(p)}
+                className={`px-3 py-2 rounded-lg text-xs font-bold capitalize transition-all ${
+                  periodo === p ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-900"
+                }`}
+              >
+                {p === "anio" ? "Este Año" : p === "historico" ? "Histórico" : p}
+              </button>
+            ))}
+          </div>
+
+          {/* RANGO DE FECHAS PERSONALIZADO (Aparece solo si se selecciona la opción) */}
+          {periodo === "personalizado" && (
+            <div className="flex items-center gap-2 animate-in fade-in slide-in-from-left-4 w-full md:w-auto">
+              <input
+                type="date"
+                value={fechaInicio}
+                onChange={(e) => setFechaInicio(e.target.value)}
+                className="border border-gray-200 text-gray-600 rounded-lg px-2 py-1.5 text-xs outline-none focus:border-green-500 bg-white"
+              />
+              <span className="text-gray-400 font-bold">-</span>
+              <input
+                type="date"
+                value={fechaFin}
+                onChange={(e) => setFechaFin(e.target.value)}
+                className="border border-gray-200 text-gray-600 rounded-lg px-2 py-1.5 text-xs outline-none focus:border-green-500 bg-white"
+              />
+              <button
+                onClick={fetchEstadisticas}
+                disabled={!fechaInicio || !fechaFin}
+                className="bg-green-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold disabled:bg-gray-300 hover:bg-green-800 transition-colors flex items-center gap-1"
+              >
+                <Search size={14} /> Aplicar
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+        <div className="flex items-center gap-2 text-sm font-bold text-gray-700">
+          <LayoutGrid size={18} className="text-gray-400" />
+          <span>Configurar gráficos visibles:</span>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {(["salud", "companias", "ramas"] as const).map((key) => (
+            <button
+              key={key}
+              onClick={() => setVisibilidad(prev => ({ ...prev, [key]: !prev[key] }))}
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold transition-all border ${
+                visibilidad[key] ? "bg-green-50 text-green-700 border-green-200" : "bg-gray-50 text-gray-400 border-gray-200 opacity-60"
+              }`}
+            >
+              {visibilidad[key] ? <Eye size={14} /> : <EyeOff size={14} />}
+              {key === "salud" ? "Salud de Cartera" : key === "companias" ? "Compañías" : "Ramas de Seguro"}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* TARJETAS SUPERIORES CON INDICADOR DE TENDENCIA */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="bg-gradient-to-br from-green-600 to-green-800 rounded-2xl p-6 text-white shadow-md flex items-center justify-between">
           <div>
-            <p className="text-green-100 font-medium text-sm mb-1 uppercase tracking-wider">Volumen Total</p>
-            <h3 className="text-4xl font-black">{totalPolizas} <span className="text-xl font-normal opacity-80">pólizas</span></h3>
+            <p className="text-green-100 font-medium text-sm mb-1 uppercase tracking-wider">Producción del Período</p>
+            <h3 className="text-4xl font-black">
+              {periodo === "historico" ? totalPolizas : data?.tendencia?.unidadesActuales || 0}{" "}
+              <span className="text-xl font-normal opacity-80">pólizas</span>
+            </h3>
+            
+            {periodo !== "historico" && (
+              <div className="flex items-center gap-1.5 mt-2 bg-white/10 px-2.5 py-1 rounded-lg text-xs w-fit font-bold">
+                {data?.tendencia?.porcentaje >= 0 ? (
+                  <>
+                    <ArrowUpRight size={14} className="text-green-300" />
+                    <span>+{data.tendencia.porcentaje}% vs período anterior</span>
+                  </>
+                ) : (
+                  <>
+                    <ArrowDownRight size={14} className="text-red-300" />
+                    <span>{data.tendencia.porcentaje}% vs período anterior</span>
+                  </>
+                )}
+              </div>
+            )}
           </div>
           <div className="bg-white/20 p-4 rounded-full backdrop-blur-sm">
             <TrendingUp size={32} className="text-white" />
           </div>
         </div>
 
-        {/* KPI: Siniestros */}
         {data?.siniestrosAbiertos > 0 ? (
           <div className="bg-gradient-to-br from-orange-500 to-red-500 border border-orange-200 rounded-2xl p-6 flex items-center justify-between shadow-md text-white">
             <div>
               <p className="text-orange-100 font-medium text-sm mb-1 uppercase tracking-wider">Atención Requerida</p>
               <h3 className="text-3xl font-black">{data.siniestrosAbiertos} Siniestros abiertos</h3>
-              <p className="text-orange-50 text-sm mt-1 opacity-90">Requieren seguimiento inmediato.</p>
+              <p className="text-orange-50 text-sm mt-1 opacity-90">Casos activos en gestión.</p>
             </div>
             <div className="bg-white/20 p-4 rounded-full backdrop-blur-sm">
               <AlertTriangle size={32} className="text-white" />
             </div>
           </div>
         ) : (
-          <div className="bg-gradient-to-br from-slate-100 to-slate-200 rounded-2xl p-6 flex items-center justify-between border border-slate-200">
+          <div className="bg-white rounded-2xl p-6 flex items-center justify-between border border-gray-200 shadow-sm">
             <div>
-              <p className="text-slate-500 font-medium text-sm mb-1 uppercase tracking-wider">Estado de Siniestros</p>
-              <h3 className="text-2xl font-bold text-slate-800">Todo en orden</h3>
-              <p className="text-slate-600 text-sm mt-1">No hay siniestros pendientes.</p>
+              <p className="text-gray-400 font-medium text-sm mb-1 uppercase tracking-wider">Estado de Siniestros</p>
+              <h3 className="text-2xl font-bold text-gray-800">Todo en orden</h3>
+              <p className="text-gray-500 text-sm mt-1">No hay reclamos pendientes de resolución.</p>
             </div>
-            <div className="bg-slate-300 p-4 rounded-full">
-              <AlertTriangle size={32} className="text-slate-500" />
+            <div className="bg-gray-100 p-4 rounded-full text-gray-400">
+              <AlertTriangle size={32} />
             </div>
           </div>
         )}
       </div>
 
-      {/* Grilla de Gráficos Visuales */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        
-        {/* Gráfico 1: Pólizas por Estado */}
-        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex flex-col h-[400px]">
-          <h3 className="text-lg font-bold text-gray-900 mb-1">Salud de la Cartera</h3>
-          <p className="text-sm text-gray-500 mb-4">Porcentaje de pólizas vigentes vs vencidas.</p>
-          <div className="flex-1 w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={data.porEstado}
-                  cx="50%"
-                  cy="45%" // 🔥 Lo movemos más arriba para que la leyenda entre cómoda abajo
-                  innerRadius={60} // 🔥 Achicamos el radio para que no explote los bordes
-                  outerRadius={110} 
-                  paddingAngle={5}
-                  dataKey="value"
-                  labelLine={false}
-                  label={renderPorcentaje} 
-                >
-                  {data.porEstado.map((entry: any, index: number) => (
-                    <Cell key={`cell-estado-${index}`} fill={COLORES_ESTADOS[entry.name as keyof typeof COLORES_ESTADOS] || '#cbd5e1'} />
-                  ))}
-                </Pie>
-                <Tooltip 
-                  formatter={(value, name) => [`${value} Pólizas`, name]} 
-                  contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                />
-                <Legend verticalAlign="bottom" height={36} iconType="circle" />
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-
-        {/* Gráfico 2: Pólizas por Compañía */}
-        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex flex-col h-[400px]">
-          <h3 className="text-lg font-bold text-gray-900 mb-1">Distribución por Compañía</h3>
-          <p className="text-sm text-gray-500 mb-4">¿En qué aseguradoras se concentra el negocio?</p>
-          <div className="flex-1 w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={data.porCompania}
-                  cx="50%"
-                  cy="45%" // 🔥 Lo movemos más arriba para que la leyenda entre cómoda abajo
-                  innerRadius={60} // 🔥 Achicamos el radio para que no explote los bordes
-                  outerRadius={110}
-                  paddingAngle={5}
-                  dataKey="value"
-                  labelLine={false}
-                  label={renderPorcentaje}
-                >
-                  {data.porCompania.map((entry: any, index: number) => (
-                    <Cell key={`cell-${index}`} fill={COLORES_COMPANIAS[index % COLORES_COMPANIAS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip 
-                  formatter={(value, name) => [`${value} Pólizas`, name]} 
-                  contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                />
-                <Legend verticalAlign="bottom" height={36} iconType="circle" />
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-
-        {/* Gráfico 3: Tipos de Riesgo */}
-        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex flex-col h-[400px] lg:col-span-2">
-          <h3 className="text-lg font-bold text-gray-900 mb-1">Ramas de Seguro (Tipos de Póliza)</h3>
-          <p className="text-sm text-gray-500 mb-6">Volumen de ventas según el tipo de riesgo asegurado.</p>
-          <div className="flex-1 w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              {/* 🔥 Le di un poco más de margen abajo (bottom: 20) para que entren bien los textos de los ejes */}
-              <BarChart data={data.porTipo} margin={{ top: 20, right: 30, left: 0, bottom: 20 }}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 13, fontWeight: 500 }} dy={15} />
-                <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748b' }} dx={-10} />
-                <Tooltip 
-                  cursor={{ fill: '#f8fafc' }} 
-                  contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                />
-                <Bar dataKey="value" name="Cantidad" radius={[6, 6, 0, 0]} barSize={60}>
-                  {data.porTipo.map((entry: any, index: number) => (
-                    <Cell key={`cell-bar-${index}`} fill={COLORES_BARRAS[index % COLORES_BARRAS.length]} />
-                  ))}
-                  <LabelList dataKey="value" position="top" fill="#475569" fontWeight="bold" />
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-
-      </div>
+      <GraficosGrid data={data} visibilidad={visibilidad} />
     </div>
   );
 }

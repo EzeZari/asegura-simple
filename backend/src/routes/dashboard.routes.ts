@@ -56,54 +56,88 @@ router.get('/stats', async (req, res) => {
 });
 
 // =======================================================
-// RUTA 2: PARA LA NUEVA PESTAÑA DE ESTADÍSTICAS (GRÁFICOS)
+// RUTA 2: ESTADÍSTICAS AVANZADAS CON FILTRO DE TIEMPO PERSONALIZADO
 // =======================================================
 router.get('/graficos', async (req, res) => {
   try {
-    // Agrupamos y contamos los datos reales de tu BD para los gráficos
+    const { periodo, inicio, fin } = req.query; 
+    
+    const hoy = new Date();
+    let fechaInicioActual = new Date(0); 
+    let fechaFinActual = new Date(); 
+    let fechaInicioAnterior = new Date(0);
+    let fechaFinAnterior = new Date();
+
+    if (periodo === 'mes') {
+      fechaInicioActual = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
+      fechaInicioAnterior = new Date(hoy.getFullYear(), hoy.getMonth() - 1, 1);
+      fechaFinAnterior = new Date(hoy.getFullYear(), hoy.getMonth(), 0, 23, 59, 59);
+    } else if (periodo === 'trimestre') {
+      fechaInicioActual = new Date();
+      fechaInicioActual.setMonth(hoy.getMonth() - 3);
+      fechaInicioAnterior = new Date();
+      fechaInicioAnterior.setMonth(hoy.getMonth() - 6);
+      fechaFinAnterior = new Date();
+      fechaFinAnterior.setMonth(hoy.getMonth() - 3);
+    } else if (periodo === 'anio') {
+      fechaInicioActual = new Date(hoy.getFullYear(), 0, 1);
+      fechaInicioAnterior = new Date(hoy.getFullYear() - 1, 0, 1);
+      fechaFinAnterior = new Date(hoy.getFullYear() - 1, 11, 31, 23, 59, 59);
+    } else if (periodo === 'personalizado' && inicio && fin) {
+      // FECHAS PERSONALIZADAS:
+      fechaInicioActual = new Date(inicio as string);
+      fechaFinActual = new Date(fin as string);
+      fechaFinActual.setHours(23, 59, 59, 999);
+
+      // Calculamos el mismo rango de días hacia atrás para la tendencia
+      const diffTime = fechaFinActual.getTime() - fechaInicioActual.getTime();
+      fechaFinAnterior = new Date(fechaInicioActual.getTime() - 1);
+      fechaInicioAnterior = new Date(fechaFinAnterior.getTime() - diffTime);
+    }
+
+    // Armamos la condición dinámica para Prisma
+    const whereActual = periodo !== 'historico' ? { fechaInicio: { gte: fechaInicioActual, lte: fechaFinActual } } : {};
+    const whereAnterior = periodo !== 'historico' ? { fechaInicio: { gte: fechaInicioAnterior, lte: fechaFinAnterior } } : {};
+
     const [
       companiasConPolizas,
       polizasPorTipo,
       polizasPorEstado,
-      totalSiniestrosAbiertos
+      totalSiniestrosAbiertos,
+      polizasPeriodoActual,
+      polizasPeriodoAnterior
     ] = await Promise.all([
-      // 1. Para el gráfico de torta/dona: Pólizas por Compañía
       prisma.compania.findMany({
-        select: {
-          nombre: true,
-          _count: { select: { polizas: true } }
-        }
+        select: { nombre: true, _count: { select: { polizas: { where: whereActual } } } }
       }),
-      // 2. Para gráfico de barras: tipos de pólizas (Auto, Moto, etc.)
-      prisma.poliza.groupBy({
-        by: ['tipoPoliza'],
-        _count: { _all: true }
-      }),
-      // 3. Estados de las pólizas
-      prisma.poliza.groupBy({
-        by: ['estado'],
-        _count: { _all: true }
-      }),
-      // 4. Siniestros pendientes
-      prisma.siniestro.count({
-        where: { estadoSiniestro: { not: 'Cerrado' } }
-      })
+      prisma.poliza.groupBy({ by: ['tipoPoliza'], where: whereActual, _count: { _all: true } }),
+      prisma.poliza.groupBy({ by: ['estado'], where: whereActual, _count: { _all: true } }),
+      prisma.siniestro.count({ where: { estadoSiniestro: { not: 'Cerrado' } } }),
+      prisma.poliza.count({ where: whereActual }),
+      prisma.poliza.count({ where: whereAnterior })
     ]);
 
-    // Formateamos la respuesta limpia para que el Front la entienda de una
+    let tendenciaPorcentaje = 0;
+    if (periodo !== 'historico' && polizasPeriodoAnterior > 0) {
+      tendenciaPorcentaje = ((polizasPeriodoActual - polizasPeriodoAnterior) / polizasPeriodoAnterior) * 100;
+    } else if (periodo !== 'historico' && polizasPeriodoAnterior === 0 && polizasPeriodoActual > 0) {
+      tendenciaPorcentaje = 100; // Crecimiento total si el mes pasado fue 0
+    }
+
     res.json({
-      porCompania: companiasConPolizas
-        .map(c => ({ name: c.nombre, value: c._count.polizas }))
-        .filter(c => c.value > 0), // Solo las que tienen pólizas
+      porCompania: companiasConPolizas.map(c => ({ name: c.nombre, value: c._count.polizas })).filter(c => c.value > 0), 
       porTipo: polizasPorTipo.map(p => ({ name: p.tipoPoliza, value: p._count._all })),
       porEstado: polizasPorEstado.map(p => ({ name: p.estado, value: p._count._all })),
-      siniestrosAbiertos: totalSiniestrosAbiertos
+      siniestrosAbiertos: totalSiniestrosAbiertos,
+      tendencia: {
+        porcentaje: Math.round(tendenciaPorcentaje),
+        unidadesActuales: polizasPeriodoActual
+      }
     });
 
   } catch (error) {
-    console.error("Error al cargar datos de gráficos:", error);
-    res.status(500).json({ error: 'Error al procesar las estadísticas de los gráficos' });
+    console.error(error);
+    res.status(500).json({ error: 'Error al procesar los gráficos' });
   }
 });
-
 export default router;
