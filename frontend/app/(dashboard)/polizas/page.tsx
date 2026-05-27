@@ -167,13 +167,13 @@ export default function PolizasPage() {
   };
 
   const columnas: TableColumn[] = [
-    { label: <SortableHeader label="Nro Póliza" sortKey="nroPoliza" currentSort={sortConfig} requestSort={requestSort} /> },
+    { label: <SortableHeader label="Nro Póliza" sortKey="nroPoliza" currentSort={sortConfig} requestSort={(key) => requestSort(key as any)} /> },
     { label: "Titular" },
     { label: "Compañía" },
-    { label: <SortableHeader label="Rama / Cobertura" sortKey="tipoPoliza" currentSort={sortConfig} requestSort={requestSort} /> },
+    { label: <SortableHeader label="Rama / Cobertura" sortKey="tipoPoliza" currentSort={sortConfig} requestSort={(key) => requestSort(key as any)} /> },
     { label: "Detalle del Riesgo" },
-    { label: <SortableHeader label="Vigencia" sortKey="fechaVencimiento" currentSort={sortConfig} requestSort={requestSort} /> },
-    { label: <SortableHeader label="Estado" sortKey="estado" currentSort={sortConfig} requestSort={requestSort} /> },
+    { label: <SortableHeader label="Vigencia" sortKey="fechaVencimiento" currentSort={sortConfig} requestSort={(key) => requestSort(key as any)} /> },
+    { label: <SortableHeader label="Estado" sortKey="estado" currentSort={sortConfig} requestSort={(key) => requestSort(key as any)} /> },
     { label: "Acciones", align: "right" },
   ];
 

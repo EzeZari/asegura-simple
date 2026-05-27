@@ -155,13 +155,13 @@ export default function AseguradosPage() {
   };
 
   const columnas: TableColumn[] = [
-    { label: <SortableHeader label="Nombre / Razón Social" sortKey="nombre" currentSort={sortConfig} requestSort={requestSort} /> },
-    { label: <SortableHeader label="DNI / CUIT" sortKey="dni" currentSort={sortConfig} requestSort={requestSort} /> },
+    { label: <SortableHeader label="Nombre / Razón Social" sortKey="nombre" currentSort={sortConfig} requestSort={(key) => requestSort(key as any)} /> },
+    { label: <SortableHeader label="DNI / CUIT" sortKey="dni" currentSort={sortConfig} requestSort={(key) => requestSort(key as any)} /> },
     { label: "Contacto" },
-    { label: <SortableHeader label="Tipo" sortKey="tipo" currentSort={sortConfig} requestSort={requestSort} /> },
-    { label: <SortableHeader label="Fecha de Alta" sortKey="fechaRegistro" currentSort={sortConfig} requestSort={requestSort} /> },
+    { label: <SortableHeader label="Tipo" sortKey="tipo" currentSort={sortConfig} requestSort={(key) => requestSort(key as any)} /> },
+    { label: <SortableHeader label="Fecha de Alta" sortKey="fechaRegistro" currentSort={sortConfig} requestSort={(key) => requestSort(key as any)} /> },
     { label: "Pólizas", align: "center" },
-    { label: <SortableHeader label="Estado" sortKey="activo" currentSort={sortConfig} requestSort={requestSort} /> },
+    { label: <SortableHeader label="Estado" sortKey="activo" currentSort={sortConfig} requestSort={(key) => requestSort(key as any)} /> },
     { label: "Acciones", align: "right" },
   ];
 

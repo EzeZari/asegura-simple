@@ -96,12 +96,12 @@ export default function SiniestrosPage() {
   const { items: siniestrosOrdenados, requestSort, sortConfig } = useTableSort(siniestrosFiltrados);
 
   const columnas: TableColumn[] = [
-    { label: <SortableHeader label="Nro / Fecha" sortKey="nroSiniestro" currentSort={sortConfig} requestSort={requestSort} /> },
+    { label: <SortableHeader label="Nro / Fecha" sortKey="nroSiniestro" currentSort={sortConfig} requestSort={(key) => requestSort(key as any)} /> },
     { label: "Titular / DNI" },
     { label: "Nro Póliza" },
     { label: "Patente / Riesgo" },
     { label: "Descripción Breve" },
-    { label: <SortableHeader label="Estado del Trámite" sortKey="estadoSiniestro" currentSort={sortConfig} requestSort={requestSort} /> },
+    { label: <SortableHeader label="Estado del Trámite" sortKey="estadoSiniestro" currentSort={sortConfig} requestSort={(key) => requestSort(key as any)} /> },
     { label: "Acciones", align: "right" },
   ];
 

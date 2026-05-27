@@ -106,10 +106,10 @@ export default function CompaniasPage() {
   };
 
   const columnas: TableColumn[] = [
-    { label: <SortableHeader label="Nombre" sortKey="nombre" currentSort={sortConfig} requestSort={requestSort} /> },
-    { label: <SortableHeader label="CUIT" sortKey="cuit" currentSort={sortConfig} requestSort={requestSort} /> },
-    { label: <SortableHeader label="Teléfono Siniestros" sortKey="telefonoSiniestros" currentSort={sortConfig} requestSort={requestSort} /> },
-    { label: <SortableHeader label="Email Contacto" sortKey="email" currentSort={sortConfig} requestSort={requestSort} /> },
+    { label: <SortableHeader label="Nombre" sortKey="nombre" currentSort={sortConfig} requestSort={(key) => requestSort(key as any)} /> },
+    { label: <SortableHeader label="CUIT" sortKey="cuit" currentSort={sortConfig} requestSort={(key) => requestSort(key as any)} /> },
+    { label: <SortableHeader label="Teléfono Siniestros" sortKey="telefonoSiniestros" currentSort={sortConfig} requestSort={(key) => requestSort(key as any)} /> },
+    { label: <SortableHeader label="Email Contacto" sortKey="email" currentSort={sortConfig} requestSort={(key) => requestSort(key as any)} /> },
     { label: "Acciones", align: "right" },
   ];
 
