@@ -12,24 +12,25 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
 
   useEffect(() => {
     const checkSession = async () => {
-  try {
-    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/refresh", {
-      method: "POST",
-      credentials: "include",
-    });
+      try {
+        // 🔥 ACÁ ESTABA EL ERROR: Cambiada la comilla doble del final por un backtick
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/refresh`, {
+          method: "POST",
+          credentials: "include",
+        });
 
-    const data = await response.json();
-    console.log("Datos recibidos del backend:", data); // <-- AGREGÁ ESTO PARA VER EN CONSOLA
+        const data = await response.json();
+        console.log("Datos recibidos del backend:", data); // <-- AGREGÁ ESTO PARA VER EN CONSOLA
 
-    if (response.ok && data.user) {
-      setUser(data.user);
-    }
-  } catch (error) {
-    console.error("Error al restaurar la sesión:", error);
-  } finally {
-    setIsChecking(false);
-  }
-};
+        if (response.ok && data.user) {
+          setUser(data.user);
+        }
+      } catch (error) {
+        console.error("Error al restaurar la sesión:", error);
+      } finally {
+        setIsChecking(false);
+      }
+    };
 
     // Solo chequeamos si el usuario en memoria está vacío (ej: apretaron F5)
     if (!user) {
