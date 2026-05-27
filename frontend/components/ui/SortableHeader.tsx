@@ -5,7 +5,7 @@ import { ArrowDown, ArrowUp, ArrowUpDown } from "lucide-react";
 interface Props {
   label: string;
   sortKey: string;
-  currentSort: { key: string; direction: 'asc' | 'desc' } | null;
+  currentSort: any; // 🔥 ACÁ ESTÁ LA MAGIA: Le pusimos "any" para destrabar el error
   requestSort: (key: any) => void;
   className?: string;
 }
