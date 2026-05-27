@@ -3,16 +3,17 @@
 import { ReactNode } from "react";
 
 export interface TableColumn {
-  label: string;
+  // 🔥 ESTE ES EL CAMBIO: Ahora acepta strings O componentes de React
+  label: string | ReactNode; 
   align?: "left" | "center" | "right";
 }
 
 interface TableProps {
   columns: TableColumn[];
-  children: ReactNode; // Acá van a ir los <tr> que le pasemos desde cada página
+  children: ReactNode; 
   isLoading: boolean;
   isEmpty: boolean;
-  emptyContent: ReactNode; // El diseño de "No se encontraron datos"
+  emptyContent: ReactNode; 
 }
 
 export default function Table({ columns, children, isLoading, isEmpty, emptyContent }: TableProps) {
