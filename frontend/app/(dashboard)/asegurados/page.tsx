@@ -164,7 +164,7 @@ export default function AseguradosPage() {
     { label: <SortableHeader label="Estado" sortKey="activo" currentSort={sortConfig} requestSort={(key) => requestSort(key as any)} /> },
     { label: "Acciones", align: "right" },
   ];
-
+ 
   return (
     <div className="flex flex-col p-8 w-full gap-8 bg-white min-h-screen overflow-x-hidden">
       
