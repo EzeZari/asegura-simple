@@ -56,7 +56,8 @@ export default function ImportarPolizasModal({ isOpen, onClose, onSuccess }: Pro
     setError("");
 
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/polizas/importar, {
+      // 🔥 ACÁ FALTABA CERRAR EL BACKTICK DE LA URL
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/polizas/importar`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(previewData),
@@ -65,7 +66,8 @@ export default function ImportarPolizasModal({ isOpen, onClose, onSuccess }: Pro
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Error en la carga.");
 
-      onSuccess(¡Éxito! Se crearon ${data.creados} pólizas nuevas (se omitieron ${data.salteados} por duplicado o DNI inexistente).`);
+      // 🔥 ACÁ FALTABA ABRIR EL BACKTICK DEL MENSAJE
+      onSuccess(`¡Éxito! Se crearon ${data.creados} pólizas nuevas (se omitieron ${data.salteados} por duplicado o DNI inexistente).`);
       handleClose();
     } catch (err: any) {
       setError(err.message);

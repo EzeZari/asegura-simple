@@ -7,7 +7,6 @@ import Toast from "@/components/ui/Toast";
 
 export default function OpcionesAvanzadas() {
   const user = useAuthStore((state) => state.user);
-  // 🔥 Importamos la función para actualizar el estado del usuario localmente
   const setUser = useAuthStore((state: any) => state.setUser); 
 
   const [twoFactorEnabled, setTwoFactorEnabled] = useState(false);
@@ -15,21 +14,20 @@ export default function OpcionesAvanzadas() {
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState("");
 
-  // Estados para el Modal de Peligro
   const [showDangerModal, setShowDangerModal] = useState(false);
   const [palabraConfirmacion, setPalabraConfirmacion] = useState("");
   const [isDeleting, setIsDeleting] = useState(false);
 
-  // Cuando carga el componente, seteamos el 2FA
   useEffect(() => {
-    if (user && typeof user.twoFactorEnabled === 'boolean') {
-      setTwoFactorEnabled(user.twoFactorEnabled);
+    const usuarioLoco = user as any; // 🔥 Magia negra anti-TypeScript
+    if (usuarioLoco && typeof usuarioLoco.twoFactorEnabled === 'boolean') {
+      setTwoFactorEnabled(usuarioLoco.twoFactorEnabled);
     }
   }, [user]);
 
   const toggle2FA = async () => {
     const newState = !twoFactorEnabled;
-    setTwoFactorEnabled(newState); // Cambio visual rápido
+    setTwoFactorEnabled(newState); 
 
     try {
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/2fa`, {
@@ -39,9 +37,9 @@ export default function OpcionesAvanzadas() {
       });
 
       if (res.ok) {
-        // 🔥 ESTA ES LA MAGIA: Actualizamos el store local para que el F5 funcione bien
         if (user) {
-          setUser({ ...user, twoFactorEnabled: newState });
+          // 🔥 ACÁ FALTABA EL "as any"
+          setUser({ ...user, twoFactorEnabled: newState } as any); 
         }
         setToastMessage(newState ? "2FA Activado" : "2FA Desactivado");
         setShowToast(true);
@@ -50,7 +48,7 @@ export default function OpcionesAvanzadas() {
       }
 
     } catch (error) {
-      setTwoFactorEnabled(!newState); // Si falla, lo volvemos a como estaba
+      setTwoFactorEnabled(!newState); 
       alert("Error al guardar la preferencia.");
     }
   };
@@ -84,7 +82,6 @@ export default function OpcionesAvanzadas() {
   return (
     <div className="flex flex-col gap-8">
       
-      {/* 2FA */}
       <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex flex-col gap-4">
         <h3 className="text-lg font-bold text-gray-900 border-b border-gray-50 pb-2 flex items-center gap-2">
           <Shield size={18} className="text-gray-400" /> Autenticación en Dos Pasos (2FA)
@@ -103,7 +100,6 @@ export default function OpcionesAvanzadas() {
         </div>
       </div>
 
-      {/* Sesiones (Visual) */}
       <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex flex-col gap-4">
         <h3 className="text-lg font-bold text-gray-900 border-b border-gray-50 pb-2 flex items-center gap-2">
           <Smartphone size={18} className="text-gray-400" /> Dispositivos y Sesiones
@@ -120,7 +116,6 @@ export default function OpcionesAvanzadas() {
         </div>
       </div>
 
-      {/* Zona Peligro */}
       <div className="bg-red-50/30 p-6 rounded-2xl border border-red-200 shadow-sm flex flex-col gap-4">
         <h3 className="text-lg font-bold text-red-700 border-b border-red-100 pb-2 flex items-center gap-2">
           <AlertOctagon size={18} /> Zona de Peligro
@@ -136,7 +131,6 @@ export default function OpcionesAvanzadas() {
         </div>
       </div>
 
-      {/* MODAL DE CONFIRMACIÓN PELIGROSA */}
       {showDangerModal && (
         <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in duration-200">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden flex flex-col">
