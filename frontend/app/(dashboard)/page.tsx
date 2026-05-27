@@ -15,7 +15,6 @@ export default function DashboardPage() {
   useEffect(() => {
     setMounted(true);
     
-    // 🔥 ACÁ ESTÁ EL CAMBIO: Comillas invertidas (backticks)
     fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/dashboard/stats`)
       .then((res) => res.json())
       .then((data) => {
@@ -50,7 +49,7 @@ export default function DashboardPage() {
       value: isLoading ? "..." : dashboardData?.vencimientos?.toString() || "0", 
       description: "Requieren atención", 
       icon: AlertCircle, 
-      trend: dashboardData?.vencimientos > 0 ? "down" : "up" as const, 
+      trend: dashboardData?.vencimientos > 0 ? "down" : "up", 
       href: "/alertas" 
     },
     { 
@@ -82,7 +81,8 @@ export default function DashboardPage() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {statsReales.map((stat, index) => (
-          <StatCard key={index} {...stat} />
+          // 🔥 ACÁ ESTÁ LA MAGIA: Forzamos el trend con 'as any'
+          <StatCard key={index} {...stat} trend={stat.trend as any} />
         ))}
       </div>
 
