@@ -18,7 +18,7 @@ export default function PolizasDelAseguradoModal({ isOpen, onClose, asegurado }:
   useEffect(() => {
     if (isOpen && asegurado) {
       setIsLoading(true);
-      fetch(`http://localhost:3001/api/asegurados/${asegurado.id}/polizas`)
+      fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/asegurados/${asegurado.id}/polizas`)
         .then((res) => res.json())
         .then((data) => setPolizas(data))
         .catch((err) => console.error("Error cargando pólizas", err))

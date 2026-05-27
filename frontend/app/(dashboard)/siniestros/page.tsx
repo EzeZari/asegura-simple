@@ -8,11 +8,10 @@ import Toast from "@/components/ui/Toast";
 import Table, { TableColumn } from "@/components/ui/Table";
 import ConfirmModal from "@/components/ui/ConfirmModal";
 import PageHeader from "@/components/ui/PageHeader";
-import { useTableSort } from "@/hooks/useTableSort"; // 🔥 Importamos el hook
-import SortableHeader from "@/components/ui/SortableHeader"; // 🔥 Importamos el header ordenable
-import SelectOrdenamiento from "@/components/ui/SelectOrdenamiento"; // 🔥 Importamos el select visual
+import { useTableSort } from "@/hooks/useTableSort";
+import SortableHeader from "@/components/ui/SortableHeader";
+import SelectOrdenamiento from "@/components/ui/SelectOrdenamiento"; 
 
-// Opciones de ordenamiento para Siniestros
 const OPCIONES_ORDEN = [
   { value: "mas_recientes", label: "Carga más reciente" },
   { value: "fecha_hecho_reciente", label: "Fecha del hecho (más reciente)" },
@@ -27,7 +26,6 @@ export default function SiniestrosPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [filtroEstado, setFiltroEstado] = useState("Todos");
 
-  // 🔥 Nuevo estado para controlar el orden actual
   const [ordenActual, setOrdenActual] = useState("mas_recientes");
 
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -43,7 +41,8 @@ export default function SiniestrosPage() {
 
   const fetchSiniestros = async () => {
     try {
-      const res = await fetch("http://localhost:3001/api/siniestros");
+      // 🔥 CORREGIDO (Backtick al final)
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/siniestros`);
       setSiniestros(await res.json());
     } catch (error) { console.error("Error al cargar siniestros:", error); } finally { setIsLoading(false); }
   };
@@ -54,7 +53,8 @@ export default function SiniestrosPage() {
     if (!siniestroAEliminar) return;
     setIsDeleting(true);
     try {
-      const res = await fetch(`http://localhost:3001/api/siniestros/${siniestroAEliminar.id}`, { method: 'DELETE' });
+      // 🔥 CORREGIDO (Backtick al final)
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/siniestros/${siniestroAEliminar.id}`, { method: 'DELETE' });
       if (!res.ok) throw new Error((await res.json()).error);
       
       fetchSiniestros();
@@ -64,7 +64,6 @@ export default function SiniestrosPage() {
     } catch (error: any) { alert(error.message); } finally { setIsDeleting(false); setSiniestroAEliminar(null); }
   };
 
-  // 1. Filtramos los siniestros (Búsqueda y Estado)
   let siniestrosFiltrados = siniestros.filter((s) => {
     const busqueda = searchTerm.toLowerCase();
     const cliente = `${s.poliza?.asegurado?.nombre} ${s.poliza?.asegurado?.apellido || ""}`.toLowerCase();
@@ -77,12 +76,11 @@ export default function SiniestrosPage() {
     return matchBusqueda && matchEstado;
   });
 
-  // 🔥 2. Aplicamos el ordenamiento lógico
   siniestrosFiltrados = siniestrosFiltrados.sort((a, b) => {
     switch (ordenActual) {
-      case "mas_recientes": // Orden de carga en el sistema
+      case "mas_recientes": 
         return b.id - a.id;
-      case "fecha_hecho_reciente": // Fecha en la que ocurrió el accidente
+      case "fecha_hecho_reciente": 
         return new Date(b.fechaHecho).getTime() - new Date(a.fechaHecho).getTime();
       case "fecha_hecho_antiguo":
         return new Date(a.fechaHecho).getTime() - new Date(b.fechaHecho).getTime();
@@ -95,10 +93,8 @@ export default function SiniestrosPage() {
     }
   });
 
-  // 3. Pasamos todo listo al useTableSort
   const { items: siniestrosOrdenados, requestSort, sortConfig } = useTableSort(siniestrosFiltrados);
 
-  // 🔥 COLUMNAS ACTUALIZADAS PARA QUE SEAN ORDENABLES AL HACER CLIC
   const columnas: TableColumn[] = [
     { label: <SortableHeader label="Nro / Fecha" sortKey="nroSiniestro" currentSort={sortConfig} requestSort={requestSort} /> },
     { label: "Titular / DNI" },
@@ -119,7 +115,6 @@ export default function SiniestrosPage() {
         onNuevo={() => { setSiniestroAEditar(null); setIsModalOpen(true); }} 
       />
 
-      {/* FILTROS Y BÚSQUEDA */}
       <div className="flex flex-col md:flex-row gap-4 bg-gray-50/50 p-4 rounded-2xl border border-gray-100">
         <div className="flex-1 relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
@@ -142,7 +137,6 @@ export default function SiniestrosPage() {
         </select>
       </div>
 
-      {/* 🔥 BARRA DE ACCIONES (Ordenamiento) */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 w-full -mb-4">
         <div className="w-full md:w-auto">
           <SelectOrdenamiento 

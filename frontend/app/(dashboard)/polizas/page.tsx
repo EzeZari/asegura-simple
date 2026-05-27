@@ -14,9 +14,8 @@ import { useTableSort } from "@/hooks/useTableSort";
 import SortableHeader from "@/components/ui/SortableHeader";
 import PageHeader from "@/components/ui/PageHeader";
 import PolizaTableRow from "@/components/polizas/PolizaTableRow";
-import SelectOrdenamiento from "@/components/ui/SelectOrdenamiento"; // <-- Importamos el componente
+import SelectOrdenamiento from "@/components/ui/SelectOrdenamiento";
 
-// Opciones disponibles para el selector
 const OPCIONES_ORDEN = [
   { value: "mas_recientes", label: "Más recientes primero" },
   { value: "mas_antiguas", label: "Más antiguas primero" },
@@ -30,7 +29,6 @@ export default function PolizasPage() {
   const [filtroRama, setFiltroRama] = useState("Todas");
   const [filtroEstado, setFiltroEstado] = useState("Todos");
   
-  // 🔥 Nuevo estado para el ordenamiento (arranca en más recientes)
   const [ordenActual, setOrdenActual] = useState("mas_recientes");
   
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -50,7 +48,8 @@ export default function PolizasPage() {
 
   const fetchPolizas = async () => {
     try {
-      const res = await fetch("http://localhost:3001/api/polizas");
+      // 🔥 CORREGIDO (comillas invertidas limpias)
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/polizas`);
       setPolizas(await res.json());
     } catch (error) { console.error("Error al cargar pólizas:", error); } finally { setIsLoading(false); }
   };
@@ -60,7 +59,8 @@ export default function PolizasPage() {
   const cambiarEstadoRapido = async (poliza: any, nuevoEstado: string) => {
     setMenuAbiertoId(null);
     try {
-      await fetch(`http://localhost:3001/api/polizas/${poliza.id}`, {
+      // 🔥 CORREGIDO (comillas invertidas limpias)
+      await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/polizas/${poliza.id}`, {
         method: "PUT", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ...poliza, estado: nuevoEstado }),
       });
@@ -74,7 +74,8 @@ export default function PolizasPage() {
     if (!polizaAEliminar) return;
     setIsDeleting(true);
     try {
-      const res = await fetch(`http://localhost:3001/api/polizas/${polizaAEliminar.id}`, { method: 'DELETE' });
+      // 🔥 CORREGIDO (comillas invertidas limpias)
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/polizas/${polizaAEliminar.id}`, { method: 'DELETE' });
       if (!res.ok) throw new Error((await res.json()).error);
       fetchPolizas();
       setMensajeToast("Póliza eliminada correctamente");
@@ -86,7 +87,8 @@ export default function PolizasPage() {
   const enviarAvisoVencimiento = async (poliza: any) => {
     setMenuAbiertoId(null);
     try {
-      const res = await fetch(`http://localhost:3001/api/polizas/${poliza.id}/avisar-vencimiento`, { method: "POST" });
+      // 🔥 CORREGIDO (comillas invertidas limpias)
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/polizas/${poliza.id}/avisar-vencimiento`, { method: "POST" });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
       setMensajeToast("Correo de aviso enviado exitosamente");
@@ -110,7 +112,6 @@ export default function PolizasPage() {
     return poliza.estado; 
   };
 
-  // 1. Filtramos las pólizas como siempre
   let polizasFiltradas = polizas.filter((poliza) => {
     const busqueda = searchTerm.toLowerCase();
     const matchBusqueda = 
@@ -128,20 +129,15 @@ export default function PolizasPage() {
     return matchBusqueda && matchRama && matchEstado;
   });
 
-  // 🔥 2. Aplicamos el ordenamiento lógico antes de pasarlas a la tabla
   polizasFiltradas = polizasFiltradas.sort((a, b) => {
     switch (ordenActual) {
       case "mas_recientes":
-        // Compara por ID descendente (el ID más alto es el más nuevo en la BD)
         return b.id - a.id;
       case "mas_antiguas":
-        // Compara por ID ascendente
         return a.id - b.id;
       case "vencimiento_proximo":
-        // Ordena por fecha de vencimiento más cercana (solo si no están vencidas/anuladas idealmente)
         return new Date(a.fechaVencimiento).getTime() - new Date(b.fechaVencimiento).getTime();
       case "alfabetico_asegurado":
-        // Ordena alfabéticamente por el nombre del asegurado
         const nombreA = `${a.asegurado?.nombre} ${a.asegurado?.apellido}`.toLowerCase();
         const nombreB = `${b.asegurado?.nombre} ${b.asegurado?.apellido}`.toLowerCase();
         return nombreA.localeCompare(nombreB);
@@ -150,7 +146,6 @@ export default function PolizasPage() {
     }
   });
 
-  // 3. El useTableSort sigue funcionando por si el usuario hace clic en los headers de las columnas
   const { items: polizasOrdenadas, requestSort, sortConfig } = useTableSort(polizasFiltradas);
 
   const prepararDatosParaExcel = () => {
@@ -198,10 +193,8 @@ export default function PolizasPage() {
         filtroEstado={filtroEstado} setFiltroEstado={setFiltroEstado}
       />
 
-      {/* 🔥 BARRA DE ACCIONES (Ordenamiento a la Izquierda, Botones a la Derecha) */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 w-full -mb-4">
         
-        {/* Selector de Ordenamiento */}
         <div className="w-full md:w-auto">
           <SelectOrdenamiento 
             opciones={OPCIONES_ORDEN}
@@ -210,7 +203,6 @@ export default function PolizasPage() {
           />
         </div>
 
-        {/* Botones de Importar/Exportar */}
         <div className="flex items-center gap-3 w-full md:w-auto">
           <button
             onClick={() => setIsImportModalOpen(true)}

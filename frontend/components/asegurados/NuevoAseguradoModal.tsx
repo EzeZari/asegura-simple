@@ -49,8 +49,8 @@ export default function NuevoAseguradoModal({ isOpen, onClose, onSuccess, client
     try {
       // Magia: Si hay cliente editamos (PUT), sino creamos (POST)
       const url = clienteAEditar 
-        ? `http://localhost:3001/api/asegurados/${clienteAEditar.id}` 
-        : "http://localhost:3001/api/asegurados";
+        ? `${process.env.NEXT_PUBLIC_API_URL}/api/asegurados/${clienteAEditar.id}` 
+        : `${process.env.NEXT_PUBLIC_API_URL}/api/asegurados`;
       
       const method = clienteAEditar ? "PUT" : "POST";
 

@@ -27,7 +27,7 @@ export default function EstadisticasPage() {
     try {
       setIsRefreshing(true);
       
-      let url = `http://localhost:3001/api/dashboard/graficos?periodo=${periodo}`;
+      let url = `${process.env.NEXT_PUBLIC_API_URL}/api/dashboard/graficos?periodo=${periodo}`;
       if (periodo === "personalizado") {
         url += `&inicio=${fechaInicio}&fin=${fechaFin}`;
       }

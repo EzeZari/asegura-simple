@@ -42,7 +42,8 @@ export default function CompaniasPage() {
 
   const fetchCompanias = async () => {
     try {
-      const res = await fetch("http://localhost:3001/api/companias");
+      // 🔥 CORREGIDO (Backtick al final)
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/companias`);
       const data = await res.json();
       setCompanias(data);
     } catch (error) { console.error(error); } finally { setIsLoading(false); }
@@ -68,7 +69,8 @@ export default function CompaniasPage() {
     if (!companiaAEliminar) return;
     setIsDeleting(true);
     try {
-      const res = await fetch(`http://localhost:3001/api/companias/${companiaAEliminar.id}`, { method: 'DELETE' });
+      // 🔥 CORREGIDO (Backtick al final)
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/companias/${companiaAEliminar.id}`, { method: 'DELETE' });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Error al eliminar");
       setMensajeToast("Compañía eliminada correctamente");

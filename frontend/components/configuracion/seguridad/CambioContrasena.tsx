@@ -29,7 +29,7 @@ export default function CambioContrasena() {
     if (passwords.nueva !== passwords.confirmacion) return setPassError("Las contraseñas nuevas no coinciden.");
 
     try {
-      const res = await fetch("http://localhost:3001/api/auth/change-password", {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/change-password`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: user?.email, actual: passwords.actual, nueva: passwords.nueva })

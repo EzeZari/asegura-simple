@@ -34,7 +34,7 @@ export default function CredencialesAcceso() {
     setIsProcessingEmail(true);
     
     try {
-      const res = await fetch("http://localhost:3001/api/auth/request-email-change", {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/request-email-change`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id: user?.id, newEmail }),
@@ -63,7 +63,7 @@ export default function CredencialesAcceso() {
     setIsProcessingEmail(true);
 
     try {
-      const res = await fetch("http://localhost:3001/api/auth/verify-email-change", {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/verify-email-change`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id: user?.id, codigo: verificationCode }),

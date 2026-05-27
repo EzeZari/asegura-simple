@@ -23,7 +23,7 @@ export default function PlantillasSettings() {
   useEffect(() => {
     const fetchPlantillas = async () => {
       try {
-        const res = await fetch("http://localhost:3001/api/agencia");
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/agencia`);
         const data = await res.json();
         
         // El truco de magia: Si la base de datos trae las plantillas vacías, le inyectamos las DEFAULT
@@ -45,7 +45,7 @@ export default function PlantillasSettings() {
   const guardarPlantillas = async () => {
     setIsSaving(true);
     try {
-      const res = await fetch("http://localhost:3001/api/agencia", {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/agencia`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(agencia),

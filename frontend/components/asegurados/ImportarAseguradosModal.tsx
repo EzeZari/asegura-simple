@@ -55,7 +55,7 @@ export default function ImportarAseguradosModal({ isOpen, onClose, onSuccess }: 
     setError("");
 
     try {
-      const res = await fetch("http://localhost:3001/api/asegurados/importar", {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/asegurados/importar`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(previewData),

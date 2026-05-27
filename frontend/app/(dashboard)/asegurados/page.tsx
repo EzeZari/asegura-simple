@@ -15,9 +15,8 @@ import SortableHeader from "@/components/ui/SortableHeader";
 import PageHeader from "@/components/ui/PageHeader";
 import AlertModal from "@/components/ui/AlertModal";
 import AseguradoTableRow from "@/components/asegurados/AseguradoTableRow";
-import SelectOrdenamiento from "@/components/ui/SelectOrdenamiento"; // 🔥 Importamos el componente de orden
+import SelectOrdenamiento from "@/components/ui/SelectOrdenamiento";
 
-// Opciones de ordenamiento para Asegurados
 const OPCIONES_ORDEN = [
   { value: "mas_recientes", label: "Más recientes primero" },
   { value: "mas_antiguos", label: "Más antiguos primero" },
@@ -30,7 +29,6 @@ export default function AseguradosPage() {
   const [filtroTipo, setFiltroTipo] = useState("Todos");
   const [filtroEstado, setFiltroEstado] = useState("Todos");
   
-  // 🔥 Nuevo estado para controlar el orden actual
   const [ordenActual, setOrdenActual] = useState("mas_recientes");
   
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -54,7 +52,8 @@ export default function AseguradosPage() {
 
   const fetchAsegurados = async () => {
     try {
-      const res = await fetch("http://localhost:3001/api/asegurados");
+      // 🔥 REEMPLAZO 1
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/asegurados`);
       setAsegurados(await res.json());
     } catch (error) { console.error(error); } finally { setIsLoading(false); }
   };
@@ -63,7 +62,8 @@ export default function AseguradosPage() {
 
   const toggleEstado = async (cliente: any) => {
     try {
-      await fetch(`http://localhost:3001/api/asegurados/${cliente.id}`, {
+      // 🔥 REEMPLAZO 2
+      await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/asegurados/${cliente.id}`, {
         method: "PUT", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ...cliente, activo: !cliente.activo }),
       });
@@ -75,7 +75,8 @@ export default function AseguradosPage() {
     if (!aseguradoAEliminar) return;
     setIsDeleting(true);
     try {
-      const res = await fetch(`http://localhost:3001/api/asegurados/${aseguradoAEliminar.id}`, { method: 'DELETE' });
+      // 🔥 REEMPLAZO 3
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/asegurados/${aseguradoAEliminar.id}`, { method: 'DELETE' });
       const data = await res.json();
       
       if (!res.ok) throw new Error(data.error || "Error al eliminar");
@@ -113,7 +114,6 @@ export default function AseguradosPage() {
     setShowToast(true);
   };
 
-  // 1. Filtramos los clientes (Búsqueda y Pestañas)
   let aseguradosFiltrados = asegurados.filter((cliente) => {
     const busqueda = searchTerm.toLowerCase();
     const nombreCompleto = `${cliente.nombre} ${cliente.apellido || ""}`.toLowerCase();
@@ -123,15 +123,11 @@ export default function AseguradosPage() {
     return pasaFiltroTexto && pasaFiltroTipo && pasaFiltroEstado;
   });
 
-  // 🔥 2. Aplicamos el ordenamiento lógico
   aseguradosFiltrados = aseguradosFiltrados.sort((a, b) => {
     switch (ordenActual) {
-      case "mas_recientes":
-        return b.id - a.id;
-      case "mas_antiguos":
-        return a.id - b.id;
+      case "mas_recientes": return b.id - a.id;
+      case "mas_antiguos": return a.id - b.id;
       case "mas_polizas":
-        // Asumiendo que la API devuelve _count.polizas (si no lo hace, dejá esto por defecto o revisalo en tu backend)
         const polizasA = a._count?.polizas || 0;
         const polizasB = b._count?.polizas || 0;
         return polizasB - polizasA;
@@ -139,12 +135,10 @@ export default function AseguradosPage() {
         const nombreA = `${a.nombre} ${a.apellido || ""}`.toLowerCase().trim();
         const nombreB = `${b.nombre} ${b.apellido || ""}`.toLowerCase().trim();
         return nombreA.localeCompare(nombreB);
-      default:
-        return 0;
+      default: return 0;
     }
   });
 
-  // 3. Pasamos todo listo al useTableSort (que maneja los clics en los headers de la tabla)
   const { items: aseguradosOrdenados, requestSort, sortConfig } = useTableSort(aseguradosFiltrados);
 
   const prepararDatosParaExcel = () => {
@@ -187,33 +181,15 @@ export default function AseguradosPage() {
         filtroEstado={filtroEstado} setFiltroEstado={setFiltroEstado}
       />
 
-      {/* 🔥 BARRA DE ACCIONES (Ordenamiento + Botones de Excel) */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 w-full -mb-4">
-        
-        {/* Selector de Ordenamiento */}
         <div className="w-full md:w-auto">
-          <SelectOrdenamiento 
-            opciones={OPCIONES_ORDEN}
-            valorActual={ordenActual}
-            onChange={setOrdenActual}
-          />
+          <SelectOrdenamiento opciones={OPCIONES_ORDEN} valorActual={ordenActual} onChange={setOrdenActual} />
         </div>
-
-        {/* Botones de Importar/Exportar */}
         <div className="flex items-center gap-3 w-full md:w-auto">
-          <button
-            onClick={() => setIsImportModalOpen(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-gray-50 hover:bg-gray-100 border border-gray-200 text-gray-700 rounded-xl text-sm font-bold transition-all active:scale-95 shadow-sm"
-          >
+          <button onClick={() => setIsImportModalOpen(true)} className="flex items-center gap-2 px-4 py-2 bg-gray-50 hover:bg-gray-100 border border-gray-200 text-gray-700 rounded-xl text-sm font-bold transition-all active:scale-95 shadow-sm">
             <UploadCloud size={16} /> Importar Excel
           </button>
-          <button
-            onClick={() => {
-              if(aseguradosOrdenados.length === 0) return alert("No hay datos para exportar.");
-              setIsExportModalOpen(true);
-            }}
-            className="flex items-center gap-2 px-4 py-2 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-700 rounded-xl text-sm font-bold transition-all active:scale-95 shadow-sm"
-          >
+          <button onClick={() => { if(aseguradosOrdenados.length === 0) return alert("No hay datos para exportar."); setIsExportModalOpen(true); }} className="flex items-center gap-2 px-4 py-2 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-700 rounded-xl text-sm font-bold transition-all active:scale-95 shadow-sm">
             <Download size={16} /> Exportar a Excel
           </button>
         </div>
@@ -235,32 +211,12 @@ export default function AseguradosPage() {
       </Table>
 
       <NuevoAseguradoModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSuccess={() => { setIsModalOpen(false); fetchAsegurados(); setShowToast(true); setMensajeToast("Asegurado guardado correctamente"); }} clienteAEditar={clienteAEditar} />
-      
-      <ExportarExcelModal 
-        isOpen={isExportModalOpen} 
-        onClose={() => setIsExportModalOpen(false)} 
-        datos={prepararDatosParaExcel()} 
-        nombreArchivo={`Reporte_Clientes_${new Date().toISOString().split("T")[0]}`} 
-      />
-
-      <ImportarAseguradosModal 
-        isOpen={isImportModalOpen} 
-        onClose={() => setIsImportModalOpen(false)} 
-        onSuccess={handleImportSuccess} 
-      />
-
+      <ExportarExcelModal isOpen={isExportModalOpen} onClose={() => setIsExportModalOpen(false)} datos={prepararDatosParaExcel()} nombreArchivo={`Reporte_Clientes_${new Date().toISOString().split("T")[0]}`} />
+      <ImportarAseguradosModal isOpen={isImportModalOpen} onClose={() => setIsImportModalOpen(false)} onSuccess={handleImportSuccess} />
       <ConfirmModal isOpen={isConfirmOpen} onClose={() => setIsConfirmOpen(false)} onConfirm={ejecutarEliminacion} isLoading={isDeleting} title="¿Eliminar asegurado?" message={`Esta acción eliminará a "${aseguradoAEliminar?.nombre} ${aseguradoAEliminar?.apellido || ''}" permanentemente. Solo es posible si no tiene pólizas activas.`} />
-      
       <PolizasDelAseguradoModal isOpen={!!aseguradoParaVerPolizas} onClose={() => setAseguradoParaVerPolizas(null)} asegurado={aseguradoParaVerPolizas} />
-      
       <Toast message={mensajeToast} isVisible={showToast} onClose={() => setShowToast(false)} />
-
-      <AlertModal 
-        isOpen={isAlertModalOpen} 
-        onClose={() => setIsAlertModalOpen(false)} 
-        title={alertModalInfo.title}
-        message={alertModalInfo.message}
-      />
+      <AlertModal isOpen={isAlertModalOpen} onClose={() => setIsAlertModalOpen(false)} title={alertModalInfo.title} message={alertModalInfo.message} />
     </div>
   );
 }

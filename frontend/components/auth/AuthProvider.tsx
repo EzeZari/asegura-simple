@@ -13,7 +13,7 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
   useEffect(() => {
     const checkSession = async () => {
   try {
-    const response = await fetch("http://localhost:3001/api/auth/refresh", {
+    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/refresh", {
       method: "POST",
       credentials: "include",
     });

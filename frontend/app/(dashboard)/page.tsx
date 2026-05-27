@@ -15,7 +15,8 @@ export default function DashboardPage() {
   useEffect(() => {
     setMounted(true);
     
-    fetch("http://localhost:3001/api/dashboard/stats")
+    // 🔥 ACÁ ESTÁ EL CAMBIO: Comillas invertidas (backticks)
+    fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/dashboard/stats`)
       .then((res) => res.json())
       .then((data) => {
         setDashboardData(data);
@@ -30,7 +31,7 @@ export default function DashboardPage() {
   const statsReales = [
     { 
       title: "Total Asegurados", 
-      value: isLoading ? "..." : dashboardData?.totalAsegurados.toString(), 
+      value: isLoading ? "..." : dashboardData?.totalAsegurados?.toString() || "0", 
       description: "Clientes activos", 
       icon: Users, 
       trend: "neutral" as const, 
@@ -38,7 +39,7 @@ export default function DashboardPage() {
     },
     { 
       title: "Pólizas Activas", 
-      value: isLoading ? "..." : dashboardData?.polizasActivas.toString(), 
+      value: isLoading ? "..." : dashboardData?.polizasActivas?.toString() || "0", 
       description: "Coberturas vigentes", 
       icon: FileText, 
       trend: "neutral" as const, 
@@ -46,7 +47,7 @@ export default function DashboardPage() {
     },
     { 
       title: "Vencimientos (30 días)", 
-      value: isLoading ? "..." : dashboardData?.vencimientos.toString(), 
+      value: isLoading ? "..." : dashboardData?.vencimientos?.toString() || "0", 
       description: "Requieren atención", 
       icon: AlertCircle, 
       trend: dashboardData?.vencimientos > 0 ? "down" : "up" as const, 
@@ -54,7 +55,7 @@ export default function DashboardPage() {
     },
     { 
       title: "Aseguradoras", 
-      value: isLoading ? "..." : dashboardData?.totalCompanias.toString(), 
+      value: isLoading ? "..." : dashboardData?.totalCompanias?.toString() || "0", 
       description: "Compañías conectadas", 
       icon: Building, 
       trend: "neutral" as const,
@@ -62,10 +63,8 @@ export default function DashboardPage() {
     },
   ];
 
-  // EL FILTRO SALVAVIDAS: Limpiamos los datos para no tener que tocar el archivo RecentActivity.tsx
   const actividadSegura = dashboardData?.actividadReciente?.map((item: any) => ({
     ...item,
-    // Nos aseguramos de que esto nunca sea "undefined" para que el .toLowerCase() no explote
     type: item.type || item.tipo || item.accion || "",
     tipo: item.tipo || item.type || item.accion || ""
   })) || [];
@@ -88,7 +87,6 @@ export default function DashboardPage() {
       </div>
 
       <div className="mt-4 pb-10">
-        {/* LE PASAMOS LA ACTIVIDAD "SEGURA" (LIMPIA) EN LUGAR DE LA DATA CRUDA */}
         <RecentActivity data={isLoading ? [] : actividadSegura} />
         {isLoading && (
           <div className="text-center text-gray-400 mt-4 animate-pulse text-sm">

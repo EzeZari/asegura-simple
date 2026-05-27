@@ -21,7 +21,7 @@ export default function AlertasPage() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    fetch("http://localhost:3001/api/alertas")
+    fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/alertas`)
       .then(res => res.json())
       .then(resData => {
         setData(resData);

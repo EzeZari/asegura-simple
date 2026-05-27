@@ -13,7 +13,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     const rehidratarSesion = async () => {
       try {
         // Usamos la ruta refresh (o la que uses para validar) mandando las cookies
-        const res = await fetch("http://localhost:3001/api/auth/refresh", {
+          const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/refresh`, {
           method: "POST",
           credentials: "include", 
         });

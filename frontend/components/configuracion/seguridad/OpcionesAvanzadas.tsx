@@ -32,7 +32,7 @@ export default function OpcionesAvanzadas() {
     setTwoFactorEnabled(newState); // Cambio visual rápido
 
     try {
-      const res = await fetch("http://localhost:3001/api/auth/2fa", {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/2fa`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: user?.email, enabled: newState })
@@ -60,7 +60,7 @@ export default function OpcionesAvanzadas() {
     setIsDeleting(true);
 
     try {
-      const res = await fetch("http://localhost:3001/api/auth/wipe-data", {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/wipe-data`, {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: user?.email, confirmacion: palabraConfirmacion })

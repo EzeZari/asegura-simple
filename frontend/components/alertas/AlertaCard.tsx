@@ -40,7 +40,7 @@ export default function AlertaCard({ poliza, nivel }: Props) {
   const ejecutarBaja = async () => {
     setIsBajaLoading(true);
     try {
-      await fetch(`http://localhost:3001/api/polizas/${poliza.id}`, {
+      await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/polizas/${poliza.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ...poliza, estado: "Anulada" })
@@ -65,7 +65,7 @@ export default function AlertaCard({ poliza, nivel }: Props) {
     
     setEstadoEmail("loading");
     try {
-      const res = await fetch(`http://localhost:3001/api/polizas/${poliza.id}/avisar-vencimiento`, { 
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/polizas/${poliza.id}/avisar-vencimiento`, { 
         method: "POST" 
       });
       

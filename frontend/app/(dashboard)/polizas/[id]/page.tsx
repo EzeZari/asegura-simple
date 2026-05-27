@@ -25,7 +25,7 @@ export default function PolizaDetallePage() {
 
   const fetchPoliza = async () => {
     try {
-      const res = await fetch(`http://localhost:3001/api/polizas/${id}`);
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/polizas/${id}`);
       const data = await res.json();
       setPoliza(data);
     } catch (err) {
@@ -59,7 +59,7 @@ export default function PolizaDetallePage() {
     formData.append("pdf", file);
 
     try {
-      const res = await fetch(`http://localhost:3001/api/polizas/${id}/subir-pdf`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/polizas/${id}/subir-pdf`, {
         method: "POST",
         body: formData, // No hace falta poner 'Content-Type', el navegador lo calcula solo al mandar FormData
       });
@@ -193,7 +193,7 @@ export default function PolizaDetallePage() {
             {poliza.pdfUrl ? (
               <div className="flex flex-col gap-3">
                 <a 
-                  href={`http://localhost:3001/${poliza.pdfUrl}`}
+                  href={`${process.env.NEXT_PUBLIC_API_URL}/${poliza.pdfUrl}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex justify-center items-center gap-2 bg-blue-50 hover:bg-blue-100 text-blue-700 py-4 rounded-xl font-bold transition-colors"

@@ -11,7 +11,7 @@ export default function ConsultaPublicaPage() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    fetch(`http://localhost:3001/api/siniestros/publico/consulta/${token}`)
+    fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/siniestros/publico/consulta/${token}`)
       .then(res => {
         if (!res.ok) throw new Error();
         return res.json();

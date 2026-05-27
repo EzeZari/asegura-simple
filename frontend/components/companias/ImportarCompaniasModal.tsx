@@ -48,10 +48,8 @@ export default function ImportarCompaniasModal({ isOpen, onClose, onSuccess }: I
         const wsname = wb.SheetNames[0];
         const ws = wb.Sheets[wsname];
         
-        // Convertimos a JSON puro (como array de arrays para ignorar los nombres de columnas de la primera fila)
         const data = XLSX.utils.sheet_to_json(ws, { header: 1 }) as any[];
         
-        // Filtramos filas completamente vacías y el header
         const rows = data.filter(row => row.length > 0).slice(1);
 
         if (rows.length === 0) {
@@ -59,17 +57,12 @@ export default function ImportarCompaniasModal({ isOpen, onClose, onSuccess }: I
           return;
         }
 
-        // Mapeamos los datos asumiendo este orden de columnas en el Excel del usuario:
-        // Columna A: Nombre (Obligatorio)
-        // Columna B: CUIT (Opcional)
-        // Columna C: Teléfono Siniestros (Opcional)
-        // Columna D: Email (Opcional)
         const mapeados = rows.map((row: any) => ({
           nombre: row[0]?.toString().trim() || "",
           cuit: row[1]?.toString().trim() || null,
           telefonoSiniestros: row[2]?.toString().trim() || null,
           email: row[3]?.toString().trim() || null
-        })).filter(c => c.nombre !== ""); // Descartamos los que no tienen nombre
+        })).filter(c => c.nombre !== ""); 
 
         if (mapeados.length === 0) {
           setErrorTexto("No se encontró ninguna compañía válida. Asegurate de que la primera columna contenga los Nombres.");
@@ -90,7 +83,8 @@ export default function ImportarCompaniasModal({ isOpen, onClose, onSuccess }: I
     setErrorTexto("");
 
     try {
-      const response = await fetch("http://localhost:3001/api/companias/importar", {
+      // 🔥 CORREGIDO (Backtick al final)
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/companias/importar`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ companias: datosPreview }),
@@ -115,7 +109,6 @@ export default function ImportarCompaniasModal({ isOpen, onClose, onSuccess }: I
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[200] flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-200">
         
-        {/* ENCABEZADO */}
         <div className="px-6 py-5 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
           <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
             <UploadCloud size={22} className="text-emerald-600" />
@@ -127,7 +120,6 @@ export default function ImportarCompaniasModal({ isOpen, onClose, onSuccess }: I
         </div>
 
         <div className="p-6">
-          {/* PASO 1: SUBIR ARCHIVO */}
           {paso === 1 && (
             <div className="flex flex-col gap-4">
               <div className="bg-emerald-50 text-emerald-800 p-4 rounded-xl text-sm border border-emerald-100 mb-2">
@@ -157,7 +149,6 @@ export default function ImportarCompaniasModal({ isOpen, onClose, onSuccess }: I
             </div>
           )}
 
-          {/* PASO 2: CONFIRMAR DATOS */}
           {paso === 2 && (
             <div className="flex flex-col gap-6">
               <div className="text-center">

@@ -22,7 +22,7 @@ export default function NotificacionesSettings() {
   useEffect(() => {
     const fetchAgencia = async () => {
       try {
-        const res = await fetch("http://localhost:3001/api/agencia");
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/agencia`);
         const data = await res.json();
         setAgencia({
           ...data,
@@ -46,7 +46,7 @@ export default function NotificacionesSettings() {
   const guardarCambios = async () => {
     setIsSaving(true);
     try {
-      const res = await fetch("http://localhost:3001/api/agencia", {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/agencia`, { 
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(agencia),

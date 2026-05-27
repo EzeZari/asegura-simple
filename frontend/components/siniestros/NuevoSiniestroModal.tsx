@@ -26,8 +26,8 @@ export default function NuevoSiniestroModal({ isOpen, onClose, onSuccess, sinies
 
   useEffect(() => {
     if (isOpen) {
-      // Cargamos las pólizas para el selector
-      fetch("http://localhost:3001/api/polizas")
+      // 🔥 CORREGIDO (Backtick al final)
+      fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/polizas`)
         .then((res) => res.json())
         .then((data) => setPolizas(data.filter((p: any) => p.estado === "Vigente" || p.estado === "Renovada")))
         .catch((err) => console.error("Error al cargar pólizas:", err));
@@ -59,9 +59,10 @@ export default function NuevoSiniestroModal({ isOpen, onClose, onSuccess, sinies
     setError("");
 
     try {
+      // 🔥 CORREGIDO (Backtick al final del POST)
       const url = siniestroAEditar 
-        ? `http://localhost:3001/api/siniestros/${siniestroAEditar.id}`
-        : "http://localhost:3001/api/siniestros";
+        ? `${process.env.NEXT_PUBLIC_API_URL}/api/siniestros/${siniestroAEditar.id}`
+        : `${process.env.NEXT_PUBLIC_API_URL}/api/siniestros`;
       
       const method = siniestroAEditar ? "PUT" : "POST";
 
@@ -103,7 +104,7 @@ export default function NuevoSiniestroModal({ isOpen, onClose, onSuccess, sinies
             <select 
               required name="polizaId" value={formData.polizaId} onChange={handleChange} 
               className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-orange-600 outline-none bg-white"
-              disabled={!!siniestroAEditar} // No se puede cambiar la póliza una vez creado
+              disabled={!!siniestroAEditar} 
             >
               <option value="" disabled>-- Buscá al cliente o patente --</option>
               {polizas.map((poliza) => (

@@ -43,8 +43,8 @@ export default function NuevaCompaniaModal({ isOpen, onClose, onSuccess, compani
 
     try {
       const url = companiaAEditar 
-        ? `http://localhost:3001/api/companias/${companiaAEditar.id}`
-        : "http://localhost:3001/api/companias";
+        ? `${process.env.NEXT_PUBLIC_API_URL}/api/companias/${companiaAEditar.id}`
+        : `${process.env.NEXT_PUBLIC_API_URL}/api/companias`; 
       
       const method = companiaAEditar ? "PUT" : "POST";
 

@@ -22,7 +22,7 @@ export default function PerfilSettings() {
   useEffect(() => {
     const fetchAgencia = async () => {
       try {
-        const res = await fetch("http://localhost:3001/api/agencia");
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/agencia`);
         const data = await res.json();
         // Si la base de datos devuelve nulos, los convertimos a string vacío para que React no se queje
         setAgencia({
@@ -45,7 +45,7 @@ export default function PerfilSettings() {
   const guardarCambios = async () => {
     setIsSaving(true);
     try {
-      const res = await fetch("http://localhost:3001/api/agencia", {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/agencia`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(agencia),

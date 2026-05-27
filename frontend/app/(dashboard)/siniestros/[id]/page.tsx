@@ -26,7 +26,7 @@ export default function SiniestroDetallePage() {
   const [isGenerandoLink, setIsGenerandoLink] = useState(false);
   const fetchSiniestro = async () => {
     try {
-      const res = await fetch(`http://localhost:3001/api/siniestros/${id}`);
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/siniestros/${id}`);
       const data = await res.json();
       if (res.ok) setSiniestro(data);
     } catch (err) {
@@ -44,7 +44,7 @@ export default function SiniestroDetallePage() {
 
     setIsSubmittingNota(true);
     try {
-      const res = await fetch(`http://localhost:3001/api/siniestros/${id}/notas`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/siniestros/${id}/notas`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ texto: nuevaNota })
@@ -66,7 +66,7 @@ export default function SiniestroDetallePage() {
   const handleCambiarEstadoRapido = async (nuevoEstado: string) => {
     setIsUpdatingEstado(true);
     try {
-      const res = await fetch(`http://localhost:3001/api/siniestros/${id}`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/siniestros/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ...siniestro, estadoSiniestro: nuevoEstado })
@@ -111,7 +111,7 @@ export default function SiniestroDetallePage() {
   const handleGenerarLink = async () => {
     setIsGenerandoLink(true);
     try {
-      const res = await fetch(`http://localhost:3001/api/siniestros/${id}/generar-link`, { method: "POST" });
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/siniestros/${id}/generar-link`, { method: "POST" });
       const data = await res.json();
       setLinkGenerado(data.urlPublica);
       setMensajeToast("Enlace de seguimiento generado y listo");

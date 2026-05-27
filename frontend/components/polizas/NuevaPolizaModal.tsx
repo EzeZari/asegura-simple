@@ -40,12 +40,14 @@ export default function NuevaPolizaModal({ isOpen, onClose, onSuccess, polizaAEd
 
   useEffect(() => {
     if (isOpen) {
-      fetch("http://localhost:3001/api/asegurados")
+      // 🔥 CORREGIDO (Backtick al final)
+      fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/asegurados`)
         .then((res) => res.json())
         .then((data) => setClientes(data.filter((c: any) => c.activo)))
         .catch((err) => console.error("Error al cargar clientes:", err));
       
-      fetch("http://localhost:3001/api/companias")
+      // 🔥 CORREGIDO (Backtick al final)
+      fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/companias`)
         .then((res) => res.json())
         .then((data) => setCompanias(data))
         .catch((err) => console.error("Error al cargar compañías:", err));
@@ -117,9 +119,10 @@ export default function NuevaPolizaModal({ isOpen, onClose, onSuccess, polizaAEd
 
     try {
       const isEditMode = polizaAEditar && !isRenovacion;
+      // 🔥 CORREGIDO (Backtick al final de /api/polizas)
       const url = isEditMode 
-        ? `http://localhost:3001/api/polizas/${polizaAEditar.id}`
-        : "http://localhost:3001/api/polizas";
+        ? `${process.env.NEXT_PUBLIC_API_URL}/api/polizas/${polizaAEditar.id}`
+        : `${process.env.NEXT_PUBLIC_API_URL}/api/polizas`;
       
       const method = isEditMode ? "PUT" : "POST";
 
@@ -140,7 +143,8 @@ export default function NuevaPolizaModal({ isOpen, onClose, onSuccess, polizaAEd
         const fileData = new FormData();
         fileData.append("pdf", pdfFile);
         
-        const uploadRes = await fetch(`http://localhost:3001/api/polizas/${polizaGuardadaId}/subir-pdf`, {
+        // Esta línea ya estaba bien porque termina con variable y backtick
+        const uploadRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/polizas/${polizaGuardadaId}/subir-pdf`, {
           method: "POST",
           body: fileData,
         });
@@ -152,7 +156,8 @@ export default function NuevaPolizaModal({ isOpen, onClose, onSuccess, polizaAEd
 
       // Si es renovación, damos de baja la vieja
       if (isRenovacion && polizaAEditar) {
-        await fetch(`http://localhost:3001/api/polizas/${polizaAEditar.id}`, {
+        // Esta línea ya estaba bien
+        await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/polizas/${polizaAEditar.id}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ ...polizaAEditar, estado: "Renovada" })
