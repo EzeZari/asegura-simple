@@ -1,5 +1,3 @@
-"use client";
-
 import { FileText, Trash2, Edit, Mail } from "lucide-react";
 import { ActionMenu, ActionMenuItem, ActionMenuDivider } from "@/components/ui/ActionMenu";
 
@@ -46,65 +44,44 @@ export default function PolizaTableRow({
 
   return (
     <tr className="hover:bg-gray-50/50 transition-colors group">
-      <td 
-        className="px-6 py-4 font-mono font-medium text-green-700 cursor-pointer hover:underline hover:text-green-800"
-        onClick={() => onClickDetalle(poliza.id)}
-        title="Ver detalle completo"
-      >
+      {/* 🔥 Usamos whitespace-nowrap para que los datos no se rompan en varios renglones */}
+      <td className="px-4 lg:px-6 py-4 font-mono font-medium text-green-700 cursor-pointer hover:underline hover:text-green-800 whitespace-nowrap" onClick={() => onClickDetalle(poliza.id)}>
         #{poliza.nroPoliza}
       </td>
-      <td className="px-6 py-4">
+      <td className="px-4 lg:px-6 py-4 whitespace-nowrap">
         <div className="font-medium text-gray-900">{poliza.asegurado?.nombre} {poliza.asegurado?.apellido}</div>
         <div className="text-xs text-gray-500">DNI: {poliza.asegurado?.dni}</div>
       </td>
-      <td className="px-6 py-4 text-gray-700">{poliza.compania?.nombre || "-"}</td>
-      <td className="px-6 py-4">
+      <td className="px-4 lg:px-6 py-4 text-gray-700 whitespace-nowrap">{poliza.compania?.nombre || "-"}</td>
+      <td className="px-4 lg:px-6 py-4 whitespace-nowrap">
         <div className="font-medium text-gray-900">{poliza.tipoPoliza}</div>
-        <div className="text-xs text-gray-500 truncate max-w-[150px]" title={poliza.cobertura}>
-          {poliza.cobertura || "Sin detalle"}
-        </div>
+        <div className="text-xs text-gray-500 truncate max-w-[150px]">{poliza.cobertura || "Sin detalle"}</div>
       </td>
-      <td className="px-6 py-4">
+      <td className="px-4 lg:px-6 py-4 whitespace-nowrap">
         {poliza.tipoPoliza === "Automotor" || poliza.tipoPoliza === "Motovehículo" ? (
-          <>
-            <div className="font-medium text-gray-900">{poliza.patente ? poliza.patente.toUpperCase() : "-"}</div>
-            <div className="text-xs text-gray-500 truncate max-w-[150px]">
-              {poliza.marca || poliza.modelo ? `${poliza.marca || ""} ${poliza.modelo || ""}`.trim() : "Sin marca/modelo"}
-            </div>
-          </>
-        ) : poliza.tipoPoliza === "Combinado Familiar" || poliza.tipoPoliza === "Integral de Comercio" ? (
-          <div className="text-sm text-gray-900 truncate max-w-[200px]" title={poliza.ubicacionRiesgo}>
-            {poliza.ubicacionRiesgo || "-"}
-          </div>
-        ) : poliza.tipoPoliza === "ART" ? (
-          <div className="text-sm text-gray-900">
-            {poliza.cantidadEmpleados ? `${poliza.cantidadEmpleados} Empleados` : "-"}
-          </div>
+          <div className="text-sm text-gray-900">{poliza.patente?.toUpperCase() || "-"}</div>
         ) : (
-          <div className="text-sm text-gray-400 italic">-</div>
+          <div className="text-sm text-gray-900 truncate max-w-[150px]">{poliza.ubicacionRiesgo || "-"}</div>
         )}
       </td>
-      <td className="px-6 py-4">
-        <div className="text-gray-900">{new Date(poliza.fechaInicio).toLocaleDateString("es-AR")}</div>
-        <div className="text-xs text-gray-500">al {new Date(poliza.fechaVencimiento).toLocaleDateString("es-AR")}</div>
+      <td className="px-4 lg:px-6 py-4 whitespace-nowrap">
+        <div className="text-gray-900 text-xs">{new Date(poliza.fechaInicio).toLocaleDateString("es-AR")}</div>
+        <div className="text-xs font-bold text-gray-700">al {new Date(poliza.fechaVencimiento).toLocaleDateString("es-AR")}</div>
       </td>
-      <td className="px-6 py-4">
-        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold shadow-sm ${getEstadoBadge(getEstadoInteligente(poliza))}`}>
+      <td className="px-4 lg:px-6 py-4 whitespace-nowrap">
+        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold shadow-sm ${getEstadoBadge(getEstadoInteligente(poliza))}`}>
           {getEstadoInteligente(poliza)}
         </span>
       </td>
-      <td className="px-6 py-4 text-right relative">
+      <td className="px-4 lg:px-6 py-4 text-right relative whitespace-nowrap">
         <ActionMenu isOpen={menuAbiertoId === poliza.id} onToggle={() => onToggleMenu(menuAbiertoId === poliza.id ? null : poliza.id)}>
-          <ActionMenuItem icon={Edit} label="Editar Póliza" onClick={() => { onEdit(poliza); onToggleMenu(null); }} />
+          <ActionMenuItem icon={Edit} label="Editar" onClick={() => { onEdit(poliza); onToggleMenu(null); }} />
           {poliza.asegurado?.email && getEstadoInteligente(poliza) !== "Anulada" && (
             <ActionMenuItem icon={Mail} label="Avisar Vencimiento" onClick={() => onAvisarVencimiento(poliza)} />
           )}
           <ActionMenuDivider />
-          {poliza.estado !== "Vigente" && <ActionMenuItem icon={FileText} label="Marcar Vigente" color="green" onClick={() => onCambiarEstado(poliza, "Vigente")} />}
-          {poliza.estado !== "Pendiente de Pago" && <ActionMenuItem icon={FileText} label="Marcar Pendiente" color="amber" onClick={() => onCambiarEstado(poliza, "Pendiente de Pago")} />}
-          {poliza.estado !== "Anulada" && <ActionMenuItem icon={Trash2} label="Anular Póliza" color="red" onClick={() => onCambiarEstado(poliza, "Anulada")} />}
-          <ActionMenuDivider />
-          <ActionMenuItem icon={Trash2} label="Eliminar Póliza" color="red" onClick={() => { onEliminar(poliza); onToggleMenu(null); }} />
+          <ActionMenuItem icon={Trash2} label="Anular" color="red" onClick={() => onCambiarEstado(poliza, "Anulada")} />
+          <ActionMenuItem icon={Trash2} label="Eliminar" color="red" onClick={() => { onEliminar(poliza); onToggleMenu(null); }} />
         </ActionMenu>
       </td>
     </tr>

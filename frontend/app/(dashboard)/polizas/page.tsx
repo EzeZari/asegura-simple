@@ -48,7 +48,6 @@ export default function PolizasPage() {
 
   const fetchPolizas = async () => {
     try {
-      // 🔥 CORREGIDO (comillas invertidas limpias)
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/polizas`);
       setPolizas(await res.json());
     } catch (error) { console.error("Error al cargar pólizas:", error); } finally { setIsLoading(false); }
@@ -59,7 +58,6 @@ export default function PolizasPage() {
   const cambiarEstadoRapido = async (poliza: any, nuevoEstado: string) => {
     setMenuAbiertoId(null);
     try {
-      // 🔥 CORREGIDO (comillas invertidas limpias)
       await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/polizas/${poliza.id}`, {
         method: "PUT", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ...poliza, estado: nuevoEstado }),
@@ -74,7 +72,6 @@ export default function PolizasPage() {
     if (!polizaAEliminar) return;
     setIsDeleting(true);
     try {
-      // 🔥 CORREGIDO (comillas invertidas limpias)
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/polizas/${polizaAEliminar.id}`, { method: 'DELETE' });
       if (!res.ok) throw new Error((await res.json()).error);
       fetchPolizas();
@@ -87,7 +84,6 @@ export default function PolizasPage() {
   const enviarAvisoVencimiento = async (poliza: any) => {
     setMenuAbiertoId(null);
     try {
-      // 🔥 CORREGIDO (comillas invertidas limpias)
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/polizas/${poliza.id}/avisar-vencimiento`, { method: "POST" });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
@@ -178,7 +174,8 @@ export default function PolizasPage() {
   ];
 
   return (
-    <div className="flex flex-col p-8 w-full gap-8 bg-white min-h-screen overflow-x-hidden">
+    // 🔥 AJUSTE: p-4 en móvil, p-8 en PC. gap-5 en móvil, gap-8 en PC.
+    <div className="flex flex-col p-4 lg:p-8 w-full gap-5 lg:gap-8 bg-white min-h-screen overflow-x-hidden">
       
       <PageHeader 
         titulo="Pólizas" 
@@ -193,9 +190,10 @@ export default function PolizasPage() {
         filtroEstado={filtroEstado} setFiltroEstado={setFiltroEstado}
       />
 
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 w-full -mb-4">
+      {/* 🔥 AJUSTE: Cajas flex-col para móvil y botones full width */}
+      <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 w-full -mb-2 lg:-mb-4">
         
-        <div className="w-full md:w-auto">
+        <div className="w-full xl:w-auto">
           <SelectOrdenamiento 
             opciones={OPCIONES_ORDEN}
             valorActual={ordenActual}
@@ -203,10 +201,10 @@ export default function PolizasPage() {
           />
         </div>
 
-        <div className="flex items-center gap-3 w-full md:w-auto">
+        <div className="flex flex-col sm:flex-row items-center gap-3 w-full xl:w-auto">
           <button
             onClick={() => setIsImportModalOpen(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-gray-50 hover:bg-gray-100 border border-gray-200 text-gray-700 rounded-xl text-sm font-bold transition-all active:scale-95 shadow-sm"
+            className="flex justify-center items-center gap-2 w-full sm:w-auto px-4 py-2.5 lg:py-2 bg-gray-50 hover:bg-gray-100 border border-gray-200 text-gray-700 rounded-xl text-sm font-bold transition-all active:scale-95 shadow-sm"
           >
             <UploadCloud size={16} /> Importar Excel
           </button>
@@ -215,7 +213,7 @@ export default function PolizasPage() {
               if(polizasOrdenadas.length === 0) return alert("No hay datos para exportar.");
               setIsExportModalOpen(true);
             }}
-            className="flex items-center gap-2 px-4 py-2 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-700 rounded-xl text-sm font-bold transition-all active:scale-95 shadow-sm"
+            className="flex justify-center items-center gap-2 w-full sm:w-auto px-4 py-2.5 lg:py-2 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-700 rounded-xl text-sm font-bold transition-all active:scale-95 shadow-sm"
           >
             <Download size={16} /> Exportar a Excel
           </button>

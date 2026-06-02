@@ -52,7 +52,6 @@ export default function AseguradosPage() {
 
   const fetchAsegurados = async () => {
     try {
-      // 🔥 REEMPLAZO 1
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/asegurados`);
       setAsegurados(await res.json());
     } catch (error) { console.error(error); } finally { setIsLoading(false); }
@@ -62,7 +61,6 @@ export default function AseguradosPage() {
 
   const toggleEstado = async (cliente: any) => {
     try {
-      // 🔥 REEMPLAZO 2
       await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/asegurados/${cliente.id}`, {
         method: "PUT", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ...cliente, activo: !cliente.activo }),
@@ -75,7 +73,6 @@ export default function AseguradosPage() {
     if (!aseguradoAEliminar) return;
     setIsDeleting(true);
     try {
-      // 🔥 REEMPLAZO 3
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/asegurados/${aseguradoAEliminar.id}`, { method: 'DELETE' });
       const data = await res.json();
       
@@ -166,7 +163,8 @@ export default function AseguradosPage() {
   ];
  
   return (
-    <div className="flex flex-col p-8 w-full gap-8 bg-white min-h-screen overflow-x-hidden">
+    // 🔥 AJUSTE: p-4 en móvil, p-8 en PC. gap-5 en móvil, gap-8 en PC.
+    <div className="flex flex-col p-4 lg:p-8 w-full gap-5 lg:gap-8 bg-white min-h-screen overflow-x-hidden">
       
       <PageHeader 
         titulo="Asegurados" 
@@ -181,20 +179,24 @@ export default function AseguradosPage() {
         filtroEstado={filtroEstado} setFiltroEstado={setFiltroEstado}
       />
 
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 w-full -mb-4">
-        <div className="w-full md:w-auto">
+      {/* 🔥 AJUSTE: Modificamos este contenedor para que el selector de orden y los botones se acomoden bien en vertical en el celular */}
+      <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 w-full -mb-2 lg:-mb-4">
+        <div className="w-full xl:w-auto">
           <SelectOrdenamiento opciones={OPCIONES_ORDEN} valorActual={ordenActual} onChange={setOrdenActual} />
         </div>
-        <div className="flex items-center gap-3 w-full md:w-auto">
-          <button onClick={() => setIsImportModalOpen(true)} className="flex items-center gap-2 px-4 py-2 bg-gray-50 hover:bg-gray-100 border border-gray-200 text-gray-700 rounded-xl text-sm font-bold transition-all active:scale-95 shadow-sm">
+        
+        {/* En celulares, los botones ocupan el 100% del ancho (w-full) y se estiran */}
+        <div className="flex flex-col sm:flex-row items-center gap-3 w-full xl:w-auto">
+          <button onClick={() => setIsImportModalOpen(true)} className="flex justify-center items-center gap-2 w-full sm:w-auto px-4 py-2.5 lg:py-2 bg-gray-50 hover:bg-gray-100 border border-gray-200 text-gray-700 rounded-xl text-sm font-bold transition-all active:scale-95 shadow-sm">
             <UploadCloud size={16} /> Importar Excel
           </button>
-          <button onClick={() => { if(aseguradosOrdenados.length === 0) return alert("No hay datos para exportar."); setIsExportModalOpen(true); }} className="flex items-center gap-2 px-4 py-2 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-700 rounded-xl text-sm font-bold transition-all active:scale-95 shadow-sm">
+          <button onClick={() => { if(aseguradosOrdenados.length === 0) return alert("No hay datos para exportar."); setIsExportModalOpen(true); }} className="flex justify-center items-center gap-2 w-full sm:w-auto px-4 py-2.5 lg:py-2 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-700 rounded-xl text-sm font-bold transition-all active:scale-95 shadow-sm">
             <Download size={16} /> Exportar a Excel
           </button>
         </div>
       </div>
 
+      {/* El componente Table se encarga del renderizado de la tabla */}
       <Table columns={columnas} isLoading={isLoading} isEmpty={aseguradosOrdenados.length === 0} emptyContent={<div className="flex flex-col items-center justify-center text-gray-500 py-6"><Search size={32} className="text-gray-300 mb-3" /><p className="font-medium text-gray-900">No se encontraron clientes</p></div>}>
         {aseguradosOrdenados.map((cliente) => (
           <AseguradoTableRow 

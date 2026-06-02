@@ -69,24 +69,27 @@ export default function DashboardPage() {
   })) || [];
 
   return (
-    <div className="flex-1 flex flex-col p-8 w-full gap-8 bg-white min-h-screen">
-      <div className="pb-4">
-        <h1 className="text-3xl font-bold text-gray-900 tracking-tight">
+    // 🔥 Ajuste 1: p-4 en celulares, p-8 en PC. gap-5 en celulares, gap-8 en PC.
+    <div className="flex-1 flex flex-col p-4 lg:p-8 w-full gap-5 lg:gap-8 bg-white min-h-screen">
+      <div className="pb-2 lg:pb-4">
+        {/* 🔥 Ajuste 2: Título más chico en celulares (text-2xl) para que no ocupe 3 renglones */}
+        <h1 className="text-2xl lg:text-3xl font-bold text-gray-900 tracking-tight">
           Bienvenido de nuevo, {mounted ? user?.nombre : "Productor"}
         </h1>
-        <p className="text-gray-500 mt-1">
+        {/* 🔥 Ajuste 3: Texto secundario un poco más chico en móviles */}
+        <p className="text-sm lg:text-base text-gray-500 mt-1">
           Acá tenés el resumen en tiempo real de tu cartera de negocios.
         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      {/* La grilla ya estaba perfecta, solo le achicamos un poco el espacio (gap) en móviles */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
         {statsReales.map((stat, index) => (
-          // 🔥 ACÁ ESTÁ LA MAGIA: Forzamos el trend con 'as any'
           <StatCard key={index} {...stat} trend={stat.trend as any} />
         ))}
       </div>
 
-      <div className="mt-4 pb-10">
+      <div className="mt-2 lg:mt-4 pb-10">
         <RecentActivity data={isLoading ? [] : actividadSegura} />
         {isLoading && (
           <div className="text-center text-gray-400 mt-4 animate-pulse text-sm">
