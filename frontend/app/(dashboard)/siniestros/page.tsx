@@ -41,7 +41,6 @@ export default function SiniestrosPage() {
 
   const fetchSiniestros = async () => {
     try {
-      // 🔥 CORREGIDO (Backtick al final)
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/siniestros`);
       setSiniestros(await res.json());
     } catch (error) { console.error("Error al cargar siniestros:", error); } finally { setIsLoading(false); }
@@ -53,7 +52,6 @@ export default function SiniestrosPage() {
     if (!siniestroAEliminar) return;
     setIsDeleting(true);
     try {
-      // 🔥 CORREGIDO (Backtick al final)
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/siniestros/${siniestroAEliminar.id}`, { method: 'DELETE' });
       if (!res.ok) throw new Error((await res.json()).error);
       
@@ -106,7 +104,8 @@ export default function SiniestrosPage() {
   ];
 
   return (
-    <div className="flex flex-col p-8 w-full gap-8 bg-white min-h-screen">
+    // 🔥 AJUSTE: p-4 en móvil, p-8 en PC. gap-5 en móvil, gap-8 en PC. overflow-x-hidden para evitar scroll raro general
+    <div className="flex flex-col p-4 lg:p-8 w-full gap-5 lg:gap-8 bg-white min-h-screen overflow-x-hidden">
       
       <PageHeader 
         titulo="Gestión de Siniestros" 
@@ -116,17 +115,17 @@ export default function SiniestrosPage() {
       />
 
       <div className="flex flex-col md:flex-row gap-4 bg-gray-50/50 p-4 rounded-2xl border border-gray-100">
-        <div className="flex-1 relative">
+        <div className="flex-1 relative w-full">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
           <input 
             type="text" placeholder="Buscar por patente, cliente o nro reclamo..." 
             value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 outline-none bg-white font-medium"
+            className="w-full pl-10 pr-4 py-2.5 lg:py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 outline-none bg-white font-medium text-sm lg:text-base"
           />
         </div>
         <select 
           value={filtroEstado} onChange={(e) => setFiltroEstado(e.target.value)}
-          className="w-full md:w-64 px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 outline-none bg-white font-bold text-gray-700"
+          className="w-full md:w-64 px-4 py-2.5 lg:py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 outline-none bg-white font-bold text-gray-700 text-sm lg:text-base cursor-pointer"
         >
           <option value="Todos">Todos los estados</option>
           <option value="Denuncia Pendiente">Pendientes</option>
@@ -137,7 +136,8 @@ export default function SiniestrosPage() {
         </select>
       </div>
 
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 w-full -mb-4">
+      {/* 🔥 AJUSTE: -mb-2 para móviles */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 w-full -mb-2 lg:-mb-4">
         <div className="w-full md:w-auto">
           <SelectOrdenamiento 
             opciones={OPCIONES_ORDEN}
