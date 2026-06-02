@@ -68,22 +68,28 @@ export const login = async (req: Request, res: Response): Promise<any> => {
         data: { codigoVerificacion: codigo2fa }
       });
 
-      await transporter.sendMail({
-        from: `"AseguraSimple Seguridad" <${process.env.EMAIL_USER}>`,
-        to: user.email,
-        subject: "Código de Seguridad (2FA) - AseguraSimple",
-        html: `
-          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e5e7eb; border-radius: 10px;">
-            <h2 style="color: #15803d; text-align: center;">Código de Acceso</h2>
-            <p style="color: #374151; font-size: 16px;">Hola ${user.nombre},</p>
-            <p style="color: #374151; font-size: 16px;">Tu código de seguridad para iniciar sesión es:</p>
-            <div style="background-color: #f3f4f6; padding: 15px; text-align: center; border-radius: 8px; margin: 20px 0;">
-              <span style="font-size: 32px; font-weight: bold; letter-spacing: 5px; color: #111827;">${codigo2fa}</span>
+      // 🔥 SALVAVIDAS: Atrapamos el error del correo para que la pantalla no se congele
+      try {
+        await transporter.sendMail({
+          from: `"AseguraSimple Seguridad" <${process.env.EMAIL_USER}>`,
+          to: user.email,
+          subject: "Código de Seguridad (2FA) - AseguraSimple",
+          html: `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e5e7eb; border-radius: 10px;">
+              <h2 style="color: #15803d; text-align: center;">Código de Acceso</h2>
+              <p style="color: #374151; font-size: 16px;">Hola ${user.nombre},</p>
+              <p style="color: #374151; font-size: 16px;">Tu código de seguridad para iniciar sesión es:</p>
+              <div style="background-color: #f3f4f6; padding: 15px; text-align: center; border-radius: 8px; margin: 20px 0;">
+                <span style="font-size: 32px; font-weight: bold; letter-spacing: 5px; color: #111827;">${codigo2fa}</span>
+              </div>
+              <p style="color: #6b7280; font-size: 14px; text-align: center;">Si no intentaste iniciar sesión, cambiá tu contraseña de inmediato.</p>
             </div>
-            <p style="color: #6b7280; font-size: 14px; text-align: center;">Si no intentaste iniciar sesión, cambiá tu contraseña de inmediato.</p>
-          </div>
-        `
-      });
+          `
+        });
+      } catch (errorMail) {
+        console.error("Falló el envío del código 2FA:", errorMail);
+        return res.status(500).json({ error: 'Hubo un problema al enviar el correo de seguridad. Revisá las credenciales de Nodemailer en el servidor.' });
+      }
 
       return res.status(200).json({
         message: 'Código 2FA enviado al correo.',
@@ -166,28 +172,35 @@ export const forgotPassword = async (req: Request, res: Response): Promise<any> 
       }
     });
 
-    const resetUrl = `http://localhost:3000/nueva-contrasena?token=${resetToken}`;
+    // Asegurate de que esta URL apunte a tu dominio de producción si ya no estás en localhost
+    const resetUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/nueva-contrasena?token=${resetToken}`;
 
-    await transporter.sendMail({
-      from: `"AseguraSimple" <${process.env.EMAIL_USER}>`,
-      to: user.email,
-      subject: 'Recuperá tu contraseña - AseguraSimple',
-      html: `
-        <div style="font-family: Arial, sans-serif; padding: 20px; color: #333;">
-          <h2 style="color: #15803d;">AseguraSimple</h2>
-          <p>Hola ${user.nombre},</p>
-          <p>Recibimos una solicitud para restablecer tu contraseña. Hacé clic en el botón de abajo para crear una nueva:</p>
-          <a href="${resetUrl}" style="display: inline-block; padding: 10px 20px; margin: 20px 0; background-color: #15803d; color: white; text-decoration: none; border-radius: 5px;">Restablecer Contraseña</a>
-          <p>Este enlace es válido por 1 hora.</p>
-          <p style="font-size: 12px; color: #666;">Si no solicitaste este cambio, podés ignorar este correo tranquilamente.</p>
-        </div>
-      `
-    });
+    // 🔥 SALVAVIDAS
+    try {
+      await transporter.sendMail({
+        from: `"AseguraSimple" <${process.env.EMAIL_USER}>`,
+        to: user.email,
+        subject: 'Recuperá tu contraseña - AseguraSimple',
+        html: `
+          <div style="font-family: Arial, sans-serif; padding: 20px; color: #333;">
+            <h2 style="color: #15803d;">AseguraSimple</h2>
+            <p>Hola ${user.nombre},</p>
+            <p>Recibimos una solicitud para restablecer tu contraseña. Hacé clic en el botón de abajo para crear una nueva:</p>
+            <a href="${resetUrl}" style="display: inline-block; padding: 10px 20px; margin: 20px 0; background-color: #15803d; color: white; text-decoration: none; border-radius: 5px;">Restablecer Contraseña</a>
+            <p>Este enlace es válido por 1 hora.</p>
+            <p style="font-size: 12px; color: #666;">Si no solicitaste este cambio, podés ignorar este correo tranquilamente.</p>
+          </div>
+        `
+      });
+    } catch (errorMail) {
+      console.error('Error enviando email de recuperación:', errorMail);
+      return res.status(500).json({ error: 'Ocurrió un error al intentar enviar el correo. Revisá las credenciales de Nodemailer.' });
+    }
 
     res.status(200).json({ message: 'Si el email está registrado, recibirás un enlace de recuperación.' });
   } catch (error) {
-    console.error('Error sending email:', error);
-    res.status(500).json({ error: 'Ocurrió un error al intentar enviar el correo.' });
+    console.error(error);
+    res.status(500).json({ error: 'Ocurrió un error en el servidor.' });
   }
 };
 
