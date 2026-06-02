@@ -19,10 +19,13 @@ dotenv.config();
 
 const app = express();
 
+// 🔥 LÍNEA MÁGICA PARA RAILWAY: Le avisa a Express que está detrás de un proxy confiable
+app.set('trust proxy', 1);
+
 // 1. HELMET: Oculta información sensible del servidor y bloquea ataques comunes en las cabeceras HTTP.
 app.use(helmet());
 
-// 2. CORS: El "patovica" de dominios. Solo deja que tu frontend (localhost:3000) le hable al backend.
+// 2. CORS: El "patovica" de dominios. Solo deja que tu frontend le hable al backend.
 app.use(cors({
   origin: [
     'http://localhost:3000',
@@ -65,5 +68,5 @@ iniciarTareasProgramadas();
 
 // 🔥 Levantamos el servidor una sola vez
 app.listen(PORT, () => {
-  console.log(`Servidor Backend corriendo y blindado en http://localhost:${PORT}`);
+  console.log(`Servidor Backend corriendo y blindado en puerto ${PORT}`);
 });
