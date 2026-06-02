@@ -2,12 +2,19 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Eye, EyeOff, ShieldCheck, ArrowLeft } from "lucide-react";
 import { useAuthStore } from "@/store/authStore";
 
 export default function LoginPage() {
   const router = useRouter();
+  
+  // 🔥 TRUCO ANTI-EXTENSIONES: Evita el Error 418 de hidratación
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
   
   // Estados generales
   const [error, setError] = useState("");
@@ -36,7 +43,6 @@ export default function LoginPage() {
     setIsLoading(true);
 
     try {
-      // 🔥 ACÁ ESTÁ CORREGIDO (uso de backticks ``)
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -52,7 +58,6 @@ export default function LoginPage() {
         return;
       }
 
-      // 🔥 LÓGICA 2FA: Si el backend nos pide el código, frenamos acá
       if (data.require2FA) {
         setUserId(data.userId);
         setStep(2);
@@ -60,7 +65,6 @@ export default function LoginPage() {
         return;
       }
 
-      // Si no tiene 2FA, entra directo
       setUser(data.user);
       router.push("/");
     } catch (err) {
@@ -81,7 +85,6 @@ export default function LoginPage() {
     setIsLoading(true);
 
     try {
-      // 🔥 ACÁ ESTÁ CORREGIDO (uso de backticks ``)
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/verify-2fa`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -97,7 +100,6 @@ export default function LoginPage() {
         return;
       }
 
-      // Código correcto, ¡Adentro!
       setUser(data.user);
       router.push("/");
     } catch (err) {
@@ -105,6 +107,9 @@ export default function LoginPage() {
       setIsLoading(false);
     }
   };
+
+  // 🔥 Si no está montado aún, devolvemos null para que las extensiones no rompan el HTML inicial
+  if (!isMounted) return null;
 
   // ================= RENDERIZADO DEL PASO 2 (CÓDIGO 2FA) =================
   if (step === 2) {
@@ -136,10 +141,10 @@ export default function LoginPage() {
             maxLength={6}
             placeholder="000000" 
             value={codigo2fa} 
-            onChange={(e) => setCodigo2fa(e.target.value.replace(/[^0-9]/g, ''))} // Solo permite números
+            onChange={(e) => setCodigo2fa(e.target.value.replace(/[^0-9]/g, ''))} 
             disabled={isLoading} 
             className="w-full border border-gray-200 rounded-xl px-5 py-5 text-4xl text-center font-black tracking-[0.5em] text-gray-900 placeholder:text-gray-300 focus:outline-none focus:border-green-600 focus:ring-2 focus:ring-green-600/20 transition-all disabled:bg-gray-50" 
-            style={{ paddingLeft: 'calc(1.25rem + 0.25em)' }} // Ajuste óptico para que el texto quede centrado por el espaciado entre letras
+            style={{ paddingLeft: 'calc(1.25rem + 0.25em)' }} 
           />
           
           <button type="submit" disabled={isLoading} className="w-full bg-green-700 text-white text-lg font-medium rounded-lg py-4 hover:bg-green-800 transition-colors disabled:bg-green-700/70 shadow-md">
