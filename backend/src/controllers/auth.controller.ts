@@ -106,8 +106,8 @@ export const login = async (req: Request, res: Response): Promise<any> => {
 
     res.cookie('refreshToken', refreshToken, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
+      secure: true, // Ahora tiene que ser SIEMPRE true, sin importar si es prod o dev
+      sameSite: 'none', // 🔥 ESTO ES LA CLAVE: Permite que la cookie viaje de Railway a Vercel
       maxAge: 7 * 24 * 60 * 60 * 1000
     });
 
@@ -147,8 +147,8 @@ export const refresh = async (req: Request, res: Response): Promise<any> => {
 export const logout = (req: Request, res: Response) => {
   res.clearCookie('refreshToken', {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'strict',
+    secure: true, // 🔥 Siempre true para cross-domain
+    sameSite: 'none', // 🔥 Clave para que Railway y Vercel se entiendan
   });
   res.status(200).json({ message: 'Sesión cerrada exitosamente.' });
 };
