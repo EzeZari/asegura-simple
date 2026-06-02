@@ -24,7 +24,12 @@ app.use(helmet());
 
 // 2. CORS: El "patovica" de dominios. Solo deja que tu frontend (localhost:3000) le hable al backend.
 app.use(cors({
-  origin: 'http://localhost:3000', // Cuando lo subas a internet, acá va tu dominio real (.com)
+  origin: [
+    'http://localhost:3000',
+    'https://asegurasimple.com',
+    'https://www.asegurasimple.com',
+    'https://asegura-simple-flug.vercel.app' // Agregamos también el link genérico de Vercel por las dudas
+  ],
   credentials: true // Fundamental para que pasen las cookies
 }));
 
