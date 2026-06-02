@@ -1,26 +1,26 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import Sidebar from "@/components/layout/Sidebar";
 import { useAuthStore } from "@/store/authStore";
+import { Menu } from "lucide-react"; // <-- Importamos el ícono de la hamburguesa
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
-  // Traemos la función de tu store que guarda los datos del usuario
   const setUser = useAuthStore((state: any) => state.setUser); 
+  
+  // 🔥 Estado para controlar si el menú lateral está abierto en celulares
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   useEffect(() => {
-    // Cuando la página carga (o se presiona F5), le preguntamos al backend por nuestra sesión
     const rehidratarSesion = async () => {
       try {
-        // Usamos la ruta refresh (o la que uses para validar) mandando las cookies
-          const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/refresh`, {
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/refresh`, {
           method: "POST",
           credentials: "include", 
         });
 
         if (res.ok) {
           const data = await res.json();
-          // Si el token es válido, guardamos los datos (como el nombre) de nuevo en la memoria
           setUser(data.user || data); 
         }
       } catch (error) {
@@ -33,13 +33,29 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   return (
     <div className="flex min-h-screen bg-gray-50 relative">
-      {/* La barra lateral ahora pertenece solo al grupo privado (dashboard) */}
-      <Sidebar />
       
-      {/* ml-64 empuja el contenido hacia la derecha para que no se superponga */}
-      <main className="flex-1 ml-64 min-h-screen flex flex-col">
-        {children}
-      </main>
+      {/* Le pasamos el estado y la función para cerrarlo al Sidebar */}
+      <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
+      
+      {/* Contenedor Principal (lg:ml-64 hace que el margen solo aplique en PC) */}
+      <div className="flex-1 flex flex-col min-h-screen w-full lg:ml-64 transition-all duration-300">
+        
+        {/* 🔥 BARRA SUPERIOR PARA MÓVILES (Desaparece en PC) */}
+        <div className="lg:hidden flex items-center justify-between bg-green-700 text-white p-4 shadow-md sticky top-0 z-30">
+          <span className="font-bold text-xl tracking-wide">AseguraSimple</span>
+          <button 
+            onClick={() => setIsSidebarOpen(true)} 
+            className="p-1.5 hover:bg-green-600 rounded-md transition-colors"
+          >
+            <Menu size={26} />
+          </button>
+        </div>
+
+        {/* Contenido de la página */}
+        <main className="flex-1 flex flex-col w-full overflow-x-hidden">
+          {children}
+        </main>
+      </div>
     </div>
   );
 }
