@@ -3,7 +3,7 @@ import type { NextRequest } from 'next/server';
 
 export function middleware(request: NextRequest) {
   // 1. Buscamos la pulsera VIP (la cookie que nos dio el backend)
-  const token = request.cookies.get('refreshToken')?.value;
+  const token = request.cookies.get('next_auth_token')?.value;
 
   // 🔥 NUEVA REGLA: Rutas 100% Públicas (El patovica mira para otro lado)
   const isPublicRoute = request.nextUrl.pathname.startsWith('/consulta');

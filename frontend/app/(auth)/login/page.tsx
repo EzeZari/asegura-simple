@@ -65,6 +65,9 @@ export default function LoginPage() {
         return;
       }
 
+      // 🔥 ESTA ES LA LÍNEA MÁGICA: Creamos una cookie en nuestro propio dominio
+      document.cookie = `next_auth_token=${data.accessToken}; path=/; max-age=86400; secure; samesite=strict`;
+
       setUser(data.user);
       router.push("/");
     } catch (err) {
