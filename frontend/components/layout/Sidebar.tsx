@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation'; 
 import { 
   Home, Users, FileText, Building, CarFront, Bell, Settings, LogOut, BarChart3, X 
-} from 'lucide-react'; // <-- Sumamos la "X" para cerrar el menú en móviles
+} from 'lucide-react'; 
 import { useAuthStore } from '@/store/authStore';
 
 const menuItems = [
@@ -18,7 +18,6 @@ const menuItems = [
   { name: 'Configuración', icon: Settings, path: '/configuracion' },
 ];
 
-// 🔥 Agregamos las propiedades para recibir la orden de abrir/cerrar
 interface SidebarProps {
   isOpen: boolean;
   onClose: () => void;
@@ -38,6 +37,9 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
         credentials: 'include', 
       });
       
+      // 🔥 ACÁ ESTÁ LA MAGIA: Borramos el "sello" del frontend poniéndole fecha de 1970
+      document.cookie = "next_auth_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+      
       clearStore();
       router.push('/login');
     } catch (error) {
@@ -47,7 +49,6 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
 
   return (
     <>
-      {/* 🔥 FONDO OSCURO PARA MÓVILES: Aparece detrás del menú cuando está abierto */}
       {isOpen && (
         <div 
           className="fixed inset-0 bg-black/60 z-40 lg:hidden backdrop-blur-sm transition-opacity"
@@ -55,7 +56,6 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
         />
       )}
 
-      {/* BARRA LATERAL */}
       <aside className={`
         w-64 h-screen bg-green-700 text-white flex flex-col fixed left-0 top-0 z-50 
         transition-transform duration-300 ease-in-out shadow-2xl lg:shadow-none
@@ -63,7 +63,6 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
         lg:translate-x-0 
       `}>
         
-        {/* Botón X para cerrar en celulares */}
         <button 
           onClick={onClose} 
           className="lg:hidden absolute top-5 right-4 p-1 text-green-100 hover:text-white hover:bg-green-600 rounded-md transition-colors"
@@ -71,13 +70,11 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
           <X size={24} />
         </button>
 
-        {/* Zona del Logo y Saludo */}
         <div className="h-24 flex flex-col items-center justify-center font-bold tracking-wide border-b border-green-600/50">
           <span className="text-2xl">AseguraSimple</span>
           {user && <span className="text-sm font-normal text-green-200 mt-1">Hola, {user.nombre}</span>}
         </div>
 
-        {/* Zona de Navegación */}
         <nav className="flex-1 px-3 py-6 flex flex-col gap-1.5 overflow-y-auto">
           {menuItems.map((item) => {
             const Icon = item.icon;
@@ -87,7 +84,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
               <Link
                 key={item.name}
                 href={item.path}
-                onClick={onClose} // 🔥 IMPORTANTE: Cierra el menú en móvil al hacer clic
+                onClick={onClose} 
                 className={`flex items-center gap-4 px-4 py-3 rounded-lg transition-all ${
                   isActive 
                     ? 'bg-green-800/80 font-bold border-l-4 border-white pl-3' 
@@ -101,7 +98,6 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
           })}
         </nav>
 
-        {/* Zona de Cerrar Sesión */}
         <div className="p-4 border-t border-green-600/50 mt-auto">
           <button 
             onClick={handleLogout}
