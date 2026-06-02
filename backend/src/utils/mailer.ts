@@ -1,10 +1,8 @@
 import nodemailer from 'nodemailer';
 import dotenv from 'dotenv';
 
-// Nos aseguramos de que las variables de entorno estén cargadas
 dotenv.config();
 
-// Creamos el transportador con tu configuración exacta para Gmail
 export const transporter = nodemailer.createTransport({
   service: 'gmail',
   auth: {
@@ -12,14 +10,12 @@ export const transporter = nodemailer.createTransport({
     pass: process.env.EMAIL_PASS,
   },
   tls: {
-    // Esto le dice a Node que ignore el "falso positivo" de seguridad en tu entorno local
     rejectUnauthorized: false
-  }
+  },
+  // 🔥 Le decimos que se rinda a los 3 segundos en vez de esperar un minuto
+  connectionTimeout: 3000,
+  greetingTimeout: 3000,
+  socketTimeout: 3000,
 });
 
-// Verificamos la conexión apenas arranca el servidor
-transporter.verify().then(() => {
-  console.log('✅ Servidor de correos (Nodemailer) conectado exitosamente con Gmail.');
-}).catch((error) => {
-  console.error('❌ Error al conectar Nodemailer. Revisá tu EMAIL_USER y EMAIL_PASS en el .env:', error);
-});
+// ❌ Borramos el transporter.verify() de acá abajo para que no explote al prender el servidor

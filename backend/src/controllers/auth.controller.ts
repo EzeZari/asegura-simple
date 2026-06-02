@@ -68,6 +68,9 @@ export const login = async (req: Request, res: Response): Promise<any> => {
         data: { codigoVerificacion: codigo2fa }
       });
 
+      // 🔥 TRUCO DE EMERGENCIA: Imprimimos el código en la consola de Railway
+      console.log(`🔑 CÓDIGO DE ACCESO PARA ${user.email}: ${codigo2fa}`);
+
       // 🔥 SALVAVIDAS: Atrapamos el error del correo para que la pantalla no se congele
       try {
         await transporter.sendMail({
