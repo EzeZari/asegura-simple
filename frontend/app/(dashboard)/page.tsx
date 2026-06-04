@@ -69,21 +69,18 @@ export default function DashboardPage() {
   })) || [];
 
   return (
-    // 🔥 Ajuste 1: p-4 en celulares, p-8 en PC. gap-5 en celulares, gap-8 en PC.
     <div className="flex-1 flex flex-col p-4 lg:p-8 w-full gap-5 lg:gap-8 bg-white min-h-screen">
       <div className="pb-2 lg:pb-4">
-        {/* 🔥 Ajuste 2: Título más chico en celulares (text-2xl) para que no ocupe 3 renglones */}
         <h1 className="text-2xl lg:text-3xl font-bold text-gray-900 tracking-tight">
           Bienvenido de nuevo, {mounted ? user?.nombre : "Productor"}
         </h1>
-        {/* 🔥 Ajuste 3: Texto secundario un poco más chico en móviles */}
         <p className="text-sm lg:text-base text-gray-500 mt-1">
           Acá tenés el resumen en tiempo real de tu cartera de negocios.
         </p>
       </div>
 
-      {/* La grilla ya estaba perfecta, solo le achicamos un poco el espacio (gap) en móviles */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
+      {/* 🔥 ACÁ ESTÁ EL CAMBIO: grid-cols-2 para que sean 2 en celu, lg:grid-cols-4 para 4 en PC. gap-3 en celu para que no queden muy apretados */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-6">
         {statsReales.map((stat, index) => (
           <StatCard key={index} {...stat} trend={stat.trend as any} />
         ))}

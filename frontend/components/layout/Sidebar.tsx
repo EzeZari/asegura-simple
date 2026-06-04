@@ -63,16 +63,21 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
         lg:translate-x-0 
       `}>
         
-        <button 
-          onClick={onClose} 
-          className="lg:hidden absolute top-5 right-4 p-1 text-green-100 hover:text-white hover:bg-green-600 rounded-md transition-colors"
-        >
-          <X size={24} />
-        </button>
-
-        <div className="h-24 flex flex-col items-center justify-center font-bold tracking-wide border-b border-green-600/50">
-          <span className="text-2xl">AseguraSimple</span>
-          {user && <span className="text-sm font-normal text-green-200 mt-1">Hola, {user.nombre}</span>}
+        {/* 🔥 AJUSTE: El botón X ahora vive adentro del header y bien en la esquina */}
+        <div className="relative h-24 flex flex-col items-center justify-center font-bold tracking-wide border-b border-green-600/50 px-8 text-center">
+          <button 
+            onClick={onClose} 
+            className="lg:hidden absolute top-2 right-2 p-1.5 text-green-100 hover:text-white hover:bg-green-600 rounded-lg transition-colors"
+          >
+            <X size={22} />
+          </button>
+          
+          <span className="text-2xl mt-2">AseguraSimple</span>
+          {user && (
+            <span className="text-sm font-normal text-green-200 mt-1 truncate w-full">
+              Hola, {user.nombre}
+            </span>
+          )}
         </div>
 
         <nav className="flex-1 px-3 py-6 flex flex-col gap-1.5 overflow-y-auto">
