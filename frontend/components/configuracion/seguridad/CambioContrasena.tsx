@@ -45,7 +45,8 @@ export default function CambioContrasena() {
   };
 
   return (
-    <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex flex-col gap-5">
+    // 🔥 AJUSTE: p-4 en celular, p-6 en PC
+    <div className="bg-white p-4 md:p-6 rounded-2xl border border-gray-100 shadow-sm flex flex-col gap-5">
       <h3 className="text-lg font-bold text-gray-900 border-b border-gray-50 pb-2 flex items-center gap-2">
         <Key size={18} className="text-gray-400" /> Cambio de Contraseña
       </h3>
@@ -55,7 +56,9 @@ export default function CambioContrasena() {
           <label className="block text-sm font-medium text-gray-700 mb-1">Contraseña Actual</label>
           <input type="password" name="actual" value={passwords.actual} onChange={handleChange} className="w-full p-2.5 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-green-600" />
         </div>
-        <div className="grid grid-cols-2 gap-4">
+        
+        {/* 🔥 AJUSTE: grid-cols-1 en celular, grid-cols-2 a partir de pantallas medianas (sm) */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Nueva Contraseña</label>
             <input type="password" name="nueva" value={passwords.nueva} onChange={handleChange} className="w-full p-2.5 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-green-600" />
@@ -87,7 +90,9 @@ export default function CambioContrasena() {
             </div>
           </div>
         )}
-        <button onClick={cambiarContrasena} disabled={passwords.nueva.length > 0 && !cumpleRequisitos} className="mt-2 w-fit bg-gray-900 hover:bg-black disabled:bg-gray-300 text-white px-5 py-2.5 rounded-lg font-medium text-sm">
+        
+        {/* 🔥 AJUSTE: Botón w-full en móvil, w-fit en PC */}
+        <button onClick={cambiarContrasena} disabled={passwords.nueva.length > 0 && !cumpleRequisitos} className="mt-2 w-full sm:w-fit bg-gray-900 hover:bg-black disabled:bg-gray-300 text-white px-5 py-2.5 rounded-lg font-medium text-sm">
           Actualizar Contraseña
         </button>
       </div>

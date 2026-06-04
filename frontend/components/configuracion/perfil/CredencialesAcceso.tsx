@@ -16,17 +16,15 @@ export default function CredencialesAcceso() {
   const [verificationCode, setVerificationCode] = useState("");
   const [isProcessingEmail, setIsProcessingEmail] = useState(false);
   
-  // Nuevo estado para manejar errores de forma visual
   const [errorMsg, setErrorMsg] = useState("");
 
   const solicitarCambioEmail = async () => {
-    setErrorMsg(""); // Limpiamos errores previos
+    setErrorMsg(""); 
     
     if (!newEmail || !newEmail.includes("@")) {
       return setErrorMsg("Por favor, ingresá un correo válido.");
     }
     
-    // --> ACÁ ESTÁ EL FILTRO NUEVO <--
     if (newEmail.toLowerCase() === user?.email?.toLowerCase()) {
       return setErrorMsg("El correo ingresado es exactamente el mismo que ya tenés.");
     }
@@ -91,11 +89,12 @@ export default function CredencialesAcceso() {
     setEmailStep(1);
     setNewEmail("");
     setVerificationCode("");
-    setErrorMsg(""); // Limpiamos errores al cerrar
+    setErrorMsg(""); 
   };
 
   return (
-    <div className="bg-white p-6 md:p-8 rounded-2xl border border-gray-100 shadow-sm flex flex-col gap-6">
+    // 🔥 AJUSTE: p-4 en móvil, p-8 en PC. gap-5 en móvil, gap-6 en PC.
+    <div className="bg-white p-4 md:p-8 rounded-2xl border border-gray-100 shadow-sm flex flex-col gap-5 md:gap-6">
       <div>
         <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
           <KeyRound size={18} className="text-gray-400" /> Credenciales de Acceso
@@ -103,21 +102,22 @@ export default function CredencialesAcceso() {
         <p className="text-sm text-gray-500 mt-1">Este es el correo que utilizás para iniciar sesión en AseguraSimple.</p>
       </div>
 
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-5 bg-gray-50 rounded-xl border border-gray-200">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-4 md:p-5 bg-gray-50 rounded-xl border border-gray-200">
         <div>
           <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Correo Actual</p>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Mail size={16} className="text-gray-700" />
-            <span className="font-semibold text-gray-900">{user?.email}</span>
-            <span className="flex items-center gap-1 text-[10px] bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-bold uppercase tracking-wide ml-2">
+            <span className="font-semibold text-gray-900 break-all">{user?.email}</span>
+            <span className="flex items-center gap-1 text-[10px] bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-bold uppercase tracking-wide">
               <CheckCircle2 size={12} /> Verificado
             </span>
           </div>
         </div>
         
+        {/* 🔥 AJUSTE: Botón w-full en móvil, w-auto en PC */}
         <button 
           onClick={() => setShowEmailModal(true)}
-          className="bg-white border border-gray-300 hover:border-gray-400 hover:bg-gray-50 text-gray-700 px-4 py-2 rounded-lg font-medium transition-colors text-sm"
+          className="w-full md:w-auto flex justify-center bg-white border border-gray-300 hover:border-gray-400 hover:bg-gray-50 text-gray-700 px-4 py-2.5 md:py-2 rounded-lg font-medium transition-colors text-sm"
         >
           Cambiar Correo
         </button>
@@ -125,21 +125,21 @@ export default function CredencialesAcceso() {
 
       {showEmailModal && (
         <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden flex flex-col">
-            <div className="p-6 border-b border-gray-100 flex items-start gap-4 bg-gray-50/50">
-              <div className="bg-blue-100 p-3 rounded-full text-blue-600 shrink-0">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden flex flex-col max-h-[90vh] overflow-y-auto">
+            {/* 🔥 AJUSTE: p-4 en móvil, p-6 en PC */}
+            <div className="p-4 md:p-6 border-b border-gray-100 flex items-start gap-3 md:gap-4 bg-gray-50/50">
+              <div className="bg-blue-100 p-2.5 md:p-3 rounded-full text-blue-600 shrink-0">
                 <ShieldAlert size={24} />
               </div>
               <div>
-                <h3 className="text-lg font-bold text-gray-900">Cambio de Credenciales</h3>
-                <p className="text-sm text-gray-500 leading-relaxed mt-1">
+                <h3 className="text-base md:text-lg font-bold text-gray-900">Cambio de Credenciales</h3>
+                <p className="text-xs md:text-sm text-gray-500 leading-relaxed mt-1">
                   Por seguridad, verificaremos tu nuevo correo electrónico antes de aplicarlo.
                 </p>
               </div>
             </div>
 
-            <div className="p-6 flex flex-col gap-4">
-              {/* CARTEL DE ERROR INLINE */}
+            <div className="p-4 md:p-6 flex flex-col gap-4">
               {errorMsg && (
                 <div className="bg-red-50 text-red-600 border border-red-100 p-3 rounded-xl text-sm font-medium">
                   {errorMsg}
@@ -155,7 +155,7 @@ export default function CredencialesAcceso() {
                     value={newEmail}
                     onChange={(e) => {
                       setNewEmail(e.target.value);
-                      setErrorMsg(""); // Limpia el error al tipear
+                      setErrorMsg(""); 
                     }}
                     className="p-3 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-600 transition-all text-gray-900" 
                   />
@@ -165,7 +165,7 @@ export default function CredencialesAcceso() {
               {emailStep === 2 && (
                 <div className="flex flex-col gap-4 animate-in slide-in-from-right-4 duration-300">
                   <div className="bg-blue-50 border border-blue-100 p-4 rounded-xl">
-                    <p className="text-sm text-blue-800">
+                    <p className="text-sm text-blue-800 break-all">
                       Enviamos un código de 6 dígitos a <strong>{newEmail}</strong>. Ingresalo abajo para confirmar.
                     </p>
                   </div>
@@ -178,7 +178,7 @@ export default function CredencialesAcceso() {
                       value={verificationCode}
                       onChange={(e) => {
                         setVerificationCode(e.target.value.replace(/\D/g, ''));
-                        setErrorMsg(""); // Limpia el error al tipear
+                        setErrorMsg(""); 
                       }}
                       className="w-32 p-3 text-center text-2xl tracking-[0.2em] font-bold border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-600 transition-all text-gray-900" 
                     />
@@ -187,15 +187,16 @@ export default function CredencialesAcceso() {
               )}
             </div>
 
-            <div className="p-4 border-t border-gray-100 flex justify-end gap-3 bg-gray-50/50">
-              <button onClick={cerrarModalEmail} className="px-4 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-200 rounded-lg transition-colors">
+            {/* 🔥 AJUSTE: Botones apilados en móvil (flex-col-reverse) y en fila en PC (sm:flex-row) */}
+            <div className="p-4 border-t border-gray-100 flex flex-col-reverse sm:flex-row justify-end gap-3 bg-gray-50/50">
+              <button onClick={cerrarModalEmail} className="w-full sm:w-auto px-4 py-2.5 sm:py-2 text-sm font-semibold text-gray-600 hover:bg-gray-200 rounded-lg transition-colors">
                 Cancelar
               </button>
               {emailStep === 1 ? (
                 <button 
                   onClick={solicitarCambioEmail}
                   disabled={!newEmail || isProcessingEmail}
-                  className="flex items-center gap-2 px-5 py-2 text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 rounded-lg transition-colors"
+                  className="w-full sm:w-auto flex justify-center items-center gap-2 px-5 py-2.5 sm:py-2 text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 rounded-lg transition-colors"
                 >
                   {isProcessingEmail ? "Procesando..." : "Enviar Código"} <ArrowRight size={16} />
                 </button>
@@ -203,7 +204,7 @@ export default function CredencialesAcceso() {
                 <button 
                   onClick={verificarYGuardarEmail}
                   disabled={verificationCode.length !== 6 || isProcessingEmail}
-                  className="px-5 py-2 text-sm font-bold text-white bg-green-600 hover:bg-green-700 disabled:bg-green-400 rounded-lg transition-colors"
+                  className="w-full sm:w-auto flex justify-center items-center px-5 py-2.5 sm:py-2 text-sm font-bold text-white bg-green-600 hover:bg-green-700 disabled:bg-green-400 rounded-lg transition-colors"
                 >
                   {isProcessingEmail ? "Verificando..." : "Verificar y Cambiar"}
                 </button>

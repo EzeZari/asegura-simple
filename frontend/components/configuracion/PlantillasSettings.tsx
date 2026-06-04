@@ -82,7 +82,8 @@ export default function PlantillasSettings() {
   }
 
   return (
-    <div className="flex flex-col gap-6 animate-in fade-in duration-300">
+    // 🔥 AJUSTE: gap-5 en celular, gap-6 en PC
+    <div className="flex flex-col gap-5 md:gap-6 animate-in fade-in duration-300">
       
       {/* Caja de ayuda */}
       <div className="bg-blue-50/50 border border-blue-100 p-4 rounded-2xl flex gap-3 items-start">
@@ -103,7 +104,8 @@ export default function PlantillasSettings() {
       </div>
 
       {/* Formulario de Textos */}
-      <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex flex-col gap-5">
+      {/* 🔥 AJUSTE: p-4 en celular, p-6 en PC */}
+      <div className="bg-white p-4 md:p-6 rounded-2xl border border-gray-100 shadow-sm flex flex-col gap-5">
         <h3 className="text-lg font-bold text-gray-900 border-b border-gray-50 pb-2 flex items-center gap-2">
           <MessageSquare size={18} className="text-gray-400" /> WhatsApp de Notificaciones
         </h3>
@@ -134,10 +136,11 @@ export default function PlantillasSettings() {
 
         {/* Botón de guardar */}
         <div className="flex justify-end border-t border-gray-50 pt-4 mt-2">
+          {/* 🔥 AJUSTE: w-full en móvil, w-auto en PC */}
           <button
             onClick={guardarPlantillas}
             disabled={isSaving}
-            className="flex items-center gap-2 bg-green-700 hover:bg-green-800 disabled:bg-green-400 text-white px-5 py-2.5 rounded-lg font-medium transition-colors shadow-sm"
+            className="w-full md:w-auto flex justify-center items-center gap-2 bg-green-700 hover:bg-green-800 disabled:bg-green-400 text-white px-5 py-3 md:py-2.5 rounded-lg font-medium transition-colors shadow-sm"
           >
             <Save size={18} /> {isSaving ? "Guardando..." : "Guardar Plantillas"}
           </button>

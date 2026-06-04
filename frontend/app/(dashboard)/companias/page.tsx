@@ -42,7 +42,6 @@ export default function CompaniasPage() {
 
   const fetchCompanias = async () => {
     try {
-      // 🔥 CORREGIDO (Backtick al final)
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/companias`);
       const data = await res.json();
       setCompanias(data);
@@ -69,7 +68,6 @@ export default function CompaniasPage() {
     if (!companiaAEliminar) return;
     setIsDeleting(true);
     try {
-      // 🔥 CORREGIDO (Backtick al final)
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/companias/${companiaAEliminar.id}`, { method: 'DELETE' });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Error al eliminar");
@@ -114,6 +112,7 @@ export default function CompaniasPage() {
   ];
 
   return (
+    // 🔥 Solo agregué overflow-x-hidden para que el contenido no desborde en celular, manteniendo tus p-8 originales
     <div className="flex flex-col p-8 w-full gap-8 bg-white min-h-screen overflow-x-hidden">
       
       <PageHeader 
@@ -123,15 +122,11 @@ export default function CompaniasPage() {
         onNuevo={() => { setCompaniaAEditar(null); setIsModalOpen(true); }} 
       />
 
-      {/* 🔥 FILA 1: BUSCADOR (Ocupa todo el ancho imitando a la barra de filtros) */}
       <div className="w-full">
         <SearchBar valor={searchTerm} onChange={setSearchTerm} placeholder="Buscar compañía por nombre..." />
       </div>
 
-      {/* 🔥 FILA 2: ORDENAMIENTO (Izquierda) Y BOTONES EXCEL (Derecha) */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 w-full -mb-4">
-        
-        {/* Selector de Ordenamiento */}
         <div className="w-full md:w-auto">
           <SelectOrdenamiento 
             opciones={OPCIONES_ORDEN} 
@@ -140,11 +135,10 @@ export default function CompaniasPage() {
           />
         </div>
 
-        {/* Botones de Importar/Exportar */}
         <div className="flex items-center gap-3 w-full md:w-auto">
           <button
             onClick={() => setIsImportModalOpen(true)}
-            className="flex items-center justify-center gap-2 px-4 py-2 bg-white hover:bg-gray-50 border border-gray-200 text-gray-700 rounded-xl text-sm font-bold transition-all active:scale-95 shadow-sm w-full md:w-auto"
+            className="flex items-center gap-2 px-4 py-2 bg-white hover:bg-gray-50 border border-gray-200 text-gray-700 rounded-xl text-sm font-bold transition-all active:scale-95 shadow-sm"
           >
             <UploadCloud size={16} /> Importar Excel
           </button>
@@ -153,7 +147,7 @@ export default function CompaniasPage() {
               if(companiasOrdenadas.length === 0) return alert("No hay datos para exportar.");
               setIsExportModalOpen(true);
             }}
-            className="flex items-center justify-center gap-2 px-4 py-2 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-700 rounded-xl text-sm font-bold transition-all active:scale-95 shadow-sm w-full md:w-auto"
+            className="flex items-center gap-2 px-4 py-2 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-700 rounded-xl text-sm font-bold transition-all active:scale-95 shadow-sm"
           >
             <Download size={16} /> Exportar a Excel
           </button>
@@ -179,25 +173,8 @@ export default function CompaniasPage() {
       </Table>
 
       <NuevaCompaniaModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSuccess={handleSuccess} companiaAEditar={companiaAEditar} />
-      
-      <ImportarCompaniasModal 
-        isOpen={isImportModalOpen} 
-        onClose={() => setIsImportModalOpen(false)} 
-        onSuccess={(mensaje) => {
-          setIsImportModalOpen(false);
-          fetchCompanias();
-          setMensajeToast(mensaje);
-          setShowToast(true);
-        }} 
-      />
-
-      <ExportarExcelModal 
-        isOpen={isExportModalOpen} 
-        onClose={() => setIsExportModalOpen(false)} 
-        datos={prepararDatosParaExcel()} 
-        nombreArchivo={`Reporte_Companias_${new Date().toISOString().split("T")[0]}`} 
-      />
-
+      <ImportarCompaniasModal isOpen={isImportModalOpen} onClose={() => setIsImportModalOpen(false)} onSuccess={(mensaje) => { setIsImportModalOpen(false); fetchCompanias(); setMensajeToast(mensaje); setShowToast(true); }} />
+      <ExportarExcelModal isOpen={isExportModalOpen} onClose={() => setIsExportModalOpen(false)} datos={prepararDatosParaExcel()} nombreArchivo={`Reporte_Companias_${new Date().toISOString().split("T")[0]}`} />
       <ConfirmModal isOpen={isConfirmOpen} onClose={() => setIsConfirmOpen(false)} onConfirm={ejecutarEliminacion} isLoading={isDeleting} title="¿Eliminar compañía?" message={`Esta acción eliminará a "${companiaAEliminar?.nombre}".`} />
       <Toast message={mensajeToast} isVisible={showToast} onClose={() => setShowToast(false)} />
     </div>

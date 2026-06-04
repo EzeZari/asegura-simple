@@ -19,7 +19,7 @@ export default function OpcionesAvanzadas() {
   const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
-    const usuarioLoco = user as any; // 🔥 Magia negra anti-TypeScript
+    const usuarioLoco = user as any; 
     if (usuarioLoco && typeof usuarioLoco.twoFactorEnabled === 'boolean') {
       setTwoFactorEnabled(usuarioLoco.twoFactorEnabled);
     }
@@ -38,7 +38,6 @@ export default function OpcionesAvanzadas() {
 
       if (res.ok) {
         if (user) {
-          // 🔥 ACÁ FALTABA EL "as any"
           setUser({ ...user, twoFactorEnabled: newState } as any); 
         }
         setToastMessage(newState ? "2FA Activado" : "2FA Desactivado");
@@ -80,9 +79,11 @@ export default function OpcionesAvanzadas() {
   };
 
   return (
-    <div className="flex flex-col gap-8">
+    // 🔥 AJUSTE: gap-5 en móvil, gap-8 en PC
+    <div className="flex flex-col gap-5 md:gap-8">
       
-      <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex flex-col gap-4">
+      {/* 🔥 AJUSTE: p-4 en móvil, p-6 en PC */}
+      <div className="bg-white p-4 md:p-6 rounded-2xl border border-gray-100 shadow-sm flex flex-col gap-4">
         <h3 className="text-lg font-bold text-gray-900 border-b border-gray-50 pb-2 flex items-center gap-2">
           <Shield size={18} className="text-gray-400" /> Autenticación en Dos Pasos (2FA)
         </h3>
@@ -91,40 +92,48 @@ export default function OpcionesAvanzadas() {
             <p className="text-sm font-medium text-gray-900">Proteger cuenta con código adicional</p>
             <p className="text-sm text-gray-500 mt-1 max-w-2xl">Agrega una capa extra de seguridad. Además de tu contraseña, te pediremos un código de 6 dígitos enviado a tu correo/celular.</p>
           </div>
+          {/* 🔥 AJUSTE: shrink-0 para que el toggle no se aplaste si el texto ocupa mucho espacio en móvil */}
           <button 
             onClick={toggle2FA} 
-            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${twoFactorEnabled ? 'bg-green-600' : 'bg-gray-200'}`}
+            className={`shrink-0 relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${twoFactorEnabled ? 'bg-green-600' : 'bg-gray-200'}`}
           >
             <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${twoFactorEnabled ? 'translate-x-6' : 'translate-x-1'}`} />
           </button>
         </div>
       </div>
 
-      <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex flex-col gap-4">
+      {/* 🔥 AJUSTE: p-4 en móvil, p-6 en PC */}
+      <div className="bg-white p-4 md:p-6 rounded-2xl border border-gray-100 shadow-sm flex flex-col gap-4">
         <h3 className="text-lg font-bold text-gray-900 border-b border-gray-50 pb-2 flex items-center gap-2">
           <Smartphone size={18} className="text-gray-400" /> Dispositivos y Sesiones
         </h3>
-        <div className="flex justify-between items-center p-4 bg-gray-50 rounded-xl border border-gray-200">
+        {/* 🔥 AJUSTE: En móvil se apila el "Ahora", en PC se mantiene a la derecha */}
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center p-4 bg-gray-50 rounded-xl border border-gray-200 gap-3 sm:gap-0">
           <div className="flex items-center gap-4">
-            <Laptop className="text-green-600" size={24} />
+            <Laptop className="text-green-600 shrink-0" size={24} />
             <div>
-              <p className="text-sm font-bold text-gray-900">Navegador Actual <span className="text-[10px] font-bold uppercase tracking-wider text-green-700 bg-green-100 px-2 py-0.5 rounded-full ml-2">Sesión Activa</span></p>
+              <p className="text-sm font-bold text-gray-900 flex flex-wrap items-center gap-2">
+                Navegador Actual 
+                <span className="text-[10px] font-bold uppercase tracking-wider text-green-700 bg-green-100 px-2 py-0.5 rounded-full">Sesión Activa</span>
+              </p>
               <p className="text-xs text-gray-500 mt-0.5">Acceso autorizado</p>
             </div>
           </div>
-          <span className="text-sm text-gray-400 font-medium">Ahora</span>
+          <span className="text-sm text-gray-400 font-medium ml-10 sm:ml-0">Ahora</span>
         </div>
       </div>
 
-      <div className="bg-red-50/30 p-6 rounded-2xl border border-red-200 shadow-sm flex flex-col gap-4">
+      {/* 🔥 AJUSTE: p-4 en móvil, p-6 en PC */}
+      <div className="bg-red-50/30 p-4 md:p-6 rounded-2xl border border-red-200 shadow-sm flex flex-col gap-4">
         <h3 className="text-lg font-bold text-red-700 border-b border-red-100 pb-2 flex items-center gap-2">
           <AlertOctagon size={18} /> Zona de Peligro
         </h3>
         <p className="text-sm text-red-900/80">Acciones irreversibles. Procedé con absoluta precaución. Una vez que borrás la información, no hay vuelta atrás.</p>
         <div className="flex gap-4 mt-2">
+          {/* 🔥 AJUSTE: w-full en celular para mejor área táctil, w-auto en PC */}
           <button 
             onClick={() => setShowDangerModal(true)}
-            className="bg-white border border-red-200 text-red-700 hover:bg-red-50 px-4 py-2 rounded-lg text-sm font-bold transition-colors"
+            className="w-full sm:w-auto bg-white border border-red-200 text-red-700 hover:bg-red-50 px-4 py-2.5 sm:py-2 rounded-lg text-sm font-bold transition-colors"
           >
             Vaciar toda la base de datos
           </button>
@@ -134,12 +143,13 @@ export default function OpcionesAvanzadas() {
       {showDangerModal && (
         <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in duration-200">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden flex flex-col">
-            <div className="bg-red-600 p-6 flex flex-col items-center justify-center text-white gap-3">
+            {/* 🔥 AJUSTE: p-4 en celular, p-6 en PC */}
+            <div className="bg-red-600 p-4 md:p-6 flex flex-col items-center justify-center text-white gap-3">
               <TriangleAlert size={48} className="text-red-200" />
               <h3 className="text-xl font-bold text-center">¡Estás a punto de borrar todo!</h3>
             </div>
             
-            <div className="p-6 flex flex-col gap-4">
+            <div className="p-4 md:p-6 flex flex-col gap-4">
               <p className="text-sm text-gray-700 text-center">
                 Esta acción es <strong>permanente</strong>. Se eliminarán todas las pólizas, asegurados y el historial de actividad de AseguraSimple.
               </p>
@@ -158,17 +168,18 @@ export default function OpcionesAvanzadas() {
               </div>
             </div>
 
-            <div className="p-4 bg-gray-50 border-t border-gray-100 flex justify-end gap-3">
+            {/* 🔥 AJUSTE: Botones apilados (flex-col-reverse) en móvil, fila (sm:flex-row) en PC */}
+            <div className="p-4 bg-gray-50 border-t border-gray-100 flex flex-col-reverse sm:flex-row justify-end gap-3">
               <button 
                 onClick={() => { setShowDangerModal(false); setPalabraConfirmacion(""); }}
-                className="px-4 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-200 rounded-lg transition-colors"
+                className="w-full sm:w-auto px-4 py-2.5 sm:py-2 text-sm font-semibold text-gray-600 hover:bg-gray-200 rounded-lg transition-colors"
               >
                 Cancelar
               </button>
               <button 
                 onClick={vaciarBaseDeDatos}
                 disabled={palabraConfirmacion !== "ELIMINAR" || isDeleting}
-                className="px-5 py-2 text-sm font-bold text-white bg-red-600 hover:bg-red-700 disabled:bg-red-300 disabled:cursor-not-allowed rounded-lg transition-colors"
+                className="w-full sm:w-auto px-5 py-2.5 sm:py-2 text-sm font-bold text-white bg-red-600 hover:bg-red-700 disabled:bg-red-300 disabled:cursor-not-allowed rounded-lg transition-colors"
               >
                 {isDeleting ? "Borrando..." : "Sí, vaciar datos"}
               </button>

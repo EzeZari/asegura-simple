@@ -15,7 +15,6 @@ export default function NotificacionesSettings() {
     envioAutomaticoActivo: false,
     horaEnvioAutomatico: "09:00",
     diasAvisoAutomatico: 15,
-    // 🔥 Agregamos el estado inicial del nuevo campo
     enviarMailBienvenida: true 
   });
 
@@ -31,7 +30,6 @@ export default function NotificacionesSettings() {
           envioAutomaticoActivo: data.envioAutomaticoActivo ?? false,
           horaEnvioAutomatico: data.horaEnvioAutomatico ?? "09:00",
           diasAvisoAutomatico: data.diasAvisoAutomatico ?? 15,
-          // 🔥 Recuperamos el valor guardado
           enviarMailBienvenida: data.enviarMailBienvenida ?? true 
         });
       } catch (error) {
@@ -82,16 +80,16 @@ export default function NotificacionesSettings() {
   return (
     <div className="flex flex-col gap-6 animate-in fade-in duration-300">
       
-      <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex flex-col gap-6">
+      {/* 🔥 AJUSTE: p-4 en móvil, p-6 en PC */}
+      <div className="bg-white p-4 md:p-6 rounded-2xl border border-gray-100 shadow-sm flex flex-col gap-5 md:gap-6">
         <h3 className="text-lg font-bold text-gray-900 border-b border-gray-50 pb-2 flex items-center gap-2">
           <BellRing size={18} className="text-gray-400" /> Preferencias de Alertas y Envíos
         </h3>
         
-        <div className="flex flex-col gap-6 max-w-2xl">
+        <div className="flex flex-col gap-5 md:gap-6 max-w-2xl">
           
-          {/* 🔥 NUEVA SECCIÓN: MAIL DE BIENVENIDA */}
-          <div className={`p-5 rounded-xl border transition-colors duration-300 ${agencia.enviarMailBienvenida ? 'bg-blue-50/50 border-blue-200' : 'bg-gray-50 border-gray-200'}`}>
-            <div className="flex items-center justify-between">
+          <div className={`p-4 md:p-5 rounded-xl border transition-colors duration-300 ${agencia.enviarMailBienvenida ? 'bg-blue-50/50 border-blue-200' : 'bg-gray-50 border-gray-200'}`}>
+            <div className="flex items-center justify-between gap-4">
               <div>
                 <label className={`flex items-center gap-2 text-sm font-bold mb-1 ${agencia.enviarMailBienvenida ? 'text-blue-900' : 'text-gray-700'}`}>
                   <Mail size={18} /> Bienvenida a Nuevos Clientes
@@ -104,16 +102,15 @@ export default function NotificacionesSettings() {
               <button
                 type="button"
                 onClick={() => setAgencia({ ...agencia, enviarMailBienvenida: !agencia.enviarMailBienvenida })}
-                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-300 focus:outline-none ${agencia.enviarMailBienvenida ? 'bg-blue-500' : 'bg-gray-300'}`}
+                className={`shrink-0 relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-300 focus:outline-none ${agencia.enviarMailBienvenida ? 'bg-blue-500' : 'bg-gray-300'}`}
               >
                 <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition duration-300 ${agencia.enviarMailBienvenida ? 'translate-x-6' : 'translate-x-1'}`} />
               </button>
             </div>
           </div>
 
-          {/* SECCIÓN: AUTOMATIZACIÓN (ROBOT) */}
-          <div className={`p-5 rounded-xl border transition-colors duration-300 ${agencia.envioAutomaticoActivo ? 'bg-emerald-50/50 border-emerald-200' : 'bg-gray-50 border-gray-200'}`}>
-            <div className="flex items-center justify-between mb-4">
+          <div className={`p-4 md:p-5 rounded-xl border transition-colors duration-300 ${agencia.envioAutomaticoActivo ? 'bg-emerald-50/50 border-emerald-200' : 'bg-gray-50 border-gray-200'}`}>
+            <div className="flex items-center justify-between gap-4 mb-4">
               <div>
                 <label className={`flex items-center gap-2 text-sm font-bold mb-1 ${agencia.envioAutomaticoActivo ? 'text-emerald-900' : 'text-gray-700'}`}>
                   <Bot size={18} /> Asistente de Envío Automático
@@ -126,16 +123,15 @@ export default function NotificacionesSettings() {
               <button
                 type="button"
                 onClick={() => setAgencia({ ...agencia, envioAutomaticoActivo: !agencia.envioAutomaticoActivo })}
-                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-300 focus:outline-none ${agencia.envioAutomaticoActivo ? 'bg-emerald-500' : 'bg-gray-300'}`}
+                className={`shrink-0 relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-300 focus:outline-none ${agencia.envioAutomaticoActivo ? 'bg-emerald-500' : 'bg-gray-300'}`}
               >
                 <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition duration-300 ${agencia.envioAutomaticoActivo ? 'translate-x-6' : 'translate-x-1'}`} />
               </button>
             </div>
 
-            {/* Controles del Robot */}
             {agencia.envioAutomaticoActivo && (
-              <div className="flex flex-wrap gap-4 pt-4 border-t border-emerald-100 animate-in fade-in slide-in-from-top-2">
-                <div className="flex flex-col gap-1">
+              <div className="flex flex-col sm:flex-row flex-wrap gap-4 pt-4 border-t border-emerald-100 animate-in fade-in slide-in-from-top-2">
+                <div className="flex flex-col gap-1 w-full sm:w-auto">
                   <label className="text-xs font-bold text-emerald-800 flex items-center gap-1">
                     <Clock size={14} /> Horario de envío
                   </label>
@@ -144,11 +140,11 @@ export default function NotificacionesSettings() {
                     name="horaEnvioAutomatico"
                     value={agencia.horaEnvioAutomatico}
                     onChange={handleChange}
-                    className="p-2 border border-emerald-200 rounded-lg text-sm font-bold text-emerald-900 outline-none focus:ring-2 focus:ring-emerald-500 bg-white"
+                    className="w-full sm:w-auto p-2 border border-emerald-200 rounded-lg text-sm font-bold text-emerald-900 outline-none focus:ring-2 focus:ring-emerald-500 bg-white"
                   />
                 </div>
                 
-                <div className="flex flex-col gap-1">
+                <div className="flex flex-col gap-1 w-full sm:w-auto">
                   <label className="text-xs font-bold text-emerald-800 flex items-center gap-1">
                     <Send size={14} /> Días de anticipación
                   </label>
@@ -169,7 +165,6 @@ export default function NotificacionesSettings() {
             )}
           </div>
 
-          {/* Ajuste: Días Críticos */}
           <div className="bg-orange-50/50 border border-orange-100 p-4 rounded-xl">
             <label className="flex items-center gap-2 text-sm font-bold text-orange-900 mb-1">
               <AlertTriangle size={16} /> Vencimientos Críticos
@@ -187,11 +182,10 @@ export default function NotificacionesSettings() {
                 max={agencia.diasAlertaVencimiento - 1} 
                 className="w-24 p-2.5 text-center font-bold text-gray-900 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-orange-500" 
               />
-              <span className="text-sm font-medium text-gray-600">días antes de la fecha.</span>
+              <span className="text-sm font-medium text-gray-600">días antes.</span>
             </div>
           </div>
 
-          {/* Ajuste: Días Máximos (Próximos) */}
           <div className="bg-orange-50/50 border border-orange-100 p-4 rounded-xl">
             <label className="flex items-center gap-2 text-sm font-bold text-orange-900 mb-1">
               <Clock size={16} /> Vencimientos Próximos (Límite Máximo)
@@ -209,17 +203,18 @@ export default function NotificacionesSettings() {
                 max="90"
                 className="w-24 p-2.5 text-center font-bold text-gray-900 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-orange-500" 
               />
-              <span className="text-sm font-medium text-gray-600">días antes de la fecha.</span>
+              <span className="text-sm font-medium text-gray-600">días.</span>
             </div>
           </div>
 
         </div>
 
         <div className="flex justify-end border-t border-gray-50 pt-4 mt-2">
+          {/* 🔥 AJUSTE: Botón w-full en celular */}
           <button 
             onClick={guardarCambios} 
             disabled={isSaving}
-            className="flex items-center gap-2 bg-green-700 hover:bg-green-800 disabled:bg-green-400 text-white px-5 py-2.5 rounded-lg font-medium transition-colors shadow-sm"
+            className="w-full sm:w-auto flex justify-center items-center gap-2 bg-green-700 hover:bg-green-800 disabled:bg-green-400 text-white px-5 py-3 md:py-2.5 rounded-lg font-medium transition-colors shadow-sm"
           >
             <Save size={18} /> {isSaving ? "Guardando..." : "Guardar Preferencias"}
           </button>

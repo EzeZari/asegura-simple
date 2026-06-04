@@ -9,7 +9,6 @@ export default function PerfilSettings() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
 
-  // El estado donde guardamos todo lo que escribís en los inputs
   const [agencia, setAgencia] = useState({
     nombre: "",
     cuit: "",
@@ -18,13 +17,11 @@ export default function PerfilSettings() {
     firma: "",
   });
 
-  // 1. CARGAR DATOS AL ENTRAR
   useEffect(() => {
     const fetchAgencia = async () => {
       try {
         const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/agencia`);
         const data = await res.json();
-        // Si la base de datos devuelve nulos, los convertimos a string vacío para que React no se queje
         setAgencia({
           nombre: data.nombre || "",
           cuit: data.cuit || "",
@@ -41,7 +38,6 @@ export default function PerfilSettings() {
     fetchAgencia();
   }, []);
 
-  // 2. FUNCIÓN PARA GUARDAR (El PUT al backend)
   const guardarCambios = async () => {
     setIsSaving(true);
     try {
@@ -64,7 +60,6 @@ export default function PerfilSettings() {
     }
   };
 
-  // Función genérica para manejar los cambios en los inputs
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setAgencia({ ...agencia, [e.target.name]: e.target.value });
   };
@@ -76,27 +71,28 @@ export default function PerfilSettings() {
   return (
     <div className="flex flex-col gap-6 animate-in fade-in duration-300">
       
-      {/* SECCIÓN: Logo de la Agencia (Aún inactivo funcionalmente) */}
-      <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex flex-col gap-4">
+      {/* SECCIÓN: Logo de la Agencia */}
+      <div className="bg-white p-4 md:p-6 rounded-2xl border border-gray-100 shadow-sm flex flex-col gap-4">
         <h3 className="text-lg font-bold text-gray-900 border-b border-gray-50 pb-2">Identidad Visual</h3>
-        <div className="flex items-center gap-6 mt-2">
-          <div className="h-20 w-20 bg-gray-50 border border-gray-200 rounded-full flex items-center justify-center text-xl font-bold text-green-700">
+        {/* 🔥 AJUSTE: flex-col en móvil, flex-row a partir de sm */}
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-6 mt-2">
+          <div className="h-20 w-20 shrink-0 bg-gray-50 border border-gray-200 rounded-full flex items-center justify-center text-xl font-bold text-green-700">
             {agencia.nombre ? agencia.nombre.substring(0, 2).toUpperCase() : "AS"}
           </div>
-          <div>
-            <button className="flex items-center gap-2 bg-white border border-gray-300 hover:bg-gray-50 text-gray-400 px-4 py-2 rounded-lg font-medium transition-colors text-sm cursor-not-allowed">
+          <div className="w-full sm:w-auto">
+            <button className="w-full sm:w-auto flex justify-center items-center gap-2 bg-white border border-gray-300 hover:bg-gray-50 text-gray-400 px-4 py-2.5 sm:py-2 rounded-lg font-medium transition-colors text-sm cursor-not-allowed">
               <UploadCloud size={16} /> Subir nuevo logo (Próximamente)
             </button>
-            <p className="text-xs text-gray-400 mt-2">Recomendado: 256x256px, formato PNG o JPG.</p>
+            <p className="text-xs text-gray-400 mt-2 text-center sm:text-left">Recomendado: 256x256px, formato PNG o JPG.</p>
           </div>
         </div>
       </div>
 
       {/* SECCIÓN: Datos Comerciales */}
-      <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex flex-col gap-4">
+      <div className="bg-white p-4 md:p-6 rounded-2xl border border-gray-100 shadow-sm flex flex-col gap-4">
         <h3 className="text-lg font-bold text-gray-900 border-b border-gray-50 pb-2">Datos Comerciales</h3>
         
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Nombre de la Agencia</label>
             <input 
@@ -136,10 +132,11 @@ export default function PerfilSettings() {
         </div>
 
         <div className="flex justify-end mt-4">
+          {/* 🔥 AJUSTE: Botón w-full en móvil */}
           <button 
             onClick={guardarCambios} 
             disabled={isSaving}
-            className="flex items-center gap-2 bg-green-700 hover:bg-green-800 disabled:bg-green-400 text-white px-5 py-2.5 rounded-lg font-medium transition-colors shadow-sm"
+            className="w-full sm:w-auto flex justify-center items-center gap-2 bg-green-700 hover:bg-green-800 disabled:bg-green-400 text-white px-5 py-3 md:py-2.5 rounded-lg font-medium transition-colors shadow-sm"
           >
             <Save size={18} /> {isSaving ? "Guardando..." : "Guardar Perfil"}
           </button>
