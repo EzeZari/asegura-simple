@@ -61,7 +61,7 @@ export default function PolizaDetallePage() {
     try {
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/polizas/${id}/subir-pdf`, {
         method: "POST",
-        body: formData, // No hace falta poner 'Content-Type', el navegador lo calcula solo al mandar FormData
+        body: formData, 
       });
       
       const data = await res.json();
@@ -92,59 +92,64 @@ export default function PolizaDetallePage() {
   };
 
   return (
-    <div className="flex flex-col p-8 w-full gap-8 bg-white min-h-screen">
+    // 🔥 AJUSTE: p-4 en móvil, p-8 en PC. overflow-x-hidden para que nada se desborde horizontalmente
+    <div className="flex flex-col p-4 md:p-8 w-full gap-6 md:gap-8 bg-white min-h-screen overflow-x-hidden">
       
       {/* Header Principal */}
       <div className="flex flex-col gap-6">
         <button 
           onClick={() => router.back()}
-          className="flex items-center gap-2 text-gray-400 hover:text-green-700 transition-all w-fit font-medium group"
+          className="flex items-center gap-2 text-gray-400 hover:text-green-700 transition-all w-fit font-medium group text-sm md:text-base"
         >
           <ArrowLeft size={18} className="group-hover:-translate-x-1 transition-transform" /> 
           Volver a la lista
         </button>
         
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-          <div className="flex items-center gap-5">
-            <div className="p-4 bg-green-700 text-white rounded-2xl shadow-lg shadow-green-100">
-              <FileText size={32} />
+          {/* 🔥 AJUSTE: gap-3 en móvil, gap-5 en PC. Permitimos que el texto se rompa si es muy largo */}
+          <div className="flex items-center gap-3 md:gap-5 w-full md:w-auto">
+            <div className="p-3 md:p-4 bg-green-700 text-white rounded-2xl shadow-lg shadow-green-100 shrink-0">
+              <FileText size={28} className="md:w-8 md:h-8" />
             </div>
-            <div>
-              <div className="flex items-center gap-3">
-                <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Póliza #{poliza.nroPoliza}</h1>
-                <span className={`px-3 py-1 rounded-full text-xs font-bold border ${getStatusStyle(poliza.estado)}`}>
+            <div className="min-w-0 flex-1">
+              {/* 🔥 AJUSTE: flex-col en móviles muy chicos, fila en pantallas un poco más grandes */}
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
+                <h1 className="text-2xl md:text-3xl font-bold text-gray-900 tracking-tight truncate">Póliza #{poliza.nroPoliza}</h1>
+                <span className={`w-fit px-3 py-1 rounded-full text-[10px] md:text-xs font-bold border ${getStatusStyle(poliza.estado)}`}>
                   {poliza.estado.toUpperCase()}
                 </span>
               </div>
-              <p className="text-gray-400 mt-1 flex items-center gap-2 font-medium">
+              <p className="text-xs md:text-sm text-gray-400 mt-1 flex items-center gap-2 font-medium">
                 Registrada el {new Date(poliza.fechaInicio).toLocaleDateString("es-AR")}
               </p>
             </div>
           </div>
           
+          {/* 🔥 AJUSTE: Botón w-full en móvil, w-auto en PC */}
           <button 
             onClick={() => setIsModalOpen(true)}
-            className="flex items-center gap-2 bg-gray-900 hover:bg-gray-800 text-white px-6 py-3 rounded-xl font-bold transition-all shadow-md active:scale-95"
+            className="w-full md:w-auto flex justify-center items-center gap-2 bg-gray-900 hover:bg-gray-800 text-white px-6 py-3 rounded-xl font-bold transition-all shadow-md active:scale-95 text-sm md:text-base"
           >
             <Edit size={18} /> Editar Póliza
           </button>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8">
         
         {/* Columna Principal: Cobertura */}
-        <div className="lg:col-span-2 flex flex-col gap-8">
-          <div className="p-8 border border-gray-100 rounded-3xl bg-white shadow-sm relative overflow-hidden">
+        <div className="lg:col-span-2 flex flex-col gap-6 md:gap-8">
+          {/* 🔥 AJUSTE: p-5 en móvil, p-8 en PC */}
+          <div className="p-5 md:p-8 border border-gray-100 rounded-3xl bg-white shadow-sm relative overflow-hidden">
             <div className="absolute top-0 right-0 p-8 opacity-5">
               <Shield size={120} />
             </div>
             
-            <h3 className="text-lg font-bold text-gray-900 mb-8 flex items-center gap-2">
+            <h3 className="text-base md:text-lg font-bold text-gray-900 mb-6 md:mb-8 flex items-center gap-2">
               <Shield size={22} className="text-green-700" /> Especificaciones del Riesgo
             </h3>
             
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-12 gap-y-8">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-12 gap-y-6 md:gap-y-8">
               <DataField label="Rama / Riesgo" value={poliza.tipoPoliza} />
               <DataField label="Plan / Cobertura" value={poliza.cobertura || "Según condiciones"} />
               <DataField label="Vigencia Inicio" value={new Date(poliza.fechaInicio).toLocaleDateString("es-AR")} />
@@ -167,9 +172,9 @@ export default function PolizaDetallePage() {
             </div>
           </div>
 
-          <div className="p-8 border border-gray-100 rounded-3xl bg-gray-50/30 border-dashed">
-            <h3 className="text-sm font-bold text-gray-400 uppercase tracking-widest mb-4">Observaciones y Notas</h3>
-            <p className="text-gray-400 italic text-sm">
+          <div className="p-5 md:p-8 border border-gray-100 rounded-3xl bg-gray-50/30 border-dashed">
+            <h3 className="text-xs md:text-sm font-bold text-gray-400 uppercase tracking-widest mb-3 md:mb-4">Observaciones y Notas</h3>
+            <p className="text-gray-400 italic text-xs md:text-sm">
               No se han registrado siniestros ni modificaciones técnicas en este período de vigencia.
             </p>
           </div>
@@ -178,9 +183,8 @@ export default function PolizaDetallePage() {
         {/* Columna Lateral */}
         <div className="flex flex-col gap-6">
           
-          {/* 🔥 NUEVA TARJETA: DOCUMENTACIÓN */}
-          <div className="p-8 border border-gray-100 rounded-3xl bg-white shadow-sm">
-            <h3 className="font-bold text-gray-400 uppercase text-xs tracking-widest mb-6">Documentación</h3>
+          <div className="p-5 md:p-8 border border-gray-100 rounded-3xl bg-white shadow-sm">
+            <h3 className="font-bold text-gray-400 uppercase text-[10px] md:text-xs tracking-widest mb-5 md:mb-6">Documentación</h3>
             
             <input 
               type="file" 
@@ -196,14 +200,14 @@ export default function PolizaDetallePage() {
                   href={`${process.env.NEXT_PUBLIC_API_URL}/${poliza.pdfUrl}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex justify-center items-center gap-2 bg-blue-50 hover:bg-blue-100 text-blue-700 py-4 rounded-xl font-bold transition-colors"
+                  className="flex justify-center items-center gap-2 bg-blue-50 hover:bg-blue-100 text-blue-700 py-4 rounded-xl font-bold transition-colors text-sm md:text-base"
                 >
                   <FileText size={20} /> Ver Póliza Digital
                 </a>
                 <button 
                   onClick={() => fileInputRef.current?.click()}
                   disabled={isUploading}
-                  className="text-xs text-gray-400 hover:text-gray-700 text-center font-medium transition-colors"
+                  className="text-[10px] md:text-xs text-gray-400 hover:text-gray-700 text-center font-medium transition-colors"
                 >
                   {isUploading ? "Subiendo..." : "¿Querés reemplazar el archivo?"}
                 </button>
@@ -213,12 +217,12 @@ export default function PolizaDetallePage() {
                 <button 
                   onClick={() => fileInputRef.current?.click()}
                   disabled={isUploading}
-                  className="flex flex-col justify-center items-center gap-2 border-2 border-dashed border-gray-200 hover:border-green-400 hover:bg-green-50 text-gray-500 hover:text-green-700 py-8 rounded-xl font-medium transition-all"
+                  className="flex flex-col justify-center items-center gap-2 border-2 border-dashed border-gray-200 hover:border-green-400 hover:bg-green-50 text-gray-500 hover:text-green-700 py-6 md:py-8 rounded-xl font-medium transition-all text-sm md:text-base"
                 >
                   {isUploading ? (
-                    <Loader2 size={28} className="animate-spin text-green-600 mb-1" />
+                    <Loader2 size={24} className="animate-spin text-green-600 mb-1" />
                   ) : (
-                    <UploadCloud size={28} className="mb-1" />
+                    <UploadCloud size={24} className="mb-1" />
                   )}
                   {isUploading ? "Procesando archivo..." : "Cargar copia en PDF"}
                 </button>
@@ -227,33 +231,33 @@ export default function PolizaDetallePage() {
             )}
           </div>
 
-          <div className="p-8 border border-gray-100 rounded-3xl bg-white shadow-sm">
-            <h3 className="font-bold text-gray-400 uppercase text-xs tracking-widest mb-6">Asegurado Titular</h3>
+          <div className="p-5 md:p-8 border border-gray-100 rounded-3xl bg-white shadow-sm">
+            <h3 className="font-bold text-gray-400 uppercase text-[10px] md:text-xs tracking-widest mb-5 md:mb-6">Asegurado Titular</h3>
             <div className="flex flex-col gap-4">
-              <p className="text-2xl font-bold text-gray-900">{poliza.asegurado?.nombre} {poliza.asegurado?.apellido}</p>
-              <div className="flex flex-col gap-2 text-sm">
+              <p className="text-xl md:text-2xl font-bold text-gray-900 break-words">{poliza.asegurado?.nombre} {poliza.asegurado?.apellido}</p>
+              <div className="flex flex-col gap-2 text-xs md:text-sm">
                 <span className="flex items-center gap-2 text-gray-500">
-                   <User size={16} className="text-green-600" /> DNI: {poliza.asegurado?.dni}
+                   <User size={16} className="text-green-600 shrink-0" /> DNI: {poliza.asegurado?.dni}
                 </span>
                 <span className="flex items-center gap-2 text-gray-500">
-                   <Phone size={16} className="text-green-600" /> {poliza.asegurado?.telefono || "Sin teléfono"}
+                   <Phone size={16} className="text-green-600 shrink-0" /> {poliza.asegurado?.telefono || "Sin teléfono"}
                 </span>
-                <span className="flex items-center gap-2 text-gray-500 truncate">
-                   <Mail size={16} className="text-green-600" /> {poliza.asegurado?.email || "Sin email"}
+                <span className="flex items-center gap-2 text-gray-500 break-all">
+                   <Mail size={16} className="text-green-600 shrink-0" /> {poliza.asegurado?.email || "Sin email"}
                 </span>
               </div>
             </div>
           </div>
 
-          <div className="p-8 border border-gray-100 rounded-3xl bg-white shadow-sm">
-            <h3 className="font-bold text-gray-400 uppercase text-xs tracking-widest mb-6">Compañía Emisora</h3>
-            <div className="flex items-center gap-4">
-              <div className="p-3 bg-gray-50 rounded-xl">
+          <div className="p-5 md:p-8 border border-gray-100 rounded-3xl bg-white shadow-sm">
+            <h3 className="font-bold text-gray-400 uppercase text-[10px] md:text-xs tracking-widest mb-5 md:mb-6">Compañía Emisora</h3>
+            <div className="flex items-center gap-3 md:gap-4">
+              <div className="p-3 bg-gray-50 rounded-xl shrink-0">
                 <Building size={24} className="text-gray-400" />
               </div>
-              <div>
-                <p className="text-xl font-bold text-gray-800">{poliza.compania?.nombre}</p>
-                <p className="text-xs text-gray-500 font-mono">CUIT: {poliza.compania?.cuit || "-"}</p>
+              <div className="min-w-0">
+                <p className="text-lg md:text-xl font-bold text-gray-800 break-words">{poliza.compania?.nombre}</p>
+                <p className="text-[10px] md:text-xs text-gray-500 font-mono mt-0.5">CUIT: {poliza.compania?.cuit || "-"}</p>
               </div>
             </div>
           </div>
@@ -272,11 +276,12 @@ export default function PolizaDetallePage() {
   );
 }
 
+// 🔥 AJUSTE: Aplicamos break-words y achicamos la fuente en móviles para que no se deforme el contenedor si la data es muy larga
 function DataField({ label, value }: { label: string, value: string }) {
   return (
-    <div className="flex flex-col gap-1">
+    <div className="flex flex-col gap-1 min-w-0">
       <p className="text-[10px] text-gray-400 uppercase font-black tracking-[0.15em]">{label}</p>
-      <p className="text-lg font-semibold text-gray-800">{value}</p>
+      <p className="text-base md:text-lg font-semibold text-gray-800 break-words">{value}</p>
     </div>
   );
 }
