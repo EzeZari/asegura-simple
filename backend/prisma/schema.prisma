@@ -175,20 +175,24 @@ enum Role {
 }
 
 model User {
-  id                 Int      @id @default(autoincrement())
-  nombre             String
-  email              String   @unique
-  telefono           String
-  password           String
-  role               Role     @default(PRODUCTOR) 
-  createdAt          DateTime @default(now())
+  id                   Int      @id @default(autoincrement())
+  nombre               String
+  email                String   @unique
+  telefono             String
+  password             String
+  role                 Role     @default(PRODUCTOR) 
+  createdAt            DateTime @default(now())
 
   resetPasswordToken   String?  
   resetPasswordExpires DateTime? 
-  twoFactorEnabled Boolean @default(false)
+  twoFactorEnabled     Boolean @default(false)
 
-  codigoVerificacion    String?  // Acá guardamos el código de 6 dígitos
-  emailPendiente        String?  // Acá guardamos el nuevo mail hasta que se verifique
+  codigoVerificacion   String?  // Acá guardamos el código de 6 dígitos
+  emailPendiente       String?  // Acá guardamos el nuevo mail hasta que se verifique
+
+  // 🔥 NUEVOS CAMPOS PARA CONFIRMACIÓN DE REGISTRO
+  isVerified           Boolean  @default(false)
+  verificationToken    String?  @unique
 }
 model Actividad {
   id          Int      @id @default(autoincrement())

@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { prisma } from '../config/db'
 import bcrypt from 'bcrypt';
 // 1. Asegurate de que resetPassword esté en esta lista de acá arriba:
-import { register, login, refresh, logout, forgotPassword, resetPassword, verify2FALogin } from '../controllers/auth.controller'; // <--- Fijate que sumé verify2FALogin al final
+import { register, login, refresh, logout, forgotPassword, resetPassword, verify2FALogin, verifyEmail } from '../controllers/auth.controller';
 import { transporter } from '../utils/mailer'; 
 
 const router = Router();
@@ -13,14 +13,16 @@ router.post('/verify-2fa', verify2FALogin);
 router.post('/refresh', refresh);
 router.post('/logout', logout);
 router.post('/forgot-password', forgotPassword);
-
+router.get('/verify-email/:token', verifyEmail);
 // 2. Esta es la puerta que el frontend no estaba encontrando (¡agregala!):
 router.post('/reset-password', resetPassword); 
 
 // POST: Cambiar contraseña de un usuario logueado
 router.post('/change-password', async (req, res) => {
   try {
-    const { email, actual, nueva } = req.body;
+    // 🔥 Convertimos el email a minúscula apenas lo desestructuramos
+    const email = req.body.email?.toLowerCase();
+    const { actual, nueva } = req.body;
 
     if (!email || !actual || !nueva) {
       return res.status(400).json({ error: 'Faltan campos obligatorios.' });
@@ -60,9 +62,13 @@ router.post('/change-password', async (req, res) => {
   }
 });
 // PUT: Activar/Desactivar 2FA
+// PUT: Activar/Desactivar 2FA
 router.put('/2fa', async (req, res) => {
   try {
-    const { email, enabled } = req.body;
+    // 🔥 Convertimos el email a minúscula
+    const email = req.body.email?.toLowerCase();
+    const { enabled } = req.body;
+    
     await prisma.user.update({
       where: { email },
       data: { twoFactorEnabled: enabled }
