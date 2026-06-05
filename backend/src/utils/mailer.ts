@@ -3,8 +3,9 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
+// 🔥 Le agregamos "as any" al final del objeto para que TypeScript en Railway nos deje compilar
 export const transporter = nodemailer.createTransport({
-  host: 'smtp.gmail.com', // 🔥 Obligamos a apuntar al host explícito
+  host: 'smtp.gmail.com',
   port: 465,
   secure: true,
   auth: {
@@ -14,14 +15,13 @@ export const transporter = nodemailer.createTransport({
   tls: {
     rejectUnauthorized: false
   },
-  // 🔥 LA MAGIA PARA RAILWAY: Fuerza a usar IPv4 para evitar el error ENETUNREACH
-  family: 4, 
+  family: 4, // La magia para evitar el ENETUNREACH
   logger: true,
   debug: true,
   connectionTimeout: 10000,
   greetingTimeout: 10000,
   socketTimeout: 10000,
-});
+} as any);
 
 transporter.verify()
   .then(() => {
