@@ -4,16 +4,18 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 export const transporter = nodemailer.createTransport({
-  service: 'gmail',
+  host: 'smtp.gmail.com', // 🔥 Obligamos a apuntar al host explícito
+  port: 465,
+  secure: true,
   auth: {
     user: process.env.EMAIL_USER,
     pass: process.env.EMAIL_PASS,
   },
-  // 🔥 Le dice a Node que ignore la barrera del antivirus
   tls: {
     rejectUnauthorized: false
   },
-  // 🔥 MODO ESPÍA ACTIVADO: Nos va a imprimir toda la charla interna con Google
+  // 🔥 LA MAGIA PARA RAILWAY: Fuerza a usar IPv4 para evitar el error ENETUNREACH
+  family: 4, 
   logger: true,
   debug: true,
   connectionTimeout: 10000,
