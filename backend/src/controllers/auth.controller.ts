@@ -36,7 +36,7 @@ export const register = async (req: Request, res: Response): Promise<any> => {
 
     const hashedPassword = await bcrypt.hash(password, 10);
     
-    // 🔥 1. Generamos el token de verificación único
+    // 1. Generamos el token de verificación único
     const verificationToken = crypto.randomBytes(32).toString('hex');
 
     const newUser = await prisma.user.create({
@@ -45,16 +45,18 @@ export const register = async (req: Request, res: Response): Promise<any> => {
         email, 
         telefono, 
         password: hashedPassword,
-        verificationToken // Lo guardamos en la base de datos
+        verificationToken 
       },
     });
 
-    // 🔥 2. Armamos la URL que el usuario va a clickear en el mail
-    // Usamos req.get('host') para que detecte automáticamente si estás en localhost o en Railway
+    // 2. Armamos la URL
     const baseUrl = process.env.API_URL || `${req.protocol}://${req.get('host')}`;
     const verifyUrl = `${baseUrl}/api/auth/verify-email/${verificationToken}`;
 
-    // 🔥 3. Mandamos el correo
+    // 🔥 ESPÍA 1: Imprimimos quién es el remitente que lee el .env
+    console.log("📨 Intentando enviar mail DESDE:", process.env.EMAIL_USER, "HACIA:", newUser.email);
+
+    // 3. Mandamos el correo
     await transporter.sendMail({
       from: `"AseguraSimple" <${process.env.EMAIL_USER}>`,
       to: newUser.email,
@@ -93,7 +95,6 @@ export const login = async (req: Request, res: Response): Promise<any> => {
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) return res.status(400).json({ error: 'Credenciales incorrectas.' });
 
-    // 🔥 4. BLOQUEO: Si no está verificado, no entra
     if (!user.isVerified) {
       return res.status(403).json({ error: 'Por favor, confirmá tu correo electrónico antes de iniciar sesión. Revisá tu bandeja de entrada o spam.' });
     }
@@ -157,9 +158,7 @@ export const login = async (req: Request, res: Response): Promise<any> => {
   }
 };
 
-// 🔥 5. LA FUNCIÓN QUE FALTABA (Se ejecuta cuando tocan el link del mail)
 export const verifyEmail = async (req: Request, res: Response): Promise<any> => {
-  // Le agregamos "as string" para que TypeScript no se queje
   const token = req.params.token as string; 
   const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
 
@@ -167,11 +166,9 @@ export const verifyEmail = async (req: Request, res: Response): Promise<any> => 
     const user = await prisma.user.findUnique({ where: { verificationToken: token } });
 
     if (!user) {
-      // Si el token es viejo o no existe, lo mandamos al login con un error en la URL
       return res.redirect(`${frontendUrl}/login?error=invalid_token`);
     }
 
-    // Si está todo bien, lo marcamos como verificado y borramos el token
     await prisma.user.update({
       where: { id: user.id },
       data: { 
@@ -180,7 +177,6 @@ export const verifyEmail = async (req: Request, res: Response): Promise<any> => 
       }
     });
 
-    // Lo redirigimos al login con un mensaje de éxito en la URL
     return res.redirect(`${frontendUrl}/login?verified=true`);
   } catch (error) {
     console.error("Error al verificar email:", error);
@@ -293,6 +289,7 @@ export const resetPassword = async (req: Request, res: Response): Promise<any> =
     res.status(500).json({ error: 'Error al actualizar la contraseña.' });
   }
 };
+
 export const verify2FALogin = async (req: Request, res: Response): Promise<any> => {
   const { userId, codigo } = req.body;
 
@@ -317,7 +314,7 @@ export const verify2FALogin = async (req: Request, res: Response): Promise<any> 
     res.cookie('refreshToken', refreshToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict', // O 'none' si lo tenías configurado así para cross-domain
+      sameSite: 'strict',
       maxAge: 7 * 24 * 60 * 60 * 1000
     });
 

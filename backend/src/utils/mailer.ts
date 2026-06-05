@@ -9,13 +9,22 @@ export const transporter = nodemailer.createTransport({
     user: process.env.EMAIL_USER,
     pass: process.env.EMAIL_PASS,
   },
+  // 🔥 Le dice a Node que ignore la barrera del antivirus
   tls: {
     rejectUnauthorized: false
   },
-  // 🔥 Le decimos que se rinda a los 3 segundos en vez de esperar un minuto
-  connectionTimeout: 3000,
-  greetingTimeout: 3000,
-  socketTimeout: 3000,
+  // 🔥 MODO ESPÍA ACTIVADO: Nos va a imprimir toda la charla interna con Google
+  logger: true,
+  debug: true,
+  connectionTimeout: 10000,
+  greetingTimeout: 10000,
+  socketTimeout: 10000,
 });
 
-// ❌ Borramos el transporter.verify() de acá abajo para que no explote al prender el servidor
+transporter.verify()
+  .then(() => {
+    console.log("🚀 Servidor de correos conectado y listo para enviar.");
+  })
+  .catch((error) => {
+    console.error("❌ Error de correo:", error.message);
+  });

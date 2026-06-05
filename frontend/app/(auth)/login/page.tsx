@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
-import { Eye, EyeOff, ShieldCheck, ArrowLeft } from "lucide-react";
+import { Eye, EyeOff, ShieldCheck, ArrowLeft, CheckCircle2 } from "lucide-react"; // Sumé CheckCircle2
 import { useAuthStore } from "@/store/authStore";
 
 export default function LoginPage() {
@@ -12,14 +12,27 @@ export default function LoginPage() {
   // 🔥 TRUCO ANTI-EXTENSIONES: Evita el Error 418 de hidratación
   const [isMounted, setIsMounted] = useState(false);
 
-  useEffect(() => {
-    setIsMounted(true);
-  }, []);
-  
   // Estados generales
   const [error, setError] = useState("");
+  const [successMsg, setSuccessMsg] = useState(""); // 🔥 Nuevo estado para el mensaje de éxito
   const [isLoading, setIsLoading] = useState(false);
   const setUser = useAuthStore((state) => state.setUser);
+  
+  useEffect(() => {
+    setIsMounted(true);
+    
+    // 🔥 MAGIA: Leemos la URL para ver si el usuario viene de confirmar su correo
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("verified") === "true") {
+      setSuccessMsg("¡Cuenta confirmada con éxito! Ya podés iniciar sesión.");
+      // Limpiamos la URL para que quede prolija
+      window.history.replaceState(null, '', '/login');
+    }
+    if (params.get("error") === "invalid_token") {
+      setError("El enlace de verificación es inválido o ha expirado.");
+      window.history.replaceState(null, '', '/login');
+    }
+  }, []);
   
   // Estados Paso 1: Credenciales
   const [email, setEmail] = useState("");
@@ -34,6 +47,7 @@ export default function LoginPage() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    setSuccessMsg(""); // Limpiamos el mensaje de éxito si hay un nuevo intento
 
     if (!email || !password) {
       setError("Por favor, completá todos los campos.");
@@ -65,7 +79,6 @@ export default function LoginPage() {
         return;
       }
 
-      // 🔥 ESTA ES LA LÍNEA MÁGICA: Creamos una cookie en nuestro propio dominio
       document.cookie = `next_auth_token=${data.accessToken}; path=/; max-age=86400; secure; samesite=strict`;
 
       setUser(data.user);
@@ -111,7 +124,6 @@ export default function LoginPage() {
     }
   };
 
-  // 🔥 Si no está montado aún, devolvemos null para que las extensiones no rompan el HTML inicial
   if (!isMounted) return null;
 
   // ================= RENDERIZADO DEL PASO 2 (CÓDIGO 2FA) =================
@@ -165,6 +177,15 @@ export default function LoginPage() {
         <h1 className="text-5xl leading-tight font-bold text-gray-900 tracking-tight">
           Hola!<br />Ingresa a tu<br />cuenta
         </h1>
+        
+        {/* 🔥 Cartel de Éxito al confirmar la cuenta */}
+        {successMsg && (
+          <div className="mt-6 p-4 bg-green-50 border border-green-200 text-green-800 text-sm rounded-lg font-medium flex items-start gap-3 animate-in fade-in slide-in-from-top-2">
+            <CheckCircle2 className="text-green-600 shrink-0 mt-0.5" size={18} />
+            <p>{successMsg}</p>
+          </div>
+        )}
+
         {error && (
           <div className="mt-4 p-3 bg-red-50 border border-red-200 text-red-600 text-sm rounded-md font-medium">{error}</div>
         )}
