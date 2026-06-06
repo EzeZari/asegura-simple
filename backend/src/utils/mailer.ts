@@ -1,27 +1,28 @@
 import nodemailer from 'nodemailer';
+import dns from 'dns';
 import dotenv from 'dotenv';
 
 dotenv.config();
 
+// Forzamos IPv4 a nivel global de Node.js
+dns.setDefaultResultOrder('ipv4first');
+
 export const transporter = nodemailer.createTransport({
-  host: 'smtp.gmail.com',
-  // 🔥 CAMBIOS CLAVE: Usamos el puerto 587 y secure en false
+  host: '142.251.163.108', // IP directa de smtp.gmail.com (evitamos el DNS completamente)
   port: 587,
-  secure: false, 
+  secure: false,
   auth: {
     user: process.env.EMAIL_USER,
     pass: process.env.EMAIL_PASS,
   },
   tls: {
-    rejectUnauthorized: false
+    rejectUnauthorized: false,
+    servername: 'smtp.gmail.com' // Le decimos cuál es el host real para el certificado
   },
-  family: 4, 
-  logger: true,
-  debug: true,
-  connectionTimeout: 10000,
-  greetingTimeout: 10000,
-  socketTimeout: 10000,
-} as any);
+  connectionTimeout: 15000,
+  greetingTimeout: 15000,
+  socketTimeout: 15000,
+});
 
 transporter.verify()
   .then(() => {
