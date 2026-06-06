@@ -1,11 +1,10 @@
-import { transporter } from '../utils/mailer';
+import { sendMail } from '../utils/mailer'; // ← único cambio en el import
 
 export const enviarCorreoBienvenida = async (email: string, nombre: string, apellido: string, dni: string, telefono: string) => {
   if (!email || !email.includes('@')) return;
 
   try {
-    await transporter.sendMail({
-      from: `"AseguraSimple" <${process.env.EMAIL_USER}>`,
+    await sendMail({
       to: email,
       subject: `¡Bienvenido a nuestra Agencia, ${nombre}!`,
       html: `
@@ -15,11 +14,11 @@ export const enviarCorreoBienvenida = async (email: string, nombre: string, apel
             <p style="color: #6b7280; font-size: 14px; margin-top: 5px;">Tu tranquilidad, en buenas manos</p>
           </div>
           <hr style="border: 0; border-top: 1px solid #f3f4f6; margin-bottom: 20px;" />
-          <p style="color: #374151; font-size: 16px; leading-relaxed: 1.5;">Hola <strong>${nombre} ${apellido || ''}</strong>,</p>
-          <p style="color: #374151; font-size: 16px; leading-relaxed: 1.5;">Queremos darte la bienvenida formal a nuestra agencia. Ya te encontrás registrado en nuestra plataforma de gestión de seguros.</p>
+          <p style="color: #374151; font-size: 16px;">Hola <strong>${nombre} ${apellido || ''}</strong>,</p>
+          <p style="color: #374151; font-size: 16px;">Queremos darte la bienvenida formal a nuestra agencia. Ya te encontrás registrado en nuestra plataforma de gestión de seguros.</p>
           
           <div style="background-color: #f9fafb; border: 1px solid #f3f4f6; padding: 15px; border-radius: 8px; margin: 20px 0;">
-            <h3 style="margin-top: 0; color: #111827; font-size: 14px; text-transform: uppercase; tracking-wider: 0.05em;">Tus datos registrados:</h3>
+            <h3 style="margin-top: 0; color: #111827; font-size: 14px; text-transform: uppercase;">Tus datos registrados:</h3>
             <p style="margin: 4px 0; font-size: 14px; color: #4b5563;"><strong>Documento / CUIT:</strong> ${dni}</p>
             <p style="margin: 4px 0; font-size: 14px; color: #4b5563;"><strong>Teléfono de contacto:</strong> ${telefono || '-'}</p>
           </div>
@@ -76,8 +75,7 @@ export const enviarAvisoVencimiento = async (
   }
 
   try {
-    await transporter.sendMail({
-      from: `"AseguraSimple" <${process.env.EMAIL_USER}>`,
+    await sendMail({
       to: email,
       subject: `Aviso Importante: Vencimiento de cobertura - Póliza #${nroPoliza}`,
       html: `
@@ -109,7 +107,7 @@ export const enviarAvisoVencimiento = async (
               
               <tr>
                 <td style="padding: 6px 0; font-weight: bold; color: #9a3412;">Plan / Cobertura:</td>
-                <td style="padding: 6px 0; color: #1f2937; italic;">${cobertura || 'Detalle según condiciones generales'}</td>
+                <td style="padding: 6px 0; color: #1f2937;">${cobertura || 'Detalle según condiciones generales'}</td>
               </tr>
               <tr>
                 <td style="padding: 8px 0; font-weight: bold; color: #c2410c; font-size: 15px; border-top: 1px dashed #fed7aa;">FECHA FIN:</td>
@@ -130,7 +128,6 @@ export const enviarAvisoVencimiento = async (
   }
 };
 
-// 🔥 NUEVA FUNCIÓN EXCLUSIVA PARA NOTIFICAR SINIESTROS
 export const enviarNotificacionSiniestro = async (
   email: string,
   nombre: string,
@@ -146,8 +143,7 @@ export const enviarNotificacionSiniestro = async (
   if (!email || !email.includes('@')) return;
 
   try {
-    await transporter.sendMail({
-      from: `"AseguraSimple" <${process.env.EMAIL_USER}>`,
+    await sendMail({
       to: email,
       subject: `${asuntoPersonalizado} - Trámite #${nroSiniestro}`,
       html: `
@@ -182,7 +178,7 @@ export const enviarNotificacionSiniestro = async (
             
             <div style="margin-top: 15px; padding-top: 15px; border-top: 1px dashed #fed7aa; color: #1f2937; font-size: 14px; line-height: 1.5;">
               <strong>Detalle de la actualización registrada:</strong>
-              <p style="margin: 6px 0 0 0; color: #4b5563; font-style: italic; background-color: #white; padding: 10px; border-radius: 6px; border: 1px solid #ffedd5;">"${descripcionNovedad}"</p>
+              <p style="margin: 6px 0 0 0; color: #4b5563; font-style: italic; padding: 10px; border-radius: 6px; border: 1px solid #ffedd5;">"${descripcionNovedad}"</p>
             </div>
           </div>
 

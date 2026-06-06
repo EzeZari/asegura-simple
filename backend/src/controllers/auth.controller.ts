@@ -4,7 +4,7 @@ import jwt from 'jsonwebtoken';
 import { z } from 'zod';
 import { prisma } from '../config/db'; 
 import crypto from 'crypto'; 
-import { transporter } from '../utils/mailer'; 
+import { sendMail } from '../utils/mailer'; // ← cambio
 
 const registerSchema = z.object({
   nombre: z.string().min(2, "El nombre es muy corto"),
@@ -35,30 +35,16 @@ export const register = async (req: Request, res: Response): Promise<any> => {
     if (existingUser) return res.status(400).json({ error: 'Este correo electrónico ya está registrado.' });
 
     const hashedPassword = await bcrypt.hash(password, 10);
-    
-    // 1. Generamos el token de verificación único
     const verificationToken = crypto.randomBytes(32).toString('hex');
 
     const newUser = await prisma.user.create({
-      data: { 
-        nombre, 
-        email, 
-        telefono, 
-        password: hashedPassword,
-        verificationToken 
-      },
+      data: { nombre, email, telefono, password: hashedPassword, verificationToken },
     });
 
-    // 2. Armamos la URL
     const baseUrl = process.env.API_URL || `${req.protocol}://${req.get('host')}`;
     const verifyUrl = `${baseUrl}/api/auth/verify-email/${verificationToken}`;
 
-    // 🔥 ESPÍA 1: Imprimimos quién es el remitente que lee el .env
-    console.log("📨 Intentando enviar mail DESDE:", process.env.EMAIL_USER, "HACIA:", newUser.email);
-
-    // 3. Mandamos el correo
-    await transporter.sendMail({
-      from: `"AseguraSimple" <${process.env.EMAIL_USER}>`,
+    await sendMail({
       to: newUser.email,
       subject: "Confirmá tu cuenta - AseguraSimple",
       html: `
@@ -107,11 +93,8 @@ export const login = async (req: Request, res: Response): Promise<any> => {
         data: { codigoVerificacion: codigo2fa }
       });
 
-      console.log(`🔑 CÓDIGO DE ACCESO PARA ${user.email}: ${codigo2fa}`);
-
       try {
-        await transporter.sendMail({
-          from: `"AseguraSimple Seguridad" <${process.env.EMAIL_USER}>`,
+        await sendMail({
           to: user.email,
           subject: "Código de Seguridad (2FA) - AseguraSimple",
           html: `
@@ -142,8 +125,8 @@ export const login = async (req: Request, res: Response): Promise<any> => {
 
     res.cookie('refreshToken', refreshToken, {
       httpOnly: true,
-      secure: true, 
-      sameSite: 'none', 
+      secure: true,
+      sameSite: 'none',
       maxAge: 7 * 24 * 60 * 60 * 1000
     });
 
@@ -165,16 +148,11 @@ export const verifyEmail = async (req: Request, res: Response): Promise<any> => 
   try {
     const user = await prisma.user.findUnique({ where: { verificationToken: token } });
 
-    if (!user) {
-      return res.redirect(`${frontendUrl}/login?error=invalid_token`);
-    }
+    if (!user) return res.redirect(`${frontendUrl}/login?error=invalid_token`);
 
     await prisma.user.update({
       where: { id: user.id },
-      data: { 
-        isVerified: true, 
-        verificationToken: null 
-      }
+      data: { isVerified: true, verificationToken: null }
     });
 
     return res.redirect(`${frontendUrl}/login?verified=true`);
@@ -191,11 +169,10 @@ export const refresh = async (req: Request, res: Response): Promise<any> => {
   try {
     const decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET as string) as { userId: number };
     const user = await prisma.user.findUnique({ where: { id: decoded.userId } });
-    
     if (!user) return res.status(401).json({ error: 'Usuario no encontrado.' });
 
     const accessToken = jwt.sign({ userId: user.id, role: user.role }, process.env.JWT_SECRET as string, { expiresIn: '15m' });
-    
+
     res.status(200).json({ 
       accessToken,
       user: { id: user.id, nombre: user.nombre, email: user.email, role: user.role, twoFactorEnabled: user.twoFactorEnabled }
@@ -206,11 +183,7 @@ export const refresh = async (req: Request, res: Response): Promise<any> => {
 };
 
 export const logout = (req: Request, res: Response) => {
-  res.clearCookie('refreshToken', {
-    httpOnly: true,
-    secure: true, 
-    sameSite: 'none', 
-  });
+  res.clearCookie('refreshToken', { httpOnly: true, secure: true, sameSite: 'none' });
   res.status(200).json({ message: 'Sesión cerrada exitosamente.' });
 };
 
@@ -232,8 +205,7 @@ export const forgotPassword = async (req: Request, res: Response): Promise<any> 
 
     const resetUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/nueva-contrasena?token=${resetToken}`;
 
-    await transporter.sendMail({
-      from: `"AseguraSimple" <${process.env.EMAIL_USER}>`,
+    await sendMail({
       to: user.email,
       subject: 'Recuperá tu contraseña - AseguraSimple',
       html: `
@@ -257,17 +229,11 @@ export const forgotPassword = async (req: Request, res: Response): Promise<any> 
 
 export const resetPassword = async (req: Request, res: Response): Promise<any> => {
   const { token, newPassword } = req.body;
-
-  if (!token || !newPassword) {
-    return res.status(400).json({ error: 'Token y nueva contraseña son obligatorios' });
-  }
+  if (!token || !newPassword) return res.status(400).json({ error: 'Token y nueva contraseña son obligatorios' });
 
   try {
     const user = await prisma.user.findFirst({
-      where: {
-        resetPasswordToken: token,
-        resetPasswordExpires: { gt: new Date() } 
-      }
+      where: { resetPasswordToken: token, resetPasswordExpires: { gt: new Date() } }
     });
 
     if (!user) return res.status(400).json({ error: 'El enlace es inválido o ha expirado.' });
@@ -276,11 +242,7 @@ export const resetPassword = async (req: Request, res: Response): Promise<any> =
 
     await prisma.user.update({
       where: { id: user.id },
-      data: {
-        password: hashedPassword,
-        resetPasswordToken: null,    
-        resetPasswordExpires: null   
-      }
+      data: { password: hashedPassword, resetPasswordToken: null, resetPasswordExpires: null }
     });
 
     res.status(200).json({ message: 'Contraseña actualizada con éxito.' });
@@ -292,10 +254,7 @@ export const resetPassword = async (req: Request, res: Response): Promise<any> =
 
 export const verify2FALogin = async (req: Request, res: Response): Promise<any> => {
   const { userId, codigo } = req.body;
-
-  if (!userId || !codigo) {
-    return res.status(400).json({ error: 'Faltan datos de validación.' });
-  }
+  if (!userId || !codigo) return res.status(400).json({ error: 'Faltan datos de validación.' });
 
   try {
     const user = await prisma.user.findUnique({ where: { id: Number(userId) } });
@@ -304,10 +263,7 @@ export const verify2FALogin = async (req: Request, res: Response): Promise<any> 
       return res.status(400).json({ error: 'Código de seguridad incorrecto.' });
     }
 
-    await prisma.user.update({
-      where: { id: user.id },
-      data: { codigoVerificacion: null }
-    });
+    await prisma.user.update({ where: { id: user.id }, data: { codigoVerificacion: null } });
 
     const { accessToken, refreshToken } = generateTokens(user.id, user.role);
 
@@ -323,7 +279,6 @@ export const verify2FALogin = async (req: Request, res: Response): Promise<any> 
       accessToken, 
       user: { id: user.id, nombre: user.nombre, email: user.email, role: user.role, twoFactorEnabled: user.twoFactorEnabled } 
     });
-
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Ocurrió un error al verificar el código.' });
