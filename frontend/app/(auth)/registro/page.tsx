@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { Eye, EyeOff, MailCheck } from "lucide-react"; // Cambié el ícono para que sea un Mail
+import { Eye, EyeOff, MailCheck } from "lucide-react";
 
 export default function RegisterPage() {
   const [nombre, setNombre] = useState("");
@@ -14,6 +14,10 @@ export default function RegisterPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+
+  // Estados nuevos para el reenvío
+  const [isResending, setIsResending] = useState(false);
+  const [resendMessage, setResendMessage] = useState({ text: "", type: "" });
 
   const isPasswordSecure = (pass: string) => pass.length >= 8 && /[A-Z]/.test(pass) && /[0-9]/.test(pass);
 
@@ -59,6 +63,32 @@ export default function RegisterPage() {
     }
   };
 
+  // Función para reenviar el correo
+  const handleResendEmail = async () => {
+    setIsResending(true);
+    setResendMessage({ text: "", type: "" });
+
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/resend-confirmation`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }), 
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setResendMessage({ text: data.error || "Error al reenviar el correo.", type: "error" });
+      } else {
+        setResendMessage({ text: "¡Correo reenviado! Revisá tu bandeja de entrada o Spam.", type: "success" });
+      }
+    } catch (err) {
+      setResendMessage({ text: "Error de conexión con el servidor.", type: "error" });
+    } finally {
+      setIsResending(false);
+    }
+  };
+
   return (
     <div className="w-full max-w-md flex flex-col gap-6 my-auto py-10 px-4 md:px-0">
 
@@ -76,9 +106,28 @@ export default function RegisterPage() {
               Hacé clic en el enlace del mensaje para confirmar tu cuenta y poder iniciar sesión. Si no lo ves, revisá la carpeta de Spam.
             </p>
           </div>
-          <Link href="/login" className="w-full bg-gray-900 text-white text-base font-medium rounded-lg py-3 mt-4 hover:bg-black transition-colors text-center shadow-sm">
-            Volver a Iniciar Sesión
-          </Link>
+          
+          <div className="w-full flex flex-col gap-3 mt-4">
+            <Link href="/login" className="w-full bg-gray-900 text-white text-base font-medium rounded-lg py-3 hover:bg-black transition-colors text-center shadow-sm">
+              Volver a Iniciar Sesión
+            </Link>
+            
+            {/* El botón camuflado como link */}
+            <button 
+              onClick={handleResendEmail}
+              disabled={isResending}
+              className="text-sm text-gray-500 font-medium hover:text-blue-600 hover:underline transition-colors mt-2 disabled:opacity-50 disabled:no-underline"
+            >
+              {isResending ? "Reenviando..." : "¿No recibiste el correo? Reenviar"}
+            </button>
+            
+            {/* Mensaje sutil de éxito/error */}
+            {resendMessage.text && (
+              <p className={`text-sm mt-1 ${resendMessage.type === 'success' ? 'text-green-600' : 'text-red-600'}`}>
+                {resendMessage.text}
+              </p>
+            )}
+          </div>
         </div>
       ) : (
         <>

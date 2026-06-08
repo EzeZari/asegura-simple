@@ -255,3 +255,47 @@ export const verify2FALogin = async (req: Request, res: Response): Promise<any> 
     res.status(500).json({ error: 'Ocurrió un error al verificar el código.' });
   }
 };
+export const resendConfirmationEmail = async (req: Request, res: Response): Promise<any> => {
+  const email = req.body.email?.toLowerCase();
+  
+  if (!email) {
+    return res.status(400).json({ error: 'El email es obligatorio para reenviar la confirmación.' });
+  }
+
+  try {
+    const user = await prisma.user.findUnique({ where: { email } });
+    
+    if (!user) {
+      return res.status(404).json({ error: 'Usuario no encontrado.' });
+    }
+
+    if (user.isVerified) {
+      return res.status(400).json({ error: 'Esta cuenta ya está verificada. Podés iniciar sesión directamente.' });
+    }
+
+    // 1. Generamos un token NUEVO por si el anterior venció
+    const newVerificationToken = crypto.randomBytes(32).toString('hex');
+
+    // 2. Lo guardamos en la base de datos
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { verificationToken: newVerificationToken }
+    });
+
+    // 3. Armamos la URL
+    const baseUrl = process.env.API_URL || `${req.protocol}://${req.get('host')}`;
+    const verifyUrl = `${baseUrl}/api/auth/verify-email/${newVerificationToken}`;
+
+    // 4. Volvemos a disparar el mail con Resend y la plantilla
+    await sendMail({
+      to: user.email,
+      subject: "Confirmá tu cuenta - AseguraSimple",
+      html: templateConfirmacionCuenta(user.nombre, verifyUrl)
+    });
+
+    return res.status(200).json({ message: 'Correo de confirmación reenviado con éxito.' });
+  } catch (error) {
+    console.error("Error al reenviar correo de confirmación:", error);
+    return res.status(500).json({ error: 'Ocurrió un error en el servidor al intentar reenviar el correo.' });
+  }
+};

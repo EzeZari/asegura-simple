@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { prisma } from '../config/db';
 import bcrypt from 'bcrypt';
-import { register, login, refresh, logout, forgotPassword, resetPassword, verify2FALogin, verifyEmail } from '../controllers/auth.controller';
+import { register, login, refresh, logout, forgotPassword, resetPassword, verify2FALogin, verifyEmail, resendConfirmationEmail } from '../controllers/auth.controller';
 import { sendMail } from '../utils/mailer'; // ← cambio
 
 const router = Router();
@@ -14,6 +14,7 @@ router.post('/logout', logout);
 router.post('/forgot-password', forgotPassword);
 router.get('/verify-email/:token', verifyEmail);
 router.post('/reset-password', resetPassword); 
+router.post('/resend-confirmation', resendConfirmationEmail);
 
 router.post('/change-password', async (req, res) => {
   try {
