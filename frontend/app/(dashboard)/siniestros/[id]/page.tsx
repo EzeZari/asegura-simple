@@ -25,7 +25,7 @@ export default function SiniestroDetallePage() {
   const [linkGenerado, setLinkGenerado] = useState("");
   const [isGenerandoLink, setIsGenerandoLink] = useState(false);
 
-  // 🔥 ACÁ ESTÁ LA MAGIA QUE LEE EL LINK GUARDADO
+  // 🔥 ACÁ ESTÁ LA CORRECCIÓN: Usamos window.location.origin
   const fetchSiniestro = async () => {
     try {
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/siniestros/${id}`);
@@ -34,10 +34,9 @@ export default function SiniestroDetallePage() {
       if (res.ok) {
         setSiniestro(data);
         
-        // Si el siniestro ya tiene un link activo, lo cargamos en el estado para destapar la tarjeta
+        // Si el siniestro ya tiene un link activo, lo armamos con el dominio actual
         if (data.linksConsulta && data.linksConsulta.length > 0) {
-          const baseUrl = process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:3000';
-          setLinkGenerado(`${baseUrl}/consulta/${data.linksConsulta[0].token}`);
+          setLinkGenerado(`${window.location.origin}/consulta/${data.linksConsulta[0].token}`);
         }
       }
     } catch (err) {
@@ -123,7 +122,11 @@ export default function SiniestroDetallePage() {
     try {
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/siniestros/${id}/generar-link`, { method: "POST" });
       const data = await res.json();
-      setLinkGenerado(data.urlPublica);
+      
+      // 🔥 CORRECCIÓN: Al generarlo por primera vez también usamos el dominio actual
+      const urlFinal = data.urlPublica.replace(process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || '', window.location.origin);
+      setLinkGenerado(urlFinal);
+      
       setMensajeToast("Enlace de seguimiento generado y listo");
       setShowToast(true);
     } catch (err) {
