@@ -113,6 +113,10 @@ export const getSiniestroById = async (req: Request, res: Response) => {
         },
         notas: {
           orderBy: { fecha: 'desc' } 
+        },
+        // 🔥 ESTA ES LA LÍNEA QUE TE HABÍA FALTADO:
+        linksConsulta: { 
+          where: { activo: true, expiracion: { gte: new Date() } } 
         }
       }
     });
@@ -155,12 +159,14 @@ export const agregarNota = async (req: Request, res: Response) => {
 
     const emailCliente = siniestroCompleto?.poliza?.asegurado?.email;
     const tokenActivo = siniestroCompleto?.linksConsulta[0]?.token;
+    
+    // 🔥 CORRECCIÓN: Leemos la URL base desde las variables de entorno o usamos localhost por defecto
+    const baseUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
 
-    // Si el cliente tiene mail cargado, le mandamos el correo con la novedad
     if (emailCliente) {
       const urlSeguimiento = tokenActivo 
-        ? `http://localhost:3000/consulta/${tokenActivo}`
-        : `http://localhost:3000/siniestros`; 
+        ? `${baseUrl}/consulta/${tokenActivo}`
+        : `${baseUrl}/siniestros`; 
 
       await prisma.notificacion.create({
         data: {
@@ -173,7 +179,6 @@ export const agregarNota = async (req: Request, res: Response) => {
         }
       });
 
-      // Usamos la nueva plantilla limpia para avisar la nueva nota de la bitácora
       await enviarNotificacionSiniestro(
         emailCliente,
         `${siniestroCompleto.poliza.asegurado.nombre} ${siniestroCompleto.poliza.asegurado.apellido || ''}`.trim(),
@@ -188,7 +193,6 @@ export const agregarNota = async (req: Request, res: Response) => {
       );
     }
 
-    // Devolvemos la nota creada al Frontend
     res.status(201).json(nuevaNota);
 
   } catch (error: any) {
@@ -201,6 +205,9 @@ export const agregarNota = async (req: Request, res: Response) => {
 export const obtenerOGenerarLink = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
+    
+    // 🔥 CORRECCIÓN: Leemos la URL base desde las variables de entorno
+    const baseUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
 
     let linkConsulta = await prisma.linkConsulta.findFirst({
       where: {
@@ -224,9 +231,8 @@ export const obtenerOGenerarLink = async (req: Request, res: Response) => {
         }
       });
 
-      const urlSeguimiento = `http://localhost:3000/consulta/${tokenUnico}`;
+      const urlSeguimiento = `${baseUrl}/consulta/${tokenUnico}`;
 
-      // Buscamos los datos completos para armar el correo
       const siniestroCompleto = await prisma.siniestro.findUnique({
         where: { id: Number(id) },
         include: { poliza: { include: { asegurado: true, compania: true } } }
@@ -261,9 +267,10 @@ export const obtenerOGenerarLink = async (req: Request, res: Response) => {
       }
     }
 
+    // 🔥 Devolvemos siempre el link armado con el dominio correcto
     res.json({
       token: linkConsulta.token,
-      urlPublica: `http://localhost:3000/consulta/${linkConsulta.token}`
+      urlPublica: `${baseUrl}/consulta/${linkConsulta.token}`
     });
   } catch (error: any) {
     console.error(error);

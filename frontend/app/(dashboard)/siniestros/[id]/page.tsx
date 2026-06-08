@@ -25,11 +25,21 @@ export default function SiniestroDetallePage() {
   const [linkGenerado, setLinkGenerado] = useState("");
   const [isGenerandoLink, setIsGenerandoLink] = useState(false);
 
+  // 🔥 ACÁ ESTÁ LA MAGIA QUE LEE EL LINK GUARDADO
   const fetchSiniestro = async () => {
     try {
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/siniestros/${id}`);
       const data = await res.json();
-      if (res.ok) setSiniestro(data);
+      
+      if (res.ok) {
+        setSiniestro(data);
+        
+        // Si el siniestro ya tiene un link activo, lo cargamos en el estado para destapar la tarjeta
+        if (data.linksConsulta && data.linksConsulta.length > 0) {
+          const baseUrl = process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:3000';
+          setLinkGenerado(`${baseUrl}/consulta/${data.linksConsulta[0].token}`);
+        }
+      }
     } catch (err) {
       console.error("Error al cargar el siniestro:", err);
     } finally {
@@ -142,7 +152,6 @@ export default function SiniestroDetallePage() {
   };
 
   return (
-    // Mismo patrón base que PolizaDetallePage: p-4 móvil / p-8 PC, overflow-x-hidden
     <div className="flex flex-col p-4 md:p-8 w-full gap-6 md:gap-8 bg-white min-h-screen overflow-x-hidden">
       
       {/* Header Principal */}
@@ -155,10 +164,9 @@ export default function SiniestroDetallePage() {
           Volver a Siniestros
         </button>
         
-        {/* Header card: columna en móvil, fila en MD+ */}
+        {/* Header card */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-gray-50/40 p-4 md:p-6 rounded-2xl border border-gray-100">
           
-          {/* Ícono + título + badge: misma lógica que póliza (flex-col sm:flex-row) */}
           <div className="flex items-center gap-3 md:gap-5 w-full md:w-auto">
             <div className="p-3 md:p-4 bg-orange-600 text-white rounded-2xl shadow-md shadow-orange-100 shrink-0">
               <AlertTriangle size={28} className="md:w-8 md:h-8" />
@@ -178,7 +186,7 @@ export default function SiniestroDetallePage() {
             </div>
           </div>
 
-          {/* Selector de estado: w-full en móvil, w-auto en PC */}
+          {/* Selector de estado */}
           <div className="flex items-center gap-2 bg-white p-2 rounded-xl border border-gray-200 shadow-sm w-full md:w-auto">
             <span className="text-[10px] md:text-xs font-bold text-gray-400 uppercase pl-2">Estado:</span>
             <select
@@ -342,7 +350,6 @@ export default function SiniestroDetallePage() {
             </p>
 
             {!linkGenerado ? (
-              // Botón w-full en móvil, igual en PC (ya era full dentro de la card)
               <button 
                 onClick={handleGenerarLink}
                 disabled={isGenerandoLink}
