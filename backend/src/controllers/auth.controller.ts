@@ -4,7 +4,8 @@ import jwt from 'jsonwebtoken';
 import { z } from 'zod';
 import { prisma } from '../config/db'; 
 import crypto from 'crypto'; 
-import { sendMail } from '../utils/mailer'; // ← cambio
+import { sendMail } from '../utils/mailer';
+import { templateConfirmacionCuenta, template2FA, templateRecuperarPassword } from '../utils/emailTemplates'; // ← Importamos las plantillas
 
 const registerSchema = z.object({
   nombre: z.string().min(2, "El nombre es muy corto"),
@@ -47,18 +48,7 @@ export const register = async (req: Request, res: Response): Promise<any> => {
     await sendMail({
       to: newUser.email,
       subject: "Confirmá tu cuenta - AseguraSimple",
-      html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e5e7eb; border-radius: 10px;">
-          <h2 style="color: #15803d; text-align: center;">¡Bienvenido a AseguraSimple!</h2>
-          <p style="color: #374151; font-size: 16px;">Hola ${newUser.nombre},</p>
-          <p style="color: #374151; font-size: 16px;">Para poder iniciar sesión y empezar a gestionar tu cartera, necesitamos confirmar que este es tu correo electrónico.</p>
-          <div style="text-align: center; margin: 30px 0;">
-            <a href="${verifyUrl}" style="background-color: #15803d; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px;">Confirmar mi cuenta</a>
-          </div>
-          <p style="color: #6b7280; font-size: 14px; text-align: center;">Si el botón no funciona, copiá y pegá este enlace en tu navegador:</p>
-          <p style="color: #6b7280; font-size: 12px; text-align: center; word-break: break-all;">${verifyUrl}</p>
-        </div>
-      `
+      html: templateConfirmacionCuenta(newUser.nombre, verifyUrl) // ← Usamos la plantilla
     });
 
     res.status(201).json({ message: 'Cuenta creada. Revisá tu correo.', userId: newUser.id });
@@ -97,17 +87,7 @@ export const login = async (req: Request, res: Response): Promise<any> => {
         await sendMail({
           to: user.email,
           subject: "Código de Seguridad (2FA) - AseguraSimple",
-          html: `
-            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e5e7eb; border-radius: 10px;">
-              <h2 style="color: #15803d; text-align: center;">Código de Acceso</h2>
-              <p style="color: #374151; font-size: 16px;">Hola ${user.nombre},</p>
-              <p style="color: #374151; font-size: 16px;">Tu código de seguridad para iniciar sesión es:</p>
-              <div style="background-color: #f3f4f6; padding: 15px; text-align: center; border-radius: 8px; margin: 20px 0;">
-                <span style="font-size: 32px; font-weight: bold; letter-spacing: 5px; color: #111827;">${codigo2fa}</span>
-              </div>
-              <p style="color: #6b7280; font-size: 14px; text-align: center;">Si no intentaste iniciar sesión, cambiá tu contraseña de inmediato.</p>
-            </div>
-          `
+          html: template2FA(user.nombre, codigo2fa) // ← Usamos la plantilla
         });
       } catch (errorMail) {
         console.error("Falló el envío del código 2FA:", errorMail);
@@ -208,16 +188,7 @@ export const forgotPassword = async (req: Request, res: Response): Promise<any> 
     await sendMail({
       to: user.email,
       subject: 'Recuperá tu contraseña - AseguraSimple',
-      html: `
-        <div style="font-family: Arial, sans-serif; padding: 20px; color: #333;">
-          <h2 style="color: #15803d;">AseguraSimple</h2>
-          <p>Hola ${user.nombre},</p>
-          <p>Recibimos una solicitud para restablecer tu contraseña. Hacé clic en el botón de abajo para crear una nueva:</p>
-          <a href="${resetUrl}" style="display: inline-block; padding: 10px 20px; margin: 20px 0; background-color: #15803d; color: white; text-decoration: none; border-radius: 5px;">Restablecer Contraseña</a>
-          <p>Este enlace es válido por 1 hora.</p>
-          <p style="font-size: 12px; color: #666;">Si no solicitaste este cambio, podés ignorar este correo tranquilamente.</p>
-        </div>
-      `
+      html: templateRecuperarPassword(user.nombre, resetUrl) // ← Usamos la plantilla
     });
 
     res.status(200).json({ message: 'Si el email está registrado, recibirás un enlace de recuperación.' });
