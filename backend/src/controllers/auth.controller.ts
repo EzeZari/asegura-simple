@@ -135,7 +135,10 @@ export const verifyEmail = async (req: Request, res: Response): Promise<any> => 
       data: { isVerified: true, verificationToken: null }
     });
 
-    return res.redirect(`${frontendUrl}/login?verified=true`);
+    // 🔥 ACÁ ESTÁ LA MAGIA: En vez de mandarlo al login, lo mandamos a los planes
+    // Y le pasamos el email en la URL para que Mercado Pago sepa a quién cobrarle
+    return res.redirect(`${frontendUrl}/planes?email=${encodeURIComponent(user.email)}`);
+    
   } catch (error) {
     console.error("Error al verificar email:", error);
     return res.redirect(`${frontendUrl}/login?error=server_error`);

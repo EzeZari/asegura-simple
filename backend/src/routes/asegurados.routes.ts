@@ -1,6 +1,8 @@
 import { Router } from 'express';
 import { prisma } from '../config/db';
 import { enviarCorreoBienvenida } from '../services/email.service';
+// 🔥 IMPORTAMOS LA HERRAMIENTA DEL MURO DE PAGO
+import { verificarLimiteAsegurados } from '../utils/verificarLimites';
 
 const router = Router();
 
@@ -37,6 +39,18 @@ router.get('/:id/polizas', async (req, res) => {
 // RUTA: POST /api/asegurados (Guarda un cliente nuevo)
 router.post('/', async (req, res) => {
   try {
+    // 🔥 LÓGICA DEL MURO DE PAGO PARA CREACIÓN INDIVIDUAL
+    // Asumimos que el ID del usuario logueado lo podés sacar de req (si tenés middleware de auth), 
+    // sino lo buscamos buscando un user activo como parche temporal.
+    const usuarioActivo = await prisma.user.findFirst();
+    
+    if (usuarioActivo) {
+      const validacion = await verificarLimiteAsegurados(usuarioActivo.id);
+      if (validacion.superado) {
+        return res.status(403).json({ error: validacion.mensaje, codigo: "LIMITE_EXCEDIDO" });
+      }
+    }
+
     const data = req.body;
 
     let productor = await prisma.productor.findFirst();
@@ -72,12 +86,10 @@ router.post('/', async (req, res) => {
       }
     });
 
-    // 🔥 LÓGICA DEL INTERRUPTOR PARA EL MAIL DE BIENVENIDA
     const agencia = await prisma.agencia.findUnique({ where: { id: 1 } });
-    const enviarMail = agencia ? agencia.enviarMailBienvenida : true; // Por defecto encendido si no hay agencia
+    const enviarMail = agencia ? agencia.enviarMailBienvenida : true; 
 
     if (enviarMail && data.email) {
-      // Disparamos el email en segundo plano
       enviarCorreoBienvenida(data.email, data.nombre, data.apellido, data.dni, data.telefono);
     }
 
@@ -164,6 +176,15 @@ router.delete('/:id', async (req, res) => {
 // RUTA: POST /api/asegurados/importar (Carga Masiva desde Excel)
 router.post('/importar', async (req, res) => {
   try {
+    // 🔥 LÓGICA DEL MURO DE PAGO PARA IMPORTACIÓN MASIVA
+    const usuarioActivo = await prisma.user.findFirst();
+    if (usuarioActivo) {
+      const validacion = await verificarLimiteAsegurados(usuarioActivo.id);
+      if (validacion.superado) {
+        return res.status(403).json({ error: validacion.mensaje, codigo: "LIMITE_EXCEDIDO" });
+      }
+    }
+
     const clientes = req.body; 
 
     if (!Array.isArray(clientes)) {

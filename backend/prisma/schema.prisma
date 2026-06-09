@@ -72,7 +72,7 @@ model Poliza {
   siniestros       Siniestro[]
   alertas          Alerta[]
 
-// Datos específicos condicionales
+  // Datos específicos condicionales
   patente           String?
   marca             String?
   modelo            String?
@@ -190,18 +190,23 @@ model User {
   codigoVerificacion   String?  // Acá guardamos el código de 6 dígitos
   emailPendiente       String?  // Acá guardamos el nuevo mail hasta que se verifique
 
-  // 🔥 NUEVOS CAMPOS PARA CONFIRMACIÓN DE REGISTRO
   isVerified           Boolean  @default(false)
   verificationToken    String?  @unique
+
+  // 🔥 NUEVOS CAMPOS RELACIONADOS CON PLANES Y MONETIZACIÓN
+  plan                 Plan          @default(GRATUITO) // 🔥 Antes decía BASICO
+  suscripcion          Suscripcion?
 }
+
 model Actividad {
   id          Int      @id @default(autoincrement())
   accion      String   
   entidad     String   
   descripcion String   
-  cliente     String?  // <-- AGREGAMOS ESTO (Con el ? porque es opcional)
+  cliente     String?  // <-- Con el ? porque es opcional
   fecha       DateTime @default(now())
 }
+
 model Agencia {
   id                    Int      @id @default(1)
   nombre                String   @default("AseguraSimple")
@@ -223,4 +228,29 @@ model Agencia {
   enviarMailBienvenida  Boolean  @default(true)
 
   updatedAt             DateTime @updatedAt
+}
+
+// 🔥 NUEVO: ENUM PARA CONTROL DE TRÁFICO Y LÍMITES EN EL SAAS
+enum Plan {
+  GRATUITO // 🔥 Nuevo plan inicial
+  BASICO
+  PROFESIONAL
+  AGENCIA
+}
+
+// 🔥 NUEVO: MODELO DE SUSCRIPCIONES ASOCIADAS A MERCADO PAGO
+model Suscripcion {
+  id              Int       @id @default(autoincrement())
+  userId          Int       @unique
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  mpPreapprovalId String?   @unique // ID de la suscripción recurrente (Plan mensual) en MP
+  mpCustomerId    String?   // ID del comprador registrado dentro de MP
+  estado          String    @default("pendiente") // pendiente, autorizado, en_proceso, cancelado
+  
+  fechaInicio      DateTime  @default(now())
+  fechaVencimiento DateTime?
+  
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 }
