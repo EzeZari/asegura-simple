@@ -6,7 +6,10 @@ export function middleware(request: NextRequest) {
   const token = request.cookies.get('next_auth_token')?.value;
 
   // 🔥 NUEVA REGLA: Rutas 100% Públicas (El patovica mira para otro lado)
-  const isPublicRoute = request.nextUrl.pathname.startsWith('/consulta');
+  // Agregamos /planes para que puedan elegir la suscripción viniendo desde el mail
+  const isPublicRoute = request.nextUrl.pathname.startsWith('/consulta') || 
+                        request.nextUrl.pathname.startsWith('/planes'); 
+                        
   if (isPublicRoute) {
     return NextResponse.next();
   }
@@ -14,7 +17,7 @@ export function middleware(request: NextRequest) {
   // 2. Identificamos qué rutas son exclusivas para loguearse/registrarse
   const isAuthRoute = request.nextUrl.pathname.startsWith('/login') || 
                       request.nextUrl.pathname.startsWith('/registro') ||
-                      request.nextUrl.pathname.startsWith('/recuperar')||
+                      request.nextUrl.pathname.startsWith('/recuperar') ||
                       request.nextUrl.pathname.startsWith('/nueva-contrasena'); 
 
   // 3. REGLA A: Si NO tiene token y quiere entrar a la plataforma -> Lo pateamos al Login
