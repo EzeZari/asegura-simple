@@ -1,18 +1,20 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useSearchParams } from "next/navigation"; // 🔥 Para leer el ?email= de la URL
 import { Check, Shield, Users, Zap, Loader2, Sparkles } from "lucide-react";
 import Toast from "@/components/ui/Toast";
 
 export default function OnboardingPlanesPage() {
-  const router = useRouter();
+  const searchParams = useSearchParams();
+  
+  // 🔥 CAPTURAMOS EL EMAIL REAL DE LA URL (igual que hiciste con el token)
+  // Si por alguna razón no viene en la URL, podés dejar uno vacío o manejar un error
+  const userEmail = searchParams.get("email") || ""; 
+
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
   const [showToast, setShowToast] = useState(false);
   const [mensajeToast, setMensajeToast] = useState("");
-
-  // Acá usarías el email del usuario recién registrado/confirmado
-  const userEmail = "ezequielzari@hotmail.com"; 
 
   const planes = [
     {
@@ -83,18 +85,22 @@ export default function OnboardingPlanesPage() {
   ];
 
   const handleSeleccionarPlan = async (planId: string) => {
-    setLoadingPlan(planId);
-
-    // Si elige el gratis, lo mandamos al sistema directamente
-    if (planId === "GRATUITO") {
-      setTimeout(() => {
-        router.push("/inicio"); // Ajustá esta ruta a tu dashboard real
-      }, 800);
+    if (!userEmail) {
+      setMensajeToast("Error: No se detectó el usuario. Volvé a ingresar desde el link de tu correo.");
+      setShowToast(true);
       return;
     }
 
-    // Si elige uno pago, llamamos a MP
+    setLoadingPlan(planId);
+
+    if (planId === "GRATUITO") {
+      // Como el plan GRATUITO ya se asigna por defecto en la BD, lo mandamos derecho al login
+      window.location.href = "/login?verified=true";
+      return;
+    }
+
     try {
+      // 🔥 USAMOS TU VARIABLE EN LA WEB PARA EL FETCH (Igual que en la consulta)
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/pagos/create-subscription`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -104,6 +110,7 @@ export default function OnboardingPlanesPage() {
       const data = await res.json();
 
       if (res.ok && data.init_point) {
+        // Redirección directa a la pasarela de Mercado Pago
         window.location.href = data.init_point;
       } else {
         throw new Error();
@@ -116,25 +123,21 @@ export default function OnboardingPlanesPage() {
   };
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen p-4 md:p-8 bg-gray-50 overflow-x-hidden">
-      
-      <div className="flex flex-col gap-3 text-center max-w-2xl mb-10">
-        <h1 className="text-3xl md:text-4xl font-black text-gray-950 tracking-tight">
+    <div className="flex flex-col items-center justify-center min-h-screen p-4 md:p-8 bg-gray-50 overflow-x-hidden w-full">
+      <div className="flex flex-col gap-3 text-center max-w-2xl mb-10 mt-6">
+        <h1 className="text-3xl md:text-4xl font-black text-gray-900 tracking-tight">
           ¡Cuenta confirmada con éxito!
         </h1>
-        <p className="text-base text-gray-500 font-medium">
-          Elegí cómo querés arrancar en AseguraSimple. Podés probar la plataforma sin costo o elegir un plan según el tamaño de tu cartera.
+        <p className="text-sm md:text-base text-gray-500 font-medium">
+          Elegí cómo querés arrancar en AseguraSimple. Podés usar la versión de prueba o elegir un plan según tu volumen de asegurados.
         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 items-center max-w-7xl w-full">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 items-center max-w-7xl w-full px-2">
         {planes.map((plan) => {
           const IconComponent = plan.icon;
           return (
-            <div 
-              key={plan.id} 
-              className={`border p-6 rounded-3xl flex flex-col gap-6 relative transition-all ${plan.color}`}
-            >
+            <div key={plan.id} className={`border p-6 rounded-3xl flex flex-col gap-6 relative bg-white transition-all ${plan.color}`}>
               {plan.popular && (
                 <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-orange-600 text-white px-4 py-1 rounded-full text-[10px] font-black uppercase tracking-widest whitespace-nowrap shadow-sm">
                   El más elegido
@@ -142,23 +145,23 @@ export default function OnboardingPlanesPage() {
               )}
 
               <div className="flex flex-col gap-4">
-                <div className={`p-3 rounded-2xl border w-fit ${plan.popular ? 'bg-orange-50 text-orange-600 border-orange-100' : plan.id === 'GRATUITO' ? 'bg-white text-gray-600 border-gray-200' : 'bg-gray-50 text-gray-500 border-gray-100'}`}>
+                <div className={`p-3 rounded-2xl border w-fit ${plan.popular ? 'bg-orange-50 text-orange-600 border-orange-100' : 'bg-gray-50 text-gray-500 border-gray-100'}`}>
                   <IconComponent size={24} />
                 </div>
                 <div>
-                  <h3 className="font-bold text-lg text-gray-950">{plan.nombre}</h3>
-                  <p className="text-xs text-gray-500 font-medium h-8">{plan.descripcion}</p>
+                  <h3 className="font-bold text-lg text-gray-900">{plan.nombre}</h3>
+                  <p className="text-xs text-gray-400 font-medium h-8">{plan.descripcion}</p>
                 </div>
               </div>
 
-              <div className="flex items-baseline gap-1 border-b border-gray-100/80 pb-6">
-                <span className="text-4xl font-black tracking-tight text-gray-950">{plan.precio}</span>
+              <div className="flex items-baseline gap-1 border-b border-gray-100 pb-6">
+                <span className="text-4xl font-black tracking-tight text-gray-900">{plan.precio}</span>
                 {plan.id !== "GRATUITO" && <span className="text-sm font-bold text-gray-400">/mes</span>}
               </div>
 
               <ul className="flex flex-col gap-3.5 flex-1 mt-2">
                 {plan.features.map((feature, idx) => (
-                  <li key={idx} className="flex items-start gap-3 text-sm font-medium text-gray-600">
+                  <li key={idx} className="flex items-start gap-3 text-xs font-medium text-gray-600">
                     <Check size={16} className={`mt-0.5 shrink-0 ${plan.popular ? 'text-orange-500' : 'text-green-600'}`} />
                     <span>{feature}</span>
                   </li>
@@ -185,8 +188,8 @@ export default function OnboardingPlanesPage() {
 
       <div className="mt-12 bg-white p-4 rounded-2xl border border-gray-200 max-w-2xl w-full flex items-center justify-center gap-3 shadow-sm">
         <Shield size={18} className="text-green-600 shrink-0" />
-        <p className="text-xs text-gray-500 font-medium text-center">
-          Los pagos recurrentes se procesan de forma 100% segura a través de <strong>Mercado Pago</strong>. Podés cancelar tu suscripción en cualquier momento.
+        <p className="text-[11px] text-gray-500 font-medium text-center">
+          Los pagos recurrentes se procesan de forma segura a través de <strong>Mercado Pago</strong>. Podés cancelar tu suscripción en cualquier momento.
         </p>
       </div>
 
@@ -195,7 +198,6 @@ export default function OnboardingPlanesPage() {
   );
 }
 
-// Icono auxiliar para el plan básico
 function UserIcon(props: any) {
   return (
     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
