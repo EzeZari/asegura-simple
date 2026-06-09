@@ -10,11 +10,11 @@ import Toast from "@/components/ui/Toast";
 import ConfirmModal from "@/components/ui/ConfirmModal"; 
 import { useTableSort } from "@/hooks/useTableSort";
 import SortableHeader from "@/components/ui/SortableHeader";
-
 import PageHeader from "@/components/ui/PageHeader";
 import SearchBar from "@/components/ui/SearchBar";
 import { ActionMenu, ActionMenuItem } from "@/components/ui/ActionMenu";
 import SelectOrdenamiento from "@/components/ui/SelectOrdenamiento"; 
+import { apiFetch } from "@/services/api"; // ← NUEVO
 
 const OPCIONES_ORDEN = [
   { value: "mas_recientes", label: "Últimas agregadas" },
@@ -25,7 +25,6 @@ const OPCIONES_ORDEN = [
 export default function CompaniasPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [ordenActual, setOrdenActual] = useState("mas_recientes");
-
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false); 
   const [isImportModalOpen, setIsImportModalOpen] = useState(false); 
@@ -34,7 +33,6 @@ export default function CompaniasPage() {
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [companiaAEliminar, setCompaniaAEliminar] = useState<any>(null);
   const [isDeleting, setIsDeleting] = useState(false);
-  
   const [companias, setCompanias] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showToast, setShowToast] = useState(false);
@@ -42,7 +40,7 @@ export default function CompaniasPage() {
 
   const fetchCompanias = async () => {
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/companias`);
+      const res = await apiFetch('/api/companias'); // ← CAMBIO
       const data = await res.json();
       setCompanias(data);
     } catch (error) { console.error(error); } finally { setIsLoading(false); }
@@ -68,7 +66,7 @@ export default function CompaniasPage() {
     if (!companiaAEliminar) return;
     setIsDeleting(true);
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/companias/${companiaAEliminar.id}`, { method: 'DELETE' });
+      const res = await apiFetch(`/api/companias/${companiaAEliminar.id}`, { method: 'DELETE' }); // ← CAMBIO
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Error al eliminar");
       setMensajeToast("Compañía eliminada correctamente");
@@ -112,7 +110,6 @@ export default function CompaniasPage() {
   ];
 
   return (
-    // 🔥 Solo agregué overflow-x-hidden para que el contenido no desborde en celular, manteniendo tus p-8 originales
     <div className="flex flex-col p-8 w-full gap-8 bg-white min-h-screen overflow-x-hidden">
       
       <PageHeader 
@@ -128,27 +125,13 @@ export default function CompaniasPage() {
 
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 w-full -mb-4">
         <div className="w-full md:w-auto">
-          <SelectOrdenamiento 
-            opciones={OPCIONES_ORDEN} 
-            valorActual={ordenActual} 
-            onChange={setOrdenActual} 
-          />
+          <SelectOrdenamiento opciones={OPCIONES_ORDEN} valorActual={ordenActual} onChange={setOrdenActual} />
         </div>
-
         <div className="flex items-center gap-3 w-full md:w-auto">
-          <button
-            onClick={() => setIsImportModalOpen(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-white hover:bg-gray-50 border border-gray-200 text-gray-700 rounded-xl text-sm font-bold transition-all active:scale-95 shadow-sm"
-          >
+          <button onClick={() => setIsImportModalOpen(true)} className="flex items-center gap-2 px-4 py-2 bg-white hover:bg-gray-50 border border-gray-200 text-gray-700 rounded-xl text-sm font-bold transition-all active:scale-95 shadow-sm">
             <UploadCloud size={16} /> Importar Excel
           </button>
-          <button
-            onClick={() => {
-              if(companiasOrdenadas.length === 0) return alert("No hay datos para exportar.");
-              setIsExportModalOpen(true);
-            }}
-            className="flex items-center gap-2 px-4 py-2 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-700 rounded-xl text-sm font-bold transition-all active:scale-95 shadow-sm"
-          >
+          <button onClick={() => { if(companiasOrdenadas.length === 0) return alert("No hay datos para exportar."); setIsExportModalOpen(true); }} className="flex items-center gap-2 px-4 py-2 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-700 rounded-xl text-sm font-bold transition-all active:scale-95 shadow-sm">
             <Download size={16} /> Exportar a Excel
           </button>
         </div>
@@ -161,7 +144,6 @@ export default function CompaniasPage() {
             <td className="px-6 py-4 text-gray-600 font-mono text-sm">{compania.cuit || "-"}</td>
             <td className="px-6 py-4 text-gray-900">{compania.telefonoSiniestros || "-"}</td>
             <td className="px-6 py-4 text-gray-600">{compania.email || "-"}</td>
-            
             <td className="px-6 py-4 text-right">
               <ActionMenu isOpen={menuAbiertoId === compania.id} onToggle={() => setMenuAbiertoId(menuAbiertoId === compania.id ? null : compania.id)}>
                 <ActionMenuItem icon={Edit} label="Editar" onClick={() => { setCompaniaAEditar(compania); setMenuAbiertoId(null); setIsModalOpen(true); }} />

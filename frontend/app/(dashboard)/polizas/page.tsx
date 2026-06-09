@@ -15,6 +15,7 @@ import SortableHeader from "@/components/ui/SortableHeader";
 import PageHeader from "@/components/ui/PageHeader";
 import PolizaTableRow from "@/components/polizas/PolizaTableRow";
 import SelectOrdenamiento from "@/components/ui/SelectOrdenamiento";
+import { apiFetch } from "@/services/api"; // ← NUEVO
 
 const OPCIONES_ORDEN = [
   { value: "mas_recientes", label: "Más recientes primero" },
@@ -28,27 +29,23 @@ export default function PolizasPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [filtroRama, setFiltroRama] = useState("Todas");
   const [filtroEstado, setFiltroEstado] = useState("Todos");
-  
   const [ordenActual, setOrdenActual] = useState("mas_recientes");
-  
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false); 
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [polizaAEditar, setPolizaAEditar] = useState<any>(null);
   const [menuAbiertoId, setMenuAbiertoId] = useState<number | null>(null);
-  
   const [polizas, setPolizas] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showToast, setShowToast] = useState(false);
   const [mensajeToast, setMensajeToast] = useState("");
-
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [polizaAEliminar, setPolizaAEliminar] = useState<any>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
   const fetchPolizas = async () => {
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/polizas`);
+      const res = await apiFetch('/api/polizas'); // ← CAMBIO
       setPolizas(await res.json());
     } catch (error) { console.error("Error al cargar pólizas:", error); } finally { setIsLoading(false); }
   };
@@ -58,8 +55,8 @@ export default function PolizasPage() {
   const cambiarEstadoRapido = async (poliza: any, nuevoEstado: string) => {
     setMenuAbiertoId(null);
     try {
-      await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/polizas/${poliza.id}`, {
-        method: "PUT", headers: { "Content-Type": "application/json" },
+      await apiFetch(`/api/polizas/${poliza.id}`, { // ← CAMBIO
+        method: "PUT",
         body: JSON.stringify({ ...poliza, estado: nuevoEstado }),
       });
       fetchPolizas();
@@ -72,7 +69,7 @@ export default function PolizasPage() {
     if (!polizaAEliminar) return;
     setIsDeleting(true);
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/polizas/${polizaAEliminar.id}`, { method: 'DELETE' });
+      const res = await apiFetch(`/api/polizas/${polizaAEliminar.id}`, { method: 'DELETE' }); // ← CAMBIO
       if (!res.ok) throw new Error((await res.json()).error);
       fetchPolizas();
       setMensajeToast("Póliza eliminada correctamente");
@@ -84,15 +81,13 @@ export default function PolizasPage() {
   const enviarAvisoVencimiento = async (poliza: any) => {
     setMenuAbiertoId(null);
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/polizas/${poliza.id}/avisar-vencimiento`, { method: "POST" });
+      const res = await apiFetch(`/api/polizas/${poliza.id}/avisar-vencimiento`, { method: "POST" }); // ← CAMBIO
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
       setMensajeToast("Correo de aviso enviado exitosamente");
       setShowToast(true);
       fetchPolizas(); 
-    } catch (error: any) {
-      alert(error.message); 
-    }
+    } catch (error: any) { alert(error.message); }
   };
 
   const getEstadoInteligente = (poliza: any) => {
@@ -102,7 +97,6 @@ export default function PolizasPage() {
     const vencimiento = new Date(poliza.fechaVencimiento);
     const diffTime = vencimiento.getTime() - hoy.getTime();
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
     if (diffDays < 0) return "Vencida";
     if (diffDays <= 15) return "Próxima a Vencer"; 
     return poliza.estado; 
@@ -117,28 +111,22 @@ export default function PolizasPage() {
       (poliza.marca && poliza.marca.toLowerCase().includes(busqueda)) ||
       (poliza.modelo && poliza.modelo.toLowerCase().includes(busqueda)) ||
       (poliza.ubicacionRiesgo && poliza.ubicacionRiesgo.toLowerCase().includes(busqueda));
-
     const matchRama = filtroRama === "Todas" || poliza.tipoPoliza === filtroRama;
     const estadoReal = getEstadoInteligente(poliza);
     const matchEstado = filtroEstado === "Todos" || estadoReal === filtroEstado;
-    
     return matchBusqueda && matchRama && matchEstado;
   });
 
   polizasFiltradas = polizasFiltradas.sort((a, b) => {
     switch (ordenActual) {
-      case "mas_recientes":
-        return b.id - a.id;
-      case "mas_antiguas":
-        return a.id - b.id;
-      case "vencimiento_proximo":
-        return new Date(a.fechaVencimiento).getTime() - new Date(b.fechaVencimiento).getTime();
+      case "mas_recientes": return b.id - a.id;
+      case "mas_antiguas": return a.id - b.id;
+      case "vencimiento_proximo": return new Date(a.fechaVencimiento).getTime() - new Date(b.fechaVencimiento).getTime();
       case "alfabetico_asegurado":
         const nombreA = `${a.asegurado?.nombre} ${a.asegurado?.apellido}`.toLowerCase();
         const nombreB = `${b.asegurado?.nombre} ${b.asegurado?.apellido}`.toLowerCase();
         return nombreA.localeCompare(nombreB);
-      default:
-        return 0;
+      default: return 0;
     }
   });
 
@@ -174,88 +162,30 @@ export default function PolizasPage() {
   ];
 
   return (
-    // 🔥 AJUSTE: p-4 en móvil, p-8 en PC. gap-5 en móvil, gap-8 en PC.
     <div className="flex flex-col p-4 lg:p-8 w-full gap-5 lg:gap-8 bg-white min-h-screen overflow-x-hidden">
-      
-      <PageHeader 
-        titulo="Pólizas" 
-        descripcion="Gestioná las coberturas activas de tus clientes." 
-        textoBoton="Nueva Póliza" 
-        onNuevo={() => { setPolizaAEditar(null); setIsModalOpen(true); }} 
-      />
-
-      <PolizasFiltros 
-        searchTerm={searchTerm} setSearchTerm={setSearchTerm}
-        filtroRama={filtroRama} setFiltroRama={setFiltroRama}
-        filtroEstado={filtroEstado} setFiltroEstado={setFiltroEstado}
-      />
-
-      {/* 🔥 AJUSTE: Cajas flex-col para móvil y botones full width */}
+      <PageHeader titulo="Pólizas" descripcion="Gestioná las coberturas activas de tus clientes." textoBoton="Nueva Póliza" onNuevo={() => { setPolizaAEditar(null); setIsModalOpen(true); }} />
+      <PolizasFiltros searchTerm={searchTerm} setSearchTerm={setSearchTerm} filtroRama={filtroRama} setFiltroRama={setFiltroRama} filtroEstado={filtroEstado} setFiltroEstado={setFiltroEstado} />
       <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 w-full -mb-2 lg:-mb-4">
-        
         <div className="w-full xl:w-auto">
-          <SelectOrdenamiento 
-            opciones={OPCIONES_ORDEN}
-            valorActual={ordenActual}
-            onChange={setOrdenActual}
-          />
+          <SelectOrdenamiento opciones={OPCIONES_ORDEN} valorActual={ordenActual} onChange={setOrdenActual} />
         </div>
-
         <div className="flex flex-col sm:flex-row items-center gap-3 w-full xl:w-auto">
-          <button
-            onClick={() => setIsImportModalOpen(true)}
-            className="flex justify-center items-center gap-2 w-full sm:w-auto px-4 py-2.5 lg:py-2 bg-gray-50 hover:bg-gray-100 border border-gray-200 text-gray-700 rounded-xl text-sm font-bold transition-all active:scale-95 shadow-sm"
-          >
+          <button onClick={() => setIsImportModalOpen(true)} className="flex justify-center items-center gap-2 w-full sm:w-auto px-4 py-2.5 lg:py-2 bg-gray-50 hover:bg-gray-100 border border-gray-200 text-gray-700 rounded-xl text-sm font-bold transition-all active:scale-95 shadow-sm">
             <UploadCloud size={16} /> Importar Excel
           </button>
-          <button
-            onClick={() => {
-              if(polizasOrdenadas.length === 0) return alert("No hay datos para exportar.");
-              setIsExportModalOpen(true);
-            }}
-            className="flex justify-center items-center gap-2 w-full sm:w-auto px-4 py-2.5 lg:py-2 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-700 rounded-xl text-sm font-bold transition-all active:scale-95 shadow-sm"
-          >
+          <button onClick={() => { if(polizasOrdenadas.length === 0) return alert("No hay datos para exportar."); setIsExportModalOpen(true); }} className="flex justify-center items-center gap-2 w-full sm:w-auto px-4 py-2.5 lg:py-2 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-700 rounded-xl text-sm font-bold transition-all active:scale-95 shadow-sm">
             <Download size={16} /> Exportar a Excel
           </button>
         </div>
       </div>
-
       <Table columns={columnas} isLoading={isLoading} isEmpty={polizasOrdenadas.length === 0} emptyContent={<div className="flex flex-col items-center justify-center text-gray-500 py-6"><FileText size={32} className="text-gray-300 mb-3" /><p className="font-medium text-gray-900">No se encontraron pólizas</p></div>}>
         {polizasOrdenadas.map((poliza) => (
-          <PolizaTableRow 
-            key={poliza.id}
-            poliza={poliza}
-            onClickDetalle={(id) => router.push(`/polizas/${id}`)}
-            menuAbiertoId={menuAbiertoId}
-            onToggleMenu={setMenuAbiertoId}
-            onEdit={(p) => { setPolizaAEditar(p); setIsModalOpen(true); }}
-            onAvisarVencimiento={enviarAvisoVencimiento}
-            onCambiarEstado={cambiarEstadoRapido}
-            onEliminar={(p) => { setPolizaAEliminar(p); setIsConfirmOpen(true); }}
-          />
+          <PolizaTableRow key={poliza.id} poliza={poliza} onClickDetalle={(id) => router.push(`/polizas/${id}`)} menuAbiertoId={menuAbiertoId} onToggleMenu={setMenuAbiertoId} onEdit={(p) => { setPolizaAEditar(p); setIsModalOpen(true); }} onAvisarVencimiento={enviarAvisoVencimiento} onCambiarEstado={cambiarEstadoRapido} onEliminar={(p) => { setPolizaAEliminar(p); setIsConfirmOpen(true); }} />
         ))}
       </Table>
-
       <NuevaPolizaModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSuccess={() => { setIsModalOpen(false); fetchPolizas(); setShowToast(true); setMensajeToast("Póliza guardada con éxito"); }} polizaAEditar={polizaAEditar} />
-      
-      <ImportarPolizasModal 
-        isOpen={isImportModalOpen} 
-        onClose={() => setIsImportModalOpen(false)} 
-        onSuccess={(mensaje) => {
-          setIsImportModalOpen(false);
-          fetchPolizas();
-          setMensajeToast(mensaje);
-          setShowToast(true);
-        }} 
-      />
-
-      <ExportarExcelModal 
-        isOpen={isExportModalOpen} 
-        onClose={() => setIsExportModalOpen(false)} 
-        datos={prepararDatosParaExcel()} 
-        nombreArchivo={`Reporte_Polizas_${new Date().toISOString().split("T")[0]}`} 
-      />
-
+      <ImportarPolizasModal isOpen={isImportModalOpen} onClose={() => setIsImportModalOpen(false)} onSuccess={(mensaje) => { setIsImportModalOpen(false); fetchPolizas(); setMensajeToast(mensaje); setShowToast(true); }} />
+      <ExportarExcelModal isOpen={isExportModalOpen} onClose={() => setIsExportModalOpen(false)} datos={prepararDatosParaExcel()} nombreArchivo={`Reporte_Polizas_${new Date().toISOString().split("T")[0]}`} />
       <ConfirmModal isOpen={isConfirmOpen} onClose={() => setIsConfirmOpen(false)} onConfirm={ejecutarEliminacion} isLoading={isDeleting} title="¿Eliminar póliza?" message={`Esta acción eliminará la póliza #${polizaAEliminar?.nroPoliza} permanentemente.`} />
       <Toast message={mensajeToast} isVisible={showToast} onClose={() => setShowToast(false)} />
     </div>
