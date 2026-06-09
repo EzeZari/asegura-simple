@@ -11,7 +11,8 @@ export const verificarLimiteAsegurados = async (userId: number): Promise<{ super
   // 1. Buscamos el plan actual del usuario
   const usuario = await prisma.user.findUnique({
     where: { id: userId },
-    select: { plan: true }
+    // 🔥 CORRECCIÓN ACÁ: Le pedimos a Prisma que traiga el plan y el email
+    select: { plan: true, email: true } 
   });
 
   if (!usuario) {
@@ -19,11 +20,10 @@ export const verificarLimiteAsegurados = async (userId: number): Promise<{ super
   }
 
   // 2. Contamos cuántos asegurados tiene cargados actualmente
-  // (Ajustá el filtro según cómo relaciones tu User con los Asegurados, ej: si el user maneja un productorId)
   const cantidadActual = await prisma.asegurado.count({
     where: { 
       productor: {
-        email: usuario.email // O el filtro por ID correspondiente a tu estructura
+        email: usuario.email 
       }
     }
   });
