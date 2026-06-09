@@ -125,22 +125,30 @@ export const verifyEmail = async (req: Request, res: Response): Promise<any> => 
   const token = req.params.token as string; 
   const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
 
+  console.log("🔍 Verificando token:", token);
+
   try {
     const user = await prisma.user.findUnique({ where: { verificationToken: token } });
 
-    if (!user) return res.redirect(`${frontendUrl}/login?error=invalid_token`);
+    if (!user) {
+      console.log("❌ Usuario no encontrado con ese token.");
+      return res.redirect(`${frontendUrl}/login?error=invalid_token`);
+    }
+
+    console.log("✅ Usuario encontrado:", user.email);
 
     await prisma.user.update({
       where: { id: user.id },
       data: { isVerified: true, verificationToken: null }
     });
 
-    // 🔥 ACÁ ESTÁ LA MAGIA: En vez de mandarlo al login, lo mandamos a los planes
-    // Y le pasamos el email en la URL para que Mercado Pago sepa a quién cobrarle
-    return res.redirect(`${frontendUrl}/planes?email=${encodeURIComponent(user.email)}`);
+    const urlDestino = `${frontendUrl}/planes?email=${encodeURIComponent(user.email)}`;
+    console.log("🚀 Redirigiendo a:", urlDestino);
+    
+    return res.redirect(urlDestino);
     
   } catch (error) {
-    console.error("Error al verificar email:", error);
+    console.error("❌ Error grave en verifyEmail:", error);
     return res.redirect(`${frontendUrl}/login?error=server_error`);
   }
 };
