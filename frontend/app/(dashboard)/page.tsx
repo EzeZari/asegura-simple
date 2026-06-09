@@ -5,6 +5,7 @@ import { useAuthStore } from "@/store/authStore";
 import { Users, FileText, AlertCircle, Building } from "lucide-react";
 import StatCard from "@/components/dashboard/StatCard";
 import RecentActivity from "@/components/dashboard/RecentActivity";
+import { apiFetch } from "@/services/api"; // ← NUEVO
 
 export default function DashboardPage() {
   const user = useAuthStore((state) => state.user);
@@ -15,7 +16,7 @@ export default function DashboardPage() {
   useEffect(() => {
     setMounted(true);
     
-    fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/dashboard/stats`)
+    apiFetch('/api/dashboard/stats') // ← CAMBIO
       .then((res) => res.json())
       .then((data) => {
         setDashboardData(data);
@@ -28,38 +29,10 @@ export default function DashboardPage() {
   }, []);
 
   const statsReales = [
-    { 
-      title: "Total Asegurados", 
-      value: isLoading ? "..." : dashboardData?.totalAsegurados?.toString() || "0", 
-      description: "Clientes activos", 
-      icon: Users, 
-      trend: "neutral" as const, 
-      href: "/asegurados" 
-    },
-    { 
-      title: "Pólizas Activas", 
-      value: isLoading ? "..." : dashboardData?.polizasActivas?.toString() || "0", 
-      description: "Coberturas vigentes", 
-      icon: FileText, 
-      trend: "neutral" as const, 
-      href: "/polizas" 
-    },
-    { 
-      title: "Vencimientos (30 días)", 
-      value: isLoading ? "..." : dashboardData?.vencimientos?.toString() || "0", 
-      description: "Requieren atención", 
-      icon: AlertCircle, 
-      trend: dashboardData?.vencimientos > 0 ? "down" : "up", 
-      href: "/alertas" 
-    },
-    { 
-      title: "Aseguradoras", 
-      value: isLoading ? "..." : dashboardData?.totalCompanias?.toString() || "0", 
-      description: "Compañías conectadas", 
-      icon: Building, 
-      trend: "neutral" as const,
-      href: "/companias"
-    },
+    { title: "Total Asegurados", value: isLoading ? "..." : dashboardData?.totalAsegurados?.toString() || "0", description: "Clientes activos", icon: Users, trend: "neutral" as const, href: "/asegurados" },
+    { title: "Pólizas Activas", value: isLoading ? "..." : dashboardData?.polizasActivas?.toString() || "0", description: "Coberturas vigentes", icon: FileText, trend: "neutral" as const, href: "/polizas" },
+    { title: "Vencimientos (30 días)", value: isLoading ? "..." : dashboardData?.vencimientos?.toString() || "0", description: "Requieren atención", icon: AlertCircle, trend: dashboardData?.vencimientos > 0 ? "down" : "up", href: "/alertas" },
+    { title: "Aseguradoras", value: isLoading ? "..." : dashboardData?.totalCompanias?.toString() || "0", description: "Compañías conectadas", icon: Building, trend: "neutral" as const, href: "/companias" },
   ];
 
   const actividadSegura = dashboardData?.actividadReciente?.map((item: any) => ({
@@ -79,7 +52,6 @@ export default function DashboardPage() {
         </p>
       </div>
 
-      {/* 🔥 ACÁ ESTÁ EL CAMBIO: grid-cols-2 para que sean 2 en celu, lg:grid-cols-4 para 4 en PC. gap-3 en celu para que no queden muy apretados */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-6">
         {statsReales.map((stat, index) => (
           <StatCard key={index} {...stat} trend={stat.trend as any} />

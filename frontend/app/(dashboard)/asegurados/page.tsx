@@ -16,7 +16,7 @@ import PageHeader from "@/components/ui/PageHeader";
 import AlertModal from "@/components/ui/AlertModal";
 import AseguradoTableRow from "@/components/asegurados/AseguradoTableRow";
 import SelectOrdenamiento from "@/components/ui/SelectOrdenamiento";
-
+import { apiFetch } from "@/services/api";
 const OPCIONES_ORDEN = [
   { value: "mas_recientes", label: "Más recientes primero" },
   { value: "mas_antiguos", label: "Más antiguos primero" },
@@ -51,29 +51,29 @@ export default function AseguradosPage() {
   const [alertModalInfo, setAlertModalInfo] = useState({ title: "", message: "" });
 
   const fetchAsegurados = async () => {
-    try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/asegurados`);
-      setAsegurados(await res.json());
-    } catch (error) { console.error(error); } finally { setIsLoading(false); }
-  };
+  try {
+    const res = await apiFetch('/api/asegurados'); // ← cambio
+    setAsegurados(await res.json());
+  } catch (error) { console.error(error); } finally { setIsLoading(false); }
+};
 
   useEffect(() => { fetchAsegurados(); }, []);
 
   const toggleEstado = async (cliente: any) => {
-    try {
-      await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/asegurados/${cliente.id}`, {
-        method: "PUT", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...cliente, activo: !cliente.activo }),
-      });
-      fetchAsegurados();
-    } catch (error) { console.error(error); } finally { setMenuAbiertoId(null); }
-  };
+  try {
+    await apiFetch(`/api/asegurados/${cliente.id}`, { // ← cambio
+      method: "PUT",
+      body: JSON.stringify({ ...cliente, activo: !cliente.activo }),
+    });
+    fetchAsegurados();
+  } catch (error) { console.error(error); } finally { setMenuAbiertoId(null); }
+};
 
   const ejecutarEliminacion = async () => {
     if (!aseguradoAEliminar) return;
     setIsDeleting(true);
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/asegurados/${aseguradoAEliminar.id}`, { method: 'DELETE' });
+      const res = await apiFetch(`/api/asegurados/${aseguradoAEliminar.id}`, { method: 'DELETE' }); // ← cambio
       const data = await res.json();
       
       if (!res.ok) throw new Error(data.error || "Error al eliminar");

@@ -1,15 +1,39 @@
 import { Router } from 'express';
 import { prisma } from '../config/db';
 import { enviarCorreoBienvenida } from '../services/email.service';
-// 🔥 IMPORTAMOS LA HERRAMIENTA DEL MURO DE PAGO
 import { verificarLimiteAsegurados } from '../utils/verificarLimites';
+import { verificarToken } from '../middlewares/auth.middleware';
 
 const router = Router();
+router.use(verificarToken);
 
-// RUTA: GET /api/asegurados (Traer todos los clientes)
+// Función helper para obtener o crear el Productor del usuario logueado
+const obtenerProductorId = async (userId: number): Promise<number> => {
+  let productor = await prisma.productor.findUnique({ where: { userId } });
+  
+  if (!productor) {
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    productor = await prisma.productor.create({
+      data: {
+        nombre: user?.nombre || 'Productor',
+        apellido: '',
+        email: user?.email || `user${userId}@asegurasimple.com`,
+        usuario: user?.email || `user${userId}`,
+        contrasenaHash: '',
+        userId: userId
+      }
+    });
+  }
+  
+  return productor.id;
+};
+
+// RUTA: GET /api/asegurados
 router.get('/', async (req, res) => {
   try {
+    const productorId = await obtenerProductorId(req.userId!);
     const asegurados = await prisma.asegurado.findMany({
+      where: { productorId },
       include: { _count: { select: { polizas: true } } },
       orderBy: { nombre: 'asc' }
     });
@@ -20,7 +44,7 @@ router.get('/', async (req, res) => {
   }
 });
 
-// RUTA: GET /api/asegurados/:id/polizas (Traer pólizas de un cliente)
+// RUTA: GET /api/asegurados/:id/polizas
 router.get('/:id/polizas', async (req, res) => {
   try {
     const { id } = req.params;
@@ -36,32 +60,17 @@ router.get('/:id/polizas', async (req, res) => {
   }
 });
 
-// RUTA: POST /api/asegurados (Guarda un cliente nuevo)
+// RUTA: POST /api/asegurados
 router.post('/', async (req, res) => {
   try {
-    // 🔥 LÓGICA DEL MURO DE PAGO PARA CREACIÓN INDIVIDUAL
-    // Asumimos que el ID del usuario logueado lo podés sacar de req (si tenés middleware de auth), 
-    // sino lo buscamos buscando un user activo como parche temporal.
-    const usuarioActivo = await prisma.user.findFirst();
-    
-    if (usuarioActivo) {
-      const validacion = await verificarLimiteAsegurados(usuarioActivo.id);
-      if (validacion.superado) {
-        return res.status(403).json({ error: validacion.mensaje, codigo: "LIMITE_EXCEDIDO" });
-      }
+    const productorId = await obtenerProductorId(req.userId!);
+
+    const validacion = await verificarLimiteAsegurados(req.userId!);
+    if (validacion.superado) {
+      return res.status(403).json({ error: validacion.mensaje, codigo: "LIMITE_EXCEDIDO" });
     }
 
     const data = req.body;
-
-    let productor = await prisma.productor.findFirst();
-    if (!productor) {
-      productor = await prisma.productor.create({
-        data: {
-          nombre: "Productor", apellido: "Prueba", email: "productor@asegurasimple.com",
-          usuario: "admin", contrasenaHash: "123456",
-        }
-      });
-    }
 
     const nuevoAsegurado = await prisma.asegurado.create({
       data: {
@@ -75,7 +84,7 @@ router.post('/', async (req, res) => {
         direccion: data.direccion,
         codigoPostal: data.codigoPostal,
         fechaNacimiento: data.fechaNacimiento ? new Date(data.fechaNacimiento) : null,
-        productorId: productor.id,
+        productorId,
       },
     });
 
@@ -87,9 +96,7 @@ router.post('/', async (req, res) => {
     });
 
     const agencia = await prisma.agencia.findUnique({ where: { id: 1 } });
-    const enviarMail = agencia ? agencia.enviarMailBienvenida : true; 
-
-    if (enviarMail && data.email) {
+    if ((agencia?.enviarMailBienvenida ?? true) && data.email) {
       enviarCorreoBienvenida(data.email, data.nombre, data.apellido, data.dni, data.telefono);
     }
 
@@ -101,7 +108,7 @@ router.post('/', async (req, res) => {
   }
 });
 
-// RUTA: PUT /api/asegurados/:id (Editar o dar de baja un cliente)
+// RUTA: PUT /api/asegurados/:id
 router.put('/:id', async (req, res) => {
   try {
     const { id } = req.params;
@@ -121,23 +128,20 @@ router.put('/:id', async (req, res) => {
     });
 
     let cambios = [];
-    if (viejo && viejo.nombre !== data.nombre) cambios.push(`Nombre: ${viejo.nombre} -> ${data.nombre}`);
-    if (viejo && viejo.apellido !== data.apellido) cambios.push(`Apellido: ${viejo.apellido} -> ${data.apellido}`);
-    if (viejo && viejo.telefono !== data.telefono) cambios.push(`Tel: ${viejo.telefono || '-'} -> ${data.telefono || '-'}`);
-    if (viejo && viejo.email !== data.email) cambios.push(`Email: ${viejo.email || '-'} -> ${data.email || '-'}`);
-    if (viejo && viejo.dni !== data.dni) cambios.push(`DNI: ${viejo.dni} -> ${data.dni}`);
+    if (viejo?.nombre !== data.nombre) cambios.push(`Nombre: ${viejo?.nombre} -> ${data.nombre}`);
+    if (viejo?.apellido !== data.apellido) cambios.push(`Apellido: ${viejo?.apellido} -> ${data.apellido}`);
+    if (viejo?.telefono !== data.telefono) cambios.push(`Tel: ${viejo?.telefono || '-'} -> ${data.telefono || '-'}`);
+    if (viejo?.email !== data.email) cambios.push(`Email: ${viejo?.email || '-'} -> ${data.email || '-'}`);
+    if (viejo?.dni !== data.dni) cambios.push(`DNI: ${viejo?.dni} -> ${data.dni}`);
 
-    let textoDetalle = cambios.length > 0 ? cambios.join(" | ") : "Actualización de datos";
-    const accionReal = data.activo === false && viejo?.activo === true ? "Desactivación" : 
+    const textoDetalle = cambios.length > 0 ? cambios.join(" | ") : "Actualización de datos";
+    const accionReal = data.activo === false && viejo?.activo === true ? "Desactivación" :
                        data.activo === true && viejo?.activo === false ? "Activación" : "Edición";
-                       
-    if (accionReal !== "Edición") {
-        textoDetalle = accionReal === "Desactivación" ? "Cliente pasado a Inactivo" : "Cliente vuelto a Activar";
-    }
 
     await prisma.actividad.create({
       data: {
-        accion: accionReal, entidad: "Asegurado", descripcion: textoDetalle,
+        accion: accionReal, entidad: "Asegurado",
+        descripcion: accionReal !== "Edición" ? (accionReal === "Desactivación" ? "Cliente pasado a Inactivo" : "Cliente vuelto a Activar") : textoDetalle,
         cliente: `${data.nombre} ${data.apellido || ''}`.trim(),
       }
     });
@@ -148,13 +152,11 @@ router.put('/:id', async (req, res) => {
   }
 });
 
-// RUTA: DELETE /api/asegurados/:id (Eliminar definitivamente)
+// RUTA: DELETE /api/asegurados/:id
 router.delete('/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    
     const aseguradoABorrar = await prisma.asegurado.findUnique({ where: { id: parseInt(id) } });
-
     await prisma.asegurado.delete({ where: { id: parseInt(id) } });
 
     if (aseguradoABorrar) {
@@ -173,20 +175,17 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
-// RUTA: POST /api/asegurados/importar (Carga Masiva desde Excel)
+// RUTA: POST /api/asegurados/importar
 router.post('/importar', async (req, res) => {
   try {
-    // 🔥 LÓGICA DEL MURO DE PAGO PARA IMPORTACIÓN MASIVA
-    const usuarioActivo = await prisma.user.findFirst();
-    if (usuarioActivo) {
-      const validacion = await verificarLimiteAsegurados(usuarioActivo.id);
-      if (validacion.superado) {
-        return res.status(403).json({ error: validacion.mensaje, codigo: "LIMITE_EXCEDIDO" });
-      }
+    const productorId = await obtenerProductorId(req.userId!);
+
+    const validacion = await verificarLimiteAsegurados(req.userId!);
+    if (validacion.superado) {
+      return res.status(403).json({ error: validacion.mensaje, codigo: "LIMITE_EXCEDIDO" });
     }
 
-    const clientes = req.body; 
-
+    const clientes = req.body;
     if (!Array.isArray(clientes)) {
       return res.status(400).json({ error: 'El formato de datos debe ser un arreglo.' });
     }
@@ -195,8 +194,8 @@ router.post('/importar', async (req, res) => {
       const nuevoObj: any = {};
       for (let key in obj) {
         const llaveLimpia = key.toLowerCase()
-                               .normalize("NFD").replace(/[\u0300-\u036f]/g, "") 
-                               .replace(/[^a-z0-9]/g, ''); 
+          .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+          .replace(/[^a-z0-9]/g, '');
         nuevoObj[llaveLimpia] = obj[key];
       }
       return nuevoObj;
@@ -205,39 +204,30 @@ router.post('/importar', async (req, res) => {
     const datosParaInsertar = clientes
       .map((c: any) => {
         const row = normalizarLlaves(c);
-
         const nombreCrudo = row.nombre || row.nombres || row.razonsocial || row.cliente || '';
         const apellidoCrudo = row.apellido || row.apellidos || null;
         const dniCrudo = row.dni || row.cuit || row.documento || row.doc || '';
-
         const nombreLimpio = String(nombreCrudo).trim();
         const apellidoLimpio = apellidoCrudo ? String(apellidoCrudo).trim() : null;
-        const dniLimpio = String(dniCrudo).trim().replace(/[^0-9]/g, ''); 
-
+        const dniLimpio = String(dniCrudo).trim().replace(/[^0-9]/g, '');
         const telefonoLimpio = row.telefono || row.celular || row.tel || null;
         const emailLimpio = row.email || row.correo || row.mail || null;
-
         let tipoCalculado = "Individual";
         const tipoOriginal = String(row.tipo || row.tipocliente || '').toLowerCase();
         if (tipoOriginal.includes('empresa') || tipoOriginal.includes('juridico') || dniLimpio.length === 11) {
           tipoCalculado = "Empresa";
         }
-
         return {
-          nombre: nombreLimpio,
-          apellido: apellidoLimpio,
-          dni: dniLimpio,
+          nombre: nombreLimpio, apellido: apellidoLimpio, dni: dniLimpio,
           telefono: telefonoLimpio ? String(telefonoLimpio).trim() : null,
           email: emailLimpio ? String(emailLimpio).trim() : null,
-          tipo: tipoCalculado,
-          activo: true,
-          productorId: 1
+          tipo: tipoCalculado, activo: true, productorId
         };
       })
-      .filter((c: any) => c.nombre.length > 0 && c.dni.length > 0); 
+      .filter((c: any) => c.nombre.length > 0 && c.dni.length > 0);
 
     if (datosParaInsertar.length === 0) {
-      return res.status(400).json({ error: 'No se encontraron registros válidos. Revisá que las columnas se llamen Nombre y DNI.' });
+      return res.status(400).json({ error: 'No se encontraron registros válidos.' });
     }
 
     const resultado = await (prisma as any).asegurado.createMany({
@@ -245,17 +235,16 @@ router.post('/importar', async (req, res) => {
       skipDuplicates: true
     });
 
-    await (prisma as any).actividad.create({
+    await prisma.actividad.create({
       data: {
-        accion: "Alta",
-        entidad: "Asegurado",
-        descripcion: `Importación masiva exitosa: se cargaron ${resultado.count} nuevos clientes desde Excel.`,
+        accion: "Alta", entidad: "Asegurado",
+        descripcion: `Importación masiva: ${resultado.count} nuevos clientes cargados.`,
         cliente: "Sistema / Excel"
       }
     });
 
-    res.json({ 
-      message: 'Importación procesada con éxito', 
+    res.json({
+      message: 'Importación procesada con éxito',
       procesados: datosParaInsertar.length,
       creados: resultado.count,
       salteados: datosParaInsertar.length - resultado.count

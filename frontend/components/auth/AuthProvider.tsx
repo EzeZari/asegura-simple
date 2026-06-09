@@ -5,25 +5,23 @@ import { useAuthStore } from "@/store/authStore";
 
 export default function AuthProvider({ children }: { children: React.ReactNode }) {
   const setUser = useAuthStore((state) => state.setUser);
+  const setAccessToken = useAuthStore((state) => state.setAccessToken); // ← NUEVO
   const user = useAuthStore((state) => state.user);
-  
-  // Arranca en true para frenar la carga hasta saber si hay sesión
   const [isChecking, setIsChecking] = useState(true);
 
   useEffect(() => {
     const checkSession = async () => {
       try {
-        // 🔥 ACÁ ESTABA EL ERROR: Cambiada la comilla doble del final por un backtick
         const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/refresh`, {
           method: "POST",
           credentials: "include",
         });
 
         const data = await response.json();
-        console.log("Datos recibidos del backend:", data); // <-- AGREGÁ ESTO PARA VER EN CONSOLA
 
         if (response.ok && data.user) {
           setUser(data.user);
+          setAccessToken(data.accessToken); // ← NUEVO
         }
       } catch (error) {
         console.error("Error al restaurar la sesión:", error);
@@ -32,15 +30,13 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
       }
     };
 
-    // Solo chequeamos si el usuario en memoria está vacío (ej: apretaron F5)
     if (!user) {
       checkSession();
     } else {
       setIsChecking(false);
     }
-  }, [user, setUser]);
+  }, [user, setUser, setAccessToken]);
 
-  // Pantalla de carga minimalista mientras el backend responde (evita pestañeos blancos)
   if (isChecking) {
     return (
       <div className="flex-1 flex items-center justify-center bg-gray-50">
@@ -49,6 +45,5 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
     );
   }
 
-  // Si ya revisó, muestra la aplicación normal
   return <>{children}</>;
 }

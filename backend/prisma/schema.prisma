@@ -18,6 +18,10 @@ model Productor {
   contrasenaHash String
   fechaAlta      DateTime @default(now())
 
+  // 🔥 NUEVO: Conexión con el sistema de autenticación
+  userId         Int?     @unique
+  user           User?    @relation(fields: [userId], references: [id])
+
   asegurados         Asegurado[]
   notasSiniestro     NotaSiniestro[]
   historialSiniestro HistorialSiniestro[]
@@ -196,6 +200,7 @@ model User {
   // 🔥 NUEVOS CAMPOS RELACIONADOS CON PLANES Y MONETIZACIÓN
   plan                 Plan          @default(GRATUITO) // 🔥 Antes decía BASICO
   suscripcion          Suscripcion?
+  productor            Productor?    // 🔥 NUEVO
 }
 
 model Actividad {
