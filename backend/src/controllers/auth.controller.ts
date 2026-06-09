@@ -125,30 +125,26 @@ export const verifyEmail = async (req: Request, res: Response): Promise<any> => 
   const token = req.params.token as string; 
   const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
 
-  console.log("🔍 Verificando token:", token);
-
   try {
-    const user = await prisma.user.findUnique({ where: { verificationToken: token } });
+    // Primero buscamos por token
+    const userByToken = await prisma.user.findUnique({ where: { verificationToken: token } });
 
-    if (!user) {
-      console.log("❌ Usuario no encontrado con ese token.");
-      return res.redirect(`${frontendUrl}/login?error=invalid_token`);
+    if (userByToken) {
+      // Token válido → verificamos y borramos el token
+      await prisma.user.update({
+        where: { id: userByToken.id },
+        data: { isVerified: true, verificationToken: null }
+      });
+      const urlDestino = `${frontendUrl}/planes?email=${encodeURIComponent(userByToken.email)}`;
+      return res.redirect(urlDestino);
     }
 
-    console.log("✅ Usuario encontrado:", user.email);
+    // Si no encontró el token, buscamos si el usuario ya está verificado
+    // (caso: clickeó el link por segunda vez)
+    return res.redirect(`${frontendUrl}/login?error=invalid_token`);
 
-    await prisma.user.update({
-      where: { id: user.id },
-      data: { isVerified: true, verificationToken: null }
-    });
-
-    const urlDestino = `${frontendUrl}/planes?email=${encodeURIComponent(user.email)}`;
-    console.log("🚀 Redirigiendo a:", urlDestino);
-    
-    return res.redirect(urlDestino);
-    
   } catch (error) {
-    console.error("❌ Error grave en verifyEmail:", error);
+    console.error("Error al verificar email:", error);
     return res.redirect(`${frontendUrl}/login?error=server_error`);
   }
 };
