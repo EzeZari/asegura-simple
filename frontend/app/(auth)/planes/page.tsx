@@ -1,16 +1,14 @@
 "use client";
 
-import { useState } from "react";
-import { useSearchParams } from "next/navigation"; // 🔥 Para leer el ?email= de la URL
+import { Suspense, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { Check, Shield, Users, Zap, Loader2, Sparkles } from "lucide-react";
 import Toast from "@/components/ui/Toast";
 
-export default function OnboardingPlanesPage() {
+// 🔥 Todo el contenido va acá adentro
+function PlanesContent() {
   const searchParams = useSearchParams();
-  
-  // 🔥 CAPTURAMOS EL EMAIL REAL DE LA URL (igual que hiciste con el token)
-  // Si por alguna razón no viene en la URL, podés dejar uno vacío o manejar un error
-  const userEmail = searchParams.get("email") || ""; 
+  const userEmail = searchParams.get("email") || "";
 
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
   const [showToast, setShowToast] = useState(false);
@@ -94,13 +92,11 @@ export default function OnboardingPlanesPage() {
     setLoadingPlan(planId);
 
     if (planId === "GRATUITO") {
-      // Como el plan GRATUITO ya se asigna por defecto en la BD, lo mandamos derecho al login
       window.location.href = "/login?verified=true";
       return;
     }
 
     try {
-      // 🔥 USAMOS TU VARIABLE EN LA WEB PARA EL FETCH (Igual que en la consulta)
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/pagos/create-subscription`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -110,7 +106,6 @@ export default function OnboardingPlanesPage() {
       const data = await res.json();
 
       if (res.ok && data.init_point) {
-        // Redirección directa a la pasarela de Mercado Pago
         window.location.href = data.init_point;
       } else {
         throw new Error();
@@ -198,8 +193,24 @@ export default function OnboardingPlanesPage() {
   );
 }
 
+// 🔥 El export default solo hace el Suspense wrapper
+export default function OnboardingPlanesPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center min-h-screen bg-gray-50">
+        <Loader2 className="animate-spin text-green-600" size={32} />
+      </div>
+    }>
+      <PlanesContent />
+    </Suspense>
+  );
+}
+
 function UserIcon(props: any) {
   return (
-    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+      <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/>
+      <circle cx="12" cy="7" r="4"/>
+    </svg>
   );
 }
