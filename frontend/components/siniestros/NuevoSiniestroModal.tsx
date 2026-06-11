@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { X, Save, AlertTriangle } from "lucide-react";
+import { apiFetch } from "@/services/api"; // 🔥 IMPORTAMOS EL FETCH CON CREDENCIALES
 
 interface Props {
   isOpen: boolean;
@@ -26,16 +27,20 @@ export default function NuevoSiniestroModal({ isOpen, onClose, onSuccess, sinies
 
   useEffect(() => {
     if (isOpen) {
-      // 🔥 CORREGIDO (Backtick al final)
-      fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/polizas`)
+      // 🔥 REEMPLAZO 1: Traer las pólizas con apiFetch
+      apiFetch(`/api/polizas`)
         .then((res) => res.json())
-        .then((data) => setPolizas(data.filter((p: any) => p.estado === "Vigente" || p.estado === "Renovada")))
+        .then((data) => {
+          if (Array.isArray(data)) {
+            setPolizas(data.filter((p: any) => p.estado === "Vigente" || p.estado === "Renovada"));
+          }
+        })
         .catch((err) => console.error("Error al cargar pólizas:", err));
 
       if (siniestroAEditar) {
         setFormData({
           ...siniestroAEditar,
-          fechaHecho: siniestroAEditar.fechaHecho.split('T')[0], // Formato para el input date
+          fechaHecho: siniestroAEditar.fechaHecho.split('T')[0], 
           polizaId: siniestroAEditar.polizaId.toString(),
         });
       } else {
@@ -59,14 +64,14 @@ export default function NuevoSiniestroModal({ isOpen, onClose, onSuccess, sinies
     setError("");
 
     try {
-      // 🔥 CORREGIDO (Backtick al final del POST)
       const url = siniestroAEditar 
-        ? `${process.env.NEXT_PUBLIC_API_URL}/api/siniestros/${siniestroAEditar.id}`
-        : `${process.env.NEXT_PUBLIC_API_URL}/api/siniestros`;
+        ? `/api/siniestros/${siniestroAEditar.id}`
+        : `/api/siniestros`;
       
       const method = siniestroAEditar ? "PUT" : "POST";
 
-      const response = await fetch(url, {
+      // 🔥 REEMPLAZO 2: Guardar siniestro usando apiFetch
+      const response = await apiFetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formData),

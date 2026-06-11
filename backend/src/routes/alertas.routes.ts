@@ -1,12 +1,49 @@
 import { Router } from 'express';
 import { prisma } from '../config/db';
+import { verificarToken } from '../middlewares/auth.middleware'; // 🔥 Agregamos seguridad
 
 const router = Router();
+
+// 🔥 Aplicamos el middleware a TODAS las rutas
+router.use(verificarToken);
+
+// Función helper para aislar los datos del usuario logueado
+const obtenerProductorId = async (userId: number): Promise<number> => {
+  let productor = await prisma.productor.findUnique({ where: { userId } });
+  
+  if (!productor) {
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    const userEmail = user?.email || `user${userId}@asegurasimple.com`;
+
+    productor = await prisma.productor.findUnique({ where: { email: userEmail } });
+
+    if (productor) {
+      productor = await prisma.productor.update({
+        where: { id: productor.id },
+        data: { userId: userId }
+      });
+    } else {
+      productor = await prisma.productor.create({
+        data: {
+          nombre: user?.nombre || 'Productor',
+          apellido: '',
+          email: userEmail,
+          usuario: userEmail,
+          contrasenaHash: '',
+          userId: userId
+        }
+      });
+    }
+  }
+  
+  return productor.id;
+};
 
 router.get('/', async (req, res) => {
   try {
     const hoy = new Date();
-    
+    const productorId = await obtenerProductorId(req.userId!); // 🔥 Obtenemos tu ID
+
     // 1. LEER CONFIGURACIÓN DINÁMICA DE LA AGENCIA
     const agencia = await prisma.agencia.findUnique({ where: { id: 1 } });
     const diasCritica = agencia?.diasAlertaCritica || 7;      // 7 por defecto
@@ -19,7 +56,8 @@ router.get('/', async (req, res) => {
     const polizasCaducadas = await prisma.poliza.findMany({
       where: {
         estado: 'Vigente',
-        fechaVencimiento: { lt: hace30Dias }
+        fechaVencimiento: { lt: hace30Dias },
+        asegurado: { productorId: productorId } // 🔥 SEGURIDAD: Solo limpia TUS pólizas
       },
       include: { asegurado: true }
     });
@@ -51,7 +89,8 @@ router.get('/', async (req, res) => {
     const polizasPorVencer = await prisma.poliza.findMany({
       where: {
         estado: 'Vigente',
-        fechaVencimiento: { lte: enXDias }
+        fechaVencimiento: { lte: enXDias },
+        asegurado: { productorId: productorId } // 🔥 SEGURIDAD: Solo trae TUS alertas
       },
       include: { asegurado: true, compania: true },
       orderBy: { fechaVencimiento: 'asc' }
@@ -82,7 +121,7 @@ router.get('/', async (req, res) => {
       vencidas, 
       criticas, 
       proximas,
-      config: { diasCritica, diasMax } // <-- Enviamos esto al frontend
+      config: { diasCritica, diasMax } 
     });
 
   } catch (error) {

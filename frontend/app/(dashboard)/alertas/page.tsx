@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { AlertTriangle, Clock, XOctagon } from "lucide-react";
 import AlertaSection from "@/components/alertas/AlertaSection";
-import { apiFetch } from "@/services/api"; // ← NUEVO
+import { apiFetch } from "@/services/api"; 
 
 export default function AlertasPage() {
   const [data, setData] = useState<{
@@ -21,13 +21,21 @@ export default function AlertasPage() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    apiFetch('/api/alertas') // ← CAMBIO
+    apiFetch('/api/alertas') 
       .then(res => res.json())
       .then(resData => {
-        setData(resData);
+        // 🔥 PROTECCIÓN ANTI-CRASH: Verificamos que la estructura venga bien armada del backend
+        if (resData && Array.isArray(resData.vencidas)) {
+          setData(resData);
+        } else {
+          console.error("El backend no devolvió las alertas correctamente:", resData);
+        }
         setIsLoading(false);
       })
-      .catch(err => console.error("Error al cargar alertas", err));
+      .catch(err => {
+        console.error("Error al cargar alertas", err);
+        setIsLoading(false);
+      });
   }, []);
 
   if (isLoading) return <div className="p-8 text-gray-500 animate-pulse">Buscando vencimientos...</div>;

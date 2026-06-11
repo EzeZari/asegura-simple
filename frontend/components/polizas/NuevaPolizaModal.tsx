@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { X, UploadCloud, FileText } from "lucide-react";
+import { apiFetch } from "@/services/api"; // 🔥 IMPORTAMOS NUESTRO FETCH VIP
 
 interface Props {
   isOpen: boolean;
@@ -34,22 +35,29 @@ export default function NuevaPolizaModal({ isOpen, onClose, onSuccess, polizaAEd
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   
-  // 🔥 ESTADOS NUEVOS PARA EL PDF
   const [pdfFile, setPdfFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (isOpen) {
-      // 🔥 CORREGIDO (Backtick al final)
-      fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/asegurados`)
+      // 🔥 REEMPLAZO 1: Buscar Asegurados
+      apiFetch('/api/asegurados')
         .then((res) => res.json())
-        .then((data) => setClientes(data.filter((c: any) => c.activo)))
+        .then((data) => {
+          if (Array.isArray(data)) {
+            setClientes(data.filter((c: any) => c.activo));
+          }
+        })
         .catch((err) => console.error("Error al cargar clientes:", err));
       
-      // 🔥 CORREGIDO (Backtick al final)
-      fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/companias`)
+      // 🔥 REEMPLAZO 2: Buscar Compañías
+      apiFetch('/api/companias')
         .then((res) => res.json())
-        .then((data) => setCompanias(data))
+        .then((data) => {
+          if (Array.isArray(data)) {
+            setCompanias(data);
+          }
+        })
         .catch((err) => console.error("Error al cargar compañías:", err));
 
       if (polizaAEditar) {
@@ -81,7 +89,6 @@ export default function NuevaPolizaModal({ isOpen, onClose, onSuccess, polizaAEd
         setFormData(ESTADO_INICIAL);
       }
       
-      // Reseteamos errores y archivo seleccionado
       setError("");
       setPdfFile(null);
       if (fileInputRef.current) fileInputRef.current.value = '';
@@ -102,7 +109,7 @@ export default function NuevaPolizaModal({ isOpen, onClose, onSuccess, polizaAEd
         return;
       }
       setPdfFile(file);
-      setError(""); // Limpiamos errores si sube uno válido
+      setError(""); 
     }
   };
 
@@ -119,15 +126,13 @@ export default function NuevaPolizaModal({ isOpen, onClose, onSuccess, polizaAEd
 
     try {
       const isEditMode = polizaAEditar && !isRenovacion;
-      // 🔥 CORREGIDO (Backtick al final de /api/polizas)
-      const url = isEditMode 
-        ? `${process.env.NEXT_PUBLIC_API_URL}/api/polizas/${polizaAEditar.id}`
-        : `${process.env.NEXT_PUBLIC_API_URL}/api/polizas`;
       
+      // 🔥 Adaptamos la URL para usar ruta relativa
+      const url = isEditMode ? `/api/polizas/${polizaAEditar.id}` : `/api/polizas`;
       const method = isEditMode ? "PUT" : "POST";
 
-      // PASO 1: Guardamos los datos de texto
-      const response = await fetch(url, {
+      // 🔥 REEMPLAZO 3: Guardar los datos de texto de la póliza
+      const response = await apiFetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formData),
@@ -138,15 +143,14 @@ export default function NuevaPolizaModal({ isOpen, onClose, onSuccess, polizaAEd
 
       const polizaGuardadaId = isEditMode ? polizaAEditar.id : data.id;
 
-      // PASO 2: Si el usuario seleccionó un PDF, lo subimos
+      // 🔥 REEMPLAZO 4: Subir el PDF si lo hay
       if (pdfFile) {
         const fileData = new FormData();
         fileData.append("pdf", pdfFile);
         
-        // Esta línea ya estaba bien porque termina con variable y backtick
-        const uploadRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/polizas/${polizaGuardadaId}/subir-pdf`, {
+        const uploadRes = await apiFetch(`/api/polizas/${polizaGuardadaId}/subir-pdf`, {
           method: "POST",
-          body: fileData,
+          body: fileData, // Al usar FormData, NO se le pone Content-Type manual, el navegador lo hace solo.
         });
 
         if (!uploadRes.ok) {
@@ -154,10 +158,9 @@ export default function NuevaPolizaModal({ isOpen, onClose, onSuccess, polizaAEd
         }
       }
 
-      // Si es renovación, damos de baja la vieja
+      // 🔥 REEMPLAZO 5: Actualizar estado viejo si es renovación
       if (isRenovacion && polizaAEditar) {
-        // Esta línea ya estaba bien
-        await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/polizas/${polizaAEditar.id}`, {
+        await apiFetch(`/api/polizas/${polizaAEditar.id}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ ...polizaAEditar, estado: "Renovada" })

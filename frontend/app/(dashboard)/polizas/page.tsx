@@ -3,10 +3,10 @@
 import { useState, useEffect } from "react";
 import { FileText, Download, UploadCloud } from "lucide-react";
 import { useRouter } from "next/navigation";
+import dynamic from "next/dynamic";
+
 import NuevaPolizaModal from "@/components/polizas/NuevaPolizaModal";
 import PolizasFiltros from "@/components/polizas/PolizasFiltros";
-import ExportarExcelModal from "@/components/ui/ExportarExcelModal"; 
-import ImportarPolizasModal from "@/components/polizas/ImportarPolizasModal";
 import Toast from "@/components/ui/Toast";
 import Table, { TableColumn } from "@/components/ui/Table";
 import ConfirmModal from "@/components/ui/ConfirmModal";
@@ -15,7 +15,10 @@ import SortableHeader from "@/components/ui/SortableHeader";
 import PageHeader from "@/components/ui/PageHeader";
 import PolizaTableRow from "@/components/polizas/PolizaTableRow";
 import SelectOrdenamiento from "@/components/ui/SelectOrdenamiento";
-import { apiFetch } from "@/services/api"; // ← NUEVO
+import { apiFetch } from "@/services/api";
+
+const ExportarExcelModal = dynamic(() => import("@/components/ui/ExportarExcelModal"), { ssr: false });
+const ImportarPolizasModal = dynamic(() => import("@/components/polizas/ImportarPolizasModal"), { ssr: false });
 
 const OPCIONES_ORDEN = [
   { value: "mas_recientes", label: "Más recientes primero" },
@@ -44,10 +47,26 @@ export default function PolizasPage() {
   const [isDeleting, setIsDeleting] = useState(false);
 
   const fetchPolizas = async () => {
+    setIsLoading(true);
     try {
-      const res = await apiFetch('/api/polizas'); // ← CAMBIO
-      setPolizas(await res.json());
-    } catch (error) { console.error("Error al cargar pólizas:", error); } finally { setIsLoading(false); }
+      const res = await apiFetch('/api/polizas');
+      const data = await res.json();
+      
+      // 🔥 PROTECCIÓN ANTI-CRASH: Verificamos que los datos sean un Array real
+      if (Array.isArray(data)) {
+        setPolizas(data);
+      } else {
+        console.error("El backend no devolvió una lista válida:", data);
+        setPolizas([]); // Si hay error, vaciamos la tabla pero no rompemos la app
+        setMensajeToast(data.error || "Error de conexión con el servidor.");
+        setShowToast(true);
+      }
+    } catch (error) { 
+      console.error("Error al cargar pólizas:", error); 
+      setPolizas([]);
+    } finally { 
+      setIsLoading(false); 
+    }
   };
 
   useEffect(() => { fetchPolizas(); }, []);
@@ -55,7 +74,7 @@ export default function PolizasPage() {
   const cambiarEstadoRapido = async (poliza: any, nuevoEstado: string) => {
     setMenuAbiertoId(null);
     try {
-      await apiFetch(`/api/polizas/${poliza.id}`, { // ← CAMBIO
+      await apiFetch(`/api/polizas/${poliza.id}`, {
         method: "PUT",
         body: JSON.stringify({ ...poliza, estado: nuevoEstado }),
       });
@@ -69,8 +88,9 @@ export default function PolizasPage() {
     if (!polizaAEliminar) return;
     setIsDeleting(true);
     try {
-      const res = await apiFetch(`/api/polizas/${polizaAEliminar.id}`, { method: 'DELETE' }); // ← CAMBIO
-      if (!res.ok) throw new Error((await res.json()).error);
+      const res = await apiFetch(`/api/polizas/${polizaAEliminar.id}`, { method: 'DELETE' });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Error al eliminar");
       fetchPolizas();
       setMensajeToast("Póliza eliminada correctamente");
       setShowToast(true);
@@ -81,9 +101,9 @@ export default function PolizasPage() {
   const enviarAvisoVencimiento = async (poliza: any) => {
     setMenuAbiertoId(null);
     try {
-      const res = await apiFetch(`/api/polizas/${poliza.id}/avisar-vencimiento`, { method: "POST" }); // ← CAMBIO
+      const res = await apiFetch(`/api/polizas/${poliza.id}/avisar-vencimiento`, { method: "POST" });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
+      if (!res.ok) throw new Error(data.error || "Error al enviar aviso");
       setMensajeToast("Correo de aviso enviado exitosamente");
       setShowToast(true);
       fetchPolizas(); 
@@ -91,7 +111,10 @@ export default function PolizasPage() {
   };
 
   const getEstadoInteligente = (poliza: any) => {
+    if (!poliza) return "Desconocido";
     if (poliza.estado === "Anulada" || poliza.estado === "Renovada") return poliza.estado;
+    if (!poliza.fechaVencimiento) return poliza.estado;
+
     const hoy = new Date();
     hoy.setHours(0, 0, 0, 0); 
     const vencimiento = new Date(poliza.fechaVencimiento);
@@ -102,18 +125,30 @@ export default function PolizasPage() {
     return poliza.estado; 
   };
 
-  let polizasFiltradas = polizas.filter((poliza) => {
+  // 🔥 PROTECCIÓN DE FILTROS: Manejo seguro de nulls y arrays
+  let polizasFiltradas = (Array.isArray(polizas) ? polizas : []).filter((poliza) => {
     const busqueda = searchTerm.toLowerCase();
+    
+    // Forzamos todo a String por si la DB devuelve nulos o números accidentales
+    const nroPoliza = String(poliza?.nroPoliza || "").toLowerCase();
+    const nombreCompleto = `${poliza?.asegurado?.nombre || ""} ${poliza?.asegurado?.apellido || ""}`.toLowerCase();
+    const patente = String(poliza?.patente || "").toLowerCase();
+    const marca = String(poliza?.marca || "").toLowerCase();
+    const modelo = String(poliza?.modelo || "").toLowerCase();
+    const ubi = String(poliza?.ubicacionRiesgo || "").toLowerCase();
+
     const matchBusqueda = 
-      poliza.nroPoliza.toLowerCase().includes(busqueda) || 
-      `${poliza.asegurado?.nombre} ${poliza.asegurado?.apellido}`.toLowerCase().includes(busqueda) ||
-      (poliza.patente && poliza.patente.toLowerCase().includes(busqueda)) ||
-      (poliza.marca && poliza.marca.toLowerCase().includes(busqueda)) ||
-      (poliza.modelo && poliza.modelo.toLowerCase().includes(busqueda)) ||
-      (poliza.ubicacionRiesgo && poliza.ubicacionRiesgo.toLowerCase().includes(busqueda));
-    const matchRama = filtroRama === "Todas" || poliza.tipoPoliza === filtroRama;
+      nroPoliza.includes(busqueda) || 
+      nombreCompleto.includes(busqueda) ||
+      patente.includes(busqueda) ||
+      marca.includes(busqueda) ||
+      modelo.includes(busqueda) ||
+      ubi.includes(busqueda);
+      
+    const matchRama = filtroRama === "Todas" || poliza?.tipoPoliza === filtroRama;
     const estadoReal = getEstadoInteligente(poliza);
     const matchEstado = filtroEstado === "Todos" || estadoReal === filtroEstado;
+    
     return matchBusqueda && matchRama && matchEstado;
   });
 
@@ -121,10 +156,13 @@ export default function PolizasPage() {
     switch (ordenActual) {
       case "mas_recientes": return b.id - a.id;
       case "mas_antiguas": return a.id - b.id;
-      case "vencimiento_proximo": return new Date(a.fechaVencimiento).getTime() - new Date(b.fechaVencimiento).getTime();
+      case "vencimiento_proximo": 
+        const dateA = a.fechaVencimiento ? new Date(a.fechaVencimiento).getTime() : 0;
+        const dateB = b.fechaVencimiento ? new Date(b.fechaVencimiento).getTime() : 0;
+        return dateA - dateB;
       case "alfabetico_asegurado":
-        const nombreA = `${a.asegurado?.nombre} ${a.asegurado?.apellido}`.toLowerCase();
-        const nombreB = `${b.asegurado?.nombre} ${b.asegurado?.apellido}`.toLowerCase();
+        const nombreA = `${a.asegurado?.nombre || ""} ${a.asegurado?.apellido || ""}`.toLowerCase();
+        const nombreB = `${b.asegurado?.nombre || ""} ${b.asegurado?.apellido || ""}`.toLowerCase();
         return nombreA.localeCompare(nombreB);
       default: return 0;
     }
@@ -134,18 +172,18 @@ export default function PolizasPage() {
 
   const prepararDatosParaExcel = () => {
     return polizasOrdenadas.map((p) => ({
-      "Nro Póliza": p.nroPoliza,
+      "Nro Póliza": p.nroPoliza || "",
       "Asegurado": `${p.asegurado?.nombre || ""} ${p.asegurado?.apellido || ""}`.trim(),
       "DNI / CUIT": p.asegurado?.dni || "",
       "Compañía": p.compania?.nombre || "",
-      "Rama / Riesgo": p.tipoPoliza,
+      "Rama / Riesgo": p.tipoPoliza || "",
       "Cobertura": p.cobertura || "",
       "Patente": p.patente?.toUpperCase() || "",
       "Marca / Modelo": `${p.marca || ""} ${p.modelo || ""}`.trim(),
       "Ubicación": p.ubicacionRiesgo || "",
       "Empleados": p.cantidadEmpleados?.toString() || "",
-      "Vigencia Desde": new Date(p.fechaInicio).toLocaleDateString("es-AR"),
-      "Vigencia Hasta": new Date(p.fechaVencimiento).toLocaleDateString("es-AR"),
+      "Vigencia Desde": p.fechaInicio ? new Date(p.fechaInicio).toLocaleDateString("es-AR") : "",
+      "Vigencia Hasta": p.fechaVencimiento ? new Date(p.fechaVencimiento).toLocaleDateString("es-AR") : "",
       "Estado": getEstadoInteligente(p),
     }));
   };

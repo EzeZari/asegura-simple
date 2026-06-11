@@ -14,7 +14,7 @@ import PageHeader from "@/components/ui/PageHeader";
 import SearchBar from "@/components/ui/SearchBar";
 import { ActionMenu, ActionMenuItem } from "@/components/ui/ActionMenu";
 import SelectOrdenamiento from "@/components/ui/SelectOrdenamiento"; 
-import { apiFetch } from "@/services/api"; // ← NUEVO
+import { apiFetch } from "@/services/api"; // 🔥 IMPORTAMOS NUESTRO FETCH VIP
 
 const OPCIONES_ORDEN = [
   { value: "mas_recientes", label: "Últimas agregadas" },
@@ -39,11 +39,25 @@ export default function CompaniasPage() {
   const [mensajeToast, setMensajeToast] = useState("");
 
   const fetchCompanias = async () => {
+    setIsLoading(true);
     try {
-      const res = await apiFetch('/api/companias'); // ← CAMBIO
+      // 🔥 REEMPLAZO 1: Usamos apiFetch para traer la lista
+      const res = await apiFetch('/api/companias'); 
       const data = await res.json();
-      setCompanias(data);
-    } catch (error) { console.error(error); } finally { setIsLoading(false); }
+      
+      // 🔥 PROTECCIÓN ANTI-CRASH
+      if (Array.isArray(data)) {
+        setCompanias(data);
+      } else {
+        console.error("El backend no devolvió una lista válida:", data);
+        setCompanias([]);
+      }
+    } catch (error) { 
+      console.error(error); 
+      setCompanias([]);
+    } finally { 
+      setIsLoading(false); 
+    }
   };
 
   useEffect(() => { fetchCompanias(); }, []);
@@ -66,25 +80,37 @@ export default function CompaniasPage() {
     if (!companiaAEliminar) return;
     setIsDeleting(true);
     try {
-      const res = await apiFetch(`/api/companias/${companiaAEliminar.id}`, { method: 'DELETE' }); // ← CAMBIO
+      // 🔥 REEMPLAZO 2: Usamos apiFetch para el borrado
+      const res = await apiFetch(`/api/companias/${companiaAEliminar.id}`, { method: 'DELETE' }); 
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Error al eliminar");
+      
       setMensajeToast("Compañía eliminada correctamente");
       setShowToast(true);
       fetchCompanias();
       setIsConfirmOpen(false);
-    } catch (error: any) { alert(error.message); } finally { setIsDeleting(false); setCompaniaAEliminar(null); }
+    } catch (error: any) { 
+      alert(error.message); 
+    } finally { 
+      setIsDeleting(false); 
+      setCompaniaAEliminar(null); 
+    }
   };
 
-  let companiasFiltradas = companias.filter((c) =>
-    c.nombre.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // 🔥 PROTECCIÓN EN EL FILTER (asegurarse de que sea un array y manejar campos nulos)
+  let companiasFiltradas = (Array.isArray(companias) ? companias : []).filter((c) => {
+    const nombreSeguro = String(c?.nombre || "").toLowerCase();
+    return nombreSeguro.includes(searchTerm.toLowerCase());
+  });
 
   companiasFiltradas = companiasFiltradas.sort((a, b) => {
+    const nombreA = String(a?.nombre || "").toLowerCase();
+    const nombreB = String(b?.nombre || "").toLowerCase();
+
     switch (ordenActual) {
       case "mas_recientes": return b.id - a.id;
-      case "alfabetico": return a.nombre.toLowerCase().localeCompare(b.nombre.toLowerCase());
-      case "alfabetico_inverso": return b.nombre.toLowerCase().localeCompare(a.nombre.toLowerCase());
+      case "alfabetico": return nombreA.localeCompare(nombreB);
+      case "alfabetico_inverso": return nombreB.localeCompare(nombreA);
       default: return 0;
     }
   });
@@ -93,7 +119,7 @@ export default function CompaniasPage() {
 
   const prepararDatosParaExcel = () => {
     return companiasOrdenadas.map((c) => ({
-      "Nombre de la Compañía": c.nombre,
+      "Nombre de la Compañía": c.nombre || "-",
       "CUIT": c.cuit || "-",
       "Teléfono (Siniestros)": c.telefonoSiniestros || "-",
       "Email de Contacto": c.email || "-",

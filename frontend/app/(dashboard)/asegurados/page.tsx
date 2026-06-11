@@ -2,10 +2,10 @@
 
 import { useState, useEffect } from "react";
 import { Search, Download, UploadCloud } from "lucide-react"; 
+import dynamic from "next/dynamic";
+
 import NuevoAseguradoModal from "@/components/asegurados/NuevoAseguradoModal";
 import AseguradosFiltros from "@/components/asegurados/AseguradosFiltros";
-import ExportarExcelModal from "@/components/ui/ExportarExcelModal"; 
-import ImportarAseguradosModal from "@/components/asegurados/ImportarAseguradosModal"; 
 import Toast from "@/components/ui/Toast";
 import Table, { TableColumn } from "@/components/ui/Table";
 import ConfirmModal from "@/components/ui/ConfirmModal";
@@ -17,6 +17,10 @@ import AlertModal from "@/components/ui/AlertModal";
 import AseguradoTableRow from "@/components/asegurados/AseguradoTableRow";
 import SelectOrdenamiento from "@/components/ui/SelectOrdenamiento";
 import { apiFetch } from "@/services/api";
+
+const ExportarExcelModal = dynamic(() => import("@/components/ui/ExportarExcelModal"), { ssr: false });
+const ImportarAseguradosModal = dynamic(() => import("@/components/asegurados/ImportarAseguradosModal"), { ssr: false });
+
 const OPCIONES_ORDEN = [
   { value: "mas_recientes", label: "Más recientes primero" },
   { value: "mas_antiguos", label: "Más antiguos primero" },
@@ -51,29 +55,45 @@ export default function AseguradosPage() {
   const [alertModalInfo, setAlertModalInfo] = useState({ title: "", message: "" });
 
   const fetchAsegurados = async () => {
-  try {
-    const res = await apiFetch('/api/asegurados'); // ← cambio
-    setAsegurados(await res.json());
-  } catch (error) { console.error(error); } finally { setIsLoading(false); }
-};
+    setIsLoading(true);
+    try {
+      const res = await apiFetch('/api/asegurados');
+      const data = await res.json();
+      
+      // 🔥 PROTECCIÓN ANTI-CRASH
+      if (Array.isArray(data)) {
+        setAsegurados(data);
+      } else {
+        console.error("El backend no devolvió una lista:", data);
+        setAsegurados([]);
+        setMensajeToast(data.error || "Error al cargar asegurados.");
+        setShowToast(true);
+      }
+    } catch (error) { 
+      console.error(error); 
+      setAsegurados([]);
+    } finally { 
+      setIsLoading(false); 
+    }
+  };
 
   useEffect(() => { fetchAsegurados(); }, []);
 
   const toggleEstado = async (cliente: any) => {
-  try {
-    await apiFetch(`/api/asegurados/${cliente.id}`, { // ← cambio
-      method: "PUT",
-      body: JSON.stringify({ ...cliente, activo: !cliente.activo }),
-    });
-    fetchAsegurados();
-  } catch (error) { console.error(error); } finally { setMenuAbiertoId(null); }
-};
+    try {
+      await apiFetch(`/api/asegurados/${cliente.id}`, {
+        method: "PUT",
+        body: JSON.stringify({ ...cliente, activo: !cliente.activo }),
+      });
+      fetchAsegurados();
+    } catch (error) { console.error(error); } finally { setMenuAbiertoId(null); }
+  };
 
   const ejecutarEliminacion = async () => {
     if (!aseguradoAEliminar) return;
     setIsDeleting(true);
     try {
-      const res = await apiFetch(`/api/asegurados/${aseguradoAEliminar.id}`, { method: 'DELETE' }); // ← cambio
+      const res = await apiFetch(`/api/asegurados/${aseguradoAEliminar.id}`, { method: 'DELETE' });
       const data = await res.json();
       
       if (!res.ok) throw new Error(data.error || "Error al eliminar");
@@ -111,12 +131,16 @@ export default function AseguradosPage() {
     setShowToast(true);
   };
 
-  let aseguradosFiltrados = asegurados.filter((cliente) => {
+  // 🔥 PROTECCIÓN DE FILTROS: Manejamos nulos y aseguramos que es un Array
+  let aseguradosFiltrados = (Array.isArray(asegurados) ? asegurados : []).filter((cliente) => {
     const busqueda = searchTerm.toLowerCase();
-    const nombreCompleto = `${cliente.nombre} ${cliente.apellido || ""}`.toLowerCase();
-    const pasaFiltroTexto = nombreCompleto.includes(busqueda) || cliente.dni.includes(busqueda);
-    const pasaFiltroTipo = filtroTipo === "Todos" || cliente.tipo === filtroTipo;
-    const pasaFiltroEstado = filtroEstado === "Todos" || (filtroEstado === "Activos" && cliente.activo) || (filtroEstado === "Inactivos" && !cliente.activo);
+    const nombreCompleto = `${cliente?.nombre || ""} ${cliente?.apellido || ""}`.toLowerCase();
+    const dniSeguro = String(cliente?.dni || "").toLowerCase();
+    
+    const pasaFiltroTexto = nombreCompleto.includes(busqueda) || dniSeguro.includes(busqueda);
+    const pasaFiltroTipo = filtroTipo === "Todos" || cliente?.tipo === filtroTipo;
+    const pasaFiltroEstado = filtroEstado === "Todos" || (filtroEstado === "Activos" && cliente?.activo) || (filtroEstado === "Inactivos" && !cliente?.activo);
+    
     return pasaFiltroTexto && pasaFiltroTipo && pasaFiltroEstado;
   });
 
@@ -129,8 +153,8 @@ export default function AseguradosPage() {
         const polizasB = b._count?.polizas || 0;
         return polizasB - polizasA;
       case "alfabetico":
-        const nombreA = `${a.nombre} ${a.apellido || ""}`.toLowerCase().trim();
-        const nombreB = `${b.nombre} ${b.apellido || ""}`.toLowerCase().trim();
+        const nombreA = `${a.nombre || ""} ${a.apellido || ""}`.toLowerCase().trim();
+        const nombreB = `${b.nombre || ""} ${b.apellido || ""}`.toLowerCase().trim();
         return nombreA.localeCompare(nombreB);
       default: return 0;
     }
@@ -140,12 +164,12 @@ export default function AseguradosPage() {
 
   const prepararDatosParaExcel = () => {
     return aseguradosOrdenados.map((cliente) => ({
-      "Nombre / Razón Social": `${cliente.nombre} ${cliente.apellido || ""}`.trim(),
-      "DNI / CUIT": cliente.dni,
+      "Nombre / Razón Social": `${cliente.nombre || ""} ${cliente.apellido || ""}`.trim(),
+      "DNI / CUIT": cliente.dni || "",
       "Teléfono": cliente.telefono || "-",
       "Email": cliente.email || "-",
-      "Tipo de Cliente": cliente.tipo,
-      "Fecha de Alta": new Date(cliente.fechaRegistro).toLocaleDateString("es-AR"),
+      "Tipo de Cliente": cliente.tipo || "",
+      "Fecha de Alta": cliente.fechaRegistro ? new Date(cliente.fechaRegistro).toLocaleDateString("es-AR") : "",
       "Cant. Pólizas Activas": cliente._count?.polizas || 0,
       "Estado en Sistema": cliente.activo ? "Activo" : "Inactivo",
     }));
@@ -163,7 +187,6 @@ export default function AseguradosPage() {
   ];
  
   return (
-    // 🔥 AJUSTE: p-4 en móvil, p-8 en PC. gap-5 en móvil, gap-8 en PC.
     <div className="flex flex-col p-4 lg:p-8 w-full gap-5 lg:gap-8 bg-white min-h-screen overflow-x-hidden">
       
       <PageHeader 
@@ -179,13 +202,11 @@ export default function AseguradosPage() {
         filtroEstado={filtroEstado} setFiltroEstado={setFiltroEstado}
       />
 
-      {/* 🔥 AJUSTE: Modificamos este contenedor para que el selector de orden y los botones se acomoden bien en vertical en el celular */}
       <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 w-full -mb-2 lg:-mb-4">
         <div className="w-full xl:w-auto">
           <SelectOrdenamiento opciones={OPCIONES_ORDEN} valorActual={ordenActual} onChange={setOrdenActual} />
         </div>
         
-        {/* En celulares, los botones ocupan el 100% del ancho (w-full) y se estiran */}
         <div className="flex flex-col sm:flex-row items-center gap-3 w-full xl:w-auto">
           <button onClick={() => setIsImportModalOpen(true)} className="flex justify-center items-center gap-2 w-full sm:w-auto px-4 py-2.5 lg:py-2 bg-gray-50 hover:bg-gray-100 border border-gray-200 text-gray-700 rounded-xl text-sm font-bold transition-all active:scale-95 shadow-sm">
             <UploadCloud size={16} /> Importar Excel
@@ -196,7 +217,6 @@ export default function AseguradosPage() {
         </div>
       </div>
 
-      {/* El componente Table se encarga del renderizado de la tabla */}
       <Table columns={columnas} isLoading={isLoading} isEmpty={aseguradosOrdenados.length === 0} emptyContent={<div className="flex flex-col items-center justify-center text-gray-500 py-6"><Search size={32} className="text-gray-300 mb-3" /><p className="font-medium text-gray-900">No se encontraron clientes</p></div>}>
         {aseguradosOrdenados.map((cliente) => (
           <AseguradoTableRow 

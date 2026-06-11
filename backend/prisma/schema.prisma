@@ -18,14 +18,18 @@ model Productor {
   contrasenaHash String
   fechaAlta      DateTime @default(now())
 
-  // 🔥 NUEVO: Conexión con el sistema de autenticación
+  // Conexión con el sistema de autenticación
   userId         Int?     @unique
   user           User?    @relation(fields: [userId], references: [id])
 
   asegurados         Asegurado[]
+  companias          Compania[] 
   notasSiniestro     NotaSiniestro[]
   historialSiniestro HistorialSiniestro[]
   alertas            Alerta[]
+
+  // 🔥 ESTA ES LA LÍNEA QUE FALTA AGREGAR:
+  actividades        Actividad[] 
 }
 
 model Asegurado {
@@ -55,6 +59,10 @@ model Compania {
   cuit               String?  // <-- Agregamos CUIT
   telefonoSiniestros String?  // <-- Agregamos Teléfono
   email              String?
+
+  productorId        Int        // 🔥 ESTO FALTABA: Dueño de la compañía
+  productor          Productor  @relation(fields: [productorId], references: [id]) // 🔥 ESTO FALTABA
+
   polizas            Poliza[]
 }
 
@@ -208,8 +216,11 @@ model Actividad {
   accion      String   
   entidad     String   
   descripcion String   
-  cliente     String?  // <-- Con el ? porque es opcional
+  cliente     String?
   fecha       DateTime @default(now())
+
+  productorId Int?                                                    // ← AGREGAR
+  productor   Productor? @relation(fields: [productorId], references: [id])  // ← AGREGAR
 }
 
 model Agencia {

@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { X } from "lucide-react";
-// 🔥 IMPORTAMOS EL MODAL DE VENTAS
 import UpgradeModal from "@/components/ui/UpgradeModal";
+import { apiFetch } from "@/services/api"; // 🔥 IMPORTAMOS EL FETCH CON CREDENCIALES
 
 interface Props {
   isOpen: boolean;
@@ -23,7 +23,6 @@ export default function NuevoAseguradoModal({ isOpen, onClose, onSuccess, client
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   
-  // 🔥 ESTADOS PARA EL MODAL DE BLOQUEO
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [mensajeUpgrade, setMensajeUpgrade] = useState("");
 
@@ -51,26 +50,26 @@ export default function NuevoAseguradoModal({ isOpen, onClose, onSuccess, client
     setError("");
 
     try {
-      const url = clienteAEditar 
-        ? `${process.env.NEXT_PUBLIC_API_URL}/api/asegurados/${clienteAEditar.id}` 
-        : `${process.env.NEXT_PUBLIC_API_URL}/api/asegurados`;
+      // 🔥 Simplificamos la URL para usarla con nuestro apiFetch
+      const endpoint = clienteAEditar 
+        ? `/api/asegurados/${clienteAEditar.id}` 
+        : `/api/asegurados`;
       
       const method = clienteAEditar ? "PUT" : "POST";
 
-      const response = await fetch(url, {
+      // 🔥 USAMOS APIFETCH EN LUGAR DE FETCH NORMAL
+      const response = await apiFetch(endpoint, {
         method,
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formData),
       });
 
       const data = await response.json();
 
-      // 🔥 INTERCEPTAMOS EL ERROR 403 DEL MURO DE PAGO
       if (response.status === 403 && data.codigo === "LIMITE_EXCEDIDO") {
         setMensajeUpgrade(data.error);
         setShowUpgradeModal(true);
         setIsLoading(false);
-        return; // Frenamos la ejecución acá
+        return; 
       }
 
       if (!response.ok) throw new Error(data.error || "Error al guardar");
@@ -171,7 +170,6 @@ export default function NuevoAseguradoModal({ isOpen, onClose, onSuccess, client
         </div>
       </div>
 
-      {/* 🔥 ACÁ RENDERIZAMOS EL MODAL CUANDO SALTA EL ERROR */}
       <UpgradeModal 
         isVisible={showUpgradeModal} 
         onClose={() => setShowUpgradeModal(false)} 

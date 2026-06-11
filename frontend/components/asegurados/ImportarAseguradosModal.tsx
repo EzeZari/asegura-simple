@@ -3,8 +3,8 @@
 import { useState, useRef } from "react";
 import { X, UploadCloud, FileSpreadsheet, AlertTriangle, Loader2, CheckCircle2, Info } from "lucide-react";
 import * as XLSX from "xlsx";
-// 🔥 IMPORTAMOS EL MODAL DE VENTAS
 import UpgradeModal from "@/components/ui/UpgradeModal";
+import { apiFetch } from "@/services/api"; // 🔥 IMPORTAMOS EL FETCH CON CREDENCIALES
 
 interface Props {
   isOpen: boolean;
@@ -19,7 +19,6 @@ export default function ImportarAseguradosModal({ isOpen, onClose, onSuccess }: 
   const [error, setError] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // 🔥 ESTADOS PARA EL MODAL DE BLOQUEO
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [mensajeUpgrade, setMensajeUpgrade] = useState("");
 
@@ -61,20 +60,19 @@ export default function ImportarAseguradosModal({ isOpen, onClose, onSuccess }: 
     setError("");
 
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/asegurados/importar`, {
+      // 🔥 USAMOS APIFETCH EN LUGAR DE FETCH NORMAL
+      const res = await apiFetch(`/api/asegurados/importar`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(previewData),
       });
 
       const data = await res.json();
 
-      // 🔥 INTERCEPTAMOS EL ERROR 403 DEL MURO DE PAGO
       if (res.status === 403 && data.codigo === "LIMITE_EXCEDIDO") {
         setMensajeUpgrade(data.error);
         setShowUpgradeModal(true);
         setIsProcessing(false);
-        return; // Frenamos la ejecución acá
+        return; 
       }
 
       if (!res.ok) throw new Error(data.error || "Error en la carga.");
@@ -198,7 +196,6 @@ export default function ImportarAseguradosModal({ isOpen, onClose, onSuccess }: 
         </div>
       </div>
 
-      {/* 🔥 ACÁ RENDERIZAMOS EL MODAL CUANDO SALTA EL ERROR DE LÍMITE */}
       <UpgradeModal 
         isVisible={showUpgradeModal} 
         onClose={() => setShowUpgradeModal(false)} 

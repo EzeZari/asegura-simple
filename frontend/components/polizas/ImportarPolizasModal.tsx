@@ -3,6 +3,7 @@
 import { useState, useRef } from "react";
 import { X, UploadCloud, FileSpreadsheet, AlertTriangle, Loader2, CheckCircle2, Info } from "lucide-react";
 import * as XLSX from "xlsx";
+import { apiFetch } from "@/services/api"; // 🔥 IMPORTAMOS EL FETCH CON CREDENCIALES
 
 interface Props {
   isOpen: boolean;
@@ -56,17 +57,15 @@ export default function ImportarPolizasModal({ isOpen, onClose, onSuccess }: Pro
     setError("");
 
     try {
-      // 🔥 ACÁ FALTABA CERRAR EL BACKTICK DE LA URL
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/polizas/importar`, {
+      // 🔥 USAMOS APIFETCH EN LUGAR DE FETCH NORMAL
+      const res = await apiFetch(`/api/polizas/importar`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(previewData),
       });
 
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Error en la carga.");
 
-      // 🔥 ACÁ FALTABA ABRIR EL BACKTICK DEL MENSAJE
       onSuccess(`¡Éxito! Se crearon ${data.creados} pólizas nuevas (se omitieron ${data.salteados} por duplicado o DNI inexistente).`);
       handleClose();
     } catch (err: any) {

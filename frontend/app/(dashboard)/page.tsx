@@ -5,7 +5,7 @@ import { useAuthStore } from "@/store/authStore";
 import { Users, FileText, AlertCircle, Building } from "lucide-react";
 import StatCard from "@/components/dashboard/StatCard";
 import RecentActivity from "@/components/dashboard/RecentActivity";
-import { apiFetch } from "@/services/api"; // ← NUEVO
+import { apiFetch } from "@/services/api";
 
 export default function DashboardPage() {
   const user = useAuthStore((state) => state.user);
@@ -16,8 +16,12 @@ export default function DashboardPage() {
   useEffect(() => {
     setMounted(true);
     
-    apiFetch('/api/dashboard/stats') // ← CAMBIO
-      .then((res) => res.json())
+    // apiFetch automáticamente le pasa tu token al backend para que sepa de qué usuario buscar los datos
+    apiFetch('/api/dashboard/stats')
+      .then((res) => {
+        if (!res.ok) throw new Error("Fallo en la petición");
+        return res.json();
+      })
       .then((data) => {
         setDashboardData(data);
         setIsLoading(false);
@@ -31,7 +35,7 @@ export default function DashboardPage() {
   const statsReales = [
     { title: "Total Asegurados", value: isLoading ? "..." : dashboardData?.totalAsegurados?.toString() || "0", description: "Clientes activos", icon: Users, trend: "neutral" as const, href: "/asegurados" },
     { title: "Pólizas Activas", value: isLoading ? "..." : dashboardData?.polizasActivas?.toString() || "0", description: "Coberturas vigentes", icon: FileText, trend: "neutral" as const, href: "/polizas" },
-    { title: "Vencimientos (30 días)", value: isLoading ? "..." : dashboardData?.vencimientos?.toString() || "0", description: "Requieren atención", icon: AlertCircle, trend: dashboardData?.vencimientos > 0 ? "down" : "up", href: "/alertas" },
+    { title: "Vencimientos (30 días)", value: isLoading ? "..." : dashboardData?.vencimientos?.toString() || "0", description: "Requieren atención", icon: AlertCircle, trend: dashboardData?.vencimientos > 0 ? "down" : "neutral", href: "/alertas" },
     { title: "Aseguradoras", value: isLoading ? "..." : dashboardData?.totalCompanias?.toString() || "0", description: "Compañías conectadas", icon: Building, trend: "neutral" as const, href: "/companias" },
   ];
 

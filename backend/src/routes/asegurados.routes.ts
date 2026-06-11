@@ -7,22 +7,37 @@ import { verificarToken } from '../middlewares/auth.middleware';
 const router = Router();
 router.use(verificarToken);
 
-// Función helper para obtener o crear el Productor del usuario logueado
+// Función helper para obtener, vincular o crear el Productor del usuario logueado
 const obtenerProductorId = async (userId: number): Promise<number> => {
+  // 1. Buscamos si ya está perfectamente linkeado
   let productor = await prisma.productor.findUnique({ where: { userId } });
   
   if (!productor) {
     const user = await prisma.user.findUnique({ where: { id: userId } });
-    productor = await prisma.productor.create({
-      data: {
-        nombre: user?.nombre || 'Productor',
-        apellido: '',
-        email: user?.email || `user${userId}@asegurasimple.com`,
-        usuario: user?.email || `user${userId}`,
-        contrasenaHash: '',
-        userId: userId
-      }
-    });
+    const userEmail = user?.email || `user${userId}@asegurasimple.com`;
+
+    // 2. Si no lo encontró por userId, buscamos si ya existe ese email "suelto" en la base de datos
+    productor = await prisma.productor.findUnique({ where: { email: userEmail } });
+
+    if (productor) {
+      // 3A. Si el productor ya existía, simplemente lo actualizamos para "engancharle" el userId nuevo
+      productor = await prisma.productor.update({
+        where: { id: productor.id },
+        data: { userId: userId }
+      });
+    } else {
+      // 3B. Si definitivamente no existe de ninguna forma, lo creamos de cero
+      productor = await prisma.productor.create({
+        data: {
+          nombre: user?.nombre || 'Productor',
+          apellido: '',
+          email: userEmail,
+          usuario: userEmail,
+          contrasenaHash: '',
+          userId: userId
+        }
+      });
+    }
   }
   
   return productor.id;
@@ -48,6 +63,17 @@ router.get('/', async (req, res) => {
 router.get('/:id/polizas', async (req, res) => {
   try {
     const { id } = req.params;
+    const productorId = await obtenerProductorId(req.userId!);
+
+    // 🔥 SEGURIDAD: Verificamos que el asegurado te pertenezca antes de mostrar sus pólizas
+    const asegurado = await prisma.asegurado.findFirst({
+      where: { id: parseInt(id), productorId }
+    });
+
+    if (!asegurado) {
+      return res.status(403).json({ error: 'El asegurado no existe o no te pertenece.' });
+    }
+
     const polizas = await prisma.poliza.findMany({
       where: { aseguradoId: parseInt(id) },
       include: { compania: true },
@@ -61,7 +87,7 @@ router.get('/:id/polizas', async (req, res) => {
 });
 
 // RUTA: POST /api/asegurados
-router.post('/', async (req, res) => {
+router.post('/', async (req, res): Promise<any> => {
   try {
     const productorId = await obtenerProductorId(req.userId!);
 
@@ -90,8 +116,11 @@ router.post('/', async (req, res) => {
 
     await prisma.actividad.create({
       data: {
-        accion: "Alta", entidad: "Asegurado", descripcion: "Nuevo cliente registrado",
-        cliente: `${data.nombre} ${data.apellido || ''}`.trim()
+        accion: "Alta", 
+        entidad: "Asegurado", 
+        descripcion: "Nuevo cliente registrado",
+        cliente: `${data.nombre} ${data.apellido || ''}`.trim(),
+        productorId // 🔥 INYECTAMOS EL PRODUCTOR ACÁ
       }
     });
 
@@ -109,12 +138,18 @@ router.post('/', async (req, res) => {
 });
 
 // RUTA: PUT /api/asegurados/:id
-router.put('/:id', async (req, res) => {
+router.put('/:id', async (req, res): Promise<any> => {
   try {
     const { id } = req.params;
     const data = req.body;
+    const productorId = await obtenerProductorId(req.userId!);
 
-    const viejo = await prisma.asegurado.findUnique({ where: { id: parseInt(id) } });
+    // 🔥 SEGURIDAD: Buscamos que el asegurado te pertenezca
+    const viejo = await prisma.asegurado.findFirst({ 
+      where: { id: parseInt(id), productorId } 
+    });
+
+    if (!viejo) return res.status(403).json({ error: 'Asegurado no encontrado o no autorizado.' });
 
     const aseguradoActualizado = await prisma.asegurado.update({
       where: { id: parseInt(id) },
@@ -128,21 +163,23 @@ router.put('/:id', async (req, res) => {
     });
 
     let cambios = [];
-    if (viejo?.nombre !== data.nombre) cambios.push(`Nombre: ${viejo?.nombre} -> ${data.nombre}`);
-    if (viejo?.apellido !== data.apellido) cambios.push(`Apellido: ${viejo?.apellido} -> ${data.apellido}`);
-    if (viejo?.telefono !== data.telefono) cambios.push(`Tel: ${viejo?.telefono || '-'} -> ${data.telefono || '-'}`);
-    if (viejo?.email !== data.email) cambios.push(`Email: ${viejo?.email || '-'} -> ${data.email || '-'}`);
-    if (viejo?.dni !== data.dni) cambios.push(`DNI: ${viejo?.dni} -> ${data.dni}`);
+    if (viejo.nombre !== data.nombre) cambios.push(`Nombre: ${viejo.nombre} -> ${data.nombre}`);
+    if (viejo.apellido !== data.apellido) cambios.push(`Apellido: ${viejo.apellido} -> ${data.apellido}`);
+    if (viejo.telefono !== data.telefono) cambios.push(`Tel: ${viejo.telefono || '-'} -> ${data.telefono || '-'}`);
+    if (viejo.email !== data.email) cambios.push(`Email: ${viejo.email || '-'} -> ${data.email || '-'}`);
+    if (viejo.dni !== data.dni) cambios.push(`DNI: ${viejo.dni} -> ${data.dni}`);
 
     const textoDetalle = cambios.length > 0 ? cambios.join(" | ") : "Actualización de datos";
-    const accionReal = data.activo === false && viejo?.activo === true ? "Desactivación" :
-                       data.activo === true && viejo?.activo === false ? "Activación" : "Edición";
+    const accionReal = data.activo === false && viejo.activo === true ? "Desactivación" :
+                       data.activo === true && viejo.activo === false ? "Activación" : "Edición";
 
     await prisma.actividad.create({
       data: {
-        accion: accionReal, entidad: "Asegurado",
+        accion: accionReal, 
+        entidad: "Asegurado",
         descripcion: accionReal !== "Edición" ? (accionReal === "Desactivación" ? "Cliente pasado a Inactivo" : "Cliente vuelto a Activar") : textoDetalle,
         cliente: `${data.nombre} ${data.apellido || ''}`.trim(),
+        productorId // 🔥 INYECTAMOS EL PRODUCTOR ACÁ
       }
     });
 
@@ -153,20 +190,28 @@ router.put('/:id', async (req, res) => {
 });
 
 // RUTA: DELETE /api/asegurados/:id
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', async (req, res): Promise<any> => {
   try {
     const { id } = req.params;
-    const aseguradoABorrar = await prisma.asegurado.findUnique({ where: { id: parseInt(id) } });
+    const productorId = await obtenerProductorId(req.userId!);
+
+    // 🔥 SEGURIDAD: Verificamos pertenencia antes de borrar
+    const aseguradoABorrar = await prisma.asegurado.findFirst({ 
+      where: { id: parseInt(id), productorId } 
+    });
+
+    if (!aseguradoABorrar) return res.status(403).json({ error: 'Asegurado no encontrado o no autorizado.' });
+
     await prisma.asegurado.delete({ where: { id: parseInt(id) } });
 
-    if (aseguradoABorrar) {
-      await prisma.actividad.create({
-        data: {
-          accion: "Baja", entidad: "Asegurado",
-          descripcion: `${aseguradoABorrar.nombre} ${aseguradoABorrar.apellido || ''}`.trim(),
-        }
-      });
-    }
+    await prisma.actividad.create({
+      data: {
+        accion: "Baja", 
+        entidad: "Asegurado",
+        descripcion: `${aseguradoABorrar.nombre} ${aseguradoABorrar.apellido || ''}`.trim(),
+        productorId // 🔥 INYECTAMOS EL PRODUCTOR ACÁ
+      }
+    });
 
     res.json({ message: 'Asegurado eliminado' });
   } catch (error: any) {
@@ -176,7 +221,7 @@ router.delete('/:id', async (req, res) => {
 });
 
 // RUTA: POST /api/asegurados/importar
-router.post('/importar', async (req, res) => {
+router.post('/importar', async (req, res): Promise<any> => {
   try {
     const productorId = await obtenerProductorId(req.userId!);
 
@@ -237,9 +282,11 @@ router.post('/importar', async (req, res) => {
 
     await prisma.actividad.create({
       data: {
-        accion: "Alta", entidad: "Asegurado",
+        accion: "Alta", 
+        entidad: "Asegurado",
         descripcion: `Importación masiva: ${resultado.count} nuevos clientes cargados.`,
-        cliente: "Sistema / Excel"
+        cliente: "Sistema / Excel",
+        productorId // 🔥 INYECTAMOS EL PRODUCTOR ACÁ
       }
     });
 

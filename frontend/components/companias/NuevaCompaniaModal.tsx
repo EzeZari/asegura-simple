@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { X } from "lucide-react";
+import { apiFetch } from "@/services/api"; // 🔥 IMPORTAMOS NUESTRO APIFETCH
 
 interface Props {
   isOpen: boolean;
@@ -42,13 +43,14 @@ export default function NuevaCompaniaModal({ isOpen, onClose, onSuccess, compani
     setError("");
 
     try {
+      // 🔥 REEMPLAZAMOS EL FETCH NATIVO POR APIFETCH Y SACAMOS LA URL LARGA
       const url = companiaAEditar 
-        ? `${process.env.NEXT_PUBLIC_API_URL}/api/companias/${companiaAEditar.id}`
-        : `${process.env.NEXT_PUBLIC_API_URL}/api/companias`; 
+        ? `/api/companias/${companiaAEditar.id}`
+        : `/api/companias`; 
       
       const method = companiaAEditar ? "PUT" : "POST";
 
-      const response = await fetch(url, {
+      const response = await apiFetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formData),
