@@ -50,6 +50,9 @@ app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 // --- MIDDLEWARES CLÁSICOS ---
 app.use(express.json());
 app.use(cookieParser());
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
+app.use(cookieParser());
 
 // --- RUTAS ---
 app.use('/api/auth', authRoutes);
@@ -60,6 +63,7 @@ app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/alertas', alertasRoutes);
 app.use('/api/agencia', agenciaRoutes);
 app.use('/api/siniestros', siniestrosRoutes);
+
 
 const PORT = process.env.PORT || 3001;
 

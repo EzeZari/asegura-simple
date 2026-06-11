@@ -4,14 +4,45 @@ import { enviarAvisoVencimiento } from '../services/email.service';
 import path from 'path';
 import fs from 'fs';
 
+// 🔥 Función helper para sincronizar el User con el Productor y obtener el ID real
+const obtenerProductorId = async (userId: number): Promise<number> => {
+  let productor = await prisma.productor.findUnique({ where: { userId } });
+  
+  if (!productor) {
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    const userEmail = user?.email || `user${userId}@asegurasimple.com`;
+
+    productor = await prisma.productor.findUnique({ where: { email: userEmail } });
+
+    if (productor) {
+      productor = await prisma.productor.update({
+        where: { id: productor.id },
+        data: { userId: userId }
+      });
+    } else {
+      productor = await prisma.productor.create({
+        data: {
+          nombre: user?.nombre || 'Productor',
+          apellido: '',
+          email: userEmail,
+          usuario: userEmail,
+          contrasenaHash: '',
+          userId: userId
+        }
+      });
+    }
+  }
+  return productor.id;
+};
+
 export const obtenerTodas = async (req: Request, res: Response): Promise<any> => {
   try {
-    const userId = req.userId;
-    if (!userId) return res.status(401).json({ error: 'No autorizado' });
+    if (!req.userId) return res.status(401).json({ error: 'No autorizado' });
+    const productorId = await obtenerProductorId(req.userId);
 
     const polizas = await prisma.poliza.findMany({
-      // 🔥 FILTRO MULTI-TENANT: Trae pólizas solo si el asegurado es de ESTE usuario
-      where: { asegurado: { productor: { userId: userId } } }, 
+      // 🔥 FILTRO MULTI-TENANT OPTIMIZADO
+      where: { asegurado: { productorId: productorId } }, 
       include: { asegurado: true, compania: true },
       orderBy: { fechaVencimiento: 'asc' }
     });
@@ -24,13 +55,12 @@ export const obtenerTodas = async (req: Request, res: Response): Promise<any> =>
 export const obtenerPorId = async (req: Request, res: Response): Promise<any> => {
   try {
     const id = req.params.id as string;
-    const userId = req.userId;
+    const productorId = await obtenerProductorId(req.userId!);
 
-    // 🔥 Usamos findFirst en vez de findUnique para poder sumarle el filtro del userId
     const poliza = await prisma.poliza.findFirst({
       where: { 
         id: parseInt(id),
-        asegurado: { productor: { userId: userId } } 
+        asegurado: { productorId: productorId } 
       },
       include: { asegurado: true, compania: true }
     });
@@ -44,16 +74,16 @@ export const obtenerPorId = async (req: Request, res: Response): Promise<any> =>
 
 export const crearPoliza = async (req: Request, res: Response): Promise<any> => {
   try {
-    const userId = req.userId;
+    const productorId = await obtenerProductorId(req.userId!);
     const { 
       nroPoliza, tipoPoliza, fechaInicio, fechaVencimiento, estado, 
       cobertura, aseguradoId, companiaId,
       patente, marca, modelo, ubicacionRiesgo, cantidadEmpleados 
     } = req.body;
 
-    // 🔥 SEGURIDAD EXTRA: Verificamos que el asegurado al que le quiere crear la póliza SEA SUYO
+    // 🔥 SEGURIDAD EXTRA: Verificamos que el asegurado SEA TUYO
     const asegurado = await prisma.asegurado.findFirst({
-      where: { id: parseInt(aseguradoId), productor: { userId: userId } }
+      where: { id: parseInt(aseguradoId), productorId: productorId }
     });
 
     if (!asegurado) return res.status(403).json({ error: 'El asegurado no te pertenece o no existe.' });
@@ -80,7 +110,8 @@ export const crearPoliza = async (req: Request, res: Response): Promise<any> => 
         accion: "Alta",
         entidad: "Póliza",
         descripcion: `Póliza #${nroPoliza} (${tipoPoliza})`,
-        cliente: `${nuevaPoliza.asegurado.nombre} ${nuevaPoliza.asegurado.apellido || ''}`.trim()
+        cliente: `${nuevaPoliza.asegurado.nombre} ${nuevaPoliza.asegurado.apellido || ''}`.trim(),
+        productorId // 🔥 INYECTADO
       }
     });
 
@@ -94,30 +125,30 @@ export const actualizarPoliza = async (req: Request, res: Response): Promise<any
   try {
     const id = req.params.id as string;
     const data = req.body;
-    const userId = req.userId;
+    const productorId = await obtenerProductorId(req.userId!);
 
-    // 🔥 Buscamos si la póliza existe y LE PERTENECE antes de intentar actualizarla
+    // 🔥 Buscamos si la póliza LE PERTENECE antes de intentar actualizarla
     const vieja = await prisma.poliza.findFirst({ 
       where: { 
         id: parseInt(id),
-        asegurado: { productor: { userId: userId } }
+        asegurado: { productorId: productorId }
       },
       include: { asegurado: true, compania: true }
     });
 
-    if (!vieja) return res.status(404).json({ error: 'Póliza no encontrada.' });
+    if (!vieja) return res.status(404).json({ error: 'Póliza no encontrada o no autorizada.' });
 
     const actualizada = await prisma.poliza.update({
       where: { id: parseInt(id) },
       data: {
         nroPoliza: data.nroPoliza,
         tipoPoliza: data.tipoPoliza,
-        fechaInicio: new Date(data.fechaInicio),
-        fechaVencimiento: new Date(data.fechaVencimiento),
+        fechaInicio: data.fechaInicio ? new Date(data.fechaInicio) : undefined,
+        fechaVencimiento: data.fechaVencimiento ? new Date(data.fechaVencimiento) : undefined,
         estado: data.estado,
         cobertura: data.cobertura,
-        aseguradoId: parseInt(data.aseguradoId),
-        companiaId: parseInt(data.companiaId),
+        aseguradoId: data.aseguradoId ? parseInt(data.aseguradoId) : undefined,
+        companiaId: data.companiaId ? parseInt(data.companiaId) : undefined,
         patente: data.patente || null,
         marca: data.marca || null,
         modelo: data.modelo || null,
@@ -128,9 +159,9 @@ export const actualizarPoliza = async (req: Request, res: Response): Promise<any
     });
 
     let cambios = [];
-    if (vieja.estado !== data.estado) cambios.push(`Estado: ${vieja.estado} -> ${data.estado}`);
-    if (vieja.nroPoliza !== data.nroPoliza) cambios.push(`Nro: ${vieja.nroPoliza} -> ${data.nroPoliza}`);
-    if (vieja.companiaId !== actualizada.companiaId) cambios.push(`Compañía: ${vieja.compania.nombre} -> ${actualizada.compania.nombre}`);
+    if (vieja.estado !== data.estado && data.estado) cambios.push(`Estado: ${vieja.estado} -> ${data.estado}`);
+    if (vieja.nroPoliza !== data.nroPoliza && data.nroPoliza) cambios.push(`Nro: ${vieja.nroPoliza} -> ${data.nroPoliza}`);
+    if (data.companiaId && vieja.companiaId !== parseInt(data.companiaId)) cambios.push(`Compañía actualizada`);
     
     let textoDetalle = cambios.length > 0 ? cambios.join(" | ") : "Actualización de datos técnicos";
 
@@ -139,7 +170,8 @@ export const actualizarPoliza = async (req: Request, res: Response): Promise<any
         accion: "Edición",
         entidad: "Póliza",
         descripcion: textoDetalle,
-        cliente: `${actualizada.asegurado.nombre} ${actualizada.asegurado.apellido || ''}`.trim()
+        cliente: `${actualizada.asegurado.nombre} ${actualizada.asegurado.apellido || ''}`.trim(),
+        productorId // 🔥 INYECTADO
       }
     });
 
@@ -152,13 +184,12 @@ export const actualizarPoliza = async (req: Request, res: Response): Promise<any
 export const eliminarPoliza = async (req: Request, res: Response): Promise<any> => {
   try {
     const id = req.params.id as string;
-    const userId = req.userId;
+    const productorId = await obtenerProductorId(req.userId!);
     
-    // 🔥 Verificamos propiedad
     const polizaABorrar = await prisma.poliza.findFirst({ 
       where: { 
         id: parseInt(id),
-        asegurado: { productor: { userId: userId } }
+        asegurado: { productorId: productorId }
       },
       include: { asegurado: true } 
     });
@@ -179,7 +210,8 @@ export const eliminarPoliza = async (req: Request, res: Response): Promise<any> 
         accion: "Baja",
         entidad: "Póliza",
         descripcion: `Se eliminó la póliza #${polizaABorrar.nroPoliza}`,
-        cliente: `${polizaABorrar.asegurado.nombre} ${polizaABorrar.asegurado.apellido || ''}`.trim()
+        cliente: `${polizaABorrar.asegurado.nombre} ${polizaABorrar.asegurado.apellido || ''}`.trim(),
+        productorId // 🔥 INYECTADO
       }
     });
 
@@ -192,13 +224,12 @@ export const eliminarPoliza = async (req: Request, res: Response): Promise<any> 
 export const avisarVencimiento = async (req: Request, res: Response): Promise<any> => {
   try {
     const id = req.params.id as string;
-    const userId = req.userId;
+    const productorId = await obtenerProductorId(req.userId!);
     
-    // 🔥 Verificamos propiedad
     const poliza = await prisma.poliza.findFirst({
       where: { 
         id: parseInt(id),
-        asegurado: { productor: { userId: userId } }
+        asegurado: { productorId: productorId }
       },
       include: { asegurado: true, compania: true }
     });
@@ -246,7 +277,8 @@ export const avisarVencimiento = async (req: Request, res: Response): Promise<an
         accion: "Edición",
         entidad: "Póliza",
         descripcion: `Aviso de vencimiento enviado por correo (Póliza #${poliza.nroPoliza})`,
-        cliente: `${poliza.asegurado.nombre} ${poliza.asegurado.apellido || ''}`.trim()
+        cliente: `${poliza.asegurado.nombre} ${poliza.asegurado.apellido || ''}`.trim(),
+        productorId // 🔥 INYECTADO
       }
     });
 
@@ -260,22 +292,22 @@ export const avisarVencimiento = async (req: Request, res: Response): Promise<an
 export const subirPdf = async (req: Request, res: Response): Promise<any> => {
   try {
     const id = req.params.id as string; 
-    const userId = req.userId;
+    const productorId = await obtenerProductorId(req.userId!);
 
     if (!req.file) {
       return res.status(400).json({ error: 'No se seleccionó ningún archivo o el formato no es PDF.' });
     }
 
-    // 🔥 Verificamos propiedad
+    // 🔥 Verificamos que esta póliza a la que le quieren meter un PDF sea TUYA
     const polizaExistente = await prisma.poliza.findFirst({
       where: { 
         id: parseInt(id),
-        asegurado: { productor: { userId: userId } }
+        asegurado: { productorId: productorId }
       }
     });
 
     if (!polizaExistente) {
-      return res.status(404).json({ error: 'Póliza no encontrada.' });
+      return res.status(404).json({ error: 'Póliza no encontrada o no autorizada.' });
     }
 
     if (polizaExistente.pdfUrl) {
@@ -298,7 +330,8 @@ export const subirPdf = async (req: Request, res: Response): Promise<any> => {
         accion: "Edición",
         entidad: "Póliza",
         descripcion: `Se adjuntó copia digital PDF a la Póliza #${polizaActualizada.nroPoliza}`,
-        cliente: `${polizaActualizada.asegurado.nombre} ${polizaActualizada.asegurado.apellido || ''}`.trim()
+        cliente: `${polizaActualizada.asegurado.nombre} ${polizaActualizada.asegurado.apellido || ''}`.trim(),
+        productorId // 🔥 INYECTADO
       }
     });
 
@@ -311,20 +344,24 @@ export const subirPdf = async (req: Request, res: Response): Promise<any> => {
 
 export const importarPolizas = async (req: Request, res: Response): Promise<any> => {
   try {
-    const userId = req.userId;
+    const productorId = await obtenerProductorId(req.userId!);
     const polizasExcel = req.body;
 
     if (!Array.isArray(polizasExcel)) {
       return res.status(400).json({ error: 'El formato de datos debe ser un arreglo.' });
     }
 
-    // 🔥 FILTRO CLAVE: Solo traemos los asegurados que LE PERTENECEN a ESTE usuario
+    // 🔥 FILTRO CLAVE
     const asegurados = await prisma.asegurado.findMany({ 
-      where: { productor: { userId: userId } },
+      where: { productorId: productorId },
       select: { id: true, dni: true } 
     });
     
-    const companias = await prisma.compania.findMany({ select: { id: true, nombre: true } });
+    // Solo traemos TUS compañías
+    const companias = await prisma.compania.findMany({ 
+      where: { productorId: productorId },
+      select: { id: true, nombre: true } 
+    });
 
     const mapaAsegurados = new Map(asegurados.map(a => [a.dni, a.id]));
     const mapaCompanias = new Map(companias.map(c => [c.nombre.toLowerCase().trim(), c.id]));
@@ -365,13 +402,7 @@ export const importarPolizas = async (req: Request, res: Response): Promise<any>
         if (row.hasta || row.fechavencimiento) fechaVencimiento = new Date(row.hasta || row.fechavencimiento);
 
         return {
-          nroPoliza,
-          aseguradoId,
-          companiaId,
-          tipoPoliza,
-          estado,
-          fechaInicio,
-          fechaVencimiento,
+          nroPoliza, aseguradoId, companiaId, tipoPoliza, estado, fechaInicio, fechaVencimiento,
           cobertura: row.cobertura ? String(row.cobertura).trim() : null,
           patente: row.patente ? String(row.patente).trim().toUpperCase() : null,
         };
@@ -396,7 +427,8 @@ export const importarPolizas = async (req: Request, res: Response): Promise<any>
         accion: "Alta",
         entidad: "Póliza",
         descripcion: `Importación masiva: se cargaron ${resultado.count} pólizas.`,
-        cliente: "Sistema / Excel"
+        cliente: "Sistema / Excel",
+        productorId // 🔥 INYECTADO
       }
     });
 

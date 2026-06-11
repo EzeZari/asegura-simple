@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import NuevaPolizaModal from "@/components/polizas/NuevaPolizaModal";
 import Toast from "@/components/ui/Toast";
+import { apiFetch } from "@/services/api"; // 🔥 IMPORTAMOS NUESTRO FETCH SEGURO
 
 export default function PolizaDetallePage() {
   const { id } = useParams();
@@ -25,17 +26,22 @@ export default function PolizaDetallePage() {
 
   const fetchPoliza = async () => {
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/polizas/${id}`);
+      // 🔥 REEMPLAZO 1: Usamos apiFetch para cargar el detalle de forma segura
+      const res = await apiFetch(`/api/polizas/${id}`);
+      if (!res.ok) throw new Error("No se pudo cargar la póliza.");
       const data = await res.json();
       setPoliza(data);
     } catch (err) {
       console.error("Error al cargar la póliza:", err);
+      setPoliza(null);
     } finally {
       setIsLoading(false);
     }
   };
 
-  useEffect(() => { fetchPoliza(); }, [id]);
+  useEffect(() => { 
+    if (id) fetchPoliza(); 
+  }, [id]);
 
   const handleEditSuccess = () => {
     setIsModalOpen(false);
@@ -44,7 +50,6 @@ export default function PolizaDetallePage() {
     setShowToast(true);
   };
 
-  // Función para manejar la subida del archivo a nuestro nuevo endpoint
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -59,9 +64,10 @@ export default function PolizaDetallePage() {
     formData.append("pdf", file);
 
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/polizas/${id}/subir-pdf`, {
+      // 🔥 REEMPLAZO 2: Usamos apiFetch para subir el archivo de manera autorizada
+      const res = await apiFetch(`/api/polizas/${id}/subir-pdf`, {
         method: "POST",
-        body: formData, 
+        body: formData, // FormData hace que el navegador configure los headers multipart solos
       });
       
       const data = await res.json();
@@ -74,12 +80,12 @@ export default function PolizaDetallePage() {
       alert(error.message);
     } finally {
       setIsUploading(false);
-      if (fileInputRef.current) fileInputRef.current.value = ''; // Reseteamos el input
+      if (fileInputRef.current) fileInputRef.current.value = ''; 
     }
   };
 
   if (isLoading) return <div className="p-8 text-gray-500 animate-pulse">Cargando ficha técnica...</div>;
-  if (!poliza) return <div className="p-8 text-red-500 font-bold">Error: Póliza no encontrada.</div>;
+  if (!poliza) return <div className="p-8 text-red-500 font-bold">Error: Póliza no encontrada o no autorizada.</div>;
 
   const getStatusStyle = (estado: string) => {
     switch (estado) {
@@ -92,7 +98,6 @@ export default function PolizaDetallePage() {
   };
 
   return (
-    // 🔥 AJUSTE: p-4 en móvil, p-8 en PC. overflow-x-hidden para que nada se desborde horizontalmente
     <div className="flex flex-col p-4 md:p-8 w-full gap-6 md:gap-8 bg-white min-h-screen overflow-x-hidden">
       
       {/* Header Principal */}
@@ -106,13 +111,11 @@ export default function PolizaDetallePage() {
         </button>
         
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-          {/* 🔥 AJUSTE: gap-3 en móvil, gap-5 en PC. Permitimos que el texto se rompa si es muy largo */}
           <div className="flex items-center gap-3 md:gap-5 w-full md:w-auto">
             <div className="p-3 md:p-4 bg-green-700 text-white rounded-2xl shadow-lg shadow-green-100 shrink-0">
               <FileText size={28} className="md:w-8 md:h-8" />
             </div>
             <div className="min-w-0 flex-1">
-              {/* 🔥 AJUSTE: flex-col en móviles muy chicos, fila en pantallas un poco más grandes */}
               <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
                 <h1 className="text-2xl md:text-3xl font-bold text-gray-900 tracking-tight truncate">Póliza #{poliza.nroPoliza}</h1>
                 <span className={`w-fit px-3 py-1 rounded-full text-[10px] md:text-xs font-bold border ${getStatusStyle(poliza.estado)}`}>
@@ -125,7 +128,6 @@ export default function PolizaDetallePage() {
             </div>
           </div>
           
-          {/* 🔥 AJUSTE: Botón w-full en móvil, w-auto en PC */}
           <button 
             onClick={() => setIsModalOpen(true)}
             className="w-full md:w-auto flex justify-center items-center gap-2 bg-gray-900 hover:bg-gray-800 text-white px-6 py-3 rounded-xl font-bold transition-all shadow-md active:scale-95 text-sm md:text-base"
@@ -139,7 +141,6 @@ export default function PolizaDetallePage() {
         
         {/* Columna Principal: Cobertura */}
         <div className="lg:col-span-2 flex flex-col gap-6 md:gap-8">
-          {/* 🔥 AJUSTE: p-5 en móvil, p-8 en PC */}
           <div className="p-5 md:p-8 border border-gray-100 rounded-3xl bg-white shadow-sm relative overflow-hidden">
             <div className="absolute top-0 right-0 p-8 opacity-5">
               <Shield size={120} />
@@ -276,7 +277,6 @@ export default function PolizaDetallePage() {
   );
 }
 
-// 🔥 AJUSTE: Aplicamos break-words y achicamos la fuente en móviles para que no se deforme el contenedor si la data es muy larga
 function DataField({ label, value }: { label: string, value: string }) {
   return (
     <div className="flex flex-col gap-1 min-w-0">

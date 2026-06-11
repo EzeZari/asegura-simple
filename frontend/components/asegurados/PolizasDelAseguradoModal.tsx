@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { X, FileText, AlertCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { apiFetch } from "@/services/api"; // 🔥 IMPORTAMOS NUESTRO APIFETCH
 
 interface Props {
   isOpen: boolean;
@@ -18,10 +19,25 @@ export default function PolizasDelAseguradoModal({ isOpen, onClose, asegurado }:
   useEffect(() => {
     if (isOpen && asegurado) {
       setIsLoading(true);
-      fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/asegurados/${asegurado.id}/polizas`)
-        .then((res) => res.json())
-        .then((data) => setPolizas(data))
-        .catch((err) => console.error("Error cargando pólizas", err))
+      // 🔥 REEMPLAZAMOS fetch nativo por apiFetch
+      apiFetch(`/api/asegurados/${asegurado.id}/polizas`)
+        .then((res) => {
+          if (!res.ok) throw new Error("Error al cargar");
+          return res.json();
+        })
+        .then((data) => {
+          // 🔥 PROTECCIÓN ANTI-CRASH
+          if (Array.isArray(data)) {
+            setPolizas(data);
+          } else {
+            console.error("Formato inválido devuelto por el servidor", data);
+            setPolizas([]);
+          }
+        })
+        .catch((err) => {
+          console.error("Error cargando pólizas", err);
+          setPolizas([]);
+        })
         .finally(() => setIsLoading(false));
     }
   }, [isOpen, asegurado]);
@@ -75,7 +91,7 @@ export default function PolizasDelAseguradoModal({ isOpen, onClose, asegurado }:
         {/* Lista escroleable */}
         <div className="p-6 overflow-y-auto flex-1 bg-gray-50/30">
           {isLoading ? (
-            <div className="text-center py-8 text-gray-500">Buscando pólizas...</div>
+            <div className="text-center py-8 text-gray-500 animate-pulse">Buscando pólizas...</div>
           ) : polizas.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-10 text-gray-400">
               <AlertCircle size={40} className="mb-3 text-gray-300" />
@@ -111,7 +127,7 @@ export default function PolizasDelAseguradoModal({ isOpen, onClose, asegurado }:
                           {poliza.cobertura && <span className="text-gray-400"> • {poliza.cobertura}</span>}
                         </div>
 
-                        {/* 🔥 FILA 3: DATOS ESPECÍFICOS DEL RIESGO (Nueva) */}
+                        {/* Fila 3: DATOS ESPECÍFICOS DEL RIESGO */}
                         {(poliza.tipoPoliza === "Automotor" || poliza.tipoPoliza === "Motovehículo") && (poliza.patente || poliza.marca || poliza.modelo) && (
                           <div className="flex items-center gap-2 mt-2">
                             {poliza.patente && (
