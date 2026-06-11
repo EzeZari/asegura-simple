@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { RefreshCw, TrendingUp, AlertTriangle, Eye, EyeOff, LayoutGrid, Calendar, FileText, ArrowUpRight, ArrowDownRight, Search } from "lucide-react";
 import GraficosGrid from "@/components/estadisticas/GraficosGrid";
+import { apiFetch } from "@/services/api"; // 🔥 IMPORTAMOS EL FETCH CON CREDENCIALES
 
 export default function EstadisticasPage() {
   const [data, setData] = useState<any>(null);
@@ -25,19 +26,30 @@ export default function EstadisticasPage() {
 
     try {
       setIsRefreshing(true);
+      setError("");
       
-      let url = `${process.env.NEXT_PUBLIC_API_URL}/api/dashboard/graficos?periodo=${periodo}`;
+      // 🔥 REEMPLAZO 1: Usamos ruta relativa porque apiFetch ya sabe a dónde apuntar
+      let url = `/api/dashboard/graficos?periodo=${periodo}`;
       if (periodo === "personalizado") {
         url += `&inicio=${fechaInicio}&fin=${fechaFin}`;
       }
 
-      const res = await fetch(url);
+      // 🔥 REEMPLAZO 2: Usamos apiFetch para que envíe el token de sesión
+      const res = await apiFetch(url);
       if (!res.ok) throw new Error("Error al cargar los datos");
       
       const json = await res.json();
-      setData(json);
+      
+      // 🔥 PROTECCIÓN ANTI-CRASH: Asegurarnos de que json sea un objeto válido
+      if (json && typeof json === 'object') {
+        setData(json);
+      } else {
+        throw new Error("Formato de datos devuelto por el servidor es inválido.");
+      }
     } catch (err) {
+      console.error(err);
       setError("No se pudieron cargar las estadísticas.");
+      setData(null);
     } finally {
       setIsLoading(false);
       setIsRefreshing(false);
@@ -79,26 +91,24 @@ export default function EstadisticasPage() {
 
   if (isLoading && !data) {
     return (
-      <div className="flex h-full items-center justify-center p-8">
+      <div className="flex h-full items-center justify-center p-8 min-h-[50vh]">
         <RefreshCw className="animate-spin text-green-600" size={48} />
       </div>
     );
   }
 
+  // Prevención por si la data no llegó a armarse bien
   const totalPolizas = data?.porEstado?.reduce((acc: number, curr: any) => acc + curr.value, 0) || 0;
 
   return (
-    // 🔥 AJUSTE: p-4 en celular, p-8 en PC. gap-5 en celular, gap-6 en PC.
     <div id="reporte-completo" className="p-4 md:p-8 flex flex-col gap-5 md:gap-6 bg-gray-50/50 min-h-screen">
       
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
         <div>
-          {/* 🔥 AJUSTE: text-2xl en móvil, text-3xl en PC */}
           <h1 className="text-2xl md:text-3xl font-bold text-gray-900 tracking-tight">Estadísticas de Cartera</h1>
           <p className="text-gray-500 text-sm mt-1">Métricas avanzadas, tendencias de crecimiento e informes exportables.</p>
         </div>
         
-        {/* 🔥 AJUSTE: Botones apilados (flex-col) o estirados (w-full) en celular */}
         <div className="flex flex-col sm:flex-row flex-wrap gap-2 w-full lg:w-auto">
           <button 
             onClick={descargarPDF}
@@ -127,7 +137,6 @@ export default function EstadisticasPage() {
         </div>
         
         <div className="flex flex-col md:flex-row items-start md:items-center gap-4 w-full xl:w-auto">
-          {/* 🔥 AJUSTE: Los botones de filtro se vuelven más chicos en móvil y se ajustan al contenedor */}
           <div className="flex flex-wrap bg-gray-100 p-1 rounded-xl gap-1 w-full md:w-auto">
             {(["mes", "trimestre", "anio", "historico", "personalizado"] as const).map((p) => (
               <button
@@ -144,7 +153,6 @@ export default function EstadisticasPage() {
 
           {/* RANGO DE FECHAS PERSONALIZADO */}
           {periodo === "personalizado" && (
-            // 🔥 AJUSTE: flex-col en móviles extra chicos, y inputs al 100% de ancho
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 animate-in fade-in slide-in-from-left-4 w-full md:w-auto">
               <div className="flex items-center gap-2 w-full sm:w-auto">
                 <input
@@ -180,20 +188,25 @@ export default function EstadisticasPage() {
         </div>
         <div className="flex flex-wrap gap-2 w-full md:w-auto">
           {(["salud", "companias", "ramas"] as const).map((key) => (
-            // 🔥 AJUSTE: flex-1 en móvil para que los botones llenen el espacio equilibradamente
             <button
               key={key}
               onClick={() => setVisibilidad(prev => ({ ...prev, [key]: !prev[key] }))}
               className={`flex-1 sm:flex-none justify-center items-center gap-2 px-2 py-2 md:px-3 md:py-1.5 rounded-xl text-[10px] md:text-xs font-bold transition-all border ${
-                visibilidad[key] ? "bg-green-50 text-green-700 border-green-200" : "bg-gray-50 text-gray-400 border-gray-200 opacity-60"
+                visibilidad[key as keyof typeof visibilidad] ? "bg-green-50 text-green-700 border-green-200" : "bg-gray-50 text-gray-400 border-gray-200 opacity-60"
               }`}
             >
-              {visibilidad[key] ? <Eye size={14} className="shrink-0" /> : <EyeOff size={14} className="shrink-0" />}
+              {visibilidad[key as keyof typeof visibilidad] ? <Eye size={14} className="shrink-0" /> : <EyeOff size={14} className="shrink-0" />}
               <span className="whitespace-nowrap">{key === "salud" ? "Salud de Cartera" : key === "companias" ? "Compañías" : "Ramas de Seguro"}</span>
             </button>
           ))}
         </div>
       </div>
+
+      {error && (
+        <div className="bg-red-50 text-red-600 p-4 rounded-xl border border-red-100 text-sm font-medium">
+          {error}
+        </div>
+      )}
 
       {/* TARJETAS SUPERIORES CON INDICADOR DE TENDENCIA */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">

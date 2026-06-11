@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import ConfirmModal from "../ui/ConfirmModal"; 
 import NuevaPolizaModal from "../polizas/NuevaPolizaModal";
+import { apiFetch } from "@/services/api"; // 🔥 IMPORTAMOS EL APIFETCH
 
 interface Props {
   poliza: any;
@@ -40,7 +41,8 @@ export default function AlertaCard({ poliza, nivel }: Props) {
   const ejecutarBaja = async () => {
     setIsBajaLoading(true);
     try {
-      await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/polizas/${poliza.id}`, {
+      // 🔥 REEMPLAZO 1: Anular Póliza usando apiFetch
+      await apiFetch(`/api/polizas/${poliza.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ...poliza, estado: "Anulada" })
@@ -65,7 +67,8 @@ export default function AlertaCard({ poliza, nivel }: Props) {
     
     setEstadoEmail("loading");
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/polizas/${poliza.id}/avisar-vencimiento`, { 
+      // 🔥 REEMPLAZO 2: Enviar email usando apiFetch
+      const res = await apiFetch(`/api/polizas/${poliza.id}/avisar-vencimiento`, { 
         method: "POST" 
       });
       

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { X, UploadCloud, FileText } from "lucide-react";
-import { apiFetch } from "@/services/api"; // 🔥 IMPORTAMOS NUESTRO FETCH VIP
+import { apiFetch } from "@/services/api"; 
 
 interface Props {
   isOpen: boolean;
@@ -40,7 +40,6 @@ export default function NuevaPolizaModal({ isOpen, onClose, onSuccess, polizaAEd
 
   useEffect(() => {
     if (isOpen) {
-      // 🔥 REEMPLAZO 1: Buscar Asegurados
       apiFetch('/api/asegurados')
         .then((res) => res.json())
         .then((data) => {
@@ -50,7 +49,6 @@ export default function NuevaPolizaModal({ isOpen, onClose, onSuccess, polizaAEd
         })
         .catch((err) => console.error("Error al cargar clientes:", err));
       
-      // 🔥 REEMPLAZO 2: Buscar Compañías
       apiFetch('/api/companias')
         .then((res) => res.json())
         .then((data) => {
@@ -126,16 +124,27 @@ export default function NuevaPolizaModal({ isOpen, onClose, onSuccess, polizaAEd
 
     try {
       const isEditMode = polizaAEditar && !isRenovacion;
-      
-      // 🔥 Adaptamos la URL para usar ruta relativa
       const url = isEditMode ? `/api/polizas/${polizaAEditar.id}` : `/api/polizas`;
       const method = isEditMode ? "PUT" : "POST";
 
-      // 🔥 REEMPLAZO 3: Guardar los datos de texto de la póliza
+      // 🔥 LIMPIEZA DEL PAYLOAD PARA EVITAR EL ERROR 500 DE PRISMA
+      const payloadToSave: any = { ...formData };
+      delete payloadToSave.asegurado; // Sacamos los objetos anidados problemáticos
+      delete payloadToSave.compania;  
+      
+      if (!isEditMode) {
+        delete payloadToSave.id; // Si estamos creando o renovando, Prisma genera un ID nuevo, no le mandamos el viejo
+        delete payloadToSave.pdfUrl; // Borramos la referencia al PDF de la póliza vieja
+      }
+
+      // Aseguramos que los IDs sean números como espera la base de datos
+      payloadToSave.aseguradoId = parseInt(payloadToSave.aseguradoId);
+      payloadToSave.companiaId = parseInt(payloadToSave.companiaId);
+
       const response = await apiFetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(payloadToSave), // Mandamos los datos limpios
       });
 
       const data = await response.json();
@@ -143,14 +152,13 @@ export default function NuevaPolizaModal({ isOpen, onClose, onSuccess, polizaAEd
 
       const polizaGuardadaId = isEditMode ? polizaAEditar.id : data.id;
 
-      // 🔥 REEMPLAZO 4: Subir el PDF si lo hay
       if (pdfFile) {
         const fileData = new FormData();
         fileData.append("pdf", pdfFile);
         
         const uploadRes = await apiFetch(`/api/polizas/${polizaGuardadaId}/subir-pdf`, {
           method: "POST",
-          body: fileData, // Al usar FormData, NO se le pone Content-Type manual, el navegador lo hace solo.
+          body: fileData, 
         });
 
         if (!uploadRes.ok) {
@@ -158,12 +166,11 @@ export default function NuevaPolizaModal({ isOpen, onClose, onSuccess, polizaAEd
         }
       }
 
-      // 🔥 REEMPLAZO 5: Actualizar estado viejo si es renovación
       if (isRenovacion && polizaAEditar) {
         await apiFetch(`/api/polizas/${polizaAEditar.id}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ ...polizaAEditar, estado: "Renovada" })
+          body: JSON.stringify({ estado: "Renovada" }) // Solo mandamos lo que cambia para no romper nada
         });
       }
 
