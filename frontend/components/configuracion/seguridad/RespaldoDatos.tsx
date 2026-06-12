@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Database, Download } from "lucide-react";
 import Toast from "@/components/ui/Toast";
 import ExportarExcelModal from "@/components/ui/ExportarExcelModal";
+import { apiFetch } from "@/services/api"; // 🔥 IMPORTAMOS NUESTRO FETCH SEGURO
 
 export default function RespaldoDatos() {
   const [showToast, setShowToast] = useState(false);
@@ -27,11 +28,15 @@ export default function RespaldoDatos() {
   const exportarDatos = async (tipo: 'asegurados' | 'polizas') => {
     setIsExporting(true);
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/${tipo}`);
-      if (!res.ok) throw new Error("Error al obtener los datos");
+      // 🔥 USAMOS APIFETCH EN LUGAR DE FETCH PARA ENVIAR EL TOKEN DE SEGURIDAD
+      const res = await apiFetch(`/api/${tipo}`);
+      
       const data = await res.json();
+      
+      if (!res.ok) throw new Error(data.error || "Error al obtener los datos");
 
-      if (data.length === 0) {
+      // Protección anti-crash si no devuelve un array
+      if (!Array.isArray(data) || data.length === 0) {
         alert(`No hay registros de ${tipo} para exportar.`);
         setIsExporting(false);
         return;
@@ -48,7 +53,6 @@ export default function RespaldoDatos() {
           "Teléfono": a.telefono || "-",
           "Fecha de Nacimiento": formatearFecha(a.fechaNacimiento),
           "Cantidad de Pólizas": (a._count?.polizas || a.polizas?.length || 0).toString(),
-          // 🔥 ACÁ ESTABA EL ERROR: El campo correcto es fechaRegistro
           "Fecha de Alta": formatearFecha(a.fechaRegistro) 
         }));
         nombreBase = `Backup_Total_Asegurados_${new Date().toISOString().split("T")[0]}`;
@@ -77,7 +81,7 @@ export default function RespaldoDatos() {
 
     } catch (error) {
       console.error(error);
-      alert(`Hubo un error al procesar el respaldo de ${tipo}.`);
+      alert(`Hubo un error al procesar el respaldo de ${tipo}. Verificá tu sesión.`);
     } finally {
       setIsExporting(false);
     }

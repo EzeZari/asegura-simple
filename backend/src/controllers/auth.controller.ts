@@ -5,7 +5,7 @@ import { z } from 'zod';
 import { prisma } from '../config/db'; 
 import crypto from 'crypto'; 
 import { sendMail } from '../utils/mailer';
-import { templateConfirmacionCuenta, template2FA, templateRecuperarPassword } from '../utils/emailTemplates'; // ← Importamos las plantillas
+import { templateConfirmacionCuenta, template2FA, templateRecuperarPassword } from '../utils/emailTemplates';
 
 const registerSchema = z.object({
   nombre: z.string().min(2, "El nombre es muy corto"),
@@ -48,7 +48,7 @@ export const register = async (req: Request, res: Response): Promise<any> => {
     await sendMail({
       to: newUser.email,
       subject: "Confirmá tu cuenta - AseguraSimple",
-      html: templateConfirmacionCuenta(newUser.nombre, verifyUrl) // ← Usamos la plantilla
+      html: templateConfirmacionCuenta(newUser.nombre, verifyUrl)
     });
 
     res.status(201).json({ message: 'Cuenta creada. Revisá tu correo.', userId: newUser.id });
@@ -87,7 +87,7 @@ export const login = async (req: Request, res: Response): Promise<any> => {
         await sendMail({
           to: user.email,
           subject: "Código de Seguridad (2FA) - AseguraSimple",
-          html: template2FA(user.nombre, codigo2fa) // ← Usamos la plantilla
+          html: template2FA(user.nombre, codigo2fa)
         });
       } catch (errorMail) {
         console.error("Falló el envío del código 2FA:", errorMail);
@@ -103,10 +103,12 @@ export const login = async (req: Request, res: Response): Promise<any> => {
 
     const { accessToken, refreshToken } = generateTokens(user.id, user.role);
 
+    // 🔥 MAGIA: Adaptador de cookies inteligente para Localhost vs Producción
+    const isProd = process.env.NODE_ENV === 'production';
     res.cookie('refreshToken', refreshToken, {
       httpOnly: true,
-      secure: true,
-      sameSite: 'none',
+      secure: isProd, // Si es local, no exige HTTPS
+      sameSite: isProd ? 'none' : 'lax', // Lax previene bloqueos en localhost
       maxAge: 7 * 24 * 60 * 60 * 1000
     });
 
@@ -126,11 +128,9 @@ export const verifyEmail = async (req: Request, res: Response): Promise<any> => 
   const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
 
   try {
-    // Primero buscamos por token
     const userByToken = await prisma.user.findUnique({ where: { verificationToken: token } });
 
     if (userByToken) {
-      // Token válido → verificamos y borramos el token
       await prisma.user.update({
         where: { id: userByToken.id },
         data: { isVerified: true, verificationToken: null }
@@ -139,10 +139,7 @@ export const verifyEmail = async (req: Request, res: Response): Promise<any> => 
       return res.redirect(urlDestino);
     }
 
-    // Si no encontró el token, buscamos si el usuario ya está verificado
-    // (caso: clickeó el link por segunda vez)
     return res.redirect(`${frontendUrl}/login?error=invalid_token`);
-
   } catch (error) {
     console.error("Error al verificar email:", error);
     return res.redirect(`${frontendUrl}/login?error=server_error`);
@@ -170,7 +167,12 @@ export const refresh = async (req: Request, res: Response): Promise<any> => {
 };
 
 export const logout = (req: Request, res: Response) => {
-  res.clearCookie('refreshToken', { httpOnly: true, secure: true, sameSite: 'none' });
+  const isProd = process.env.NODE_ENV === 'production';
+  res.clearCookie('refreshToken', { 
+    httpOnly: true, 
+    secure: isProd, 
+    sameSite: isProd ? 'none' : 'lax' 
+  });
   res.status(200).json({ message: 'Sesión cerrada exitosamente.' });
 };
 
@@ -195,7 +197,7 @@ export const forgotPassword = async (req: Request, res: Response): Promise<any> 
     await sendMail({
       to: user.email,
       subject: 'Recuperá tu contraseña - AseguraSimple',
-      html: templateRecuperarPassword(user.nombre, resetUrl) // ← Usamos la plantilla
+      html: templateRecuperarPassword(user.nombre, resetUrl) 
     });
 
     res.status(200).json({ message: 'Si el email está registrado, recibirás un enlace de recuperación.' });
@@ -245,10 +247,11 @@ export const verify2FALogin = async (req: Request, res: Response): Promise<any> 
 
     const { accessToken, refreshToken } = generateTokens(user.id, user.role);
 
+    const isProd = process.env.NODE_ENV === 'production';
     res.cookie('refreshToken', refreshToken, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
+      secure: isProd,
+      sameSite: isProd ? 'none' : 'lax',
       maxAge: 7 * 24 * 60 * 60 * 1000
     });
 
@@ -262,6 +265,7 @@ export const verify2FALogin = async (req: Request, res: Response): Promise<any> 
     res.status(500).json({ error: 'Ocurrió un error al verificar el código.' });
   }
 };
+
 export const resendConfirmationEmail = async (req: Request, res: Response): Promise<any> => {
   const email = req.body.email?.toLowerCase();
   
@@ -280,20 +284,16 @@ export const resendConfirmationEmail = async (req: Request, res: Response): Prom
       return res.status(400).json({ error: 'Esta cuenta ya está verificada. Podés iniciar sesión directamente.' });
     }
 
-    // 1. Generamos un token NUEVO por si el anterior venció
     const newVerificationToken = crypto.randomBytes(32).toString('hex');
 
-    // 2. Lo guardamos en la base de datos
     await prisma.user.update({
       where: { id: user.id },
       data: { verificationToken: newVerificationToken }
     });
 
-    // 3. Armamos la URL
     const baseUrl = process.env.API_URL || `${req.protocol}://${req.get('host')}`;
     const verifyUrl = `${baseUrl}/api/auth/verify-email/${newVerificationToken}`;
 
-    // 4. Volvemos a disparar el mail con Resend y la plantilla
     await sendMail({
       to: user.email,
       subject: "Confirmá tu cuenta - AseguraSimple",
