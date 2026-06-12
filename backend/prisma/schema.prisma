@@ -28,7 +28,10 @@ model Productor {
   historialSiniestro HistorialSiniestro[]
   alertas            Alerta[]
 
-  // 🔥 ESTA ES LA LÍNEA QUE FALTA AGREGAR:
+  envioAutomaticoActivo  Boolean  @default(false)
+  horaEnvioAutomatico    String   @default("09:00")
+  diasAvisoAutomatico    Int      @default(15)
+
   actividades        Actividad[] 
 }
 
