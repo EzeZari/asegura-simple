@@ -3,7 +3,7 @@
 import { useState, useRef } from "react";
 import { X, UploadCloud, FileSpreadsheet, AlertTriangle, Loader2, CheckCircle2, Info } from "lucide-react";
 import * as XLSX from "xlsx";
-import { apiFetch } from "@/services/api"; // 🔥 IMPORTAMOS EL FETCH CON CREDENCIALES
+import { apiFetch } from "@/services/api"; // 🔥 IMPORTAMOS NUESTRO FETCH SEGURO
 
 interface Props {
   isOpen: boolean;
@@ -11,7 +11,7 @@ interface Props {
   onSuccess: (mensaje: string) => void;
 }
 
-export default function ImportarPolizasModal({ isOpen, onClose, onSuccess }: Props) {
+export default function ImportarAseguradosModal({ isOpen, onClose, onSuccess }: Props) {
   const [file, setFile] = useState<File | null>(null);
   const [previewData, setPreviewData] = useState<any[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -41,7 +41,6 @@ export default function ImportarPolizasModal({ isOpen, onClose, onSuccess }: Pro
         const sheetName = workbook.SheetNames[0];
         const worksheet = workbook.Sheets[sheetName];
         
-        // El raw:false ayuda a formatear las fechas de excel a strings
         const json: any[] = XLSX.utils.sheet_to_json(worksheet, { raw: false }); 
         setPreviewData(json);
       } catch (err) {
@@ -57,8 +56,8 @@ export default function ImportarPolizasModal({ isOpen, onClose, onSuccess }: Pro
     setError("");
 
     try {
-      // 🔥 USAMOS APIFETCH EN LUGAR DE FETCH NORMAL
-      const res = await apiFetch(`/api/polizas/importar`, {
+      // 🔥 REEMPLAZO: Usamos apiFetch para enviar el token y no tener error 401
+      const res = await apiFetch(`/api/asegurados/importar`, {
         method: "POST",
         body: JSON.stringify(previewData),
       });
@@ -66,7 +65,7 @@ export default function ImportarPolizasModal({ isOpen, onClose, onSuccess }: Pro
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Error en la carga.");
 
-      onSuccess(`¡Éxito! Se crearon ${data.creados} pólizas nuevas (se omitieron ${data.salteados} por duplicado o DNI inexistente).`);
+      onSuccess(`¡Éxito! Se importaron ${data.creados} clientes (se omitieron ${data.salteados} por estar duplicados).`);
       handleClose();
     } catch (err: any) {
       setError(err.message);
@@ -89,7 +88,7 @@ export default function ImportarPolizasModal({ isOpen, onClose, onSuccess }: Pro
         
         <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50 rounded-t-xl">
           <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-            <FileSpreadsheet size={22} className="text-green-700" /> Importar Pólizas
+            <FileSpreadsheet size={22} className="text-green-700" /> Importar Asegurados
           </h2>
           <button onClick={handleClose} disabled={isProcessing} className="text-gray-400 hover:text-gray-700 transition-colors p-1">
             <X size={20} />
@@ -100,29 +99,29 @@ export default function ImportarPolizasModal({ isOpen, onClose, onSuccess }: Pro
           
           <div className="bg-blue-50/50 border border-blue-100 rounded-xl p-4">
             <h3 className="text-sm font-bold text-blue-900 flex items-center gap-2 mb-2">
-              <Info size={16} /> Reglas clave para la planilla
+              <Info size={16} /> Estructura recomendada
             </h3>
             <p className="text-xs text-blue-800 mb-3 leading-relaxed">
-              El sistema necesita saber a quién pertenece la póliza. Por eso, el <strong className="font-black">DNI del Asegurado</strong> debe estar cargado en la planilla Y el cliente ya debe existir en tu sección de Asegurados.
+              Tu archivo Excel debe tener las siguientes columnas en la primera fila. Solo los campos marcados con <strong className="font-black">(*)</strong> son obligatorios para que el cliente se guarde correctamente.
             </p>
             <div className="overflow-hidden rounded-lg border border-blue-200 bg-white">
               <table className="w-full text-left text-[10px] text-gray-600">
                 <thead className="bg-blue-50 text-blue-900 font-bold uppercase">
                   <tr>
-                    <th className="px-3 py-2 border-r border-blue-100">Poliza *</th>
-                    <th className="px-3 py-2 border-r border-blue-100">DNI *</th>
-                    <th className="px-3 py-2 border-r border-blue-100">Rama</th>
-                    <th className="px-3 py-2 border-r border-blue-100">Compania</th>
-                    <th className="px-3 py-2">Patente</th>
+                    <th className="px-3 py-2 border-r border-blue-100">Nombre *</th>
+                    <th className="px-3 py-2 border-r border-blue-100">Apellido</th>
+                    <th className="px-3 py-2 border-r border-blue-100">DNI / CUIT *</th>
+                    <th className="px-3 py-2 border-r border-blue-100">Teléfono</th>
+                    <th className="px-3 py-2">Email</th>
                   </tr>
                 </thead>
                 <tbody>
                   <tr>
-                    <td className="px-3 py-2 border-r border-gray-100 font-medium">1234567</td>
+                    <td className="px-3 py-2 border-r border-gray-100 font-medium">Juan Perez</td>
+                    <td className="px-3 py-2 border-r border-gray-100">Gomez</td>
                     <td className="px-3 py-2 border-r border-gray-100 font-bold text-emerald-600 font-mono">32111222</td>
-                    <td className="px-3 py-2 border-r border-gray-100">Automotor</td>
-                    <td className="px-3 py-2 border-r border-gray-100">Sancor</td>
-                    <td className="px-3 py-2">AB123CD</td>
+                    <td className="px-3 py-2 border-r border-gray-100">3415556666</td>
+                    <td className="px-3 py-2">juan@mail.com</td>
                   </tr>
                 </tbody>
               </table>
@@ -139,6 +138,7 @@ export default function ImportarPolizasModal({ isOpen, onClose, onSuccess }: Pro
               <UploadCloud size={32} className="text-gray-400 group-hover:text-green-600 transition-colors" />
               <div className="text-center">
                 <p className="text-sm font-bold text-gray-700">Hacé clic para seleccionar planilla</p>
+                <p className="text-xs text-gray-400 mt-1">Soporta .xlsx, .xls o .csv</p>
               </div>
               <input type="file" ref={fileInputRef} onChange={handleFileChange} accept=".xlsx, .xls, .csv" className="hidden" />
             </div>
@@ -155,6 +155,12 @@ export default function ImportarPolizasModal({ isOpen, onClose, onSuccess }: Pro
                   </p>
                 </div>
               </div>
+              <button 
+                onClick={() => { setFile(null); setPreviewData([]); }} 
+                className="text-xs text-red-500 hover:text-red-700 font-bold px-2 py-1 bg-red-50 rounded-lg transition-colors shrink-0"
+              >
+                Cambiar
+              </button>
             </div>
           )}
         </div>
@@ -169,7 +175,7 @@ export default function ImportarPolizasModal({ isOpen, onClose, onSuccess }: Pro
             className="px-4 py-2 bg-green-700 hover:bg-green-800 disabled:opacity-40 text-white rounded-lg font-bold transition-colors shadow-sm flex items-center gap-2"
           >
             {isProcessing ? <Loader2 size={16} className="animate-spin" /> : <UploadCloud size={16} />}
-            {isProcessing ? "Importando..." : "Importar Pólizas"}
+            {isProcessing ? "Importando..." : "Importar Asegurados"}
           </button>
         </div>
 

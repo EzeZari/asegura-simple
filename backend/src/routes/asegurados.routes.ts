@@ -249,24 +249,44 @@ router.post('/importar', async (req, res): Promise<any> => {
     const datosParaInsertar = clientes
       .map((c: any) => {
         const row = normalizarLlaves(c);
-        const nombreCrudo = row.nombre || row.nombres || row.razonsocial || row.cliente || '';
+        
+        // 🔥 MAGIA 1: Reconoce "Nombre / Razón Social" del Excel exportado
+        const nombreCrudo = row.nombre || row.nombres || row.razonsocial || row.nombrerazonsocial || row.cliente || '';
         const apellidoCrudo = row.apellido || row.apellidos || null;
-        const dniCrudo = row.dni || row.cuit || row.documento || row.doc || '';
+        
+        // 🔥 MAGIA 2: Reconoce "DNI / CUIT"
+        const dniCrudo = row.dni || row.cuit || row.documento || row.doc || row.dnicuit || '';
+        
         const nombreLimpio = String(nombreCrudo).trim();
         const apellidoLimpio = apellidoCrudo ? String(apellidoCrudo).trim() : null;
         const dniLimpio = String(dniCrudo).trim().replace(/[^0-9]/g, '');
         const telefonoLimpio = row.telefono || row.celular || row.tel || null;
         const emailLimpio = row.email || row.correo || row.mail || null;
+        
         let tipoCalculado = "Individual";
-        const tipoOriginal = String(row.tipo || row.tipocliente || '').toLowerCase();
+        
+        // 🔥 MAGIA 3: Reconoce "Tipo de Cliente"
+        const tipoOriginal = String(row.tipo || row.tipocliente || row.tipodecliente || '').toLowerCase();
         if (tipoOriginal.includes('empresa') || tipoOriginal.includes('juridico') || dniLimpio.length === 11) {
           tipoCalculado = "Empresa";
         }
+
+        // 🔥 MAGIA 4: Reconoce "Estado en Sistema" para respetar clientes inactivos
+        let activoCalculado = true;
+        const estadoOriginal = String(row.estado || row.estadoensistema || '').toLowerCase();
+        if (estadoOriginal === 'inactivo') {
+          activoCalculado = false;
+        }
+
         return {
-          nombre: nombreLimpio, apellido: apellidoLimpio, dni: dniLimpio,
+          nombre: nombreLimpio, 
+          apellido: apellidoLimpio, 
+          dni: dniLimpio,
           telefono: telefonoLimpio ? String(telefonoLimpio).trim() : null,
           email: emailLimpio ? String(emailLimpio).trim() : null,
-          tipo: tipoCalculado, activo: true, productorId
+          tipo: tipoCalculado, 
+          activo: activoCalculado, 
+          productorId
         };
       })
       .filter((c: any) => c.nombre.length > 0 && c.dni.length > 0);

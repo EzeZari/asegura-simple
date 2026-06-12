@@ -44,7 +44,8 @@ export default function ImportarAseguradosModal({ isOpen, onClose, onSuccess }: 
         const workbook = XLSX.read(bstr, { type: 'binary' });
         const sheetName = workbook.SheetNames[0];
         const worksheet = workbook.Sheets[sheetName];
-        const json: any[] = XLSX.utils.sheet_to_json(worksheet);
+        // El raw: false obliga a la librería a respetar el texto visual de la fecha
+const json: any[] = XLSX.utils.sheet_to_json(worksheet, { raw: false });
         
         setPreviewData(json);
       } catch (err) {
