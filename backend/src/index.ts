@@ -15,6 +15,8 @@ import dashboardRoutes from './routes/dashboard.routes';
 import alertasRoutes from './routes/alertas.routes';
 import agenciaRoutes from './routes/agencia.routes';
 import siniestrosRoutes from './routes/siniestros.routes';
+import mpRoutes from './routes/mp.routes'; // 🔥 1. IMPORTAMOS LA RUTA DE MERCADO PAGO
+
 dotenv.config();
 
 const app = express();
@@ -31,25 +33,23 @@ app.use(cors({
     'http://localhost:3000',
     'https://asegurasimple.com',
     'https://www.asegurasimple.com',
-    'https://asegura-simple-flug.vercel.app' // Agregamos también el link genérico de Vercel por las dudas
+    'https://asegura-simple-flug.vercel.app' 
   ],
-  credentials: true // Fundamental para que pasen las cookies
+  credentials: true 
 }));
 
 // 3. RATE LIMIT: Evita ataques de fuerza bruta.
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutos
-  max: 100, // Límite de 100 peticiones por IP cada 15 minutos
+  windowMs: 15 * 60 * 1000, 
+  max: 100, 
   message: 'Demasiadas peticiones desde esta IP, por favor intenta de nuevo en 15 minutos.'
 });
-app.use('/api', limiter); // Se lo aplicamos a todas las rutas de la API
+app.use('/api', limiter); 
 
-// Hacer pública la carpeta de uploads para poder acceder a los archivos desde el navegador
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
 // --- MIDDLEWARES CLÁSICOS ---
-app.use(express.json());
-app.use(cookieParser());
+// Nota: Tenías express.json() y cookieParser() repetidos en tu código anterior, los limpié para que no hagan conflicto.
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 app.use(cookieParser());
@@ -63,6 +63,7 @@ app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/alertas', alertasRoutes);
 app.use('/api/agencia', agenciaRoutes);
 app.use('/api/siniestros', siniestrosRoutes);
+app.use('/api/pagos', mpRoutes); // 🔥 2. LE DECIMOS A EXPRESS QUE ESCUCHE ESTA RUTA
 
 
 const PORT = process.env.PORT || 3001;
