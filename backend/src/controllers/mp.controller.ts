@@ -8,7 +8,7 @@ export const crearSuscripcion = async (req: Request, res: Response): Promise<any
   const { plan, email } = req.body;
 
   const planes = {
-    BASICO: { title: "Plan Básico - AseguraSimple", price: 10 },
+    BASICO: { title: "Plan Básico - AseguraSimple", price: 100 },
     PROFESIONAL: { title: "Plan Profesional - AseguraSimple", price: 14000 },
     AGENCIA: { title: "Plan Agencia - AseguraSimple", price: 22000 }
   };
