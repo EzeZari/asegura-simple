@@ -47,6 +47,26 @@ export default function ConsultaPublicaPage() {
   const poliza = siniestro.poliza || {};
   const asegurado = poliza.asegurado || {};
 
+  // 🔥 FUNCIÓN PARA DAR COLOR DINÁMICO AL ESTADO
+  const getEstadoColor = (estado: string) => {
+    const texto = (estado || "").toLowerCase();
+    
+    if (texto.includes("aprobado") || texto.includes("cerrado") || texto.includes("pagado") || texto.includes("liquidado")) {
+      return "text-emerald-600"; // Verde
+    }
+    if (texto.includes("rechazado") || texto.includes("denegado") || texto.includes("declinado")) {
+      return "text-red-600"; // Rojo
+    }
+    if (texto.includes("abierto") || texto.includes("pendiente") || texto.includes("análisis") || texto.includes("proceso") || texto.includes("curso")) {
+      return "text-amber-500"; // Naranja/Amarillo
+    }
+    if (texto.includes("documentación") || texto.includes("falta")) {
+      return "text-blue-600"; // Azul
+    }
+    
+    return "text-gray-900"; // Color por defecto
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 pb-12">
       {/* Cabecera Pública */}
@@ -63,7 +83,12 @@ export default function ConsultaPublicaPage() {
           <span className="bg-gray-100 text-gray-600 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-widest mb-2">
             Reclamo #{siniestro.nroSiniestro}
           </span>
-          <h2 className="text-2xl font-black text-gray-900">{siniestro.estadoSiniestro}</h2>
+          
+          {/* 🔥 ACÁ APLICAMOS LA FUNCIÓN DEL COLOR */}
+          <h2 className={`text-2xl font-black ${getEstadoColor(siniestro.estadoSiniestro)}`}>
+            {siniestro.estadoSiniestro}
+          </h2>
+          
           <p className="text-gray-500 text-sm">Hola {asegurado.nombre}, acá podés ver el avance en tiempo real de tu trámite con {poliza.compania?.nombre}.</p>
         </div>
 

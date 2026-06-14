@@ -9,24 +9,20 @@ router.use(verificarToken);
 
 // Función helper para obtener, vincular o crear el Productor del usuario logueado
 const obtenerProductorId = async (userId: number): Promise<number> => {
-  // 1. Buscamos si ya está perfectamente linkeado
   let productor = await prisma.productor.findUnique({ where: { userId } });
   
   if (!productor) {
     const user = await prisma.user.findUnique({ where: { id: userId } });
     const userEmail = user?.email || `user${userId}@asegurasimple.com`;
 
-    // 2. Si no lo encontró por userId, buscamos si ya existe ese email "suelto" en la base de datos
     productor = await prisma.productor.findUnique({ where: { email: userEmail } });
 
     if (productor) {
-      // 3A. Si el productor ya existía, simplemente lo actualizamos para "engancharle" el userId nuevo
       productor = await prisma.productor.update({
         where: { id: productor.id },
         data: { userId: userId }
       });
     } else {
-      // 3B. Si definitivamente no existe de ninguna forma, lo creamos de cero
       productor = await prisma.productor.create({
         data: {
           nombre: user?.nombre || 'Productor',
@@ -120,10 +116,11 @@ router.post('/', async (req, res): Promise<any> => {
         entidad: "Asegurado", 
         descripcion: "Nuevo cliente registrado",
         cliente: `${data.nombre} ${data.apellido || ''}`.trim(),
-        productorId // 🔥 INYECTAMOS EL PRODUCTOR ACÁ
+        productorId 
       }
     });
 
+    // TODO: La agencia con ID 1 sigue acá. A futuro podríamos cambiarlo para que lea la config del productor.
     const agencia = await prisma.agencia.findUnique({ where: { id: 1 } });
     if ((agencia?.enviarMailBienvenida ?? true) && data.email) {
       enviarCorreoBienvenida(data.email, data.nombre, data.apellido, data.dni, data.telefono);
@@ -132,7 +129,8 @@ router.post('/', async (req, res): Promise<any> => {
     res.status(201).json(nuevoAsegurado);
 
   } catch (error: any) {
-    if (error.code === 'P2002') return res.status(400).json({ error: 'Ya existe un asegurado con ese DNI o CUIT.' });
+    // 🔥 AJUSTE: Mensaje más específico para un entorno Multi-tenant
+    if (error.code === 'P2002') return res.status(400).json({ error: 'Ya existe un cliente con este DNI o CUIT en tu cartera.' });
     res.status(500).json({ error: 'Hubo un error al guardar el asegurado.' });
   }
 });
@@ -144,7 +142,6 @@ router.put('/:id', async (req, res): Promise<any> => {
     const data = req.body;
     const productorId = await obtenerProductorId(req.userId!);
 
-    // 🔥 SEGURIDAD: Buscamos que el asegurado te pertenezca
     const viejo = await prisma.asegurado.findFirst({ 
       where: { id: parseInt(id), productorId } 
     });
@@ -179,12 +176,14 @@ router.put('/:id', async (req, res): Promise<any> => {
         entidad: "Asegurado",
         descripcion: accionReal !== "Edición" ? (accionReal === "Desactivación" ? "Cliente pasado a Inactivo" : "Cliente vuelto a Activar") : textoDetalle,
         cliente: `${data.nombre} ${data.apellido || ''}`.trim(),
-        productorId // 🔥 INYECTAMOS EL PRODUCTOR ACÁ
+        productorId
       }
     });
 
     res.json(aseguradoActualizado);
-  } catch (error) {
+  } catch (error: any) {
+    // 🔥 AJUSTE: Si editan el cliente y ponen un DNI que ya tienen, Prisma salta.
+    if (error.code === 'P2002') return res.status(400).json({ error: 'No podés guardar estos cambios. Ya tenés otro cliente con este DNI en tu cartera.' });
     res.status(500).json({ error: 'Hubo un error al actualizar el asegurado.' });
   }
 });
@@ -195,7 +194,6 @@ router.delete('/:id', async (req, res): Promise<any> => {
     const { id } = req.params;
     const productorId = await obtenerProductorId(req.userId!);
 
-    // 🔥 SEGURIDAD: Verificamos pertenencia antes de borrar
     const aseguradoABorrar = await prisma.asegurado.findFirst({ 
       where: { id: parseInt(id), productorId } 
     });
@@ -209,7 +207,7 @@ router.delete('/:id', async (req, res): Promise<any> => {
         accion: "Baja", 
         entidad: "Asegurado",
         descripcion: `${aseguradoABorrar.nombre} ${aseguradoABorrar.apellido || ''}`.trim(),
-        productorId // 🔥 INYECTAMOS EL PRODUCTOR ACÁ
+        productorId
       }
     });
 
@@ -250,11 +248,8 @@ router.post('/importar', async (req, res): Promise<any> => {
       .map((c: any) => {
         const row = normalizarLlaves(c);
         
-        // 🔥 MAGIA 1: Reconoce "Nombre / Razón Social" del Excel exportado
         const nombreCrudo = row.nombre || row.nombres || row.razonsocial || row.nombrerazonsocial || row.cliente || '';
         const apellidoCrudo = row.apellido || row.apellidos || null;
-        
-        // 🔥 MAGIA 2: Reconoce "DNI / CUIT"
         const dniCrudo = row.dni || row.cuit || row.documento || row.doc || row.dnicuit || '';
         
         const nombreLimpio = String(nombreCrudo).trim();
@@ -264,14 +259,11 @@ router.post('/importar', async (req, res): Promise<any> => {
         const emailLimpio = row.email || row.correo || row.mail || null;
         
         let tipoCalculado = "Individual";
-        
-        // 🔥 MAGIA 3: Reconoce "Tipo de Cliente"
         const tipoOriginal = String(row.tipo || row.tipocliente || row.tipodecliente || '').toLowerCase();
         if (tipoOriginal.includes('empresa') || tipoOriginal.includes('juridico') || dniLimpio.length === 11) {
           tipoCalculado = "Empresa";
         }
 
-        // 🔥 MAGIA 4: Reconoce "Estado en Sistema" para respetar clientes inactivos
         let activoCalculado = true;
         const estadoOriginal = String(row.estado || row.estadoensistema || '').toLowerCase();
         if (estadoOriginal === 'inactivo') {
@@ -297,6 +289,8 @@ router.post('/importar', async (req, res): Promise<any> => {
 
     const resultado = await (prisma as any).asegurado.createMany({
       data: datosParaInsertar,
+      // 🔥 MAGIA DE PRISMA: Como la regla ahora es @@unique([productorId, dni]), 
+      // skipDuplicates omitirá SOLO los DNI que ya estén en la cuenta de ESTE productorId.
       skipDuplicates: true
     });
 
@@ -306,7 +300,7 @@ router.post('/importar', async (req, res): Promise<any> => {
         entidad: "Asegurado",
         descripcion: `Importación masiva: ${resultado.count} nuevos clientes cargados.`,
         cliente: "Sistema / Excel",
-        productorId // 🔥 INYECTAMOS EL PRODUCTOR ACÁ
+        productorId 
       }
     });
 

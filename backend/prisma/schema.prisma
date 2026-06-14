@@ -40,10 +40,10 @@ model Asegurado {
   nombre          String    // Nombre o Razón Social
   apellido        String?   // Opcional por si es empresa
   tipo            String    @default("Individuo") 
-  dni             String    @unique // Lo usamos para DNI o CUIT
+  dni             String    // 🔥 ¡ACÁ ESTABA EL ERROR! BORRÁ EL @unique QUE TENÍAS AL LADO
   fechaNacimiento DateTime?
   condicionIva    String    @default("Consumidor Final")
-  email           String?   
+  email           String?
   telefono        String?
   direccion       String?
   codigoPostal    String?
@@ -54,6 +54,8 @@ model Asegurado {
   productor       Productor @relation(fields: [productorId], references: [id])
 
   polizas         Poliza[]
+
+  @@unique([productorId, dni]) // Esta regla sí la dejás, está perfecta
 }
 
 model Compania {
