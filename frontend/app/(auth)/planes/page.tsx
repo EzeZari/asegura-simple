@@ -34,7 +34,7 @@ function PlanesContent() {
     {
       id: "BASICO",
       nombre: "Plan Básico",
-      precio: "$8.000",
+      precio: "$8",
       descripcion: "Para productores independientes.",
       icon: UserIcon,
       features: [
