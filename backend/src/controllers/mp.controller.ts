@@ -17,6 +17,20 @@ export const crearSuscripcion = async (req: Request, res: Response): Promise<any
   if (!planSeleccionado) return res.status(400).json({ error: "Plan no válido" });
 
   try {
+    // 🔥 NUEVA RESTRICCIÓN: EVITAR DOBLE COMPRA
+    // Buscamos al usuario incluyendo su relación con la tabla Suscripcion
+    const user = await prisma.user.findUnique({ 
+      where: { email },
+      include: { suscripcion: true }
+    });
+    
+    // Si tiene el mismo plan y el estado en Mercado Pago es "autorizado", frenamos el cobro
+    if (user && user.plan === plan && user.suscripcion?.estado === 'autorizado') {
+      return res.status(400).json({ 
+        error: `Ya tenés el ${planSeleccionado.title} activo. No es necesario que vuelvas a pagar.` 
+      });
+    }
+
     const preapproval = new PreApproval(client);
     
     const result = await preapproval.create({
@@ -29,8 +43,10 @@ export const crearSuscripcion = async (req: Request, res: Response): Promise<any
           currency_id: 'ARS' 
         },
         back_url: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/login?exito=true`,
-        payer_email: email,
-        // 🔥 Escondemos el email y el plan acá para recuperarlos en el webhook
+        
+        // 🔥 BORRAMOS EL payer_email PARA QUE PUEDAN PAGAR CON CUALQUIER CUENTA
+        
+        // Pero mantenemos nuestro "rastreador" oculto intacto:
         external_reference: `${email}|${plan}` 
       }
     });

@@ -108,14 +108,15 @@ function PlanesContent() {
       if (res.ok && data.init_point) {
         window.location.href = data.init_point;
       } else {
-        throw new Error();
+        // 🔥 Atrapamos el error específico que nos manda el backend
+        throw new Error(data.error || "Error desconocido al procesar el pago.");
       }
-    } catch (error) {
-      setMensajeToast("No se pudo conectar con Mercado Pago. Inténtalo de nuevo.");
+    } catch (error: any) {
+      // 🔥 Mostramos el mensaje exacto en tu Toast (ej: "Ya tenés el Plan Básico activo...")
+      setMensajeToast(error.message || "No se pudo conectar con Mercado Pago. Inténtalo de nuevo.");
       setShowToast(true);
       setLoadingPlan(null);
     }
-  };
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen p-4 md:p-8 bg-gray-50 overflow-x-hidden w-full">
