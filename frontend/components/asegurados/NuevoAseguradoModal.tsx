@@ -3,7 +3,8 @@
 import { useState, useEffect } from "react";
 import { X } from "lucide-react";
 import UpgradeModal from "@/components/ui/UpgradeModal";
-import { apiFetch } from "@/services/api"; // 🔥 IMPORTAMOS EL FETCH CON CREDENCIALES
+import { apiFetch } from "@/services/api"; 
+import { useAuthStore } from "@/store/authStore"; // 🔥 IMPORTAMOS EL STORE
 
 interface Props {
   isOpen: boolean;
@@ -23,8 +24,8 @@ export default function NuevoAseguradoModal({ isOpen, onClose, onSuccess, client
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   
-  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
-  const [mensajeUpgrade, setMensajeUpgrade] = useState("");
+  // 🔥 TRAEMOS LA FUNCIÓN GLOBAL PARA ABRIR EL MODAL
+  const setShowUpgradeModal = useAuthStore((state) => state.setShowUpgradeModal);
 
   useEffect(() => {
     if (clienteAEditar) {
@@ -50,14 +51,12 @@ export default function NuevoAseguradoModal({ isOpen, onClose, onSuccess, client
     setError("");
 
     try {
-      // 🔥 Simplificamos la URL para usarla con nuestro apiFetch
       const endpoint = clienteAEditar 
         ? `/api/asegurados/${clienteAEditar.id}` 
         : `/api/asegurados`;
       
       const method = clienteAEditar ? "PUT" : "POST";
 
-      // 🔥 USAMOS APIFETCH EN LUGAR DE FETCH NORMAL
       const response = await apiFetch(endpoint, {
         method,
         body: JSON.stringify(formData),
@@ -65,10 +64,12 @@ export default function NuevoAseguradoModal({ isOpen, onClose, onSuccess, client
 
       const data = await response.json();
 
-      if (response.status === 403 && data.codigo === "LIMITE_EXCEDIDO") {
-        setMensajeUpgrade(data.error);
-        setShowUpgradeModal(true);
+      // 🔥 ATRAPAMOS CUALQUIER ERROR 403 (Límites excedidos o Modo Solo Lectura)
+      if (response.status === 403) {
+        setShowUpgradeModal(true, data.error);
         setIsLoading(false);
+        // Cerramos este modal de carga para que no se superponga con el aviso
+        onClose(); 
         return; 
       }
 
@@ -170,11 +171,8 @@ export default function NuevoAseguradoModal({ isOpen, onClose, onSuccess, client
         </div>
       </div>
 
-      <UpgradeModal 
-        isVisible={showUpgradeModal} 
-        onClose={() => setShowUpgradeModal(false)} 
-        mensaje={mensajeUpgrade}
-      />
+      {/* 🔥 RENDEREAMOS EL MODAL SIN PASARLE PROPS PORQUE SE MANEJA SOLO CON EL STORE */}
+      <UpgradeModal />
     </>
   );
 }

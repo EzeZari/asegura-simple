@@ -4,7 +4,8 @@ import { useEffect, useState } from "react";
 import Sidebar from "@/components/layout/Sidebar";
 import { useAuthStore } from "@/store/authStore";
 import { Menu } from "lucide-react"; 
-import { apiFetch } from "@/services/api"; // 🔥 Importamos el apiFetch VIP
+import { apiFetch } from "@/services/api"; 
+import UpgradeModal from "@/components/ui/UpgradeModal"; // 🔥 Importamos el Modal Global
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const setUser = useAuthStore((state: any) => state.setUser); 
@@ -14,10 +15,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   useEffect(() => {
     const rehidratarSesion = async () => {
       try {
-        // 🔥 Reemplazamos el fetch por apiFetch para garantizar las credenciales
         const res = await apiFetch(`/api/auth/refresh`, {
           method: "POST",
-          // credentials: "include" ya viene por defecto adentro de tu apiFetch, así que queda limpio
         });
 
         if (res.ok) {
@@ -53,6 +52,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           {children}
         </main>
       </div>
+
+      {/* 🔥 AGREGAMOS EL MODAL ACÁ PARA QUE ESTÉ DISPONIBLE EN TODA LA PLATAFORMA */}
+      <UpgradeModal />
     </div>
   );
 }

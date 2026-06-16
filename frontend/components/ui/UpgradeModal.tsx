@@ -1,67 +1,61 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { Zap, ShieldAlert, CheckCircle2, ArrowRight } from "lucide-react";
+import { Crown, X } from "lucide-react";
+import { useAuthStore } from "@/store/authStore";
 
-interface Props {
-  isVisible: boolean;
-  onClose: () => void;
-  mensaje?: string;
-}
-
-export default function UpgradeModal({ isVisible, onClose, mensaje }: Props) {
+export default function UpgradeModal() {
   const router = useRouter();
+  
+  // Vamos a leer estas variables de tu estado global (las agregaremos en el paso 2)
+  const { showUpgradeModal, upgradeMessage, setShowUpgradeModal, user } = useAuthStore();
 
-  if (!isVisible) return null;
+  if (!showUpgradeModal) return null;
+
+  const handleUpgrade = () => {
+    setShowUpgradeModal(false, "");
+    // Lo mandamos a la pantalla de planes pasándole su email
+    router.push(`/planes?email=${user?.email || ""}`);
+  };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-950/40 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col animate-in zoom-in-95 duration-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/40 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+      <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md relative overflow-hidden animate-in zoom-in-95 duration-300">
         
-        {/* Cabecera visual */}
-        <div className="bg-gradient-to-br from-orange-500 to-orange-600 p-6 flex flex-col items-center text-center relative overflow-hidden">
-          <div className="absolute top-0 right-0 p-4 opacity-10 pointer-events-none">
-            <Zap size={100} />
+        {/* Botón de cerrar (X) */}
+        <button
+          onClick={() => setShowUpgradeModal(false, "")}
+          className="absolute top-4 right-4 text-gray-400 hover:text-gray-700 transition-colors z-10 bg-gray-50 hover:bg-gray-100 rounded-full p-1.5"
+        >
+          <X size={18} />
+        </button>
+
+        <div className="p-8 flex flex-col items-center text-center gap-3">
+          <div className="w-16 h-16 bg-gradient-to-br from-amber-100 to-orange-100 text-orange-600 rounded-full flex items-center justify-center mb-3 shadow-inner">
+            <Crown size={32} />
           </div>
-          <div className="bg-white/20 p-3 rounded-full mb-4 text-white backdrop-blur-md">
-            <ShieldAlert size={32} />
-          </div>
-          <h2 className="text-xl font-black text-white mb-1 relative z-10">¡Llegaste a tu límite!</h2>
-          <p className="text-orange-100 text-xs font-medium relative z-10">
-            Tu plan actual no permite realizar esta acción.
+
+          <h3 className="text-2xl font-black text-gray-900 tracking-tight">
+            Mejorá tu plan
+          </h3>
+
+          <p className="text-gray-500 font-medium text-sm leading-relaxed px-2">
+            {upgradeMessage || "Llegaste al límite de tu plan actual o tu suscripción está inactiva. Pasate a un plan superior para seguir creciendo."}
           </p>
-        </div>
 
-        {/* Cuerpo del modal */}
-        <div className="p-6 flex flex-col gap-5">
-          <p className="text-sm text-gray-600 text-center font-medium">
-            {mensaje || "Para seguir creciendo y expandiendo tu cartera de clientes, necesitás mejorar tu plan."}
-          </p>
-
-          <div className="bg-orange-50/50 border border-orange-100 rounded-2xl p-4 flex flex-col gap-2">
-            <p className="text-xs font-bold text-orange-800 uppercase tracking-wider mb-1">El Plan Básico incluye:</p>
-            <div className="flex items-center gap-2 text-sm text-gray-700">
-              <CheckCircle2 size={16} className="text-orange-500 shrink-0" />
-              <span>Hasta <strong>100 asegurados</strong> activos</span>
-            </div>
-            <div className="flex items-center gap-2 text-sm text-gray-700">
-              <CheckCircle2 size={16} className="text-orange-500 shrink-0" />
-              <span>Soporte prioritario</span>
-            </div>
-          </div>
-
-          <div className="flex flex-col gap-3 mt-2">
-            <button 
-              onClick={() => router.push('/configuracion/planes')}
-              className="w-full bg-gray-900 hover:bg-gray-800 text-white font-bold py-3.5 rounded-xl text-sm transition-all active:scale-[0.98] flex items-center justify-center gap-2 shadow-md"
+          <div className="w-full flex flex-col gap-2 mt-5">
+            <button
+              onClick={handleUpgrade}
+              className="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-3.5 rounded-xl transition-all active:scale-[0.98] shadow-md flex justify-center items-center gap-2"
             >
-              Ver Planes Disponibles <ArrowRight size={16} />
+              Ver Planes y Mejorar
             </button>
-            <button 
-              onClick={onClose}
-              className="w-full bg-white hover:bg-gray-50 text-gray-500 font-bold py-3 rounded-xl text-xs transition-colors border border-gray-100"
+            
+            <button
+              onClick={() => setShowUpgradeModal(false, "")}
+              className="w-full text-gray-400 hover:text-gray-600 font-semibold text-sm py-2.5 rounded-xl transition-colors"
             >
-              Cerrar por ahora
+              Quizás más tarde
             </button>
           </div>
         </div>
