@@ -17,14 +17,11 @@ export const crearSuscripcion = async (req: Request, res: Response): Promise<any
   if (!planSeleccionado) return res.status(400).json({ error: "Plan no válido" });
 
   try {
-    // 🔥 NUEVA RESTRICCIÓN: EVITAR DOBLE COMPRA
-    // Buscamos al usuario incluyendo su relación con la tabla Suscripcion
     const user = await prisma.user.findUnique({ 
       where: { email },
       include: { suscripcion: true }
     });
     
-    // Si tiene el mismo plan y el estado en Mercado Pago es "autorizado", frenamos el cobro
     if (user && user.plan === plan && user.suscripcion?.estado === 'autorizado') {
       return res.status(400).json({ 
         error: `Ya tenés el ${planSeleccionado.title} activo. No es necesario que vuelvas a pagar.` 
@@ -43,10 +40,6 @@ export const crearSuscripcion = async (req: Request, res: Response): Promise<any
           currency_id: 'ARS' 
         },
         back_url: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/login?exito=true`,
-        
-        // 🔥 BORRAMOS EL payer_email PARA QUE PUEDAN PAGAR CON CUALQUIER CUENTA
-        
-        // Pero mantenemos nuestro "rastreador" oculto intacto:
         external_reference: `${email}|${plan}` 
       }
     });
@@ -58,7 +51,7 @@ export const crearSuscripcion = async (req: Request, res: Response): Promise<any
   }
 };
 
-// 🔥 EL WEBHOOK: Escucha a Mercado Pago y actualiza tu modelo Suscripcion
+// 🔥 EL WEBHOOK: Escucha cuando pagan y cuando cancelan
 export const webhookMercadoPago = async (req: Request, res: Response) => {
   res.status(200).send("OK");
 
@@ -69,34 +62,34 @@ export const webhookMercadoPago = async (req: Request, res: Response) => {
       const preapproval = new PreApproval(client);
       const suscripcionMP = await preapproval.get({ id: data.id });
 
-      if (suscripcionMP.status === 'authorized') {
-        const [email, planNombre] = (suscripcionMP.external_reference || "").split("|");
+      const [email, planNombre] = (suscripcionMP.external_reference || "").split("|");
 
-        if (email) {
-          const user = await prisma.user.findUnique({ where: { email } });
-          
-          if (user) {
-            // 1. Actualizamos el plan del usuario (GRATUITO, BASICO, etc)
+      if (email) {
+        const user = await prisma.user.findUnique({ where: { email } });
+        
+        if (user) {
+          // ESCENARIO A: El pago entró perfecto
+          if (suscripcionMP.status === 'authorized') {
             await prisma.user.update({
               where: { id: user.id },
               data: { plan: planNombre as any }
             });
 
-            // 2. Creamos o actualizamos el registro en la tabla Suscripcion
             await prisma.suscripcion.upsert({
               where: { userId: user.id },
-              update: {
-                mpPreapprovalId: suscripcionMP.id,
-                estado: "autorizado"
-              },
-              create: {
-                userId: user.id,
-                mpPreapprovalId: suscripcionMP.id,
-                estado: "autorizado"
-              }
+              update: { mpPreapprovalId: suscripcionMP.id, estado: "autorizado" },
+              create: { userId: user.id, mpPreapprovalId: suscripcionMP.id, estado: "autorizado" }
             });
 
             console.log(`✅ ¡ÉXITO! Suscripción ${planNombre} activada para ${email}`);
+          }
+          // 🔥 ESCENARIO B: Cancelaron o rebotó la tarjeta
+          else if (suscripcionMP.status === 'cancelled' || suscripcionMP.status === 'paused') {
+            await prisma.suscripcion.update({
+              where: { userId: user.id },
+              data: { estado: suscripcionMP.status }
+            });
+            console.log(`❌ Atención: Suscripción de ${email} pasó a estado ${suscripcionMP.status}. Modo Sólo Lectura activado.`);
           }
         }
       }

@@ -1,14 +1,18 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation"; // 🔥 Importamos el router
 import { Users, Crown, Mail, Shield, UserPlus, Trash2, AlertCircle } from "lucide-react";
 import { useAuthStore } from "@/store/authStore";
 import Toast from "@/components/ui/Toast";
 
 export default function EquipoSettings() {
   const user = useAuthStore((state) => state.user);
+  const router = useRouter(); // 🔥 Inicializamos el router
   
-  const [planActual, setPlanActual] = useState<"BASICO" | "PRO">("BASICO"); 
+  // Leemos el plan real del usuario (Si es PROFESIONAL o AGENCIA, lo consideramos PRO)
+  const planActual = user?.plan === "PROFESIONAL" || user?.plan === "AGENCIA" ? "PRO" : "BASICO"; 
+  
   const [showToast, setShowToast] = useState(false);
 
   const [miembros, setMiembros] = useState([
@@ -29,12 +33,10 @@ export default function EquipoSettings() {
   };
 
   return (
-    // 🔥 AJUSTE: gap-5 en móvil, gap-6 en PC
     <div className="flex flex-col gap-5 md:gap-6 animate-in fade-in duration-300 pb-10">
       
       {/* BANNER DE UPGRADE */}
       {planActual === "BASICO" && (
-        // 🔥 AJUSTE: p-4 y flex-col en móvil, p-5 y flex-row en sm
         <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 p-4 md:p-5 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between shadow-sm gap-4">
           <div className="flex items-center gap-3 sm:gap-4">
             <div className="bg-amber-100 p-2.5 sm:p-3 rounded-full text-amber-600 shrink-0">
@@ -45,8 +47,11 @@ export default function EquipoSettings() {
               <p className="text-xs text-amber-700 mt-0.5">Mejorá a un Plan Profesional para agregar socios, productores o asistentes a tu agencia.</p>
             </div>
           </div>
-          {/* 🔥 AJUSTE: w-full en móvil */}
-          <button className="w-full sm:w-auto flex justify-center bg-amber-500 hover:bg-amber-600 text-white px-5 py-2.5 rounded-xl font-bold text-sm transition-colors shadow-sm whitespace-nowrap">
+          <button 
+            // 🔥 Redirigimos a planes pasándole el email para que MP funcione bien
+            onClick={() => router.push(`/planes?email=${user?.email}`)}
+            className="w-full sm:w-auto flex justify-center bg-amber-500 hover:bg-amber-600 text-white px-5 py-2.5 rounded-xl font-bold text-sm transition-colors shadow-sm whitespace-nowrap"
+          >
             Mejorar Plan
           </button>
         </div>
@@ -55,7 +60,6 @@ export default function EquipoSettings() {
       {/* PANEL PRINCIPAL */}
       <div className="bg-white p-4 md:p-6 rounded-2xl border border-gray-100 shadow-sm flex flex-col gap-5 md:gap-6">
         
-        {/* 🔥 AJUSTE: flex-col en móvil, flex-row en sm */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between border-b border-gray-50 pb-4 gap-4">
           <div className="flex items-center gap-2">
             <Users size={18} className="text-gray-400" />
@@ -73,9 +77,7 @@ export default function EquipoSettings() {
         </div>
 
         {/* TABLA DE USUARIOS */}
-        {/* 🔥 AJUSTE: w-full agregado para asegurar el ancho total */}
         <div className="overflow-x-auto w-full">
-          {/* 🔥 AJUSTE: min-w-[500px] para forzar scroll en móviles muy chicos */}
           <table className="w-full text-left border-collapse min-w-[500px] sm:min-w-full">
             <thead>
               <tr className="border-b border-gray-100 text-xs uppercase text-gray-400 tracking-wider">
@@ -128,7 +130,6 @@ export default function EquipoSettings() {
         </div>
 
         {/* INFO ADICIONAL */}
-        {/* 🔥 AJUSTE: p-3 en móvil, p-4 en PC */}
         <div className="bg-gray-50 p-3 md:p-4 rounded-xl flex items-start gap-3 mt-2">
           <AlertCircle size={18} className="text-gray-500 mt-0.5 shrink-0" />
           <div className="flex flex-col gap-1">

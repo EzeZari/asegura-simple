@@ -11,7 +11,6 @@ export const verificarLimiteAsegurados = async (userId: number): Promise<{ super
   // 1. Buscamos el plan actual del usuario
   const usuario = await prisma.user.findUnique({
     where: { id: userId },
-    // 🔥 CORRECCIÓN ACÁ: Le pedimos a Prisma que traiga el plan y el email
     select: { plan: true, email: true } 
   });
 
@@ -28,7 +27,8 @@ export const verificarLimiteAsegurados = async (userId: number): Promise<{ super
     }
   });
 
-  const limiteMaximo = LIMITES_ASEGURADOS[usuario.plan];
+  // Le avisamos a TypeScript que usuario.plan es una llave válida de nuestro objeto
+  const limiteMaximo = LIMITES_ASEGURADOS[usuario.plan as keyof typeof LIMITES_ASEGURADOS];
 
   if (cantidadActual >= limiteMaximo) {
     return {
