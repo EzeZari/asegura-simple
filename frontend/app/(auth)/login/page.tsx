@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
-import { Eye, EyeOff, ShieldCheck, ArrowLeft, CheckCircle2 } from "lucide-react";
+import { Eye, EyeOff, ShieldCheck, ArrowLeft, CheckCircle2, MailPlus } from "lucide-react";
 import { useAuthStore } from "@/store/authStore";
 
 export default function LoginPage() {
@@ -12,8 +12,13 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  
+  // 🔥 NUEVO: Estado para mostrar el botón de reenviar correo
+  const [showResend, setShowResend] = useState(false); 
+  const [isResending, setIsResending] = useState(false);
+
   const setUser = useAuthStore((state) => state.setUser);
-  const setAccessToken = useAuthStore((state) => state.setAccessToken); // ← NUEVO
+  const setAccessToken = useAuthStore((state) => state.setAccessToken);
 
   useEffect(() => {
     setIsMounted(true);
@@ -39,6 +44,7 @@ export default function LoginPage() {
     e.preventDefault();
     setError("");
     setSuccessMsg("");
+    setShowResend(false); // Escondemos el botón si intentan de nuevo
     if (!email || !password) { setError("Por favor, completá todos los campos."); return; }
     setIsLoading(true);
 
@@ -52,17 +58,53 @@ export default function LoginPage() {
 
       const data = await response.json();
 
-      if (!response.ok) { setError(data.error || "Credenciales incorrectas."); setIsLoading(false); return; }
+      if (!response.ok) { 
+        setError(data.error || "Credenciales incorrectas."); 
+        // 🔥 MAGIA: Si el error es 403 (No verificado), mostramos el botón de rescate
+        if (response.status === 403) {
+          setShowResend(true);
+        }
+        setIsLoading(false); 
+        return; 
+      }
 
       if (data.require2FA) { setUserId(data.userId); setStep(2); setIsLoading(false); return; }
 
       document.cookie = `next_auth_token=${data.accessToken}; path=/; max-age=86400; secure; samesite=strict`;
-      setAccessToken(data.accessToken); // ← NUEVO
+      setAccessToken(data.accessToken);
       setUser(data.user);
       router.push("/");
     } catch (err) {
       setError("Error de conexión con el servidor.");
       setIsLoading(false);
+    }
+  };
+
+  // 🔥 NUEVA FUNCIÓN: Llama al backend para reenviar el correo
+  const handleResendEmail = async () => {
+    setIsResending(true);
+    setError("");
+    setSuccessMsg("");
+
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/resend-confirmation`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setError(data.error || "Error al reenviar el correo.");
+      } else {
+        setSuccessMsg("¡Correo reenviado! Revisá tu bandeja de entrada o spam.");
+        setShowResend(false); // Ocultamos el botón porque ya se envió
+      }
+    } catch (err) {
+      setError("Error de conexión al intentar reenviar el correo.");
+    } finally {
+      setIsResending(false);
     }
   };
 
@@ -85,7 +127,7 @@ export default function LoginPage() {
       if (!response.ok) { setError(data.error || "Código incorrecto."); setIsLoading(false); return; }
 
       document.cookie = `next_auth_token=${data.accessToken}; path=/; max-age=86400; secure; samesite=strict`;
-      setAccessToken(data.accessToken); // ← NUEVO
+      setAccessToken(data.accessToken);
       setUser(data.user);
       router.push("/");
     } catch (err) {
@@ -130,14 +172,37 @@ export default function LoginPage() {
     <div className="w-full max-w-md flex flex-col gap-10 animate-in fade-in duration-300">
       <div>
         <h1 className="text-5xl leading-tight font-bold text-gray-900 tracking-tight">Hola!<br />Ingresa a tu<br />cuenta</h1>
+        
         {successMsg && (
           <div className="mt-6 p-4 bg-green-50 border border-green-200 text-green-800 text-sm rounded-lg font-medium flex items-start gap-3 animate-in fade-in slide-in-from-top-2">
             <CheckCircle2 className="text-green-600 shrink-0 mt-0.5" size={18} />
             <p>{successMsg}</p>
           </div>
         )}
-        {error && <div className="mt-4 p-3 bg-red-50 border border-red-200 text-red-600 text-sm rounded-md font-medium">{error}</div>}
+
+        {/* Cajas de Error y Rescate */}
+        <div className="flex flex-col gap-2 mt-4">
+          {error && (
+            <div className="p-3 bg-red-50 border border-red-200 text-red-600 text-sm rounded-md font-medium">
+              {error}
+            </div>
+          )}
+          
+          {/* 🔥 EL BOTÓN SALVAVIDAS: Solo aparece si el usuario está en el limbo */}
+          {showResend && (
+            <button 
+              onClick={handleResendEmail}
+              disabled={isResending}
+              type="button"
+              className="flex items-center justify-center gap-2 w-full p-3 bg-amber-50 border border-amber-200 text-amber-800 text-sm rounded-md font-bold hover:bg-amber-100 transition-colors disabled:opacity-50"
+            >
+              <MailPlus size={16} />
+              {isResending ? "Enviando enlace..." : "¿No te llegó el correo? Reenviar enlace"}
+            </button>
+          )}
+        </div>
       </div>
+
       <form onSubmit={handleLogin} className="flex flex-col gap-6 mt-2">
         <input type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} disabled={isLoading}
           className="w-full border border-gray-200 rounded-md px-5 py-4 text-base text-gray-900 placeholder:text-gray-400 focus:outline-none focus:border-green-600 focus:ring-1 focus:ring-green-600 transition-all disabled:bg-gray-50"
