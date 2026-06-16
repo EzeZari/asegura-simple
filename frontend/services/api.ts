@@ -1,27 +1,39 @@
 import { useAuthStore } from "@/store/authStore";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL;
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
 
 export const apiFetch = async (endpoint: string, options: RequestInit = {}) => {
-  // Nos aseguramos de sacar el token correcto (algunos stores usan "token", otros "accessToken")
-  const token = useAuthStore.getState().token || (useAuthStore.getState() as any).accessToken;
+  // 🔥 Ahora apuntamos directamente a "accessToken" como manda tu store
+  const token = useAuthStore.getState().accessToken;
 
   // 1. Preparamos los headers base
   const headers: any = {
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    ...(options.headers || {}),
+    ...options.headers,
   };
 
-  // 2. Inteligencia para archivos vs JSON
+  // 2. Si no estamos mandando FormData, le agregamos el Content-Type JSON
   if (!(options.body instanceof FormData)) {
-    headers['Content-Type'] = 'application/json';
-  } else {
-    delete headers['Content-Type'];
+    headers["Content-Type"] = "application/json";
   }
 
-  // 3. Ejecutamos el fetch SIN la propiedad credentials para evitar el choque de CORS
-  return fetch(`${API_URL}${endpoint}`, {
+  // 3. Si tenemos token, lo inyectamos
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+
+  // 4. Hacemos la petición real usando la URL de tu backend
+  const response = await fetch(`${API_URL}${endpoint}`, {
     ...options,
     headers,
   });
+
+  // 5. Si el token expiró (401), cerramos sesión automáticamente
+  if (response.status === 401) {
+    useAuthStore.getState().logout();
+    if (typeof window !== "undefined") {
+      window.location.href = "/login";
+    }
+  }
+
+  return response;
 };
