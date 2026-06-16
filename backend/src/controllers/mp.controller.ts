@@ -45,9 +45,10 @@ export const crearSuscripcion = async (req: Request, res: Response): Promise<any
     });
 
     res.json({ init_point: result.init_point });
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error creando suscripción en MP:", error);
-    res.status(500).json({ error: "No se pudo crear la suscripción" });
+    // 🔥 ACÁ ESTÁ LA MAGIA: Mandamos el mensaje de error exacto al frontend
+    res.status(500).json({ error: `Backend crash: ${error.message || 'Error desconocido'}` });
   }
 };
 
