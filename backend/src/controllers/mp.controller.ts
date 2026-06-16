@@ -40,14 +40,14 @@ export const crearSuscripcion = async (req: Request, res: Response): Promise<any
           currency_id: 'ARS' 
         },
         back_url: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/login?exito=true`,
-        external_reference: `${email}|${plan}` 
+        external_reference: `${email}|${plan}`,
+        payer_email: email // 🔥 LA SOLUCIÓN: Mercado Pago exige saber el email del pagador
       }
     });
 
     res.json({ init_point: result.init_point });
   } catch (error: any) {
     console.error("Error creando suscripción en MP:", error);
-    // 🔥 ACÁ ESTÁ LA MAGIA: Mandamos el mensaje de error exacto al frontend
     res.status(500).json({ error: `Backend crash: ${error.message || 'Error desconocido'}` });
   }
 };
@@ -74,7 +74,7 @@ export const webhookMercadoPago = async (req: Request, res: Response) => {
               data: { plan: planNombre as any }
             });
 
-            // 🔥 MAGIA 1: Calculamos 30 días a partir del momento en que entra el pago
+            // Calculamos 30 días a partir del momento en que entra el pago
             const fechaVencimiento = new Date();
             fechaVencimiento.setDate(fechaVencimiento.getDate() + 30);
 
@@ -83,20 +83,19 @@ export const webhookMercadoPago = async (req: Request, res: Response) => {
               update: {
                 mpPreapprovalId: suscripcionMP.id,
                 estado: "autorizado",
-                fechaVencimiento: fechaVencimiento // 🔥 Guardamos el nuevo mes pagado
+                fechaVencimiento: fechaVencimiento
               },
               create: {
                 userId: user.id,
                 mpPreapprovalId: suscripcionMP.id,
                 estado: "autorizado",
-                fechaVencimiento: fechaVencimiento // 🔥 Guardamos el mes pagado
+                fechaVencimiento: fechaVencimiento
               }
             });
 
             console.log(`✅ ¡ÉXITO! Suscripción ${planNombre} activada para ${email}. Vence el ${fechaVencimiento.toLocaleDateString()}`);
           }
           else if (suscripcionMP.status === 'cancelled' || suscripcionMP.status === 'paused') {
-            // 🔥 Cuando cancelan, SOLO cambiamos el estado. NO tocamos su fecha de vencimiento.
             await prisma.suscripcion.update({
               where: { userId: user.id },
               data: { estado: suscripcionMP.status }
