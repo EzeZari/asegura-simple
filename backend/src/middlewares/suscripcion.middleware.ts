@@ -2,12 +2,10 @@ import { Request, Response, NextFunction } from 'express';
 import { prisma } from '../config/db';
 
 export const verificarSuscripcionActiva = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
-  // 🔥 Leemos el userId exactamente como lo guarda tu verificarToken
   const userId = (req as any).userId; 
   
   if (!userId) return res.status(401).json({ error: 'No autorizado' });
 
-  // 🔥 REGLA 1: Si la petición es de LECTURA (GET), lo dejamos pasar siempre.
   if (req.method === 'GET') {
     return next();
   }
@@ -20,21 +18,26 @@ export const verificarSuscripcionActiva = async (req: Request, res: Response, ne
 
     if (!user) return res.status(404).json({ error: 'Usuario no encontrado' });
 
-    // 🔥 REGLA 2: Si está en plan de prueba, pasa (las restricciones de cantidad se manejan en otro lado)
     if (user.plan === 'GRATUITO') {
       return next();
     }
 
-    // 🔥 REGLA 3: Si tiene un plan pago, verificamos que Mercado Pago diga "autorizado"
-    const tienePagoActivo = user.suscripcion?.estado === 'autorizado';
+    const suscripcion = user.suscripcion;
 
-    if (!tienePagoActivo) {
+    // 🔥 REGLA A: Si tiene la tarjeta y el cobro al día, lo dejamos pasar.
+    const pagoAutorizado = suscripcion?.estado === 'autorizado';
+
+    // 🔥 REGLA B (NUEVA): Si no está autorizado (ej. canceló), pero la fecha de vencimiento es a futuro, TAMBIÉN lo dejamos pasar.
+    const tieneDiasAFavor = suscripcion?.fechaVencimiento && new Date(suscripcion.fechaVencimiento) > new Date();
+
+    if (!pagoAutorizado && !tieneDiasAFavor) {
       return res.status(403).json({ 
-        error: 'Suscripción inactiva. Tu cuenta está en Modo Solo Lectura. Por favor, renová tu plan para realizar modificaciones.' 
+        error: 'Suscripción inactiva. Tu cuenta está en Modo Solo Lectura. Por favor, renová tu plan para realizar modificaciones.',
+        codigo: 'SUSCRIPCION_INACTIVA'
       });
     }
 
-    // Si tiene todo en regla, pasa y la petición continúa normal
+    // Si tiene el pago al día O tiene días a favor, sigue de largo sin problema.
     next();
   } catch (error) {
     console.error("Error verificando suscripción:", error);

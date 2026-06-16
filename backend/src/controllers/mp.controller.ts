@@ -51,7 +51,6 @@ export const crearSuscripcion = async (req: Request, res: Response): Promise<any
   }
 };
 
-// 🔥 EL WEBHOOK: Escucha cuando pagan y cuando cancelan
 export const webhookMercadoPago = async (req: Request, res: Response) => {
   res.status(200).send("OK");
 
@@ -68,28 +67,40 @@ export const webhookMercadoPago = async (req: Request, res: Response) => {
         const user = await prisma.user.findUnique({ where: { email } });
         
         if (user) {
-          // ESCENARIO A: El pago entró perfecto
           if (suscripcionMP.status === 'authorized') {
             await prisma.user.update({
               where: { id: user.id },
               data: { plan: planNombre as any }
             });
 
+            // 🔥 MAGIA 1: Calculamos 30 días a partir del momento en que entra el pago
+            const fechaVencimiento = new Date();
+            fechaVencimiento.setDate(fechaVencimiento.getDate() + 30);
+
             await prisma.suscripcion.upsert({
               where: { userId: user.id },
-              update: { mpPreapprovalId: suscripcionMP.id, estado: "autorizado" },
-              create: { userId: user.id, mpPreapprovalId: suscripcionMP.id, estado: "autorizado" }
+              update: {
+                mpPreapprovalId: suscripcionMP.id,
+                estado: "autorizado",
+                fechaVencimiento: fechaVencimiento // 🔥 Guardamos el nuevo mes pagado
+              },
+              create: {
+                userId: user.id,
+                mpPreapprovalId: suscripcionMP.id,
+                estado: "autorizado",
+                fechaVencimiento: fechaVencimiento // 🔥 Guardamos el mes pagado
+              }
             });
 
-            console.log(`✅ ¡ÉXITO! Suscripción ${planNombre} activada para ${email}`);
+            console.log(`✅ ¡ÉXITO! Suscripción ${planNombre} activada para ${email}. Vence el ${fechaVencimiento.toLocaleDateString()}`);
           }
-          // 🔥 ESCENARIO B: Cancelaron o rebotó la tarjeta
           else if (suscripcionMP.status === 'cancelled' || suscripcionMP.status === 'paused') {
+            // 🔥 Cuando cancelan, SOLO cambiamos el estado. NO tocamos su fecha de vencimiento.
             await prisma.suscripcion.update({
               where: { userId: user.id },
               data: { estado: suscripcionMP.status }
             });
-            console.log(`❌ Atención: Suscripción de ${email} pasó a estado ${suscripcionMP.status}. Modo Sólo Lectura activado.`);
+            console.log(`❌ Atención: Suscripción de ${email} cancelada/pausada. (Seguirá activo hasta su fecha de vencimiento).`);
           }
         }
       }
