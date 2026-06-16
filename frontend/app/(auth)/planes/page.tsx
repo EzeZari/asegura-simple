@@ -11,7 +11,7 @@ function PlanesContent() {
   const userEmail = searchParams.get("email") || "";
 
   const { user } = useAuthStore();
-  const planActual = user?.plan || "GRATUITO";
+  const planActual = user?.plan || null;
 
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
   const [showToast, setShowToast] = useState(false);
