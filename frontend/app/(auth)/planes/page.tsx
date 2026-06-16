@@ -4,20 +4,23 @@ import { Suspense, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { Check, Shield, Users, Zap, Loader2, Sparkles } from "lucide-react";
 import Toast from "@/components/ui/Toast";
-import { useAuthStore } from "@/store/authStore"; // 🔥 1. Importamos el store
+import { useAuthStore } from "@/store/authStore"; 
 
-// 🔥 Todo el contenido va acá adentro
 function PlanesContent() {
   const searchParams = useSearchParams();
   const userEmail = searchParams.get("email") || "";
 
-  // 🔥 2. Traemos al usuario logueado para saber su plan
   const { user } = useAuthStore();
   const planActual = user?.plan || "GRATUITO";
 
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
   const [showToast, setShowToast] = useState(false);
   const [mensajeToast, setMensajeToast] = useState("");
+
+  // 🔥 NUEVOS ESTADOS PARA EL MODAL DE MERCADO PAGO
+  const [showMpModal, setShowMpModal] = useState(false);
+  const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
+  const [mpEmail, setMpEmail] = useState("");
 
   const planes = [
     {
@@ -87,25 +90,42 @@ function PlanesContent() {
     }
   ];
 
-  const handleSeleccionarPlan = async (planId: string) => {
+  // 🔥 1. En vez de pagar directo, abrimos el modal
+  const handleSeleccionarPlan = (planId: string) => {
     if (!userEmail) {
       setMensajeToast("Error: No se detectó el usuario. Volvé a ingresar desde el link de tu correo.");
       setShowToast(true);
       return;
     }
 
-    setLoadingPlan(planId);
-
     if (planId === "GRATUITO") {
+      setLoadingPlan("GRATUITO");
       window.location.href = "/login?verified=true";
       return;
     }
+
+    setSelectedPlanId(planId);
+    setMpEmail(userEmail); // Se lo dejamos pre-llenado por comodidad
+    setShowMpModal(true);
+  };
+
+  // 🔥 2. Esta es la función que realmente va a Mercado Pago
+  const confirmarPagoMP = async () => {
+    if (!mpEmail.trim() || !mpEmail.includes('@')) {
+      setMensajeToast("Por favor, ingresá un email válido de Mercado Pago.");
+      setShowToast(true);
+      return;
+    }
+
+    setShowMpModal(false);
+    setLoadingPlan(selectedPlanId);
 
     try {
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/pagos/create-subscription`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ plan: planId, email: userEmail })
+        // Mandamos los DOS emails (el de tu sistema, y el que va a usar para pagar)
+        body: JSON.stringify({ plan: selectedPlanId, email: userEmail, mpEmail: mpEmail.trim().toLowerCase() })
       });
 
       const data = await res.json();
@@ -136,7 +156,6 @@ function PlanesContent() {
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 items-center max-w-7xl w-full px-2">
         {planes.map((plan) => {
           const IconComponent = plan.icon;
-          // 🔥 3. Comprobamos si este iterador es el plan que tiene el usuario
           const esPlanActual = plan.id === planActual;
 
           return (
@@ -173,9 +192,7 @@ function PlanesContent() {
 
               <button
                 onClick={() => handleSeleccionarPlan(plan.id)}
-                // 🔥 4. Deshabilitamos si está cargando O si ya es su plan actual
                 disabled={loadingPlan !== null || esPlanActual}
-                // 🔥 5. Cambiamos las clases para que se pinte de verde si es su plan
                 className={`w-full py-3.5 mt-4 rounded-xl font-bold text-sm transition-all active:scale-[0.98] disabled:opacity-70 flex items-center justify-center gap-2 ${
                   esPlanActual ? 'bg-green-600 text-white cursor-not-allowed' : plan.btnColor
                 }`}
@@ -185,7 +202,6 @@ function PlanesContent() {
                     <Loader2 size={18} className="animate-spin" /> Procesando...
                   </>
                 ) : esPlanActual ? (
-                  // 🔥 6. Cambiamos el texto visualmente
                   "Tu plan actual"
                 ) : (
                   plan.btnText
@@ -203,12 +219,53 @@ function PlanesContent() {
         </p>
       </div>
 
+      {/* 🔥 MODAL DE MERCADO PAGO */}
+      {showMpModal && (
+        <div className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl flex flex-col gap-4 animate-in zoom-in-95 duration-200">
+            <div className="flex items-center gap-3 border-b border-gray-100 pb-4">
+              <div className="bg-[#009EE3]/10 p-2 rounded-lg">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#009EE3" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2z"/><path d="M22 6l-10 7L2 6"/></svg>
+              </div>
+              <h3 className="text-xl font-bold text-gray-900">Email de Mercado Pago</h3>
+            </div>
+            
+            <p className="text-sm text-gray-600 leading-relaxed">
+              Por seguridad, Mercado Pago exige que el pago se haga con la cuenta del correo ingresado. 
+              Si vas a pagar usando <strong>otra cuenta</strong>, cambialo acá abajo:
+            </p>
+            
+            <input 
+              type="email" 
+              value={mpEmail} 
+              onChange={(e) => setMpEmail(e.target.value)}
+              className="w-full border border-gray-300 rounded-xl px-4 py-3 text-gray-900 font-medium focus:ring-2 focus:ring-[#009EE3]/50 focus:border-[#009EE3] outline-none transition-all"
+              placeholder="tu-email@mercadopago.com"
+            />
+            
+            <div className="flex justify-end gap-2 mt-4 pt-4 border-t border-gray-50">
+              <button 
+                onClick={() => { setShowMpModal(false); setLoadingPlan(null); }}
+                className="px-5 py-2.5 text-gray-500 hover:bg-gray-100 rounded-xl font-semibold transition-colors"
+              >
+                Cancelar
+              </button>
+              <button 
+                onClick={confirmarPagoMP}
+                className="px-5 py-2.5 bg-[#009EE3] hover:bg-[#0080B7] text-white rounded-xl font-bold shadow-md shadow-[#009EE3]/20 transition-all active:scale-95"
+              >
+                Ir a pagar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <Toast message={mensajeToast} isVisible={showToast} onClose={() => setShowToast(false)} />
     </div>
   );
 }
 
-// 🔥 El export default solo hace el Suspense wrapper
 export default function OnboardingPlanesPage() {
   return (
     <Suspense fallback={

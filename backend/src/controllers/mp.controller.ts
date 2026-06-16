@@ -5,7 +5,8 @@ import { prisma } from '../config/db';
 const client = new MercadoPagoConfig({ accessToken: process.env.MERCADO_PAGO_ACCESS_TOKEN || '' });
 
 export const crearSuscripcion = async (req: Request, res: Response): Promise<any> => {
-  const { plan, email } = req.body;
+  // 🔥 1. Ahora también extraemos mpEmail (el correo que eligen en el modal)
+  const { plan, email, mpEmail } = req.body;
 
   const planes = {
     BASICO: { title: "Plan Básico - AseguraSimple", price: 100 },
@@ -41,7 +42,8 @@ export const crearSuscripcion = async (req: Request, res: Response): Promise<any
         },
         back_url: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/login?exito=true`,
         external_reference: `${email}|${plan}`,
-        payer_email: email // 🔥 LA SOLUCIÓN: Mercado Pago exige saber el email del pagador
+        // 🔥 2. Mercado Pago usará el mpEmail para validar la cuenta al pagar
+        payer_email: mpEmail || email 
       }
     });
 
