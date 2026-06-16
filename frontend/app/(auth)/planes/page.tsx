@@ -4,11 +4,16 @@ import { Suspense, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { Check, Shield, Users, Zap, Loader2, Sparkles } from "lucide-react";
 import Toast from "@/components/ui/Toast";
+import { useAuthStore } from "@/store/authStore"; // 🔥 1. Importamos el store
 
 // 🔥 Todo el contenido va acá adentro
 function PlanesContent() {
   const searchParams = useSearchParams();
   const userEmail = searchParams.get("email") || "";
+
+  // 🔥 2. Traemos al usuario logueado para saber su plan
+  const { user } = useAuthStore();
+  const planActual = user?.plan || "GRATUITO";
 
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
   const [showToast, setShowToast] = useState(false);
@@ -108,15 +113,14 @@ function PlanesContent() {
       if (res.ok && data.init_point) {
         window.location.href = data.init_point;
       } else {
-        // 🔥 Atrapamos el error específico que nos manda el backend
         throw new Error(data.error || "Error desconocido al procesar el pago.");
       }
     } catch (error: any) {
-      // 🔥 Mostramos el mensaje exacto en tu Toast (ej: "Ya tenés el Plan Básico activo...")
       setMensajeToast(error.message || "No se pudo conectar con Mercado Pago. Inténtalo de nuevo.");
       setShowToast(true);
       setLoadingPlan(null);
     }
+  };
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen p-4 md:p-8 bg-gray-50 overflow-x-hidden w-full">
@@ -132,6 +136,9 @@ function PlanesContent() {
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 items-center max-w-7xl w-full px-2">
         {planes.map((plan) => {
           const IconComponent = plan.icon;
+          // 🔥 3. Comprobamos si este iterador es el plan que tiene el usuario
+          const esPlanActual = plan.id === planActual;
+
           return (
             <div key={plan.id} className={`border p-6 rounded-3xl flex flex-col gap-6 relative bg-white transition-all ${plan.color}`}>
               {plan.popular && (
@@ -166,13 +173,20 @@ function PlanesContent() {
 
               <button
                 onClick={() => handleSeleccionarPlan(plan.id)}
-                disabled={loadingPlan !== null}
-                className={`w-full py-3.5 mt-4 rounded-xl font-bold text-sm transition-all active:scale-[0.98] disabled:opacity-70 flex items-center justify-center gap-2 ${plan.btnColor}`}
+                // 🔥 4. Deshabilitamos si está cargando O si ya es su plan actual
+                disabled={loadingPlan !== null || esPlanActual}
+                // 🔥 5. Cambiamos las clases para que se pinte de verde si es su plan
+                className={`w-full py-3.5 mt-4 rounded-xl font-bold text-sm transition-all active:scale-[0.98] disabled:opacity-70 flex items-center justify-center gap-2 ${
+                  esPlanActual ? 'bg-green-600 text-white cursor-not-allowed' : plan.btnColor
+                }`}
               >
                 {loadingPlan === plan.id ? (
                   <>
                     <Loader2 size={18} className="animate-spin" /> Procesando...
                   </>
+                ) : esPlanActual ? (
+                  // 🔥 6. Cambiamos el texto visualmente
+                  "Tu plan actual"
                 ) : (
                   plan.btnText
                 )}
@@ -207,7 +221,6 @@ export default function OnboardingPlanesPage() {
   );
 }
 
-
 function UserIcon(props: any) {
   return (
     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
@@ -215,4 +228,4 @@ function UserIcon(props: any) {
       <circle cx="12" cy="7" r="4"/>
     </svg>
   );
-} 
+}

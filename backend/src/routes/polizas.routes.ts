@@ -2,11 +2,13 @@ import { Router } from 'express';
 import * as polizasController from '../controllers/polizas.controller';
 import { upload } from '../middlewares/upload.middleware';
 import { verificarToken } from '../middlewares/auth.middleware';
+import { verificarSuscripcionActiva } from '../middlewares/suscripcion.middleware'; // 🔥 El nuevo middleware
 
 const router = Router();
 
-// 🔥 Aplicamos el patovica a TODO el archivo de una sola vez, igual que en Asegurados
+// 🔥 Aplicamos los patovicas a TODO el archivo de una sola vez
 router.use(verificarToken);
+router.use(verificarSuscripcionActiva); // 🛡️ Deja leer (GET), pero bloquea crear/editar (POST/PUT/DELETE) si no pagó
 
 router.get('/', polizasController.obtenerTodas);
 router.get('/:id', polizasController.obtenerPorId);

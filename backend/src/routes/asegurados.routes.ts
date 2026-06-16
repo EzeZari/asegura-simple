@@ -2,10 +2,14 @@ import { Router } from 'express';
 import { prisma } from '../config/db';
 import { enviarCorreoBienvenida } from '../services/email.service';
 import { verificarLimiteAsegurados } from '../utils/verificarLimites';
-import { verificarToken } from '../middlewares/auth.middleware';
+import { verificarToken } from '../middlewares/auth.middleware'; // 🔥 Tu middleware de Auth
+import { verificarSuscripcionActiva } from '../middlewares/suscripcion.middleware'; // 🔥 El nuevo middleware
 
 const router = Router();
+
+// 🔥 MIDDLEWARES GLOBALES PARA ESTE ARCHIVO
 router.use(verificarToken);
+router.use(verificarSuscripcionActiva); // 🛡️ El "Patovica" protege automáticamente los POST, PUT y DELETE
 
 // Función helper para obtener, vincular o crear el Productor del usuario logueado
 const obtenerProductorId = async (userId: number): Promise<number> => {
@@ -40,6 +44,7 @@ const obtenerProductorId = async (userId: number): Promise<number> => {
 };
 
 // RUTA: GET /api/asegurados
+// (Pasa directo porque el patovica ignora los GET)
 router.get('/', async (req, res) => {
   try {
     const productorId = await obtenerProductorId(req.userId!);
@@ -56,6 +61,7 @@ router.get('/', async (req, res) => {
 });
 
 // RUTA: GET /api/asegurados/:id/polizas
+// (Pasa directo porque el patovica ignora los GET)
 router.get('/:id/polizas', async (req, res) => {
   try {
     const { id } = req.params;
@@ -83,6 +89,7 @@ router.get('/:id/polizas', async (req, res) => {
 });
 
 // RUTA: POST /api/asegurados
+// ⛔ (Bloqueado si no pagó la suscripción)
 router.post('/', async (req, res): Promise<any> => {
   try {
     const productorId = await obtenerProductorId(req.userId!);
@@ -136,6 +143,7 @@ router.post('/', async (req, res): Promise<any> => {
 });
 
 // RUTA: PUT /api/asegurados/:id
+// ⛔ (Bloqueado si no pagó la suscripción)
 router.put('/:id', async (req, res): Promise<any> => {
   try {
     const { id } = req.params;
@@ -189,6 +197,7 @@ router.put('/:id', async (req, res): Promise<any> => {
 });
 
 // RUTA: DELETE /api/asegurados/:id
+// ⛔ (Bloqueado si no pagó la suscripción)
 router.delete('/:id', async (req, res): Promise<any> => {
   try {
     const { id } = req.params;
@@ -219,6 +228,7 @@ router.delete('/:id', async (req, res): Promise<any> => {
 });
 
 // RUTA: POST /api/asegurados/importar
+// ⛔ (Bloqueado si no pagó la suscripción)
 router.post('/importar', async (req, res): Promise<any> => {
   try {
     const productorId = await obtenerProductorId(req.userId!);
