@@ -65,7 +65,12 @@ export const login = async (req: Request, res: Response): Promise<any> => {
   const { email, password } = validData.data;
 
   try {
-    const user = await prisma.user.findUnique({ where: { email } });
+    // 🔥 MAGIA 1: Incluimos la suscripción al buscar al usuario
+    const user = await prisma.user.findUnique({ 
+      where: { email },
+      include: { suscripcion: true } 
+    });
+    
     if (!user) return res.status(400).json({ error: 'Credenciales incorrectas.' });
 
     const isMatch = await bcrypt.compare(password, user.password);
@@ -103,19 +108,26 @@ export const login = async (req: Request, res: Response): Promise<any> => {
 
     const { accessToken, refreshToken } = generateTokens(user.id, user.role);
 
-    // 🔥 MAGIA: Adaptador de cookies inteligente para Localhost vs Producción
     const isProd = process.env.NODE_ENV === 'production';
     res.cookie('refreshToken', refreshToken, {
       httpOnly: true,
-      secure: isProd, // Si es local, no exige HTTPS
-      sameSite: isProd ? 'none' : 'lax', // Lax previene bloqueos en localhost
+      secure: isProd,
+      sameSite: isProd ? 'none' : 'lax',
       maxAge: 7 * 24 * 60 * 60 * 1000
     });
 
     res.status(200).json({ 
       message: 'Ingreso exitoso', 
       accessToken, 
-      user: { id: user.id, nombre: user.nombre, email: user.email, role: user.role, twoFactorEnabled: user.twoFactorEnabled } 
+      user: { 
+        id: user.id, 
+        nombre: user.nombre, 
+        email: user.email, 
+        role: user.role, 
+        twoFactorEnabled: user.twoFactorEnabled,
+        plan: user.plan, // 🔥 Mandamos el plan
+        suscripcion: user.suscripcion // 🔥 Mandamos la suscripción
+      } 
     });
   } catch (error) {
     console.error(error);
@@ -152,14 +164,28 @@ export const refresh = async (req: Request, res: Response): Promise<any> => {
 
   try {
     const decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET as string) as { userId: number };
-    const user = await prisma.user.findUnique({ where: { id: decoded.userId } });
+    
+    // 🔥 MAGIA 2: Incluimos la suscripción al rehidratar la sesión
+    const user = await prisma.user.findUnique({ 
+      where: { id: decoded.userId },
+      include: { suscripcion: true }
+    });
+    
     if (!user) return res.status(401).json({ error: 'Usuario no encontrado.' });
 
     const accessToken = jwt.sign({ userId: user.id, role: user.role }, process.env.JWT_SECRET as string, { expiresIn: '15m' });
 
     res.status(200).json({ 
       accessToken,
-      user: { id: user.id, nombre: user.nombre, email: user.email, role: user.role, twoFactorEnabled: user.twoFactorEnabled }
+      user: { 
+        id: user.id, 
+        nombre: user.nombre, 
+        email: user.email, 
+        role: user.role, 
+        twoFactorEnabled: user.twoFactorEnabled,
+        plan: user.plan, // 🔥 Mandamos el plan
+        suscripcion: user.suscripcion // 🔥 Mandamos la suscripción
+      }
     });
   } catch (error) {
     res.status(403).json({ error: 'Token inválido o expirado.' });
@@ -237,7 +263,11 @@ export const verify2FALogin = async (req: Request, res: Response): Promise<any> 
   if (!userId || !codigo) return res.status(400).json({ error: 'Faltan datos de validación.' });
 
   try {
-    const user = await prisma.user.findUnique({ where: { id: Number(userId) } });
+    // 🔥 MAGIA 3: También lo agregamos en el login por 2FA por las dudas
+    const user = await prisma.user.findUnique({ 
+      where: { id: Number(userId) },
+      include: { suscripcion: true }
+    });
 
     if (!user || user.codigoVerificacion !== codigo) {
       return res.status(400).json({ error: 'Código de seguridad incorrecto.' });
@@ -258,7 +288,15 @@ export const verify2FALogin = async (req: Request, res: Response): Promise<any> 
     res.status(200).json({ 
       message: 'Ingreso exitoso', 
       accessToken, 
-      user: { id: user.id, nombre: user.nombre, email: user.email, role: user.role, twoFactorEnabled: user.twoFactorEnabled } 
+      user: { 
+        id: user.id, 
+        nombre: user.nombre, 
+        email: user.email, 
+        role: user.role, 
+        twoFactorEnabled: user.twoFactorEnabled,
+        plan: user.plan,
+        suscripcion: user.suscripcion 
+      } 
     });
   } catch (error) {
     console.error(error);

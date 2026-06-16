@@ -18,7 +18,7 @@ export default function ConfiguracionPage() {
     { id: "perfil", label: "Perfil de Agencia", icon: Building2 },
     { id: "plantillas", label: "Plantillas", icon: MessageSquare },
     { id: "notificaciones", label: "Notificaciones", icon: Bell },
-    { id: "equipo", label: "Equipo", icon: Users },
+    { id: "equipo", label: "Equipo y Planes", icon: Users },
     { id: "seguridad", label: "Seguridad y Datos", icon: Shield },
   ];
 

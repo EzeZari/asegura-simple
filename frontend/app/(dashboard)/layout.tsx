@@ -5,7 +5,8 @@ import Sidebar from "@/components/layout/Sidebar";
 import { useAuthStore } from "@/store/authStore";
 import { Menu } from "lucide-react"; 
 import { apiFetch } from "@/services/api"; 
-import UpgradeModal from "@/components/ui/UpgradeModal"; // 🔥 Importamos el Modal Global
+import UpgradeModal from "@/components/ui/UpgradeModal";
+import GracePeriodBanner from "@/components/layout/GracePeriodBanner"; // 🔥 Importamos el Bánner
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const setUser = useAuthStore((state: any) => state.setUser); 
@@ -47,6 +48,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <Menu size={26} />
           </button>
         </div>
+
+        {/* 🔥 AGREGAMOS EL BÁNNER ACÁ PARA QUE ESTÉ ARRIBA DEL CONTENIDO */}
+        <GracePeriodBanner />
 
         <main className="flex-1 flex flex-col w-full overflow-x-hidden">
           {children}
