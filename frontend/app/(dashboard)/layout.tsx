@@ -6,7 +6,7 @@ import { useAuthStore } from "@/store/authStore";
 import { Menu } from "lucide-react"; 
 import { apiFetch } from "@/services/api"; 
 import UpgradeModal from "@/components/ui/UpgradeModal";
-import GracePeriodBanner from "@/components/layout/GracePeriodBanner"; // 🔥 Importamos el Bánner
+import GracePeriodBanner from "@/components/layout/GracePeriodBanner"; 
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const setUser = useAuthStore((state: any) => state.setUser); 
@@ -16,13 +16,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   useEffect(() => {
     const rehidratarSesion = async () => {
       try {
-        const res = await apiFetch(`/api/auth/refresh`, {
-          method: "POST",
-        });
+        const res = await apiFetch(`/api/auth/refresh`, { method: "POST" });
 
         if (res.ok) {
           const data = await res.json();
           setUser(data.user || data); 
+          
+          // 🔥 CLAVE: Guardamos el token fresco en las cookies por si el usuario recarga la página con F5
+          if (data.accessToken) {
+            document.cookie = `next_auth_token=${data.accessToken}; path=/; max-age=86400; secure; samesite=strict`;
+          }
         }
       } catch (error) {
         console.error("Error al rehidratar sesión:", error);
@@ -49,7 +52,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </button>
         </div>
 
-        {/* 🔥 AGREGAMOS EL BÁNNER ACÁ PARA QUE ESTÉ ARRIBA DEL CONTENIDO */}
+        {/* 🔥 Bánner de período de gracia */}
         <GracePeriodBanner />
 
         <main className="flex-1 flex flex-col w-full overflow-x-hidden">
@@ -57,7 +60,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </main>
       </div>
 
-      {/* 🔥 AGREGAMOS EL MODAL ACÁ PARA QUE ESTÉ DISPONIBLE EN TODA LA PLATAFORMA */}
       <UpgradeModal />
     </div>
   );

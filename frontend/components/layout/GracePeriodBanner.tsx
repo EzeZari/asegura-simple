@@ -7,13 +7,10 @@ import { useRouter } from "next/navigation";
 export default function GracePeriodBanner() {
   const router = useRouter();
   
-  // Le pedimos al store el usuario
   const user = useAuthStore((state: any) => state.user);
 
   if (!user) return null;
 
-  // 🔥 SOLUCIÓN: Le decimos a TypeScript que trate a user como "any" temporalmente 
-  // para que no se queje de la nueva propiedad "suscripcion"
   const userData = user as any;
 
   if (userData.plan === "GRATUITO" || !userData.suscripcion) return null;
@@ -49,11 +46,12 @@ export default function GracePeriodBanner() {
       </div>
       
       <button
-        onClick={() => router.push("/planes?email=" + userData.email)}
+        // 🔥 Lo mandamos a Configuración donde está el panel de Suscripción
+        onClick={() => router.push("/configuracion")}
         className="bg-white text-orange-700 hover:bg-orange-50 font-bold text-xs px-4 py-1.5 rounded-lg shadow-sm transition-all active:scale-95 flex items-center gap-1.5 shrink-0"
       >
         <CreditCard size={14} />
-        Actualizar Tarjeta
+        Gestionar Pago
       </button>
     </div>
   );
