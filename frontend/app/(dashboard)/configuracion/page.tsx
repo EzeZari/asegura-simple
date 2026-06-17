@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-// 🔥 1. Agregamos CreditCard a las importaciones de íconos
 import { UserCircle, Building2, MessageSquare, Bell, Users, Shield, CreditCard } from "lucide-react"; 
 
 import MiPerfilSettings from "@/components/configuracion/MiPerfilSettings"; 
@@ -10,7 +9,6 @@ import PlantillasSettings from "@/components/configuracion/PlantillasSettings";
 import NotificacionesSettings from "@/components/configuracion/NotificacionesSettings";
 import EquipoSettings from "@/components/configuracion/EquipoSettings";
 import SeguridadSettings from "@/components/configuracion/SeguridadSettings";
-// 🔥 2. Importamos el nuevo panel de Suscripción
 import SuscripcionSettings from "@/components/configuracion/SuscripcionSettings"; 
 
 export default function ConfiguracionPage() {
@@ -21,8 +19,8 @@ export default function ConfiguracionPage() {
     { id: "perfil", label: "Perfil de Agencia", icon: Building2 },
     { id: "plantillas", label: "Plantillas", icon: MessageSquare },
     { id: "notificaciones", label: "Notificaciones", icon: Bell },
-    { id: "equipo", label: "Equipo", icon: Users }, // 🔥 Le sacamos "y Planes" a este
-    { id: "suscripcion", label: "Suscripción", icon: CreditCard }, // 🔥 3. Agregamos la pestaña nueva
+    { id: "equipo", label: "Equipo", icon: Users }, 
+    { id: "suscripcion", label: "Suscripción", icon: CreditCard }, 
     { id: "seguridad", label: "Seguridad y Datos", icon: Shield },
   ];
 
@@ -33,7 +31,8 @@ export default function ConfiguracionPage() {
         <p className="text-sm md:text-base text-gray-500 mt-1">Administrá los ajustes de tu plataforma y automatizaciones.</p>
       </div>
 
-      <div className="flex border-b border-gray-200 mt-2 overflow-x-auto overflow-y-hidden [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+      {/* 🔥 ARREGLO DEL SCROLL: Le sacamos el ocultamiento de scrollbar y agregamos pb-2 */}
+      <div className="flex overflow-x-auto border-b border-gray-200 mt-2 pb-1">
         {tabs.map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
@@ -41,7 +40,8 @@ export default function ConfiguracionPage() {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center gap-2 py-3 px-4 md:px-6 font-medium text-sm transition-colors border-b-2 mb-[-1px] whitespace-nowrap ${
+              // 🔥 Agregamos shrink-0 para que los botones no se aplasten al achicar la pantalla
+              className={`flex shrink-0 items-center gap-2 py-3 px-4 md:px-6 font-medium text-sm transition-colors border-b-2 mb-[-5px] whitespace-nowrap ${
                 isActive ? "border-green-600 text-green-700" : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
               }`}
             >
@@ -57,7 +57,6 @@ export default function ConfiguracionPage() {
         {activeTab === "plantillas" && <PlantillasSettings />}
         {activeTab === "notificaciones" && <NotificacionesSettings />}
         {activeTab === "equipo" && <EquipoSettings />}
-        {/* 🔥 4. Renderizamos el panel cuando seleccionan la pestaña */}
         {activeTab === "suscripcion" && <SuscripcionSettings />} 
         {activeTab === "seguridad" && <SeguridadSettings />} 
       </div>

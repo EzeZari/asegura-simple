@@ -14,18 +14,15 @@ export default function SuscripcionSettings() {
   const plan = user.plan || "GRATUITO";
   const suscripcion = user.suscripcion;
 
-  // Calculamos el estado visual
   const esGratis = plan === "GRATUITO";
   const estaActivo = suscripcion?.estado === "autorizado";
   const estaCancelado = suscripcion?.estado === "cancelled" || suscripcion?.estado === "paused";
   
-  // Formateamos la fecha si existe
   const fechaVencimiento = suscripcion?.fechaVencimiento 
     ? new Date(suscripcion.fechaVencimiento).toLocaleDateString("es-AR", { day: '2-digit', month: 'long', year: 'numeric' })
     : null;
 
   const handleCancelar = async () => {
-    // Acá luego conectaremos con el backend de MP
     alert("Próximamente conectaremos esto con Mercado Pago para cancelar el débito automático.");
   };
 
@@ -97,24 +94,26 @@ export default function SuscripcionSettings() {
             </p>
           </div>
 
-          <div className="flex flex-col gap-3 border-t border-gray-200 pt-5 mt-auto">
-            {!esGratis && (
-              <button 
-                onClick={handleCancelar}
-                disabled={estaCancelado}
-                className="text-red-600 hover:bg-red-50 text-sm font-semibold py-2.5 rounded-xl transition-colors disabled:opacity-50 disabled:hover:bg-transparent"
-              >
-                {estaCancelado ? "Suscripción ya cancelada" : "Cancelar suscripción"}
-              </button>
-            )}
+          {/* 🔥 ACÁ AJUSTAMOS LOS BOTONES: MP como botón principal, Cancelar como link chiquito */}
+          <div className="flex flex-col items-center gap-3 border-t border-gray-200 pt-5 mt-auto">
             <a 
               href="https://www.mercadopago.com.ar/subscriptions" 
               target="_blank" 
               rel="noopener noreferrer"
-              className="flex items-center justify-center gap-2 text-gray-600 hover:text-gray-900 text-sm font-medium py-2 transition-colors"
+              className="flex items-center justify-center gap-2 w-full bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 text-sm font-semibold py-2.5 rounded-xl transition-colors shadow-sm"
             >
-              Ver en Mercado Pago <ExternalLink size={14} />
+              Gestionar en Mercado Pago <ExternalLink size={14} />
             </a>
+            
+            {!esGratis && (
+              <button 
+                onClick={handleCancelar}
+                disabled={estaCancelado}
+                className="text-gray-400 hover:text-red-600 text-xs font-medium underline transition-colors disabled:opacity-50 disabled:no-underline mt-1"
+              >
+                {estaCancelado ? "Suscripción cancelada" : "Cancelar suscripción"}
+              </button>
+            )}
           </div>
         </div>
       </div>
