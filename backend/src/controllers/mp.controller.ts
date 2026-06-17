@@ -55,12 +55,21 @@ export const crearSuscripcion = async (req: Request, res: Response): Promise<any
 };
 
 export const webhookMercadoPago = async (req: Request, res: Response) => {
+  // Le respondemos "OK" rápido a MP para que no vuelva a insistir
   res.status(200).send("OK");
 
   try {
-    const { type, data } = req.body;
+    const { type, topic, data } = req.body;
+    
+    // 🔥 1. Blindaje: MP a veces manda 'type' y a veces 'topic'. Aceptamos los dos.
+    const evento = type || topic;
 
-    if (type === 'subscription_preapproval') {
+    // 🔥 2. Registro: Esto aparecerá en los logs de Railway para saber si MP nos está hablando
+    if (evento) {
+      console.log(`📩 Webhook MP recibido - Evento: ${evento} - ID: ${data?.id}`);
+    }
+
+    if (evento === 'subscription_preapproval' && data?.id) {
       const preapproval = new PreApproval(client);
       const suscripcionMP = await preapproval.get({ id: data.id });
 
@@ -95,14 +104,14 @@ export const webhookMercadoPago = async (req: Request, res: Response) => {
               }
             });
 
-            console.log(`✅ ¡ÉXITO! Suscripción ${planNombre} activada para ${email}. Vence el ${fechaVencimiento.toLocaleDateString()}`);
+            console.log(`✅ ¡ÉXITO TOTAL! Suscripción ${planNombre} activada en DB para ${email}.`);
           }
           else if (suscripcionMP.status === 'cancelled' || suscripcionMP.status === 'paused') {
             await prisma.suscripcion.update({
               where: { userId: user.id },
               data: { estado: suscripcionMP.status }
             });
-            console.log(`❌ Atención: Suscripción de ${email} cancelada/pausada. (Seguirá activo hasta su fecha de vencimiento).`);
+            console.log(`❌ Atención: Suscripción de ${email} cancelada/pausada.`);
           }
         }
       }
