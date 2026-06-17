@@ -6,6 +6,10 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { apiFetch } from "@/services/api";
 
+// 🔥 1. Importamos tus modales premium
+import ConfirmModal from "@/components/ui/ConfirmModal";
+import AlertModal from "@/components/ui/AlertModal";
+
 export default function SuscripcionSettings() {
   const user = useAuthStore((state: any) => state.user);
   const setUser = useAuthStore((state: any) => state.setUser);
@@ -13,16 +17,17 @@ export default function SuscripcionSettings() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
 
-  // 🔥 1. FUNCIÓN DE REFRESH: Va al back y actualiza la cookie sin cerrar sesión
+  // 🔥 2. Estados para controlar los modales
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [alertConfig, setAlertConfig] = useState({ isOpen: false, title: "", message: "" });
+
   const fetchLatestData = async () => {
     setIsRefreshing(true);
     try {
       const res = await apiFetch(`/api/auth/refresh`, { method: "POST" });
       if (res.ok) {
         const data = await res.json();
-        setUser(data.user); // Actualizamos memoria
-        
-        // Guardamos el nuevo carnet
+        setUser(data.user);
         if (data.accessToken) {
           document.cookie = `next_auth_token=${data.accessToken}; path=/; max-age=86400; secure; samesite=strict`;
         }
@@ -51,25 +56,31 @@ export default function SuscripcionSettings() {
     ? new Date(suscripcion.fechaVencimiento).toLocaleDateString("es-AR", { day: '2-digit', month: 'long', year: 'numeric' })
     : null;
 
-  // 🔥 2. FUNCIÓN DE CANCELAR: Da de baja el débito en MP de verdad
-  const handleCancelar = async () => {
-    const confirmar = window.confirm("¿Estás seguro de que querés cancelar tu suscripción? Podrás seguir usando la plataforma con tu plan actual hasta que termine el ciclo de facturación.");
-    
-    if (!confirmar) return;
-
+  // 🔥 3. Nueva función que se ejecuta al confirmar en el modal
+  const ejecutarCancelacion = async () => {
     setIsCancelling(true);
     try {
       const res = await apiFetch(`/api/pagos/cancelar`, { method: "POST" });
       const data = await res.json();
 
       if (res.ok) {
-        alert("Suscripción cancelada con éxito. Ya no se te realizarán cobros automáticos.");
-        fetchLatestData(); // Refrescamos para que la UI se pinte de rojo/cancelada
+        setShowConfirm(false);
+        setAlertConfig({
+          isOpen: true,
+          title: "Suscripción cancelada",
+          message: "Tu suscripción ha sido dada de baja. Ya no se te realizarán cobros automáticos, pero podrás seguir usando la plataforma hasta que finalice el ciclo actual."
+        });
+        fetchLatestData();
       } else {
         throw new Error(data.error || "No se pudo cancelar la suscripción.");
       }
     } catch (error: any) {
-      alert(`Error: ${error.message}`);
+      setShowConfirm(false);
+      setAlertConfig({
+        isOpen: true,
+        title: "Atención",
+        message: error.message || "Ocurrió un error al intentar cancelar."
+      });
     } finally {
       setIsCancelling(false);
     }
@@ -137,7 +148,7 @@ export default function SuscripcionSettings() {
               href={`/planes?email=${user.email}`}
               className="flex-1 bg-gray-900 hover:bg-gray-800 text-white text-center text-sm font-bold py-2.5 rounded-xl transition-colors"
             >
-              {esGratis ? "Mejorar Plan" : "Cambiar Plan"}
+              {esGratis ? "Mejorar Plan" : estaCancelado ? "Reactivar Plan" : "Cambiar Plan"}
             </Link>
           </div>
         </div>
@@ -167,16 +178,35 @@ export default function SuscripcionSettings() {
             
             {!esGratis && (
               <button 
-                onClick={handleCancelar}
+                onClick={() => setShowConfirm(true)} // Abrimos el modal en vez del alert nativo
                 disabled={estaCancelado || isCancelling}
                 className="text-gray-400 hover:text-red-600 text-xs font-medium underline transition-colors disabled:opacity-50 disabled:no-underline mt-2"
               >
-                {isCancelling ? "Procesando..." : estaCancelado ? "Suscripción cancelada" : "Cancelar suscripción"}
+                {estaCancelado ? "Suscripción cancelada" : "Cancelar suscripción"}
               </button>
             )}
           </div>
         </div>
       </div>
+
+      {/* 🔥 Renderizamos los modales */}
+      <ConfirmModal 
+        isOpen={showConfirm}
+        onClose={() => setShowConfirm(false)}
+        onConfirm={ejecutarCancelacion}
+        title="Cancelar Suscripción"
+        message="¿Estás seguro de que querés cancelar? Podrás seguir usando AseguraSimple con tu plan actual hasta que termine el ciclo de facturación de este mes."
+        confirmText="Sí, cancelar"
+        isLoading={isCancelling}
+      />
+
+      <AlertModal 
+        isOpen={alertConfig.isOpen}
+        onClose={() => setAlertConfig({ ...alertConfig, isOpen: false })}
+        title={alertConfig.title}
+        message={alertConfig.message}
+      />
+
     </div>
   );
 }

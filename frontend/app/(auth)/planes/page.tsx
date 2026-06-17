@@ -10,14 +10,16 @@ function PlanesContent() {
   const searchParams = useSearchParams();
   const userEmail = searchParams.get("email") || "";
 
-  const { user } = useAuthStore();
+  const user = useAuthStore((state: any) => state.user);
   const planActual = user?.plan || null;
+  
+  // 🔥 Extraemos si el usuario tiene su suscripción cancelada
+  const suscripcionEstado = user?.suscripcion?.estado;
+  const estaCancelado = suscripcionEstado === "cancelled" || suscripcionEstado === "paused";
 
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
   const [showToast, setShowToast] = useState(false);
   const [mensajeToast, setMensajeToast] = useState("");
-
-  // 🔥 NUEVOS ESTADOS PARA EL MODAL DE MERCADO PAGO
   const [showMpModal, setShowMpModal] = useState(false);
   const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
   const [mpEmail, setMpEmail] = useState("");
@@ -90,7 +92,6 @@ function PlanesContent() {
     }
   ];
 
-  // 🔥 1. En vez de pagar directo, abrimos el modal
   const handleSeleccionarPlan = (planId: string) => {
     if (!userEmail) {
       setMensajeToast("Error: No se detectó el usuario. Volvé a ingresar desde el link de tu correo.");
@@ -105,11 +106,10 @@ function PlanesContent() {
     }
 
     setSelectedPlanId(planId);
-    setMpEmail(userEmail); // Se lo dejamos pre-llenado por comodidad
+    setMpEmail(userEmail);
     setShowMpModal(true);
   };
 
-  // 🔥 2. Esta es la función que realmente va a Mercado Pago
   const confirmarPagoMP = async () => {
     if (!mpEmail.trim() || !mpEmail.includes('@')) {
       setMensajeToast("Por favor, ingresá un email válido de Mercado Pago.");
@@ -124,7 +124,6 @@ function PlanesContent() {
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/pagos/create-subscription`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        // Mandamos los DOS emails (el de tu sistema, y el que va a usar para pagar)
         body: JSON.stringify({ plan: selectedPlanId, email: userEmail, mpEmail: mpEmail.trim().toLowerCase() })
       });
 
@@ -156,7 +155,10 @@ function PlanesContent() {
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 items-center max-w-7xl w-full px-2">
         {planes.map((plan) => {
           const IconComponent = plan.icon;
-          const esPlanActual = plan.id === planActual;
+          
+          // 🔥 LÓGICA PROFESIONAL: Solo bloqueamos si es su plan actual Y NO ESTÁ CANCELADO
+          const esPlanActualActivo = plan.id === planActual && !estaCancelado;
+          const esPlanCancelado = plan.id === planActual && estaCancelado;
 
           return (
             <div key={plan.id} className={`border p-6 rounded-3xl flex flex-col gap-6 relative bg-white transition-all ${plan.color}`}>
@@ -192,17 +194,19 @@ function PlanesContent() {
 
               <button
                 onClick={() => handleSeleccionarPlan(plan.id)}
-                disabled={loadingPlan !== null || esPlanActual}
+                disabled={loadingPlan !== null || esPlanActualActivo}
                 className={`w-full py-3.5 mt-4 rounded-xl font-bold text-sm transition-all active:scale-[0.98] disabled:opacity-70 flex items-center justify-center gap-2 ${
-                  esPlanActual ? 'bg-green-600 text-white cursor-not-allowed' : plan.btnColor
+                  esPlanActualActivo ? 'bg-green-600 text-white cursor-not-allowed' : plan.btnColor
                 }`}
               >
                 {loadingPlan === plan.id ? (
                   <>
                     <Loader2 size={18} className="animate-spin" /> Procesando...
                   </>
-                ) : esPlanActual ? (
+                ) : esPlanActualActivo ? (
                   "Tu plan actual"
+                ) : esPlanCancelado ? (
+                  "Reactivar Plan" // 🔥 Si canceló, le invitamos a volver
                 ) : (
                   plan.btnText
                 )}
@@ -219,7 +223,6 @@ function PlanesContent() {
         </p>
       </div>
 
-      {/* 🔥 MODAL DE MERCADO PAGO */}
       {showMpModal && (
         <div className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
           <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl flex flex-col gap-4 animate-in zoom-in-95 duration-200">
