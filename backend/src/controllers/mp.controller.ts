@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
-import { MercadoPagoConfig, PreApproval } from 'mercadopago';
+// 🔥 Agregamos Payment a la importación
+import { MercadoPagoConfig, PreApproval, Payment } from 'mercadopago';
 import { prisma } from '../config/db';
 
 const client = new MercadoPagoConfig({ accessToken: process.env.MERCADO_PAGO_ACCESS_TOKEN || '' });
@@ -69,6 +70,7 @@ export const webhookMercadoPago = async (req: Request, res: Response) => {
       console.log(`📩 Webhook MP recibido - Evento: ${evento} - ID: ${data?.id}`);
     }
 
+    // --- A. EVENTOS DE SUSCRIPCIÓN (Creación/Cancelación) ---
     if (evento === 'subscription_preapproval' && data?.id) {
       const preapproval = new PreApproval(client);
       const suscripcionMP = await preapproval.get({ id: data.id });
@@ -116,10 +118,56 @@ export const webhookMercadoPago = async (req: Request, res: Response) => {
         }
       }
     }
+
+    // --- B. EVENTOS DE PAGO (Las cuotas mensuales que entran) ---
+    if (evento === 'payment' && data?.id) {
+      const payment = new Payment(client);
+      const infoPago = await payment.get({ id: data.id });
+
+      // Buscamos a quién le cobró Mercado Pago
+      let email = "";
+      if (infoPago.external_reference) {
+        email = infoPago.external_reference.split("|")[0];
+      } else if (infoPago.payer?.email) {
+        email = infoPago.payer.email;
+      }
+
+      if (email) {
+        const user = await prisma.user.findUnique({ where: { email } });
+
+        if (user) {
+          // Buscamos si ya lo registramos (a veces MP manda el aviso 2 veces)
+          const pagoExistente = await prisma.pago.findUnique({
+            where: { mpPagoId: infoPago.id?.toString() }
+          });
+
+          if (!pagoExistente) {
+            await prisma.pago.create({
+              data: {
+                userId: user.id,
+                mpPagoId: infoPago.id?.toString() || data.id.toString(),
+                monto: infoPago.transaction_amount || 0,
+                moneda: infoPago.currency_id || "ARS",
+                estado: infoPago.status || "desconocido",
+                metodoPago: infoPago.payment_type_id || "desconocido",
+              }
+            });
+            console.log(`💰 ¡Caja! Pago de $${infoPago.transaction_amount} registrado para ${email}`);
+          } else {
+            // Si ya existe, le actualizamos el estado (ej: de "pendiente" a "aprobado")
+            await prisma.pago.update({
+              where: { mpPagoId: infoPago.id?.toString() },
+              data: { estado: infoPago.status || pagoExistente.estado }
+            });
+          }
+        }
+      }
+    }
   } catch (error) {
     console.error("Error procesando Webhook de MP:", error);
   }
 };
+
 // 🔥 NUEVA FUNCIÓN: Cancelar suscripción activa en MP
 export const cancelarSuscripcion = async (req: any, res: Response): Promise<any> => {
   try {
@@ -160,5 +208,26 @@ export const cancelarSuscripcion = async (req: any, res: Response): Promise<any>
   } catch (error: any) {
     console.error("Error al cancelar suscripción en MP:", error);
     res.status(500).json({ error: "Error interno al intentar cancelar la suscripción." });
+  }
+};
+
+// 🔥 NUEVA FUNCIÓN: Obtener historial de pagos
+export const obtenerHistorialPagos = async (req: any, res: Response): Promise<any> => {
+  try {
+    const idBruto = req.user?.userId || req.user?.id || req.usuario?.id || req.userId;
+    const userId = Number(idBruto);
+
+    if (!userId) return res.status(401).json({ error: "No autorizado" });
+
+    // Traemos los pagos ordenados del más nuevo al más viejo
+    const pagos = await prisma.pago.findMany({
+      where: { userId },
+      orderBy: { fechaPago: 'desc' }
+    });
+
+    res.json(pagos);
+  } catch (error) {
+    console.error("Error al obtener historial de pagos:", error);
+    res.status(500).json({ error: "Error interno al obtener pagos." });
   }
 };

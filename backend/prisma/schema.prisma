@@ -214,6 +214,8 @@ model User {
   plan                 Plan          @default(GRATUITO) // 🔥 Antes decía BASICO
   suscripcion          Suscripcion?
   productor            Productor?    // 🔥 NUEVO
+
+  pagos         Pago[]
 }
 
 model Actividad {
@@ -274,4 +276,17 @@ model Suscripcion {
   
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
+}
+// 🔥 NUEVA TABLA: Historial de Pagos
+model Pago {
+  id              Int      @id @default(autoincrement())
+  userId          Int
+  mpPagoId        String   @unique 
+  monto           Float
+  moneda          String   @default("ARS")
+  estado          String   // 'approved', 'rejected', etc.
+  metodoPago      String?  // 'credit_card', 'account_money', etc.
+  fechaPago       DateTime @default(now())
+  
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }

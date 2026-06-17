@@ -1,12 +1,12 @@
 "use client";
 
 import { useAuthStore } from "@/store/authStore";
-import { CreditCard, Calendar, CheckCircle2, AlertTriangle, Zap, ExternalLink, RefreshCw } from "lucide-react";
+// 🔥 Agregamos el icono FileText para la tabla
+import { CreditCard, Calendar, CheckCircle2, AlertTriangle, Zap, ExternalLink, RefreshCw, FileText } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { apiFetch } from "@/services/api";
 
-// 🔥 1. Importamos tus modales premium
 import ConfirmModal from "@/components/ui/ConfirmModal";
 import AlertModal from "@/components/ui/AlertModal";
 
@@ -16,14 +16,17 @@ export default function SuscripcionSettings() {
   
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
+  
+  // 🔥 Nuevo estado para guardar los pagos
+  const [pagos, setPagos] = useState<any[]>([]);
 
-  // 🔥 2. Estados para controlar los modales
   const [showConfirm, setShowConfirm] = useState(false);
   const [alertConfig, setAlertConfig] = useState({ isOpen: false, title: "", message: "" });
 
   const fetchLatestData = async () => {
     setIsRefreshing(true);
     try {
+      // 1. Buscamos el estado del usuario
       const res = await apiFetch(`/api/auth/refresh`, { method: "POST" });
       if (res.ok) {
         const data = await res.json();
@@ -32,6 +35,14 @@ export default function SuscripcionSettings() {
           document.cookie = `next_auth_token=${data.accessToken}; path=/; max-age=86400; secure; samesite=strict`;
         }
       }
+
+      // 🔥 2. Buscamos el historial de pagos
+      const resPagos = await apiFetch(`/api/pagos/historial`);
+      if (resPagos.ok) {
+        const dataPagos = await resPagos.json();
+        setPagos(dataPagos);
+      }
+
     } catch (error) {
       console.error("Error al sincronizar datos:", error);
     } finally {
@@ -56,7 +67,6 @@ export default function SuscripcionSettings() {
     ? new Date(suscripcion.fechaVencimiento).toLocaleDateString("es-AR", { day: '2-digit', month: 'long', year: 'numeric' })
     : null;
 
-  // 🔥 3. Nueva función que se ejecuta al confirmar en el modal
   const ejecutarCancelacion = async () => {
     setIsCancelling(true);
     try {
@@ -178,7 +188,7 @@ export default function SuscripcionSettings() {
             
             {!esGratis && (
               <button 
-                onClick={() => setShowConfirm(true)} // Abrimos el modal en vez del alert nativo
+                onClick={() => setShowConfirm(true)}
                 disabled={estaCancelado || isCancelling}
                 className="text-gray-400 hover:text-red-600 text-xs font-medium underline transition-colors disabled:opacity-50 disabled:no-underline mt-2"
               >
@@ -189,7 +199,68 @@ export default function SuscripcionSettings() {
         </div>
       </div>
 
-      {/* 🔥 Renderizamos los modales */}
+      {/* 🔥 SECCIÓN NUEVA: Historial de Pagos */}
+      <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm mt-8">
+        <div className="flex items-center gap-3 mb-6 border-b border-gray-100 pb-4">
+          <div className="p-2 bg-blue-50 text-blue-600 rounded-lg">
+            <FileText size={20} />
+          </div>
+          <div>
+            <h3 className="font-bold text-gray-900">Historial de Pagos</h3>
+            <p className="text-xs text-gray-500">Últimos cobros procesados por Mercado Pago</p>
+          </div>
+        </div>
+
+        {pagos.length === 0 ? (
+          <div className="text-center py-8 bg-gray-50/50 rounded-xl border border-dashed border-gray-200">
+            <p className="text-sm text-gray-500 font-medium">Aún no tenés pagos registrados en el sistema.</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm text-left">
+              <thead className="text-xs text-gray-400 uppercase bg-gray-50 rounded-lg">
+                <tr>
+                  <th className="px-4 py-3 font-bold rounded-tl-lg">Fecha</th>
+                  <th className="px-4 py-3 font-bold">Monto</th>
+                  <th className="px-4 py-3 font-bold">Método</th>
+                  <th className="px-4 py-3 font-bold text-right rounded-tr-lg">Estado</th>
+                </tr>
+              </thead>
+              <tbody>
+                {pagos.map((pago: any) => (
+                  <tr key={pago.id} className="border-b border-gray-50 hover:bg-gray-50/50 transition-colors">
+                    <td className="px-4 py-4 font-medium text-gray-900">
+                      {new Date(pago.fechaPago).toLocaleDateString("es-AR", { day: '2-digit', month: 'short', year: 'numeric' })}
+                    </td>
+                    <td className="px-4 py-4 text-gray-600 font-medium">
+                      ${pago.monto.toLocaleString("es-AR")} <span className="text-[10px] text-gray-400">{pago.moneda}</span>
+                    </td>
+                    <td className="px-4 py-4 text-gray-500 capitalize">
+                      {pago.metodoPago.replace("_", " ")}
+                    </td>
+                    <td className="px-4 py-4 text-right">
+                      {pago.estado === "approved" ? (
+                        <span className="bg-green-100 text-green-700 py-1 px-3 rounded-md text-xs font-bold uppercase tracking-wider">
+                          Aprobado
+                        </span>
+                      ) : pago.estado === "rejected" ? (
+                        <span className="bg-red-100 text-red-700 py-1 px-3 rounded-md text-xs font-bold uppercase tracking-wider">
+                          Rechazado
+                        </span>
+                      ) : (
+                        <span className="bg-gray-100 text-gray-700 py-1 px-3 rounded-md text-xs font-bold uppercase tracking-wider">
+                          {pago.estado}
+                        </span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
       <ConfirmModal 
         isOpen={showConfirm}
         onClose={() => setShowConfirm(false)}

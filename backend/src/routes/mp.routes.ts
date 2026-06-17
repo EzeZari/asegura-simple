@@ -1,7 +1,6 @@
 import { Router } from 'express';
-// 🔥 1. Sumamos cancelarSuscripcion a la importación
-import { crearSuscripcion, webhookMercadoPago, cancelarSuscripcion } from '../controllers/mp.controller';
-// 🔥 2. Importamos el middleware de seguridad
+// 🔥 Agregamos obtenerHistorialPagos
+import { crearSuscripcion, webhookMercadoPago, cancelarSuscripcion, obtenerHistorialPagos } from '../controllers/mp.controller';
 import { verificarToken } from '../middlewares/auth.middleware';
 
 const router = Router();
@@ -15,4 +14,5 @@ router.post('/webhook', webhookMercadoPago);
 // 🔥 3. La ruta nueva para que el usuario cancele su débito automático
 router.post('/cancelar', verificarToken, cancelarSuscripcion);
 
+router.get('/historial', verificarToken, obtenerHistorialPagos);
 export default router;
