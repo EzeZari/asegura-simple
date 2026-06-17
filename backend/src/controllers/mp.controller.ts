@@ -120,9 +120,19 @@ export const webhookMercadoPago = async (req: Request, res: Response) => {
     console.error("Error procesando Webhook de MP:", error);
   }
 };
+// 🔥 NUEVA FUNCIÓN: Cancelar suscripción activa en MP
 export const cancelarSuscripcion = async (req: any, res: Response): Promise<any> => {
   try {
-    const userId = req.user?.userId || req.user?.id;
+    // 🔥 Buscamos el ID en todos los lugares posibles
+    const idBruto = req.user?.userId || req.user?.id || req.usuario?.id || req.userId;
+
+    if (!idBruto) {
+      console.error("Token decodificado incompleto:", req.user || req.usuario || req.userId);
+      return res.status(401).json({ error: "No se pudo extraer el ID del usuario del token." });
+    }
+
+    // Convertimos a Número
+    const userId = Number(idBruto);
 
     const user = await prisma.user.findUnique({
       where: { id: userId },

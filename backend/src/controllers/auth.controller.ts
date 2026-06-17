@@ -347,8 +347,17 @@ export const resendConfirmationEmail = async (req: Request, res: Response): Prom
 // 🔥 NUEVO: Función para pedir un token fresco con el plan actualizado
 export const refreshUserData = async (req: any, res: Response): Promise<any> => {
   try {
-    const userId = req.user?.userId || req.user?.id; 
-    
+    // 🔥 Buscamos el ID en todos los lugares posibles según cómo se llame en tu middleware
+    const idBruto = req.user?.userId || req.user?.id || req.usuario?.id || req.userId;
+
+    if (!idBruto) {
+      console.error("Token decodificado incompleto:", req.user || req.usuario || req.userId);
+      return res.status(401).json({ error: "No se pudo extraer el ID del usuario del token." });
+    }
+
+    // Convertimos a Número (Prisma lo exige)
+    const userId = Number(idBruto);
+
     const user = await prisma.user.findUnique({
       where: { id: userId },
       include: { suscripcion: true }
@@ -356,9 +365,9 @@ export const refreshUserData = async (req: any, res: Response): Promise<any> => 
 
     if (!user) return res.status(404).json({ error: "Usuario no encontrado" });
 
-    // Armamos el carnet nuevo con los datos frescos
+    // Armamos el carnet nuevo con los datos frescos (le pasamos userId e id por las dudas)
     const accessToken = jwt.sign(
-      { userId: user.id, email: user.email, plan: user.plan, role: user.role },
+      { userId: user.id, id: user.id, email: user.email, plan: user.plan, role: user.role },
       process.env.JWT_SECRET || 'secret',
       { expiresIn: '24h' }
     );
