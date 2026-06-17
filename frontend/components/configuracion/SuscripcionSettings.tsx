@@ -1,20 +1,49 @@
 "use client";
 
 import { useAuthStore } from "@/store/authStore";
-import { CreditCard, Calendar, CheckCircle2, AlertTriangle, Zap, ExternalLink } from "lucide-react";
+import { CreditCard, Calendar, CheckCircle2, AlertTriangle, Zap, ExternalLink, RefreshCw } from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { apiFetch } from "@/services/api";
 
 export default function SuscripcionSettings() {
   const user = useAuthStore((state: any) => state.user);
+  const setUser = useAuthStore((state: any) => state.setUser);
+  
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
+
+  // 🔥 1. FUNCIÓN DE REFRESH: Va al back y actualiza la cookie sin cerrar sesión
+  const fetchLatestData = async () => {
+    setIsRefreshing(true);
+    try {
+      const res = await apiFetch(`/api/auth/refresh`, { method: "POST" });
+      if (res.ok) {
+        const data = await res.json();
+        setUser(data.user); // Actualizamos memoria
+        
+        // Guardamos el nuevo carnet
+        if (data.accessToken) {
+          document.cookie = `next_auth_token=${data.accessToken}; path=/; max-age=86400; secure; samesite=strict`;
+        }
+      }
+    } catch (error) {
+      console.error("Error al sincronizar datos:", error);
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchLatestData();
+  }, []);
 
   if (!user) return null;
 
   const plan = user.plan || "GRATUITO";
+  const esGratis = plan.toUpperCase() === "GRATUITO";
+  
   const suscripcion = user.suscripcion;
-
-  const esGratis = plan === "GRATUITO";
   const estaActivo = suscripcion?.estado === "autorizado";
   const estaCancelado = suscripcion?.estado === "cancelled" || suscripcion?.estado === "paused";
   
@@ -22,15 +51,47 @@ export default function SuscripcionSettings() {
     ? new Date(suscripcion.fechaVencimiento).toLocaleDateString("es-AR", { day: '2-digit', month: 'long', year: 'numeric' })
     : null;
 
+  // 🔥 2. FUNCIÓN DE CANCELAR: Da de baja el débito en MP de verdad
   const handleCancelar = async () => {
-    alert("Próximamente conectaremos esto con Mercado Pago para cancelar el débito automático.");
+    const confirmar = window.confirm("¿Estás seguro de que querés cancelar tu suscripción? Podrás seguir usando la plataforma con tu plan actual hasta que termine el ciclo de facturación.");
+    
+    if (!confirmar) return;
+
+    setIsCancelling(true);
+    try {
+      const res = await apiFetch(`/api/pagos/cancelar`, { method: "POST" });
+      const data = await res.json();
+
+      if (res.ok) {
+        alert("Suscripción cancelada con éxito. Ya no se te realizarán cobros automáticos.");
+        fetchLatestData(); // Refrescamos para que la UI se pinte de rojo/cancelada
+      } else {
+        throw new Error(data.error || "No se pudo cancelar la suscripción.");
+      }
+    } catch (error: any) {
+      alert(`Error: ${error.message}`);
+    } finally {
+      setIsCancelling(false);
+    }
   };
 
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
-      <div>
-        <h2 className="text-xl font-bold text-gray-900">Mi Suscripción</h2>
-        <p className="text-sm text-gray-500 mt-1">Gestioná tu plan actual y tus métodos de pago.</p>
+      
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h2 className="text-xl font-bold text-gray-900">Mi Suscripción</h2>
+          <p className="text-sm text-gray-500 mt-1">Gestioná tu plan actual y tus métodos de pago.</p>
+        </div>
+        
+        <button 
+          onClick={fetchLatestData} 
+          disabled={isRefreshing || isCancelling}
+          className="px-3 py-2 bg-white text-gray-600 hover:bg-gray-50 rounded-xl transition-colors flex items-center justify-center gap-2 text-sm font-semibold border border-gray-200 shadow-sm disabled:opacity-50"
+        >
+          <RefreshCw size={16} className={isRefreshing ? "animate-spin text-green-600" : ""} />
+          {isRefreshing ? "Sincronizando..." : "Sincronizar estado"}
+        </button>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -94,7 +155,6 @@ export default function SuscripcionSettings() {
             </p>
           </div>
 
-          {/* 🔥 ACÁ AJUSTAMOS LOS BOTONES: MP como botón principal, Cancelar como link chiquito */}
           <div className="flex flex-col items-center gap-3 border-t border-gray-200 pt-5 mt-auto">
             <a 
               href="https://www.mercadopago.com.ar/subscriptions" 
@@ -108,10 +168,10 @@ export default function SuscripcionSettings() {
             {!esGratis && (
               <button 
                 onClick={handleCancelar}
-                disabled={estaCancelado}
-                className="text-gray-400 hover:text-red-600 text-xs font-medium underline transition-colors disabled:opacity-50 disabled:no-underline mt-1"
+                disabled={estaCancelado || isCancelling}
+                className="text-gray-400 hover:text-red-600 text-xs font-medium underline transition-colors disabled:opacity-50 disabled:no-underline mt-2"
               >
-                {estaCancelado ? "Suscripción cancelada" : "Cancelar suscripción"}
+                {isCancelling ? "Procesando..." : estaCancelado ? "Suscripción cancelada" : "Cancelar suscripción"}
               </button>
             )}
           </div>

@@ -1,15 +1,21 @@
 import { Router } from 'express';
 import { prisma } from '../config/db';
 import bcrypt from 'bcrypt';
-import { register, login, refresh, logout, forgotPassword, resetPassword, verify2FALogin, verifyEmail, resendConfirmationEmail } from '../controllers/auth.controller';
-import { sendMail } from '../utils/mailer'; // ← cambio
+// 🔥 1. Sumamos refreshUserData a las importaciones de tu controlador
+import { register, login, refresh, refreshUserData, logout, forgotPassword, resetPassword, verify2FALogin, verifyEmail, resendConfirmationEmail } from '../controllers/auth.controller';
+import { sendMail } from '../utils/mailer'; 
+// 🔥 2. Importamos tu middleware de seguridad
+import { verificarToken } from '../middlewares/auth.middleware';
 
 const router = Router();
 
 router.post('/register', register);
 router.post('/login', login);
 router.post('/verify-2fa', verify2FALogin); 
-router.post('/refresh', refresh);
+
+// 🔥 3. Reemplazamos la ruta /refresh por la nueva que usa el token y refresca la info
+router.post('/refresh', verificarToken, refreshUserData);
+
 router.post('/logout', logout);
 router.post('/forgot-password', forgotPassword);
 router.get('/verify-email/:token', verifyEmail);

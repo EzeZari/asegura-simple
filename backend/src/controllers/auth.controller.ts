@@ -344,3 +344,28 @@ export const resendConfirmationEmail = async (req: Request, res: Response): Prom
     return res.status(500).json({ error: 'Ocurrió un error en el servidor al intentar reenviar el correo.' });
   }
 };
+// 🔥 NUEVO: Función para pedir un token fresco con el plan actualizado
+export const refreshUserData = async (req: any, res: Response): Promise<any> => {
+  try {
+    const userId = req.user?.userId || req.user?.id; 
+    
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      include: { suscripcion: true }
+    });
+
+    if (!user) return res.status(404).json({ error: "Usuario no encontrado" });
+
+    // Armamos el carnet nuevo con los datos frescos
+    const accessToken = jwt.sign(
+      { userId: user.id, email: user.email, plan: user.plan, role: user.role },
+      process.env.JWT_SECRET || 'secret',
+      { expiresIn: '24h' }
+    );
+
+    res.json({ user, accessToken });
+  } catch (error) {
+    console.error("Error al refrescar datos:", error);
+    res.status(500).json({ error: "Error interno del servidor" });
+  }
+};

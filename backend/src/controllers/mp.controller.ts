@@ -120,3 +120,35 @@ export const webhookMercadoPago = async (req: Request, res: Response) => {
     console.error("Error procesando Webhook de MP:", error);
   }
 };
+export const cancelarSuscripcion = async (req: any, res: Response): Promise<any> => {
+  try {
+    const userId = req.user?.userId || req.user?.id;
+
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      include: { suscripcion: true }
+    });
+
+    if (!user || !user.suscripcion || !user.suscripcion.mpPreapprovalId) {
+      return res.status(400).json({ error: "No se encontró una suscripción activa para cancelar." });
+    }
+
+    // 1. Le avisamos a Mercado Pago que cancele el débito automático
+    const preapproval = new PreApproval(client);
+    await preapproval.update({
+      id: user.suscripcion.mpPreapprovalId,
+      body: { status: 'cancelled' }
+    });
+
+    // 2. Actualizamos nuestra base de datos local
+    await prisma.suscripcion.update({
+      where: { userId: user.id },
+      data: { estado: 'cancelled' }
+    });
+
+    res.json({ success: true, message: "Suscripción cancelada correctamente." });
+  } catch (error: any) {
+    console.error("Error al cancelar suscripción en MP:", error);
+    res.status(500).json({ error: "Error interno al intentar cancelar la suscripción." });
+  }
+};
