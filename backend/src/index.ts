@@ -15,7 +15,8 @@ import dashboardRoutes from './routes/dashboard.routes';
 import alertasRoutes from './routes/alertas.routes';
 import agenciaRoutes from './routes/agencia.routes';
 import siniestrosRoutes from './routes/siniestros.routes';
-import mpRoutes from './routes/mp.routes'; // 🔥 1. IMPORTAMOS LA RUTA DE MERCADO PAGO
+import mpRoutes from './routes/mp.routes'; 
+import equipoRoutes from './routes/equipo.routes'; // 🔥 1. IMPORTAMOS LAS RUTAS DE EQUIPO
 
 dotenv.config();
 
@@ -49,7 +50,6 @@ app.use('/api', limiter);
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
 // --- MIDDLEWARES CLÁSICOS ---
-// Nota: Tenías express.json() y cookieParser() repetidos en tu código anterior, los limpié para que no hagan conflicto.
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 app.use(cookieParser());
@@ -63,7 +63,8 @@ app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/alertas', alertasRoutes);
 app.use('/api/agencia', agenciaRoutes);
 app.use('/api/siniestros', siniestrosRoutes);
-app.use('/api/pagos', mpRoutes); // 🔥 2. LE DECIMOS A EXPRESS QUE ESCUCHE ESTA RUTA
+app.use('/api/pagos', mpRoutes); 
+app.use('/api/equipo', equipoRoutes); // 🔥 2. LE DECIMOS A EXPRESS QUE ESCUCHE ESTA RUTA
 
 
 const PORT = process.env.PORT || 3001;

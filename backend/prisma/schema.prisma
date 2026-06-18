@@ -216,6 +216,10 @@ model User {
   productor            Productor?    // 🔥 NUEVO
 
   pagos         Pago[]
+
+  jefeId               Int?
+  jefe                 User?         @relation("Equipo", fields: [jefeId], references: [id])
+  empleados            User[]        @relation("Equipo")
 }
 
 model Actividad {
