@@ -1,148 +1,269 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation"; // 🔥 Importamos el router
-import { Users, Crown, Mail, Shield, UserPlus, Trash2, AlertCircle } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Users, UserPlus, Trash2, Shield, Loader2, AlertTriangle } from "lucide-react";
+import { apiFetch } from "@/services/api";
 import { useAuthStore } from "@/store/authStore";
-import Toast from "@/components/ui/Toast";
+import AlertModal from "@/components/ui/AlertModal";
+import ConfirmModal from "@/components/ui/ConfirmModal";
 
 export default function EquipoSettings() {
-  const user = useAuthStore((state) => state.user);
-  const router = useRouter(); // 🔥 Inicializamos el router
+  const user = useAuthStore((state: any) => state.user);
   
-  // Leemos el plan real del usuario (Si es PROFESIONAL o AGENCIA, lo consideramos PRO)
-  const planActual = user?.plan === "PROFESIONAL" || user?.plan === "AGENCIA" ? "PRO" : "BASICO"; 
+  const [equipo, setEquipo] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   
-  const [showToast, setShowToast] = useState(false);
+  // Estados para agregar un nuevo miembro
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [nuevoMiembro, setNuevoMiembro] = useState({ nombre: "", email: "", password: "", role: "VIEWER" });
 
-  const [miembros, setMiembros] = useState([
-    { 
-      id: 1, 
-      nombre: user?.nombre || "Usuario Principal", 
-      email: user?.email || "tu@email.com", 
-      rol: "Dueño", 
-      estado: "Activo" 
+  // Estados de Modales
+  const [alertConfig, setAlertConfig] = useState({ isOpen: false, title: "", message: "" });
+  const [confirmConfig, setConfirmConfig] = useState({ isOpen: false, idToDelete: null as number | null });
+
+  // Calcular límites
+  const plan = user?.plan || "GRATUITO";
+  const limiteUsuarios = plan === "GRATUITO" || plan === "BASICO" ? 1 : plan === "PROFESIONAL" ? 3 : "Ilimitado";
+  const cantidadActual = equipo.length + 1; // El dueño + los empleados
+  const reachedLimit = limiteUsuarios !== "Ilimitado" && cantidadActual >= (limiteUsuarios as number);
+
+  const fetchEquipo = async () => {
+    try {
+      const res = await apiFetch('/api/equipo');
+      if (res.ok) {
+        const data = await res.json();
+        setEquipo(data);
+      }
+    } catch (error) {
+      console.error("Error al cargar equipo:", error);
+    } finally {
+      setIsLoading(false);
     }
-  ]);
+  };
 
-  const intentarInvitar = () => {
-    if (planActual !== "PRO") {
+  useEffect(() => {
+    fetchEquipo();
+  }, []);
+
+  const handleAgregarMiembro = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (reachedLimit) {
+      setAlertConfig({
+        isOpen: true,
+        title: "Límite alcanzado",
+        message: "Llegaste al límite de usuarios de tu plan actual. Por favor, mejorá tu plan para sumar más miembros al equipo."
+      });
       return;
     }
-    alert("Acá se abriría el modal para mandar el mail de invitación.");
+
+    setIsSubmitting(true);
+    try {
+      const res = await apiFetch('/api/equipo', {
+        method: 'POST',
+        body: JSON.stringify(nuevoMiembro)
+      });
+      const data = await res.json();
+
+      if (res.ok) {
+        setAlertConfig({ isOpen: true, title: "¡Éxito!", message: "El usuario fue agregado correctamente a tu equipo." });
+        setNuevoMiembro({ nombre: "", email: "", password: "", role: "VIEWER" });
+        fetchEquipo();
+      } else {
+        throw new Error(data.error);
+      }
+    } catch (error: any) {
+      setAlertConfig({ isOpen: true, title: "Atención", message: error.message || "Ocurrió un error al invitar al usuario." });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const confirmarEliminacion = async () => {
+    if (!confirmConfig.idToDelete) return;
+    setIsSubmitting(true);
+    try {
+      const res = await apiFetch(`/api/equipo/${confirmConfig.idToDelete}`, { method: 'DELETE' });
+      if (res.ok) {
+        setEquipo(equipo.filter(m => m.id !== confirmConfig.idToDelete));
+        setConfirmConfig({ isOpen: false, idToDelete: null });
+      } else {
+        const data = await res.json();
+        throw new Error(data.error);
+      }
+    } catch (error: any) {
+      setAlertConfig({ isOpen: true, title: "Error", message: error.message });
+      setConfirmConfig({ isOpen: false, idToDelete: null });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
-    <div className="flex flex-col gap-5 md:gap-6 animate-in fade-in duration-300 pb-10">
-      
-      {/* BANNER DE UPGRADE */}
-      {planActual === "BASICO" && (
-        <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 p-4 md:p-5 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between shadow-sm gap-4">
-          <div className="flex items-center gap-3 sm:gap-4">
-            <div className="bg-amber-100 p-2.5 sm:p-3 rounded-full text-amber-600 shrink-0">
-              <Crown size={24} className="w-5 h-5 sm:w-6 sm:h-6" />
-            </div>
-            <div>
-              <h4 className="text-sm font-bold text-amber-900">Tu plan actual no permite invitar a otros miembros.</h4>
-              <p className="text-xs text-amber-700 mt-0.5">Mejorá a un Plan Profesional para agregar socios, productores o asistentes a tu agencia.</p>
-            </div>
-          </div>
-          <button 
-            // 🔥 Redirigimos a planes pasándole el email para que MP funcione bien
-            onClick={() => router.push(`/planes?email=${user?.email}`)}
-            className="w-full sm:w-auto flex justify-center bg-amber-500 hover:bg-amber-600 text-white px-5 py-2.5 rounded-xl font-bold text-sm transition-colors shadow-sm whitespace-nowrap"
-          >
-            Mejorar Plan
-          </button>
-        </div>
-      )}
+    <div className="space-y-8 animate-in fade-in duration-300">
+      <div>
+        <h2 className="text-xl font-bold text-gray-900">Gestión de Equipo</h2>
+        <p className="text-sm text-gray-500 mt-1">Administrá los accesos de tus vendedores y empleados.</p>
+      </div>
 
-      {/* PANEL PRINCIPAL */}
-      <div className="bg-white p-4 md:p-6 rounded-2xl border border-gray-100 shadow-sm flex flex-col gap-5 md:gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between border-b border-gray-50 pb-4 gap-4">
-          <div className="flex items-center gap-2">
-            <Users size={18} className="text-gray-400" />
-            <h3 className="text-lg font-bold text-gray-900">Miembros del Equipo</h3>
-          </div>
+        {/* COLUMNA IZQUIERDA: Formulario y Estado del Plan */}
+        <div className="lg:col-span-1 space-y-6">
           
-          <button 
-            onClick={intentarInvitar}
-            disabled={planActual === "BASICO"}
-            className="w-full sm:w-auto flex justify-center items-center gap-2 bg-green-700 hover:bg-green-800 disabled:bg-gray-100 disabled:text-gray-400 disabled:border-gray-200 disabled:cursor-not-allowed text-white px-4 py-2.5 sm:py-2 rounded-lg font-medium transition-colors text-sm border border-transparent"
-          >
-            {planActual === "BASICO" ? <Crown size={16} /> : <UserPlus size={16} />}
-            Invitar Miembro
-          </button>
+          <div className="bg-gray-50 border border-gray-200 rounded-2xl p-5">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm font-semibold text-gray-600">Usuarios en tu plan</span>
+              <span className="px-2.5 py-1 bg-green-100 text-green-700 text-xs font-bold rounded-md uppercase tracking-wider">
+                {plan}
+              </span>
+            </div>
+            <div className="flex items-baseline gap-1 mt-3">
+              <span className="text-3xl font-black text-gray-900">{cantidadActual}</span>
+              <span className="text-gray-500 font-medium">/ {limiteUsuarios}</span>
+            </div>
+            {reachedLimit && (
+              <div className="mt-3 flex items-start gap-2 text-xs font-medium text-amber-700 bg-amber-50 p-2 rounded-lg border border-amber-100">
+                <AlertTriangle size={14} className="shrink-0 mt-0.5" />
+                Límite alcanzado. Actualizá tu plan para sumar más equipo.
+              </div>
+            )}
+          </div>
+
+          <form onSubmit={handleAgregarMiembro} className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
+            <div className="flex items-center gap-2 mb-4">
+              <UserPlus className="text-green-600" size={20} />
+              <h3 className="font-bold text-gray-900">Agregar Miembro</h3>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">Nombre y Apellido</label>
+                <input 
+                  type="text" required
+                  value={nuevoMiembro.nombre} onChange={(e) => setNuevoMiembro({...nuevoMiembro, nombre: e.target.value})}
+                  className="w-full text-sm border-gray-200 rounded-xl focus:ring-green-500 focus:border-green-500" 
+                  placeholder="Ej: Juan Pérez"
+                  disabled={reachedLimit || isSubmitting}
+                />
+              </div>
+              
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">Correo Electrónico</label>
+                <input 
+                  type="email" required
+                  value={nuevoMiembro.email} onChange={(e) => setNuevoMiembro({...nuevoMiembro, email: e.target.value})}
+                  className="w-full text-sm border-gray-200 rounded-xl focus:ring-green-500 focus:border-green-500" 
+                  placeholder="juan@agencia.com"
+                  disabled={reachedLimit || isSubmitting}
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">Contraseña Temporal</label>
+                <input 
+                  type="password" required
+                  value={nuevoMiembro.password} onChange={(e) => setNuevoMiembro({...nuevoMiembro, password: e.target.value})}
+                  className="w-full text-sm border-gray-200 rounded-xl focus:ring-green-500 focus:border-green-500" 
+                  placeholder="Mínimo 6 caracteres"
+                  disabled={reachedLimit || isSubmitting}
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">Rol en el Sistema</label>
+                <select 
+                  value={nuevoMiembro.role} onChange={(e) => setNuevoMiembro({...nuevoMiembro, role: e.target.value})}
+                  className="w-full text-sm border-gray-200 rounded-xl focus:ring-green-500 focus:border-green-500"
+                  disabled={reachedLimit || isSubmitting}
+                >
+                  <option value="VIEWER">Vendedor (Solo lectura)</option>
+                  <option value="PRODUCTOR">Administrador Secundario</option>
+                </select>
+              </div>
+
+              <button 
+                type="submit" 
+                disabled={reachedLimit || isSubmitting}
+                className="w-full mt-2 bg-gray-900 hover:bg-black text-white font-bold py-2.5 rounded-xl text-sm transition-colors disabled:opacity-50 flex justify-center items-center gap-2"
+              >
+                {isSubmitting ? <Loader2 size={16} className="animate-spin" /> : "Crear Usuario"}
+              </button>
+            </div>
+          </form>
         </div>
 
-        {/* TABLA DE USUARIOS */}
-        <div className="overflow-x-auto w-full">
-          <table className="w-full text-left border-collapse min-w-[500px] sm:min-w-full">
-            <thead>
-              <tr className="border-b border-gray-100 text-xs uppercase text-gray-400 tracking-wider">
-                <th className="pb-3 font-semibold whitespace-nowrap px-1 sm:px-0">Usuario</th>
-                <th className="pb-3 font-semibold whitespace-nowrap px-1 sm:px-0">Rol / Permisos</th>
-                <th className="pb-3 font-semibold whitespace-nowrap px-1 sm:px-0">Estado</th>
-                <th className="pb-3 font-semibold text-right whitespace-nowrap px-1 sm:px-0">Acciones</th>
-              </tr>
-            </thead>
-            <tbody>
-              {miembros.map((miembro) => (
-                <tr key={miembro.id} className="border-b border-gray-50 hover:bg-gray-50/50 transition-colors">
-                  <td className="py-4 px-1 sm:px-0 whitespace-nowrap">
-                    <div className="flex items-center gap-3">
-                      <div className="h-10 w-10 bg-green-100 text-green-700 rounded-full flex items-center justify-center font-bold text-sm shrink-0">
-                        {miembro.nombre.substring(0, 2).toUpperCase()}
-                      </div>
-                      <div className="flex flex-col">
-                        <span className="text-sm font-bold text-gray-900">{miembro.nombre}</span>
-                        <span className="text-xs text-gray-500 flex items-center gap-1">
-                          <Mail size={12} /> {miembro.email}
-                        </span>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="py-4 px-1 sm:px-0 whitespace-nowrap">
-                    <span className="inline-flex items-center gap-1 bg-purple-50 text-purple-700 border border-purple-100 px-2.5 py-1 rounded-md text-xs font-bold">
-                      <Shield size={12} /> {miembro.rol}
-                    </span>
-                  </td>
-                  <td className="py-4 px-1 sm:px-0 whitespace-nowrap">
-                    <span className="inline-flex items-center gap-1.5 text-xs font-medium text-gray-600">
-                      <span className="h-2 w-2 rounded-full bg-green-500"></span>
-                      {miembro.estado}
-                    </span>
-                  </td>
-                  <td className="py-4 px-1 sm:px-0 text-right whitespace-nowrap">
-                    {miembro.rol === "Dueño" ? (
-                      <span className="text-xs text-gray-400 italic">Intocable</span>
-                    ) : (
-                      <button className="text-gray-400 hover:text-red-600 transition-colors p-2" title="Eliminar miembro">
-                        <Trash2 size={16} />
-                      </button>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        {/* COLUMNA DERECHA: Tabla del Equipo */}
+        <div className="lg:col-span-2">
+          <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden flex flex-col h-full">
+            <div className="p-5 border-b border-gray-100 flex items-center gap-2 bg-gray-50/50">
+              <Users className="text-gray-500" size={20} />
+              <h3 className="font-bold text-gray-900">Miembros Actuales</h3>
+            </div>
 
-        {/* INFO ADICIONAL */}
-        <div className="bg-gray-50 p-3 md:p-4 rounded-xl flex items-start gap-3 mt-2">
-          <AlertCircle size={18} className="text-gray-500 mt-0.5 shrink-0" />
-          <div className="flex flex-col gap-1">
-            <p className="text-sm font-semibold text-gray-700">Sobre los roles (Próximamente)</p>
-            <p className="text-xs text-gray-500 leading-relaxed">
-              Los <strong>Productores</strong> solo podrán ver y gestionar las pólizas que ellos mismos hayan cargado. Los <strong>Asistentes</strong> tendrán acceso a toda la cartera para carga de datos, pero no podrán ver estadísticas financieras ni eliminar registros.
-            </p>
+            <div className="p-0 overflow-x-auto">
+              {isLoading ? (
+                <div className="p-8 flex justify-center"><Loader2 className="animate-spin text-green-600" /></div>
+              ) : equipo.length === 0 ? (
+                <div className="p-8 text-center text-gray-500 text-sm">
+                  Aún no tenés otros miembros en tu equipo. <br/>Añadí vendedores usando el formulario.
+                </div>
+              ) : (
+                <table className="w-full text-sm text-left whitespace-nowrap">
+                  <thead className="text-xs text-gray-500 uppercase bg-gray-50 border-b border-gray-100">
+                    <tr>
+                      <th className="px-6 py-4 font-semibold">Nombre</th>
+                      <th className="px-6 py-4 font-semibold">Email</th>
+                      <th className="px-6 py-4 font-semibold">Rol</th>
+                      <th className="px-6 py-4 font-semibold text-right">Acción</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {equipo.map((miembro) => (
+                      <tr key={miembro.id} className="border-b border-gray-50 hover:bg-gray-50/50">
+                        <td className="px-6 py-4 font-medium text-gray-900">{miembro.nombre}</td>
+                        <td className="px-6 py-4 text-gray-600">{miembro.email}</td>
+                        <td className="px-6 py-4">
+                          <span className="flex items-center gap-1.5 text-xs font-semibold bg-blue-50 text-blue-700 px-2 py-1 rounded-md w-fit">
+                            <Shield size={12} />
+                            {miembro.role === "VIEWER" ? "Vendedor" : "Administrador"}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 text-right">
+                          <button 
+                            onClick={() => setConfirmConfig({ isOpen: true, idToDelete: miembro.id })}
+                            className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                            title="Eliminar usuario"
+                          >
+                            <Trash2 size={18} />
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
           </div>
         </div>
 
       </div>
-      
-      <Toast message="Invitación enviada correctamente." isVisible={showToast} onClose={() => setShowToast(false)} />
+
+      <AlertModal 
+        isOpen={alertConfig.isOpen}
+        onClose={() => setAlertConfig({ ...alertConfig, isOpen: false })}
+        title={alertConfig.title}
+        message={alertConfig.message}
+      />
+
+      <ConfirmModal 
+        isOpen={confirmConfig.isOpen}
+        onClose={() => setConfirmConfig({ isOpen: false, idToDelete: null })}
+        onConfirm={confirmarEliminacion}
+        title="Eliminar miembro del equipo"
+        message="¿Estás seguro de que querés eliminar a este usuario? Perderá el acceso inmediatamente al sistema."
+        confirmText="Eliminar usuario"
+        isLoading={isSubmitting}
+      />
     </div>
   );
 }
