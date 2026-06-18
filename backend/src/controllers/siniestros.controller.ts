@@ -3,14 +3,7 @@ import { prisma } from '../config/db';
 import crypto from 'crypto';
 import { enviarNotificacionSiniestro } from '../services/email.service';
 
-// 🔥 NUEVO: Función antibug para sacar el ID del token en cualquier formato
-const obtenerIdSeguro = (req: any): number => {
-  const idBruto = req.user?.userId || req.user?.id || req.usuario?.id || req.userId;
-  if (!idBruto) throw new Error("No autorizado. Token inválido o sin ID.");
-  return Number(idBruto);
-};
-
-// 🔥 FUNCIÓN HELPER: Sincroniza y detecta si es Dueño o Vendedor
+// 🔥 HELPER EXACTAMENTE IGUAL AL DE PÓLIZAS
 const obtenerProductorId = async (userId: number): Promise<number> => {
   const usuarioActual = await prisma.user.findUnique({ where: { id: userId } });
   const idAgencia = usuarioActual?.jefeId ? usuarioActual.jefeId : userId;
@@ -45,28 +38,30 @@ const obtenerProductorId = async (userId: number): Promise<number> => {
 
 export const getSiniestros = async (req: Request, res: Response): Promise<any> => {
   try {
-    const userId = obtenerIdSeguro(req); // 🔥 Usamos la extracción segura
-    const productorId = await obtenerProductorId(userId);
+    if (!req.userId) return res.status(401).json({ error: 'No autorizado' });
+    const productorId = await obtenerProductorId(req.userId);
     
     const siniestros = await prisma.siniestro.findMany({
       where: {
         poliza: { asegurado: { productorId: productorId } } // 🔥 FILTRO DE AGENCIA
       },
       include: {
-        poliza: { include: { asegurado: true, compania: true } }
+        poliza: {
+          include: { asegurado: true, compania: true }
+        }
       },
       orderBy: { fechaCreacion: 'desc' }
     });
-    res.json(siniestros);
+    return res.json(siniestros);
   } catch (error: any) {
-    res.status(500).json({ error: error.message });
+    return res.status(500).json({ error: error.message });
   }
 };
 
 export const createSiniestro = async (req: Request, res: Response): Promise<any> => {
   try {
-    const userId = obtenerIdSeguro(req);
-    const productorId = await obtenerProductorId(userId);
+    if (!req.userId) return res.status(401).json({ error: 'No autorizado' });
+    const productorId = await obtenerProductorId(req.userId);
     const { nroSiniestro, fechaHecho, descripcionInicial, estadoSiniestro, polizaId } = req.body;
 
     if (!polizaId || !fechaHecho || !descripcionInicial) {
@@ -80,14 +75,14 @@ export const createSiniestro = async (req: Request, res: Response): Promise<any>
 
     if (!poliza) return res.status(403).json({ error: 'La póliza no te pertenece o no existe.' });
 
-    // 🔥 GENERACIÓN BLINDADA: Si lo dejan vacío, crea un código tipo "SIN-A8F3B2"
+    // 🔥 GENERACIÓN BLINDADA
     const nroFinal = nroSiniestro && nroSiniestro.trim() !== "" 
       ? nroSiniestro.trim() 
       : `SIN-${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
 
     const nuevoSiniestro = await prisma.siniestro.create({
       data: {
-        nroSiniestro: nroFinal, // 🔥 Usamos el número seguro
+        nroSiniestro: nroFinal,
         fechaHecho: new Date(fechaHecho),
         descripcionInicial,
         estadoSiniestro: estadoSiniestro || 'Denuncia Pendiente',
@@ -105,17 +100,17 @@ export const createSiniestro = async (req: Request, res: Response): Promise<any>
       }
     });
 
-    res.status(201).json(nuevoSiniestro);
+    return res.status(201).json(nuevoSiniestro);
   } catch (error: any) {
     console.error("Error al crear siniestro:", error);
-    res.status(500).json({ error: 'Error al registrar el siniestro. Verifica que el número no esté duplicado.' });
+    return res.status(500).json({ error: 'Error al registrar el siniestro. Verifica que el número no esté duplicado.' });
   }
 };
 
 export const updateSiniestro = async (req: Request, res: Response): Promise<any> => {
   try {
-    const userId = obtenerIdSeguro(req);
-    const productorId = await obtenerProductorId(userId);
+    if (!req.userId) return res.status(401).json({ error: 'No autorizado' });
+    const productorId = await obtenerProductorId(req.userId);
     const { id } = req.params;
     const { nroSiniestro, fechaHecho, descripcionInicial, estadoSiniestro } = req.body;
 
@@ -140,16 +135,16 @@ export const updateSiniestro = async (req: Request, res: Response): Promise<any>
       data: dataAActualizar
     });
 
-    res.json(siniestroActualizado);
+    return res.json(siniestroActualizado);
   } catch (error: any) {
-    res.status(500).json({ error: 'Error al actualizar el siniestro.' });
+    return res.status(500).json({ error: 'Error al actualizar el siniestro.' });
   }
 };
 
 export const deleteSiniestro = async (req: Request, res: Response): Promise<any> => {
   try {
-    const userId = obtenerIdSeguro(req);
-    const productorId = await obtenerProductorId(userId);
+    if (!req.userId) return res.status(401).json({ error: 'No autorizado' });
+    const productorId = await obtenerProductorId(req.userId);
     const { id } = req.params;
 
     const siniestroExistente = await prisma.siniestro.findFirst({
@@ -159,16 +154,16 @@ export const deleteSiniestro = async (req: Request, res: Response): Promise<any>
     if (!siniestroExistente) return res.status(403).json({ error: 'Siniestro no encontrado o no autorizado.' });
 
     await prisma.siniestro.delete({ where: { id: Number(id) } });
-    res.json({ message: 'Siniestro eliminado correctamente.' });
+    return res.json({ message: 'Siniestro eliminado correctamente.' });
   } catch (error: any) {
-    res.status(500).json({ error: 'Error al eliminar el siniestro.' });
+    return res.status(500).json({ error: 'Error al eliminar el siniestro.' });
   }
 };
 
 export const getSiniestroById = async (req: Request, res: Response): Promise<any> => {
   try {
-    const userId = obtenerIdSeguro(req);
-    const productorId = await obtenerProductorId(userId);
+    if (!req.userId) return res.status(401).json({ error: 'No autorizado' });
+    const productorId = await obtenerProductorId(req.userId);
     const { id } = req.params;
     
     const siniestro = await prisma.siniestro.findFirst({
@@ -185,16 +180,16 @@ export const getSiniestroById = async (req: Request, res: Response): Promise<any
 
     if (!siniestro) return res.status(404).json({ error: 'Siniestro no encontrado o no autorizado.' });
 
-    res.json(siniestro);
+    return res.json(siniestro);
   } catch (error: any) {
-    res.status(500).json({ error: 'Error al obtener el detalle del siniestro.' });
+    return res.status(500).json({ error: 'Error al obtener el detalle del siniestro.' });
   }
 };
 
 export const agregarNota = async (req: Request, res: Response): Promise<any> => {
   try {
-    const userId = obtenerIdSeguro(req);
-    const productorId = await obtenerProductorId(userId);
+    if (!req.userId) return res.status(401).json({ error: 'No autorizado' });
+    const productorId = await obtenerProductorId(req.userId);
     const { id } = req.params;
     const { texto } = req.body;
 
@@ -254,17 +249,17 @@ export const agregarNota = async (req: Request, res: Response): Promise<any> => 
       );
     }
 
-    res.status(201).json(nuevaNota);
+    return res.status(201).json(nuevaNota);
   } catch (error: any) {
     console.error("Error en bitácora con notificación:", error);
-    res.status(500).json({ error: 'Error al registrar la nota y enviar la notificación.' });
+    return res.status(500).json({ error: 'Error al registrar la nota y enviar la notificación.' });
   }
 };
 
 export const obtenerOGenerarLink = async (req: Request, res: Response): Promise<any> => {
   try {
-    const userId = obtenerIdSeguro(req);
-    const productorId = await obtenerProductorId(userId);
+    if (!req.userId) return res.status(401).json({ error: 'No autorizado' });
+    const productorId = await obtenerProductorId(req.userId);
     const { id } = req.params;
     
     const siniestroCompleto = await prisma.siniestro.findFirst({
@@ -319,10 +314,10 @@ export const obtenerOGenerarLink = async (req: Request, res: Response): Promise<
       }
     }
 
-    res.json({ token: linkConsulta.token, urlPublica: `${baseUrl}/consulta/${linkConsulta.token}` });
+    return res.json({ token: linkConsulta.token, urlPublica: `${baseUrl}/consulta/${linkConsulta.token}` });
   } catch (error: any) {
     console.error(error);
-    res.status(500).json({ error: 'Error al procesar el link de consulta y enviar el correo.' });
+    return res.status(500).json({ error: 'Error al procesar el link de consulta y enviar el correo.' });
   }
 };
 
@@ -346,8 +341,8 @@ export const getSiniestroPublicoPorToken = async (req: Request, res: Response): 
       return res.status(403).json({ error: 'El enlace de consulta expiró o es inválido.' });
     }
 
-    res.json(linkValido.siniestro);
+    return res.json(linkValido.siniestro);
   } catch (error: any) {
-    res.status(500).json({ error: 'Error al consultar el expediente público.' });
+    return res.status(500).json({ error: 'Error al consultar el expediente público.' });
   }
 };

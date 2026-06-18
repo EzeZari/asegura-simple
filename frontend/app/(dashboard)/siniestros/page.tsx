@@ -11,6 +11,8 @@ import PageHeader from "@/components/ui/PageHeader";
 import { useTableSort } from "@/hooks/useTableSort";
 import SortableHeader from "@/components/ui/SortableHeader";
 import SelectOrdenamiento from "@/components/ui/SelectOrdenamiento"; 
+import { useAuthStore } from "@/store/authStore"; // 🔥 Importamos la memoria del usuario
+import { apiFetch } from "@/services/api"; // 🔥 Importamos el fetch autorizado
 
 const OPCIONES_ORDEN = [
   { value: "mas_recientes", label: "Carga más reciente" },
@@ -20,6 +22,10 @@ const OPCIONES_ORDEN = [
 ];
 
 export default function SiniestrosPage() {
+  // 🔥 LEEMOS EL ROL DEL USUARIO
+  const { user } = useAuthStore();
+  const esSoloLectura = user?.role === "VIEWER";
+
   const [siniestros, setSiniestros] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   
@@ -41,7 +47,8 @@ export default function SiniestrosPage() {
 
   const fetchSiniestros = async () => {
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/siniestros`);
+      // 🔥 USAMOS APIFETCH PARA MANDAR EL TOKEN
+      const res = await apiFetch('/api/siniestros');
       const data = await res.json();
       
       // 🔥 EL ESCUDO ANTI-CRASH DE REACT
@@ -49,11 +56,11 @@ export default function SiniestrosPage() {
         setSiniestros(data);
       } else {
         console.error("El servidor devolvió un error en vez de una lista:", data);
-        setSiniestros([]); // Forzamos una lista vacía para que no se rompa el .filter()
+        setSiniestros([]); // Forzamos una lista vacía
       }
     } catch (error) { 
       console.error("Error al cargar siniestros:", error); 
-      setSiniestros([]); // Forzamos lista vacía si se cae el internet
+      setSiniestros([]); 
     } finally { 
       setIsLoading(false); 
     }
@@ -65,7 +72,8 @@ export default function SiniestrosPage() {
     if (!siniestroAEliminar) return;
     setIsDeleting(true);
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/siniestros/${siniestroAEliminar.id}`, { method: 'DELETE' });
+      // 🔥 USAMOS APIFETCH PARA ELIMINAR
+      const res = await apiFetch(`/api/siniestros/${siniestroAEliminar.id}`, { method: 'DELETE' });
       if (!res.ok) throw new Error((await res.json()).error);
       
       fetchSiniestros();
@@ -106,15 +114,19 @@ export default function SiniestrosPage() {
 
   const { items: siniestrosOrdenados, requestSort, sortConfig } = useTableSort(siniestrosFiltrados);
 
-  const columnas: TableColumn[] = [
+  // 🔥 CONFIGURACIÓN DINÁMICA DE COLUMNAS SEGÚN EL ROL
+  const columnasBase: TableColumn[] = [
     { label: <SortableHeader label="Nro / Fecha" sortKey="nroSiniestro" currentSort={sortConfig} requestSort={(key) => requestSort(key as any)} /> },
     { label: "Titular / DNI" },
     { label: "Nro Póliza" },
     { label: "Patente / Riesgo" },
     { label: "Descripción Breve" },
     { label: <SortableHeader label="Estado del Trámite" sortKey="estadoSiniestro" currentSort={sortConfig} requestSort={(key) => requestSort(key as any)} /> },
-    { label: "Acciones", align: "right" },
   ];
+
+  const columnas = esSoloLectura 
+    ? columnasBase 
+    : [...columnasBase, { label: "Acciones", align: "right" as const }];
 
   return (
     <div className="flex flex-col p-4 lg:p-8 w-full gap-5 lg:gap-8 bg-white min-h-screen overflow-x-hidden">
@@ -122,8 +134,8 @@ export default function SiniestrosPage() {
       <PageHeader 
         titulo="Gestión de Siniestros" 
         descripcion="Seguimiento de reclamos, choques y eventos de tus clientes." 
-        textoBoton="Reportar Siniestro" 
-        onNuevo={() => { setSiniestroAEditar(null); setIsModalOpen(true); }} 
+        textoBoton={esSoloLectura ? undefined : "Reportar Siniestro"} // 🔥 SE OCULTA SI ES LECTOR
+        onNuevo={esSoloLectura ? undefined : () => { setSiniestroAEditar(null); setIsModalOpen(true); }} 
       />
 
       <div className="flex flex-col md:flex-row gap-4 bg-gray-50/50 p-4 rounded-2xl border border-gray-100">
@@ -171,24 +183,30 @@ export default function SiniestrosPage() {
             siniestro={siniestro}
             menuAbiertoId={menuAbiertoId}
             onToggleMenu={setMenuAbiertoId}
-            onEdit={(s) => { setSiniestroAEditar(s); setMenuAbiertoId(null); setIsModalOpen(true); }}
-            onEliminar={(s) => { setSiniestroAEliminar(s); setMenuAbiertoId(null); setIsConfirmOpen(true); }}
+            // 🔥 APAGAMOS LAS ACCIONES SI ES LECTOR
+            onEdit={esSoloLectura ? undefined : (s) => { setSiniestroAEditar(s); setMenuAbiertoId(null); setIsModalOpen(true); }}
+            onEliminar={esSoloLectura ? undefined : (s) => { setSiniestroAEliminar(s); setMenuAbiertoId(null); setIsConfirmOpen(true); }}
           />
         ))}
       </Table>
 
-      <NuevoSiniestroModal 
-        isOpen={isModalOpen} 
-        onClose={() => setIsModalOpen(false)} 
-        onSuccess={() => { setIsModalOpen(false); fetchSiniestros(); setShowToast(true); setMensajeToast("Ficha de siniestro actualizada"); }} 
-        siniestroAEditar={siniestroAEditar} 
-      />
-      
-      <ConfirmModal 
-        isOpen={isConfirmOpen} onClose={() => setIsConfirmOpen(false)} onConfirm={ejecutarEliminacion} 
-        isLoading={isDeleting} title="¿Eliminar siniestro?" 
-        message={`Vas a borrar el registro del siniestro #${siniestroAEliminar?.nroSiniestro}. Esta acción no se puede deshacer.`} 
-      />
+      {/* 🔥 SI ES LECTOR, NI SIQUIERA DIBUJAMOS LOS MODALES EN SEGUNDO PLANO */}
+      {!esSoloLectura && (
+        <>
+          <NuevoSiniestroModal 
+            isOpen={isModalOpen} 
+            onClose={() => setIsModalOpen(false)} 
+            onSuccess={() => { setIsModalOpen(false); fetchSiniestros(); setShowToast(true); setMensajeToast("Ficha de siniestro actualizada"); }} 
+            siniestroAEditar={siniestroAEditar} 
+          />
+          
+          <ConfirmModal 
+            isOpen={isConfirmOpen} onClose={() => setIsConfirmOpen(false)} onConfirm={ejecutarEliminacion} 
+            isLoading={isDeleting} title="¿Eliminar siniestro?" 
+            message={`Vas a borrar el registro del siniestro #${siniestroAEliminar?.nroSiniestro}. Esta acción no se puede deshacer.`} 
+          />
+        </>
+      )}
       
       <Toast message={mensajeToast} isVisible={showToast} onClose={() => setShowToast(false)} />
     </div>
