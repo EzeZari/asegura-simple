@@ -3,6 +3,13 @@ import { prisma } from '../config/db';
 import crypto from 'crypto';
 import { enviarNotificacionSiniestro } from '../services/email.service';
 
+// 🔥 NUEVO: Función antibug para sacar el ID del token en cualquier formato
+const obtenerIdSeguro = (req: any): number => {
+  const idBruto = req.user?.userId || req.user?.id || req.usuario?.id || req.userId;
+  if (!idBruto) throw new Error("No autorizado. Token inválido o sin ID.");
+  return Number(idBruto);
+};
+
 // 🔥 FUNCIÓN HELPER: Sincroniza y detecta si es Dueño o Vendedor
 const obtenerProductorId = async (userId: number): Promise<number> => {
   const usuarioActual = await prisma.user.findUnique({ where: { id: userId } });
@@ -38,15 +45,15 @@ const obtenerProductorId = async (userId: number): Promise<number> => {
 
 export const getSiniestros = async (req: Request, res: Response): Promise<any> => {
   try {
-    const productorId = await obtenerProductorId((req as any).userId!);
+    const userId = obtenerIdSeguro(req); // 🔥 Usamos la extracción segura
+    const productorId = await obtenerProductorId(userId);
+    
     const siniestros = await prisma.siniestro.findMany({
       where: {
         poliza: { asegurado: { productorId: productorId } } // 🔥 FILTRO DE AGENCIA
       },
       include: {
-        poliza: {
-          include: { asegurado: true, compania: true }
-        }
+        poliza: { include: { asegurado: true, compania: true } }
       },
       orderBy: { fechaCreacion: 'desc' }
     });
@@ -58,14 +65,14 @@ export const getSiniestros = async (req: Request, res: Response): Promise<any> =
 
 export const createSiniestro = async (req: Request, res: Response): Promise<any> => {
   try {
-    const productorId = await obtenerProductorId((req as any).userId!);
+    const userId = obtenerIdSeguro(req);
+    const productorId = await obtenerProductorId(userId);
     const { nroSiniestro, fechaHecho, descripcionInicial, estadoSiniestro, polizaId } = req.body;
 
     if (!polizaId || !fechaHecho || !descripcionInicial) {
       return res.status(400).json({ error: 'Faltan datos obligatorios (Póliza, Fecha o Descripción).' });
     }
 
-    // 🔥 VERIFICAMOS QUE LA PÓLIZA SEA DE TU AGENCIA
     const poliza = await prisma.poliza.findFirst({
       where: { id: Number(polizaId), asegurado: { productorId: productorId } },
       include: { asegurado: true }
@@ -89,7 +96,7 @@ export const createSiniestro = async (req: Request, res: Response): Promise<any>
         entidad: "Siniestro",
         descripcion: `Se registró un nuevo siniestro (${nuevoSiniestro.nroSiniestro}).`,
         cliente: `${poliza.asegurado.nombre} ${poliza.asegurado.apellido || ''}`.trim(),
-        productorId // 🔥 INYECTADO
+        productorId 
       }
     });
 
@@ -102,20 +109,18 @@ export const createSiniestro = async (req: Request, res: Response): Promise<any>
 
 export const updateSiniestro = async (req: Request, res: Response): Promise<any> => {
   try {
-    const productorId = await obtenerProductorId((req as any).userId!);
+    const userId = obtenerIdSeguro(req);
+    const productorId = await obtenerProductorId(userId);
     const { id } = req.params;
     const { nroSiniestro, fechaHecho, descripcionInicial, estadoSiniestro } = req.body;
 
-    // 🔥 VERIFICAMOS PERMISOS
     const siniestroExistente = await prisma.siniestro.findFirst({
       where: { id: Number(id), poliza: { asegurado: { productorId: productorId } } }
     });
 
     if (!siniestroExistente) return res.status(403).json({ error: 'Siniestro no encontrado o no autorizado.' });
 
-    const dataAActualizar: any = {
-      nroSiniestro, descripcionInicial, estadoSiniestro
-    };
+    const dataAActualizar: any = { nroSiniestro, descripcionInicial, estadoSiniestro };
 
     if (fechaHecho) dataAActualizar.fechaHecho = new Date(fechaHecho);
     
@@ -138,10 +143,10 @@ export const updateSiniestro = async (req: Request, res: Response): Promise<any>
 
 export const deleteSiniestro = async (req: Request, res: Response): Promise<any> => {
   try {
-    const productorId = await obtenerProductorId((req as any).userId!);
+    const userId = obtenerIdSeguro(req);
+    const productorId = await obtenerProductorId(userId);
     const { id } = req.params;
 
-    // 🔥 VERIFICAMOS PERMISOS
     const siniestroExistente = await prisma.siniestro.findFirst({
       where: { id: Number(id), poliza: { asegurado: { productorId: productorId } } }
     });
@@ -157,18 +162,17 @@ export const deleteSiniestro = async (req: Request, res: Response): Promise<any>
 
 export const getSiniestroById = async (req: Request, res: Response): Promise<any> => {
   try {
-    const productorId = await obtenerProductorId((req as any).userId!);
+    const userId = obtenerIdSeguro(req);
+    const productorId = await obtenerProductorId(userId);
     const { id } = req.params;
     
     const siniestro = await prisma.siniestro.findFirst({
       where: { 
         id: Number(id),
-        poliza: { asegurado: { productorId: productorId } } // 🔥 FILTRO DE AGENCIA
+        poliza: { asegurado: { productorId: productorId } } 
       },
       include: {
-        poliza: {
-          include: { asegurado: true, compania: true }
-        },
+        poliza: { include: { asegurado: true, compania: true } },
         notas: { orderBy: { fecha: 'desc' } },
         linksConsulta: { where: { activo: true, expiracion: { gte: new Date() } } }
       }
@@ -184,7 +188,8 @@ export const getSiniestroById = async (req: Request, res: Response): Promise<any
 
 export const agregarNota = async (req: Request, res: Response): Promise<any> => {
   try {
-    const productorId = await obtenerProductorId((req as any).userId!);
+    const userId = obtenerIdSeguro(req);
+    const productorId = await obtenerProductorId(userId);
     const { id } = req.params;
     const { texto } = req.body;
 
@@ -206,7 +211,7 @@ export const agregarNota = async (req: Request, res: Response): Promise<any> => 
       data: {
         texto,
         siniestroId: Number(id),
-        productorId: productorId // 🔥 CORREGIDO: Chau al "1" hardcodeado
+        productorId: productorId 
       }
     });
 
@@ -253,10 +258,10 @@ export const agregarNota = async (req: Request, res: Response): Promise<any> => 
 
 export const obtenerOGenerarLink = async (req: Request, res: Response): Promise<any> => {
   try {
-    const productorId = await obtenerProductorId((req as any).userId!);
+    const userId = obtenerIdSeguro(req);
+    const productorId = await obtenerProductorId(userId);
     const { id } = req.params;
     
-    // 🔥 VERIFICAMOS PERMISOS ANTES DE GENERAR EL LINK
     const siniestroCompleto = await prisma.siniestro.findFirst({
       where: { id: Number(id), poliza: { asegurado: { productorId: productorId } } },
       include: { poliza: { include: { asegurado: true, compania: true } } }
@@ -267,11 +272,7 @@ export const obtenerOGenerarLink = async (req: Request, res: Response): Promise<
     const baseUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
 
     let linkConsulta = await prisma.linkConsulta.findFirst({
-      where: {
-        siniestroId: Number(id),
-        activo: true,
-        expiracion: { gte: new Date() } 
-      }
+      where: { siniestroId: Number(id), activo: true, expiracion: { gte: new Date() } }
     });
 
     if (!linkConsulta) {
@@ -280,11 +281,7 @@ export const obtenerOGenerarLink = async (req: Request, res: Response): Promise<
       fechaExpiracion.setDate(fechaExpiracion.getDate() + 30); 
 
       linkConsulta = await prisma.linkConsulta.create({
-        data: {
-          token: tokenUnico,
-          expiracion: fechaExpiracion,
-          siniestroId: Number(id)
-        }
+        data: { token: tokenUnico, expiracion: fechaExpiracion, siniestroId: Number(id) }
       });
 
       const urlSeguimiento = `${baseUrl}/consulta/${tokenUnico}`;
@@ -317,17 +314,13 @@ export const obtenerOGenerarLink = async (req: Request, res: Response): Promise<
       }
     }
 
-    res.json({
-      token: linkConsulta.token,
-      urlPublica: `${baseUrl}/consulta/${linkConsulta.token}`
-    });
+    res.json({ token: linkConsulta.token, urlPublica: `${baseUrl}/consulta/${linkConsulta.token}` });
   } catch (error: any) {
     console.error(error);
     res.status(500).json({ error: 'Error al procesar el link de consulta y enviar el correo.' });
   }
 };
 
-// ENDPOINT PÚBLICO (No lleva verificación de agencia porque es público para el cliente final)
 export const getSiniestroPublicoPorToken = async (req: Request, res: Response): Promise<any> => {
   try {
     const token = req.params.token as string; 

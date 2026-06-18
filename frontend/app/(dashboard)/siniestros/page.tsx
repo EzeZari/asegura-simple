@@ -42,8 +42,21 @@ export default function SiniestrosPage() {
   const fetchSiniestros = async () => {
     try {
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/siniestros`);
-      setSiniestros(await res.json());
-    } catch (error) { console.error("Error al cargar siniestros:", error); } finally { setIsLoading(false); }
+      const data = await res.json();
+      
+      // 🔥 EL ESCUDO ANTI-CRASH DE REACT
+      if (Array.isArray(data)) {
+        setSiniestros(data);
+      } else {
+        console.error("El servidor devolvió un error en vez de una lista:", data);
+        setSiniestros([]); // Forzamos una lista vacía para que no se rompa el .filter()
+      }
+    } catch (error) { 
+      console.error("Error al cargar siniestros:", error); 
+      setSiniestros([]); // Forzamos lista vacía si se cae el internet
+    } finally { 
+      setIsLoading(false); 
+    }
   };
 
   useEffect(() => { fetchSiniestros(); }, []);
@@ -104,7 +117,6 @@ export default function SiniestrosPage() {
   ];
 
   return (
-    // 🔥 AJUSTE: p-4 en móvil, p-8 en PC. gap-5 en móvil, gap-8 en PC. overflow-x-hidden para evitar scroll raro general
     <div className="flex flex-col p-4 lg:p-8 w-full gap-5 lg:gap-8 bg-white min-h-screen overflow-x-hidden">
       
       <PageHeader 
@@ -136,7 +148,6 @@ export default function SiniestrosPage() {
         </select>
       </div>
 
-      {/* 🔥 AJUSTE: -mb-2 para móviles */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 w-full -mb-2 lg:-mb-4">
         <div className="w-full md:w-auto">
           <SelectOrdenamiento 
