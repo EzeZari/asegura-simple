@@ -26,29 +26,19 @@ export default function SuscripcionSettings() {
   const fetchLatestData = async () => {
     setIsRefreshing(true);
     try {
-      // 1. Buscamos el estado del usuario
-      const res = await apiFetch(`/api/auth/refresh`, { method: "POST" });
-      if (res.ok) {
-        const data = await res.json();
-        setUser(data.user);
-        if (data.accessToken) {
-          document.cookie = `next_auth_token=${data.accessToken}; path=/; max-age=86400; secure; samesite=strict`;
+        // Esto le pide al backend que busque TU usuario real en la DB
+        const res = await apiFetch(`/api/auth/refresh`, { method: "POST" });
+        if (res.ok) {
+            const data = await res.json();
+            // Esto actualiza el estado global con los datos frescos de la DB
+            useAuthStore.getState().setUser(data.user); 
         }
-      }
-
-      // 🔥 2. Buscamos el historial de pagos
-      const resPagos = await apiFetch(`/api/pagos/historial`);
-      if (resPagos.ok) {
-        const dataPagos = await resPagos.json();
-        setPagos(dataPagos);
-      }
-
     } catch (error) {
-      console.error("Error al sincronizar datos:", error);
+        console.error("Error:", error);
     } finally {
-      setIsRefreshing(false);
+        setIsRefreshing(false);
     }
-  };
+};
 
   useEffect(() => {
     fetchLatestData();

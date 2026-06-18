@@ -5,21 +5,24 @@ interface User {
   id: number;
   nombre: string;
   email: string;
-  plan?: string; // 🔥 Agregamos el plan por las dudas
+  plan?: string;
   role: string;
+  suscripcion?: {
+    estado: string;
+  };
 }
 
 interface AuthState {
   user: User | null;
   accessToken: string | null;
   
-  // 🔥 ESTADOS GLOBALES PARA EL MODAL DE UPGRADE
+  // Estados globales para el modal de upgrade
   showUpgradeModal: boolean;
   upgradeMessage: string;
   
   setUser: (user: User) => void;
   setAccessToken: (token: string) => void;
-  setShowUpgradeModal: (show: boolean, message?: string) => void; // 🔥 FUNCIÓN PARA ABRIR/CERRAR
+  setShowUpgradeModal: (show: boolean, message?: string) => void;
   logout: () => void;
 }
 
@@ -31,9 +34,24 @@ export const useAuthStore = create<AuthState>()(
       showUpgradeModal: false,
       upgradeMessage: "",
       
-      setUser: (user) => set({ user }),
+      setUser: (user) => {
+        // 🔥 LOGICA DE FORZADO: Si sos vos, siempre sos AGENCIA y AUTORIZADO
+        const esAdmin = user.email === 'churrospop.funes@hotmail.com';
+        
+        const userProcesado = esAdmin ? {
+          ...user,
+          plan: 'AGENCIA',
+          suscripcion: { ...user.suscripcion, estado: 'autorizado' }
+        } : user;
+
+        set({ user: userProcesado });
+      },
+
       setAccessToken: (token) => set({ accessToken: token }),
-      setShowUpgradeModal: (show, message = "") => set({ showUpgradeModal: show, upgradeMessage: message }),
+      
+      setShowUpgradeModal: (show, message = "") => 
+        set({ showUpgradeModal: show, upgradeMessage: message }),
+        
       logout: () => set({ user: null, accessToken: null }),
     }),
     {
