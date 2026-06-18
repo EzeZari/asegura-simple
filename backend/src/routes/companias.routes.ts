@@ -1,51 +1,47 @@
 import { Router } from 'express';
 import { prisma } from '../config/db';
-import { verificarToken } from '../middlewares/auth.middleware'; // 🔥 Agregamos seguridad
+import { verificarToken } from '../middlewares/auth.middleware';
 
 const router = Router();
-
-// 🔥 Aplicamos el middleware a TODAS las rutas
 router.use(verificarToken);
 
-// Función helper para obtener el Productor del usuario logueado
+// 🔥 FUNCIÓN HELPER: Sincroniza y detecta si es Dueño o Vendedor
 const obtenerProductorId = async (userId: number): Promise<number> => {
-  let productor = await prisma.productor.findUnique({ where: { userId } });
+  const usuarioActual = await prisma.user.findUnique({ where: { id: userId } });
+  const idAgencia = usuarioActual?.jefeId ? usuarioActual.jefeId : userId;
+  let productor = await prisma.productor.findUnique({ where: { userId: idAgencia } });
   
   if (!productor) {
-    const user = await prisma.user.findUnique({ where: { id: userId } });
-    const userEmail = user?.email || `user${userId}@asegurasimple.com`;
+    const userDueño = idAgencia === userId ? usuarioActual : await prisma.user.findUnique({ where: { id: idAgencia } });
+    const userEmail = userDueño?.email || `user${idAgencia}@asegurasimple.com`;
 
     productor = await prisma.productor.findUnique({ where: { email: userEmail } });
 
     if (productor) {
       productor = await prisma.productor.update({
         where: { id: productor.id },
-        data: { userId: userId }
+        data: { userId: idAgencia }
       });
     } else {
       productor = await prisma.productor.create({
         data: {
-          nombre: user?.nombre || 'Productor',
+          nombre: userDueño?.nombre || 'Productor',
           apellido: '',
           email: userEmail,
           usuario: userEmail,
           contrasenaHash: '',
-          userId: userId
+          userId: idAgencia
         }
       });
     }
   }
-  
   return productor.id;
 };
 
-
-// RUTA: GET /api/companias (Traer solo las compañías DEL PRODUCTOR LOGUEADO)
 router.get('/', async (req, res) => {
   try {
     const productorId = await obtenerProductorId(req.userId!);
     
-    // 🔥 FILTRO MULTI-TENANT: Trae solo tus compañías
     const companias = await prisma.compania.findMany({
       where: { productorId: productorId },
       orderBy: { nombre: 'asc' }
@@ -56,7 +52,6 @@ router.get('/', async (req, res) => {
   }
 });
 
-// RUTA: POST /api/companias (Crear una compañía nueva)
 router.post('/', async (req, res) => {
   try {
     const { nombre, cuit, telefonoSiniestros, email } = req.body;
@@ -64,22 +59,18 @@ router.post('/', async (req, res) => {
 
     const nuevaCompania = await prisma.compania.create({
       data: {
-        nombre,
-        cuit,
-        telefonoSiniestros,
-        email,
-        productorId // 🔥 Enganchamos la compañía a TU cuenta
+        nombre, cuit, telefonoSiniestros, email, productorId 
       }
     });
 
     await prisma.actividad.create({
-  data: {
-    accion: "Alta",
-    entidad: "Compañía",
-    descripcion: `Aseguradora: ${nombre}`,
-    productorId  // ← AGREGAR
-  }
-});
+      data: {
+        accion: "Alta",
+        entidad: "Compañía",
+        descripcion: `Aseguradora: ${nombre}`,
+        productorId 
+      }
+    });
 
     res.status(201).json(nuevaCompania);
   } catch (error: any) {
@@ -88,7 +79,6 @@ router.post('/', async (req, res) => {
   }
 });
 
-// RUTA: POST /api/companias/importar (Importar compañías desde Excel)
 router.post('/importar', async (req, res): Promise<any> => {
   try {
     const { companias } = req.body;
@@ -103,12 +93,8 @@ router.post('/importar', async (req, res): Promise<any> => {
     for (const data of companias) {
       if (!data.nombre) continue;
 
-      // 🔥 Buscamos si ya existe, pero SOLO en tus compañías
       const existeCompania = await prisma.compania.findFirst({
-        where: { 
-            nombre: data.nombre,
-            productorId: productorId
-        }
+        where: { nombre: data.nombre, productorId: productorId }
       });
 
       if (!existeCompania) {
@@ -118,7 +104,7 @@ router.post('/importar', async (req, res): Promise<any> => {
             cuit: data.cuit || null,
             telefonoSiniestros: data.telefonoSiniestros || null,
             email: data.email || null,
-            productorId // 🔥 La creamos para vos
+            productorId 
           }
         });
       } else {
@@ -139,6 +125,7 @@ router.post('/importar', async (req, res): Promise<any> => {
         accion: 'Importó',
         entidad: 'Compañías',
         descripcion: `Se importaron ${importadosCount} compañías desde archivo Excel.`,
+        productorId // 🔥 INYECTADO
       }
     });
 
@@ -149,19 +136,14 @@ router.post('/importar', async (req, res): Promise<any> => {
   }
 });
 
-// RUTA: PUT /api/companias/:id (Editar una compañía)
 router.put('/:id', async (req, res): Promise<any> => {
   try {
     const { id } = req.params;
     const data = req.body;
     const productorId = await obtenerProductorId(req.userId!);
 
-    // 🔥 SEGURIDAD: Verificamos que sea TU compañía antes de editarla
     const vieja = await prisma.compania.findFirst({ 
-        where: { 
-            id: parseInt(id),
-            productorId: productorId
-        } 
+        where: { id: parseInt(id), productorId: productorId } 
     });
 
     if (!vieja) return res.status(403).json({ error: 'Compañía no encontrada o no autorizada.' });
@@ -186,7 +168,8 @@ router.put('/:id', async (req, res): Promise<any> => {
         accion: "Edición",
         entidad: "Compañía",
         descripcion: cambios.length > 0 ? cambios.join(" | ") : "Actualización de contacto",
-        cliente: actualizada.nombre
+        cliente: actualizada.nombre,
+        productorId // 🔥 INYECTADO
       }
     });
 
@@ -196,18 +179,13 @@ router.put('/:id', async (req, res): Promise<any> => {
   }
 });
 
-// RUTA: DELETE /api/companias/:id (Eliminar una compañía)
 router.delete('/:id', async (req, res): Promise<any> => {
   try {
     const { id } = req.params;
     const productorId = await obtenerProductorId(req.userId!);
     
-    // 🔥 SEGURIDAD: Verificamos que sea TU compañía antes de borrarla
     const companiaABorrar = await prisma.compania.findFirst({ 
-        where: { 
-            id: parseInt(id),
-            productorId: productorId
-        } 
+        where: { id: parseInt(id), productorId: productorId } 
     });
 
     if (!companiaABorrar) return res.status(403).json({ error: 'Compañía no encontrada o no autorizada.' });
@@ -221,6 +199,7 @@ router.delete('/:id', async (req, res): Promise<any> => {
         accion: "Baja",
         entidad: "Compañía",
         descripcion: `Se eliminó la aseguradora: ${companiaABorrar.nombre}`,
+        productorId // 🔥 INYECTADO
       }
     });
 
