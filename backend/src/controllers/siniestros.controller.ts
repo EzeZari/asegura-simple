@@ -80,9 +80,14 @@ export const createSiniestro = async (req: Request, res: Response): Promise<any>
 
     if (!poliza) return res.status(403).json({ error: 'La póliza no te pertenece o no existe.' });
 
+    // 🔥 GENERACIÓN BLINDADA: Si lo dejan vacío, crea un código tipo "SIN-A8F3B2"
+    const nroFinal = nroSiniestro && nroSiniestro.trim() !== "" 
+      ? nroSiniestro.trim() 
+      : `SIN-${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
+
     const nuevoSiniestro = await prisma.siniestro.create({
       data: {
-        nroSiniestro: nroSiniestro || `SIN-${Date.now().toString().slice(-6)}`,
+        nroSiniestro: nroFinal, // 🔥 Usamos el número seguro
         fechaHecho: new Date(fechaHecho),
         descripcionInicial,
         estadoSiniestro: estadoSiniestro || 'Denuncia Pendiente',
