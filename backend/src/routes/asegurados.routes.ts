@@ -11,30 +11,40 @@ const router = Router();
 router.use(verificarToken);
 router.use(verificarSuscripcionActiva); // 🛡️ El "Patovica" protege automáticamente los POST, PUT y DELETE
 
-// Función helper para obtener, vincular o crear el Productor del usuario logueado
+// Función helper para obtener la Agencia (Productor) del usuario o su jefe
 const obtenerProductorId = async (userId: number): Promise<number> => {
-  let productor = await prisma.productor.findUnique({ where: { userId } });
+  // 1. Buscamos al usuario que acaba de iniciar sesión
+  const usuarioActual = await prisma.user.findUnique({ where: { id: userId } });
   
+  // 2. 🔥 EL NÚCLEO DE LA AGENCIA: 
+  // Si el usuario tiene un "jefeId", el dueño de los datos es el Jefe. 
+  // Si no tiene jefe (es el dueño), el dueño de los datos es él mismo.
+  const idAgencia = usuarioActual?.jefeId ? usuarioActual.jefeId : userId;
+
+  // 3. Ahora buscamos el perfil de "Productor" que le pertenece a la AGENCIA (al Dueño)
+  let productor = await prisma.productor.findUnique({ where: { userId: idAgencia } });
+  
+  // (El resto es tu código original para crearlo si por alguna razón no existe)
   if (!productor) {
-    const user = await prisma.user.findUnique({ where: { id: userId } });
-    const userEmail = user?.email || `user${userId}@asegurasimple.com`;
+    const userDueño = idAgencia === userId ? usuarioActual : await prisma.user.findUnique({ where: { id: idAgencia } });
+    const userEmail = userDueño?.email || `user${idAgencia}@asegurasimple.com`;
 
     productor = await prisma.productor.findUnique({ where: { email: userEmail } });
 
     if (productor) {
       productor = await prisma.productor.update({
         where: { id: productor.id },
-        data: { userId: userId }
+        data: { userId: idAgencia }
       });
     } else {
       productor = await prisma.productor.create({
         data: {
-          nombre: user?.nombre || 'Productor',
+          nombre: userDueño?.nombre || 'Productor',
           apellido: '',
           email: userEmail,
           usuario: userEmail,
           contrasenaHash: '',
-          userId: userId
+          userId: idAgencia
         }
       });
     }
