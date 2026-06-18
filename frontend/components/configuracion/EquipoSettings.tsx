@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Users, Crown, Mail, Shield, UserPlus, Trash2, AlertCircle, Loader2, X } from "lucide-react";
+import { Users, Crown, Mail, Shield, UserPlus, Trash2, AlertCircle, Loader2, X, CheckCircle2 } from "lucide-react";
 import { useAuthStore } from "@/store/authStore";
 import { apiFetch } from "@/services/api";
 import AlertModal from "@/components/ui/AlertModal";
@@ -13,11 +13,9 @@ export default function EquipoSettings() {
   const user = useAuthStore((state: any) => state.user);
   const router = useRouter();
 
-  // 1. Estados de datos y lógica
   const [equipo, setEquipo] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   
-  // 2. Estados de modales e interacciones
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [nuevoMiembro, setNuevoMiembro] = useState({ nombre: "", email: "", password: "", role: "VIEWER" });
@@ -26,17 +24,19 @@ export default function EquipoSettings() {
   const [alertConfig, setAlertConfig] = useState({ isOpen: false, title: "", message: "" });
   const [confirmConfig, setConfirmConfig] = useState({ isOpen: false, idToDelete: null as number | null });
 
-  // 3. Cálculos de Plan y Límites
   const planReal = user?.plan || "GRATUITO";
-  // Si es PROFESIONAL o AGENCIA lo consideramos "PRO" para habilitar la sección
   const planActual = planReal === "PROFESIONAL" || planReal === "AGENCIA" ? "PRO" : "BASICO"; 
   
-  // Limites exactos según tu plan
   const limiteUsuarios = planReal === "GRATUITO" || planReal === "BASICO" ? 1 : planReal === "PROFESIONAL" ? 3 : "Ilimitado";
-  const cantidadActual = equipo.length + 1; // Dueño + Empleados
+  const cantidadActual = equipo.length + 1; 
   const reachedLimit = limiteUsuarios !== "Ilimitado" && cantidadActual >= (limiteUsuarios as number);
 
-  // 4. Traer el equipo de la Base de Datos
+  // 🔥 VALIDACIONES EN TIEMPO REAL
+  const isNombreValid = nuevoMiembro.nombre.trim().length >= 3;
+  const isEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(nuevoMiembro.email);
+  const isPasswordValid = nuevoMiembro.password.length >= 6;
+  const isFormValid = isNombreValid && isEmailValid && isPasswordValid;
+
   const fetchEquipo = async () => {
     try {
       const res = await apiFetch('/api/equipo');
@@ -55,7 +55,6 @@ export default function EquipoSettings() {
     fetchEquipo();
   }, []);
 
-  // 5. Unificamos al Dueño (usuario logueado) con los Empleados (equipo) para la tabla
   const listaMiembros = [
     { 
       id: 'dueno', 
@@ -73,7 +72,6 @@ export default function EquipoSettings() {
     }))
   ];
 
-  // 6. Funciones de acción
   const intentarInvitar = () => {
     if (planActual !== "PRO") return;
     
@@ -86,11 +84,15 @@ export default function EquipoSettings() {
       return;
     }
     
+    // Reseteamos el formulario al abrir
+    setNuevoMiembro({ nombre: "", email: "", password: "", role: "VIEWER" });
     setShowInviteModal(true);
   };
 
   const handleAgregarMiembro = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isFormValid) return; // Doble barrera de seguridad
+
     setIsSubmitting(true);
     try {
       const res = await apiFetch('/api/equipo', {
@@ -100,10 +102,10 @@ export default function EquipoSettings() {
       const data = await res.json();
 
       if (res.ok) {
-        setShowToast(true); // Usamos tu Toast verde hermoso
+        setShowToast(true);
         setNuevoMiembro({ nombre: "", email: "", password: "", role: "VIEWER" });
         setShowInviteModal(false);
-        fetchEquipo(); // Refrescamos la tabla
+        fetchEquipo();
       } else {
         throw new Error(data.error);
       }
@@ -137,7 +139,6 @@ export default function EquipoSettings() {
   return (
     <div className="flex flex-col gap-5 md:gap-6 animate-in fade-in duration-300 pb-10">
       
-      {/* BANNER DE UPGRADE (Tu diseño original) */}
       {planActual === "BASICO" && (
         <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 p-4 md:p-5 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between shadow-sm gap-4">
           <div className="flex items-center gap-3 sm:gap-4">
@@ -158,15 +159,12 @@ export default function EquipoSettings() {
         </div>
       )}
 
-      {/* PANEL PRINCIPAL */}
       <div className="bg-white p-4 md:p-6 rounded-2xl border border-gray-100 shadow-sm flex flex-col gap-5 md:gap-6">
-        
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between border-b border-gray-50 pb-4 gap-4">
           <div className="flex items-center gap-2">
             <Users size={18} className="text-gray-400" />
             <h3 className="text-lg font-bold text-gray-900">Miembros del Equipo</h3>
             
-            {/* Pequeño badge con los cupos (Solo lo mostramos si es PRO) */}
             {planActual === "PRO" && (
                <span className="ml-2 px-2 py-0.5 bg-gray-100 text-gray-600 text-[10px] font-bold rounded-full">
                  {cantidadActual} / {limiteUsuarios}
@@ -184,7 +182,6 @@ export default function EquipoSettings() {
           </button>
         </div>
 
-        {/* TABLA DE USUARIOS */}
         <div className="overflow-x-auto w-full">
           {isLoading ? (
             <div className="flex justify-center items-center h-32">
@@ -205,7 +202,6 @@ export default function EquipoSettings() {
                   <tr key={miembro.id} className="border-b border-gray-50 hover:bg-gray-50/50 transition-colors">
                     <td className="py-4 px-1 sm:px-0 whitespace-nowrap">
                       <div className="flex items-center gap-3">
-                        {/* Avatar */}
                         <div className={`h-10 w-10 rounded-full flex items-center justify-center font-bold text-sm shrink-0 ${
                           miembro.rol === 'Dueño' ? 'bg-orange-100 text-orange-700' : 'bg-green-100 text-green-700'
                         }`}>
@@ -220,7 +216,6 @@ export default function EquipoSettings() {
                       </div>
                     </td>
                     <td className="py-4 px-1 sm:px-0 whitespace-nowrap">
-                      {/* Badge de Rol con tu diseño púrpura */}
                       <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-bold border ${
                         miembro.rol === 'Dueño' ? 'bg-orange-50 text-orange-700 border-orange-100' : 'bg-purple-50 text-purple-700 border-purple-100'
                       }`}>
@@ -253,7 +248,6 @@ export default function EquipoSettings() {
           )}
         </div>
 
-        {/* INFO ADICIONAL */}
         <div className="bg-gray-50 p-3 md:p-4 rounded-xl flex items-start gap-3 mt-2 border border-gray-100">
           <AlertCircle size={18} className="text-gray-500 mt-0.5 shrink-0" />
           <div className="flex flex-col gap-1">
@@ -263,10 +257,8 @@ export default function EquipoSettings() {
             </p>
           </div>
         </div>
-
       </div>
       
-      {/* MODAL PARA AGREGAR MIEMBRO */}
       {showInviteModal && (
         <div className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
           <div className="bg-white rounded-3xl p-6 w-full max-w-md shadow-2xl flex flex-col gap-4 animate-in zoom-in-95 duration-200">
@@ -283,41 +275,72 @@ export default function EquipoSettings() {
             </div>
             
             <form onSubmit={handleAgregarMiembro} className="space-y-4 pt-2">
+              
+              {/* CAMPO NOMBRE */}
               <div>
                 <label className="block text-xs font-semibold text-gray-600 mb-1.5">Nombre y Apellido</label>
                 <input 
                   type="text" required
                   value={nuevoMiembro.nombre} onChange={(e) => setNuevoMiembro({...nuevoMiembro, nombre: e.target.value})}
-                  className="w-full text-sm border border-gray-200 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none bg-gray-50 focus:bg-white transition-colors" 
+                  className={`w-full text-sm border rounded-xl px-4 py-2.5 focus:ring-2 outline-none transition-colors ${
+                    nuevoMiembro.nombre.length > 0 && !isNombreValid 
+                      ? "border-red-300 focus:ring-red-500 focus:border-red-500 bg-red-50" 
+                      : "border-gray-200 focus:ring-green-500 focus:border-green-500 bg-gray-50 focus:bg-white"
+                  }`} 
                   placeholder="Ej: Juan Pérez"
                 />
+                {nuevoMiembro.nombre.length > 0 && !isNombreValid && (
+                  <span className="text-[10px] text-red-500 mt-1 block font-medium">Debe tener al menos 3 caracteres.</span>
+                )}
               </div>
               
+              {/* CAMPO EMAIL */}
               <div>
                 <label className="block text-xs font-semibold text-gray-600 mb-1.5">Correo Electrónico</label>
-                <input 
-                  type="email" required
-                  value={nuevoMiembro.email} onChange={(e) => setNuevoMiembro({...nuevoMiembro, email: e.target.value})}
-                  className="w-full text-sm border border-gray-200 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none bg-gray-50 focus:bg-white transition-colors" 
-                  placeholder="juan@agencia.com"
-                />
+                <div className="relative">
+                  <input 
+                    type="email" required
+                    value={nuevoMiembro.email} onChange={(e) => setNuevoMiembro({...nuevoMiembro, email: e.target.value})}
+                    className={`w-full text-sm border rounded-xl px-4 py-2.5 focus:ring-2 outline-none transition-colors ${
+                      nuevoMiembro.email.length > 0 && !isEmailValid 
+                        ? "border-red-300 focus:ring-red-500 focus:border-red-500 bg-red-50" 
+                        : isEmailValid 
+                        ? "border-green-300 focus:ring-green-500 focus:border-green-500 bg-green-50/30"
+                        : "border-gray-200 focus:ring-green-500 focus:border-green-500 bg-gray-50 focus:bg-white"
+                    }`} 
+                    placeholder="juan@agencia.com"
+                  />
+                  {isEmailValid && <CheckCircle2 size={16} className="absolute right-3 top-3 text-green-500" />}
+                </div>
+                {nuevoMiembro.email.length > 0 && !isEmailValid && (
+                  <span className="text-[10px] text-red-500 mt-1 block font-medium">Ingresá un correo electrónico válido.</span>
+                )}
               </div>
 
+              {/* CAMPO CONTRASEÑA */}
               <div>
                 <label className="block text-xs font-semibold text-gray-600 mb-1.5">Contraseña Temporal</label>
                 <input 
                   type="password" required minLength={6}
                   value={nuevoMiembro.password} onChange={(e) => setNuevoMiembro({...nuevoMiembro, password: e.target.value})}
-                  className="w-full text-sm border border-gray-200 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none bg-gray-50 focus:bg-white transition-colors" 
+                  className={`w-full text-sm border rounded-xl px-4 py-2.5 focus:ring-2 outline-none transition-colors ${
+                    nuevoMiembro.password.length > 0 && !isPasswordValid 
+                      ? "border-red-300 focus:ring-red-500 focus:border-red-500 bg-red-50" 
+                      : "border-gray-200 focus:ring-green-500 focus:border-green-500 bg-gray-50 focus:bg-white"
+                  }`} 
                   placeholder="Mínimo 6 caracteres"
                 />
+                {nuevoMiembro.password.length > 0 && !isPasswordValid && (
+                  <span className="text-[10px] text-red-500 mt-1 block font-medium">La contraseña es muy corta.</span>
+                )}
               </div>
 
+              {/* CAMPO ROL */}
               <div>
                 <label className="block text-xs font-semibold text-gray-600 mb-1.5">Rol en el Sistema</label>
                 <select 
                   value={nuevoMiembro.role} onChange={(e) => setNuevoMiembro({...nuevoMiembro, role: e.target.value})}
-                  className="w-full text-sm border border-gray-200 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none bg-gray-50 focus:bg-white transition-colors"
+                  className="w-full text-sm border border-gray-200 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none bg-gray-50 focus:bg-white transition-colors cursor-pointer"
                 >
                   <option value="VIEWER">Vendedor (Solo lectura)</option>
                   <option value="PRODUCTOR">Administrador Secundario</option>
@@ -332,8 +355,8 @@ export default function EquipoSettings() {
                   Cancelar
                 </button>
                 <button 
-                  type="submit" disabled={isSubmitting}
-                  className="px-5 py-2.5 bg-green-700 hover:bg-green-800 text-white rounded-xl font-bold shadow-md transition-all active:scale-95 flex items-center justify-center gap-2 text-sm disabled:opacity-70 min-w-[140px]"
+                  type="submit" disabled={isSubmitting || !isFormValid}
+                  className="px-5 py-2.5 bg-green-700 hover:bg-green-800 text-white rounded-xl font-bold shadow-md transition-all active:scale-95 flex items-center justify-center gap-2 text-sm disabled:opacity-50 disabled:bg-gray-300 disabled:shadow-none min-w-[140px]"
                 >
                   {isSubmitting ? <Loader2 size={16} className="animate-spin" /> : "Invitar Usuario"}
                 </button>
