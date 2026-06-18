@@ -4,30 +4,37 @@ import { enviarAvisoVencimiento } from '../services/email.service';
 import path from 'path';
 import fs from 'fs';
 
-// 🔥 Función helper para sincronizar el User con el Productor y obtener el ID real
+// 🔥 FUNCIÓN HELPER ACTUALIZADA: Sincroniza y detecta si es Dueño o Vendedor
 const obtenerProductorId = async (userId: number): Promise<number> => {
-  let productor = await prisma.productor.findUnique({ where: { userId } });
+  // 1. Buscamos al usuario que acaba de iniciar sesión
+  const usuarioActual = await prisma.user.findUnique({ where: { id: userId } });
+  
+  // 2. Si tiene jefeId, el dueño de las pólizas es el Jefe. Si no, es él mismo.
+  const idAgencia = usuarioActual?.jefeId ? usuarioActual.jefeId : userId;
+
+  // 3. Buscamos el Productor atado al Dueño de la Agencia
+  let productor = await prisma.productor.findUnique({ where: { userId: idAgencia } });
   
   if (!productor) {
-    const user = await prisma.user.findUnique({ where: { id: userId } });
-    const userEmail = user?.email || `user${userId}@asegurasimple.com`;
+    const userDueño = idAgencia === userId ? usuarioActual : await prisma.user.findUnique({ where: { id: idAgencia } });
+    const userEmail = userDueño?.email || `user${idAgencia}@asegurasimple.com`;
 
     productor = await prisma.productor.findUnique({ where: { email: userEmail } });
 
     if (productor) {
       productor = await prisma.productor.update({
         where: { id: productor.id },
-        data: { userId: userId }
+        data: { userId: idAgencia }
       });
     } else {
       productor = await prisma.productor.create({
         data: {
-          nombre: user?.nombre || 'Productor',
+          nombre: userDueño?.nombre || 'Productor',
           apellido: '',
           email: userEmail,
           usuario: userEmail,
           contrasenaHash: '',
-          userId: userId
+          userId: idAgencia
         }
       });
     }
@@ -81,7 +88,7 @@ export const crearPoliza = async (req: Request, res: Response): Promise<any> => 
       patente, marca, modelo, ubicacionRiesgo, cantidadEmpleados 
     } = req.body;
 
-    // 🔥 SEGURIDAD EXTRA: Verificamos que el asegurado SEA TUYO
+    // 🔥 SEGURIDAD EXTRA: Verificamos que el asegurado SEA DE LA AGENCIA
     const asegurado = await prisma.asegurado.findFirst({
       where: { id: parseInt(aseguradoId), productorId: productorId }
     });
@@ -111,7 +118,7 @@ export const crearPoliza = async (req: Request, res: Response): Promise<any> => 
         entidad: "Póliza",
         descripcion: `Póliza #${nroPoliza} (${tipoPoliza})`,
         cliente: `${nuevaPoliza.asegurado.nombre} ${nuevaPoliza.asegurado.apellido || ''}`.trim(),
-        productorId // 🔥 INYECTADO
+        productorId // 🔥 INYECTADO A LA AGENCIA
       }
     });
 
@@ -127,7 +134,7 @@ export const actualizarPoliza = async (req: Request, res: Response): Promise<any
     const data = req.body;
     const productorId = await obtenerProductorId(req.userId!);
 
-    // 🔥 Buscamos si la póliza LE PERTENECE antes de intentar actualizarla
+    // 🔥 Buscamos si la póliza LE PERTENECE a la agencia
     const vieja = await prisma.poliza.findFirst({ 
       where: { 
         id: parseInt(id),
@@ -298,7 +305,7 @@ export const subirPdf = async (req: Request, res: Response): Promise<any> => {
       return res.status(400).json({ error: 'No se seleccionó ningún archivo o el formato no es PDF.' });
     }
 
-    // 🔥 Verificamos que esta póliza a la que le quieren meter un PDF sea TUYA
+    // 🔥 Verificamos que esta póliza le pertenezca a la agencia
     const polizaExistente = await prisma.poliza.findFirst({
       where: { 
         id: parseInt(id),
@@ -351,13 +358,12 @@ export const importarPolizas = async (req: Request, res: Response): Promise<any>
       return res.status(400).json({ error: 'El formato de datos debe ser un arreglo.' });
     }
 
-    // 🔥 FILTRO CLAVE
+    // 🔥 FILTRO CLAVE: Asegurados y Compañías de la Agencia
     const asegurados = await prisma.asegurado.findMany({ 
       where: { productorId: productorId },
       select: { id: true, dni: true } 
     });
     
-    // Solo traemos TUS compañías
     const companias = await prisma.compania.findMany({ 
       where: { productorId: productorId },
       select: { id: true, nombre: true } 
