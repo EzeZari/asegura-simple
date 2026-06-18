@@ -2,10 +2,16 @@ import { Response } from 'express';
 import { prisma } from '../config/db';
 import bcrypt from 'bcrypt';
 
+// 🔥 FUNCIÓN DE BLINDAJE: Extrae el ID del usuario en todos los formatos posibles
+const obtenerIdSeguro = (req: any) => {
+  const idBruto = req.user?.userId || req.user?.id || req.usuario?.id || req.userId;
+  return Number(idBruto);
+};
+
 // 1. Obtener los miembros del equipo del usuario actual
 export const obtenerEquipo = async (req: any, res: Response): Promise<any> => {
   try {
-    const jefeId = Number(req.user?.userId || req.user?.id);
+    const jefeId = obtenerIdSeguro(req);
     if (!jefeId) return res.status(401).json({ error: "No autorizado" });
 
     const equipo = await prisma.user.findMany({
@@ -23,7 +29,9 @@ export const obtenerEquipo = async (req: any, res: Response): Promise<any> => {
 // 2. Invitar a un nuevo empleado
 export const agregarMiembro = async (req: any, res: Response): Promise<any> => {
   try {
-    const jefeId = Number(req.user?.userId || req.user?.id);
+    const jefeId = obtenerIdSeguro(req);
+    if (!jefeId) return res.status(401).json({ error: "No autorizado. Token inválido." });
+
     const { nombre, email, password, role } = req.body;
 
     if (!nombre || !email || !password) {
@@ -80,7 +88,9 @@ export const agregarMiembro = async (req: any, res: Response): Promise<any> => {
 // 3. Eliminar a un empleado
 export const eliminarMiembro = async (req: any, res: Response): Promise<any> => {
   try {
-    const jefeId = Number(req.user?.userId || req.user?.id);
+    const jefeId = obtenerIdSeguro(req);
+    if (!jefeId) return res.status(401).json({ error: "No autorizado" });
+
     const miembroId = Number(req.params.id);
 
     // Asegurarnos de que el usuario a borrar realmente sea empleado de este jefe
