@@ -1,5 +1,10 @@
 import { sendMail } from '../utils/mailer';
-import { templateBienvenida, templateVencimiento, templateSiniestro } from '../utils/emailTemplates';
+import { 
+  templateBienvenida, 
+  templateVencimiento, 
+  templateSiniestro,
+  templateInvitacionEquipo // 🔥 Agregamos la importación acá
+} from '../utils/emailTemplates';
 
 export const enviarCorreoBienvenida = async (email: string, nombre: string, apellido: string, dni: string, telefono: string) => {
   if (!email || !email.includes('@')) return;
@@ -66,37 +71,10 @@ export const enviarCorreoInvitacion = async (email: string, nombre: string, cont
     await sendMail({
       to: email,
       subject: `¡Fuiste invitado a AseguraSimple por ${jefeNombre}!`,
-      html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #eaeaea; border-radius: 10px; overflow: hidden;">
-          <div style="background-color: #16a34a; padding: 20px; text-align: center;">
-            <h1 style="color: white; margin: 0; font-size: 24px;">AseguraSimple</h1>
-          </div>
-          <div style="padding: 30px; background-color: #ffffff; color: #333333;">
-            <h2 style="margin-top: 0;">¡Hola, ${nombre}!</h2>
-            <p><strong>${jefeNombre}</strong> te ha invitado a unirte a su equipo de trabajo en AseguraSimple.</p>
-            <p>Ya tenés una cuenta creada. Para ingresar, utilizá las siguientes credenciales temporales:</p>
-            
-            <div style="background-color: #f3f4f6; padding: 15px; border-radius: 8px; margin: 20px 0;">
-              <p style="margin: 5px 0;"><strong>Email:</strong> ${email}</p>
-              <p style="margin: 5px 0;"><strong>Contraseña:</strong> ${contrasena}</p>
-            </div>
-
-            <p style="font-size: 14px; color: #666;"><em>Te recomendamos cambiar tu contraseña una vez que ingreses al sistema.</em></p>
-
-            <div style="text-align: center; margin-top: 30px;">
-              <a href="${loginUrl}" style="background-color: #15803d; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">
-                Ingresar a la Plataforma
-              </a>
-            </div>
-          </div>
-          <div style="background-color: #f9fafb; padding: 15px; text-align: center; font-size: 12px; color: #9ca3af;">
-            <p style="margin: 0;">© ${new Date().getFullYear()} AseguraSimple. Todos los derechos reservados.</p>
-          </div>
-        </div>
-      `
+      html: templateInvitacionEquipo(nombre, jefeNombre, email, contrasena, loginUrl)
     });
+    
     console.log(`📧 Mail de invitación enviado a ${email}`);
-
   } catch (error) {
     console.error("Error al enviar el correo de invitación:", error);
   }

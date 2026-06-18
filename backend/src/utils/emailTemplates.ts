@@ -200,3 +200,33 @@ export const templateRecuperarPassword = (nombre: string, resetUrl: string) => `
     <p style="font-size: 12px; color: #666;">Si no solicitaste este cambio, podés ignorar este correo tranquilamente.</p>
   </div>
 `;
+// Plantilla para Invitación de Equipo
+export const templateInvitacionEquipo = (nombre: string, jefeNombre: string, emailInvitado: string, contrasena: string, loginUrl: string) => `
+  <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 25px; border: 1px solid #e5e7eb; border-radius: 16px; border-top: 6px solid #15803d; background-color: #ffffff;">
+    <div style="text-align: center; margin-bottom: 25px;">
+      <h2 style="color: #15803d; margin: 0; font-size: 24px; letter-spacing: -0.5px;">¡Invitación a AseguraSimple!</h2>
+      <p style="color: #6b7280; font-size: 14px; margin-top: 5px;">Plataforma de gestión para productores de seguros</p>
+    </div>
+    
+    <p style="color: #374151; font-size: 16px; line-height: 1.6;">Hola <strong>${nombre}</strong>,</p>
+    <p style="color: #374151; font-size: 16px; line-height: 1.6;"><strong>${jefeNombre}</strong> te ha invitado a unirte a su equipo de trabajo dentro de AseguraSimple.</p>
+    <p style="color: #374151; font-size: 16px; line-height: 1.6;">Tu cuenta ya fue creada exitosamente. Para ingresar, utilizá tus credenciales temporales:</p>
+    
+    <div style="background-color: #f0fdf4; border: 1px solid #dcfce7; padding: 20px; border-radius: 12px; margin: 24px 0;">
+      <p style="margin: 5px 0; color: #166534; font-size: 15px;"><strong>Correo electrónico:</strong> ${emailInvitado}</p>
+      <p style="margin: 5px 0; color: #166534; font-size: 15px;"><strong>Contraseña provisoria:</strong> <span style="font-family: monospace; font-size: 16px; background-color: #dcfce7; padding: 2px 6px; border-radius: 4px;">${contrasena}</span></p>
+    </div>
+    
+    <p style="color: #4b5563; font-size: 14px; line-height: 1.6; font-style: italic;">Te recomendamos encarecidamente que cambies tu contraseña provisoria desde la sección "Configuración > Seguridad" una vez que inicies sesión.</p>
+
+    <div style="text-align: center; margin: 35px 0 10px 0;">
+      <a href="${loginUrl}" style="background-color: #15803d; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px; display: inline-block; box-shadow: 0 4px 6px -1px rgba(21, 128, 61, 0.2);">
+        Ingresar a la Plataforma
+      </a>
+    </div>
+    
+    <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #f3f4f6;">
+      <p style="color: #9ca3af; font-size: 11px; text-align: center; margin-top: 10px;">Este es un mensaje automático del sistema. Si no esperabas esta invitación, por favor desestimá este correo.</p>
+    </div>
+  </div>
+`;
