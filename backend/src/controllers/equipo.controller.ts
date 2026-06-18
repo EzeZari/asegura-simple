@@ -1,6 +1,7 @@
 import { Response } from 'express';
 import { prisma } from '../config/db';
 import bcrypt from 'bcrypt';
+import { enviarCorreoInvitacion } from '../services/email.service'; // 🔥 IMPORTAMOS TU NUEVO MAIL
 
 // 🔥 FUNCIÓN DE BLINDAJE: Extrae el ID del usuario en todos los formatos posibles
 const obtenerIdSeguro = (req: any) => {
@@ -38,7 +39,11 @@ export const agregarMiembro = async (req: any, res: Response): Promise<any> => {
       return res.status(400).json({ error: "Faltan datos obligatorios (nombre, email, contraseña)." });
     }
 
-    // Buscamos al jefe para ver qué plan tiene
+    // 🔥 LIMPIEZA DE DATOS (Acá matamos el bug de credenciales incorrectas)
+    const emailLimpio = email.toLowerCase().trim();
+    const passwordLimpia = password.trim();
+
+    // Buscamos al jefe para ver qué plan tiene y obtener su nombre para el mail
     const jefe = await prisma.user.findUnique({
       where: { id: jefeId },
       include: { empleados: true }
@@ -46,8 +51,8 @@ export const agregarMiembro = async (req: any, res: Response): Promise<any> => {
 
     if (!jefe) return res.status(404).json({ error: "Usuario no encontrado" });
 
-    // 🔥 LA MAGIA DEL SAAS: Validamos los límites del plan
-    const cantidadActual = jefe.empleados.length + 1; // El jefe cuenta como 1
+    // Validamos los límites del plan
+    const cantidadActual = jefe.empleados.length + 1;
 
     if (jefe.plan === "GRATUITO" || jefe.plan === "BASICO") {
       return res.status(403).json({ error: "Tu plan actual no permite agregar miembros. Actualizá a Profesional o Agencia." });
@@ -58,27 +63,30 @@ export const agregarMiembro = async (req: any, res: Response): Promise<any> => {
     }
 
     // Verificamos que el email no esté en uso en todo el sistema
-    const existe = await prisma.user.findUnique({ where: { email } });
+    const existe = await prisma.user.findUnique({ where: { email: emailLimpio } });
     if (existe) return res.status(400).json({ error: "Ese email ya está registrado en AseguraSimple." });
 
-    // Creamos al nuevo empleado
+    // Creamos al nuevo empleado encriptando la contraseña LIMPIA
     const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(password, salt);
+    const hashedPassword = await bcrypt.hash(passwordLimpia, salt);
 
     const nuevoMiembro = await prisma.user.create({
       data: {
         nombre,
-        email,
+        email: emailLimpio,
         telefono: "", 
         password: hashedPassword,
         role: role || "VIEWER",
-        jefeId: jefe.id, // Lo atamos al dueño de la agencia
-        plan: jefe.plan, // Hereda el plan
-        isVerified: true // Entra directo sin verificar el mail
+        jefeId: jefe.id, 
+        plan: jefe.plan, 
+        isVerified: true 
       }
     });
 
-    res.json({ message: "Miembro agregado con éxito", miembro: { id: nuevoMiembro.id, nombre, email, role } });
+    // 🔥 MAGIA: Enviamos el correo de invitación al vendedor recién creado
+    await enviarCorreoInvitacion(emailLimpio, nombre, passwordLimpia, jefe.nombre);
+
+    res.json({ message: "Miembro agregado con éxito", miembro: { id: nuevoMiembro.id, nombre, email: emailLimpio, role } });
   } catch (error) {
     console.error("Error al invitar miembro:", error);
     res.status(500).json({ error: "Error interno al invitar miembro." });
@@ -93,7 +101,6 @@ export const eliminarMiembro = async (req: any, res: Response): Promise<any> => 
 
     const miembroId = Number(req.params.id);
 
-    // Asegurarnos de que el usuario a borrar realmente sea empleado de este jefe
     const empleado = await prisma.user.findFirst({
       where: { id: miembroId, jefeId: jefeId }
     });

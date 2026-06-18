@@ -8,32 +8,48 @@ const LIMITES_ASEGURADOS = {
 };
 
 export const verificarLimiteAsegurados = async (userId: number): Promise<{ superado: boolean; mensaje?: string }> => {
-  // 1. Buscamos el plan actual del usuario
+  // 1. Buscamos al usuario y nos fijamos si es DUEÑO o EMPLEADO
   const usuario = await prisma.user.findUnique({
     where: { id: userId },
-    select: { plan: true, email: true } 
+    select: { plan: true, email: true, jefeId: true } // 🔥 Agregamos jefeId
   });
 
   if (!usuario) {
     return { superado: true, mensaje: "Usuario no encontrado." };
   }
 
-  // 2. Contamos cuántos asegurados tiene cargados actualmente
+  // 2. 🔥 EL TRUCO DE LA AGENCIA: Identificamos quién es el dueño real
+  const idAgencia = usuario.jefeId ? usuario.jefeId : userId;
+
+  // Buscamos los emails de toda la agencia (el dueño + todos sus vendedores)
+  const miembrosAgencia = await prisma.user.findMany({
+    where: {
+      OR: [
+        { id: idAgencia },
+        { jefeId: idAgencia }
+      ]
+    },
+    select: { email: true }
+  });
+
+  const emailsAgencia = miembrosAgencia.map(m => m.email);
+
+  // 3. Contamos cuántos asegurados cargó TODA LA AGENCIA en conjunto
   const cantidadActual = await prisma.asegurado.count({
     where: { 
       productor: {
-        email: usuario.email 
+        email: { in: emailsAgencia } // 🔥 Cuenta los clientes de cualquier miembro del equipo
       }
     }
   });
 
-  // Le avisamos a TypeScript que usuario.plan es una llave válida de nuestro objeto
-  const limiteMaximo = LIMITES_ASEGURADOS[usuario.plan as keyof typeof LIMITES_ASEGURADOS];
+  const planActual = usuario.plan || "GRATUITO";
+  const limiteMaximo = LIMITES_ASEGURADOS[planActual as keyof typeof LIMITES_ASEGURADOS] || 10;
 
   if (cantidadActual >= limiteMaximo) {
     return {
       superado: true,
-      mensaje: `Alcanzaste el límite de ${limiteMaximo} asegurados para el ${usuario.plan}. Mejorá tu plan para seguir cargando clientes.`
+      mensaje: `Tu agencia alcanzó el límite de ${limiteMaximo} asegurados del plan ${planActual}. Mejorá tu suscripción para seguir creciendo.`
     };
   }
 
