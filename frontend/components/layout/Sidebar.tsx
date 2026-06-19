@@ -3,8 +3,8 @@
 import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation'; 
 import { 
-  Home, Users, FileText, Building, CarFront, Bell, Settings, LogOut, BarChart3, X 
-} from 'lucide-react'; 
+  Home, Users, FileText, Building, CarFront, Bell, Settings, LogOut, BarChart3, X, Eye, ShieldCheck 
+} from 'lucide-react'; // 🔥 Sumamos ShieldCheck para el Admin secundario
 import { useAuthStore } from '@/store/authStore';
 
 const menuItems = [
@@ -29,6 +29,11 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
   
   const user = useAuthStore((state) => state.user);
   const clearStore = useAuthStore((state) => state.logout);
+  
+  // 🔥 LÓGICA DE ROLES Y ETIQUETAS
+  const esSoloLectura = user?.role === 'VIEWER';
+  // Es Admin invitado si tiene rol ADMIN pero pertenece a un jefe (tiene jefeId)
+  const esAdminSecundario = user?.role === 'ADMIN' && user?.jefeId; 
 
   const handleLogout = async () => {
     try {
@@ -37,7 +42,6 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
         credentials: 'include', 
       });
       
-      // 🔥 ACÁ ESTÁ LA MAGIA: Borramos el "sello" del frontend poniéndole fecha de 1970
       document.cookie = "next_auth_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
       
       clearStore();
@@ -63,8 +67,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
         lg:translate-x-0 
       `}>
         
-        {/* 🔥 AJUSTE: El botón X ahora vive adentro del header y bien en la esquina */}
-        <div className="relative h-24 flex flex-col items-center justify-center font-bold tracking-wide border-b border-green-600/50 px-8 text-center">
+        <div className="relative h-auto py-6 flex flex-col items-center justify-center font-bold tracking-wide border-b border-green-600/50 px-4 text-center">
           <button 
             onClick={onClose} 
             className="lg:hidden absolute top-2 right-2 p-1.5 text-green-100 hover:text-white hover:bg-green-600 rounded-lg transition-colors"
@@ -72,11 +75,27 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
             <X size={22} />
           </button>
           
-          <span className="text-2xl mt-2">AseguraSimple</span>
+          <span className="text-2xl mt-1">AseguraSimple</span>
           {user && (
-            <span className="text-sm font-normal text-green-200 mt-1 truncate w-full">
-              Hola, {user.nombre}
-            </span>
+            <div className="flex flex-col items-center mt-1">
+              <span className="text-sm font-normal text-green-200 truncate w-full max-w-[180px]">
+                Hola, {user.nombre}
+              </span>
+              
+              {/* 🔥 ETIQUETA: MODO LECTOR (Fondo oscuro transparente) */}
+              {esSoloLectura && (
+                <span className="mt-2 flex items-center gap-1.5 bg-black/20 text-green-50 text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider">
+                  <Eye size={12} /> Modo Lector
+                </span>
+              )}
+
+              {/* 🔥 ETIQUETA: ADMIN DE EQUIPO (Fondo azulado distintivo) */}
+              {esAdminSecundario && (
+                <span className="mt-2 flex items-center gap-1.5 bg-blue-900/40 border border-blue-400/20 text-blue-50 text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider">
+                  <ShieldCheck size={12} /> Colaborador
+                </span>
+              )}
+            </div>
           )}
         </div>
 
