@@ -4,7 +4,9 @@ import { useState, useEffect } from "react";
 import { X } from "lucide-react";
 import UpgradeModal from "@/components/ui/UpgradeModal";
 import { apiFetch } from "@/services/api"; 
-import { useAuthStore } from "@/store/authStore"; // 🔥 IMPORTAMOS EL STORE
+import { useAuthStore } from "@/store/authStore"; 
+// 🔥 IMPORTAMOS NUESTRAS VALIDACIONES
+import { validarRequerido, validarDniCuit, validarEmail, validarTelefono, validarFechaNacimiento, validarCodigoPostal } from "@/utils/validaciones";
 
 interface Props {
   isOpen: boolean;
@@ -24,7 +26,9 @@ export default function NuevoAseguradoModal({ isOpen, onClose, onSuccess, client
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   
-  // 🔥 TRAEMOS LA FUNCIÓN GLOBAL PARA ABRIR EL MODAL
+  // 🔥 ESTADO PARA GUARDAR LOS ERRORES DE CADA CAMPO
+  const [errores, setErrores] = useState<Record<string, string>>({});
+  
   const setShowUpgradeModal = useAuthStore((state) => state.setShowUpgradeModal);
 
   useEffect(() => {
@@ -36,6 +40,7 @@ export default function NuevoAseguradoModal({ isOpen, onClose, onSuccess, client
       });
     } else {
       setFormData(ESTADO_INICIAL); 
+      setErrores({}); // Limpiamos errores al abrir uno nuevo
     }
   }, [clienteAEditar, isOpen]);
 
@@ -43,12 +48,44 @@ export default function NuevoAseguradoModal({ isOpen, onClose, onSuccess, client
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
+    
+    // Si el usuario empieza a escribir, borramos la advertencia en rojo
+    if (errores[e.target.name]) {
+      setErrores({ ...errores, [e.target.name]: "" });
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
     setError("");
+
+    // 🔥 EJECUTAMOS LAS VALIDACIONES SÚPER ESTRICTAS
+    const nuevosErrores: Record<string, string> = {
+      nombre: validarRequerido(formData.nombre, "Nombre"),
+      dni: validarDniCuit(formData.dni),
+      
+      // Le pasamos "true" para exigir obligatoriamente que lo llenen
+      email: validarEmail(formData.email, true),
+      telefono: validarTelefono(formData.telefono, true),
+      direccion: validarRequerido(formData.direccion, "Dirección"),
+      
+      // Estos los dejamos opcionales (false), pero si escriben algo, se valida que esté bien
+      fechaNacimiento: validarFechaNacimiento(formData.fechaNacimiento, false),
+      codigoPostal: validarCodigoPostal(formData.codigoPostal, false)
+    };
+
+    // Filtramos solo los campos que devolvieron un texto de error
+    const erroresFiltrados = Object.fromEntries(
+      Object.entries(nuevosErrores).filter(([_, v]) => v !== "")
+    );
+
+    // Si hay aunque sea 1 error, cortamos la ejecución y pintamos de rojo la pantalla
+    if (Object.keys(erroresFiltrados).length > 0) {
+      setErrores(erroresFiltrados);
+      return; // ⛔ Acá se frena el guardado
+    }
+
+    setIsLoading(true);
 
     try {
       const endpoint = clienteAEditar 
@@ -64,11 +101,9 @@ export default function NuevoAseguradoModal({ isOpen, onClose, onSuccess, client
 
       const data = await response.json();
 
-      // 🔥 ATRAPAMOS CUALQUIER ERROR 403 (Límites excedidos o Modo Solo Lectura)
       if (response.status === 403) {
         setShowUpgradeModal(true, data.error);
         setIsLoading(false);
-        // Cerramos este modal de carga para que no se superponga con el aviso
         onClose(); 
         return; 
       }
@@ -103,7 +138,14 @@ export default function NuevoAseguradoModal({ isOpen, onClose, onSuccess, client
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="md:col-span-2">
                   <label className="block text-sm font-medium text-gray-700 mb-1">Nombre Completo / Razón Social *</label>
-                  <input required type="text" name="nombre" value={formData.nombre} onChange={handleChange} className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-600 outline-none" />
+                  <input 
+                    type="text" 
+                    name="nombre" 
+                    value={formData.nombre} 
+                    onChange={handleChange} 
+                    className={`w-full px-3 py-2 border ${errores.nombre ? 'border-red-500 bg-red-50' : 'border-gray-200'} rounded-lg focus:ring-2 focus:ring-green-600 outline-none`} 
+                  />
+                  {errores.nombre && <p className="text-red-500 text-xs mt-1 font-medium">{errores.nombre}</p>}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Tipo de Cliente</label>
@@ -117,11 +159,25 @@ export default function NuevoAseguradoModal({ isOpen, onClose, onSuccess, client
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">DNI / CUIT *</label>
-                  <input required type="text" name="dni" value={formData.dni} onChange={handleChange} className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-600 outline-none" />
+                  <input 
+                    type="text" 
+                    name="dni" 
+                    value={formData.dni} 
+                    onChange={handleChange} 
+                    className={`w-full px-3 py-2 border ${errores.dni ? 'border-red-500 bg-red-50' : 'border-gray-200'} rounded-lg focus:ring-2 focus:ring-green-600 outline-none`} 
+                  />
+                  {errores.dni && <p className="text-red-500 text-xs mt-1 font-medium">{errores.dni}</p>}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Fecha de Nacimiento</label>
-                  <input type="date" name="fechaNacimiento" value={formData.fechaNacimiento} onChange={handleChange} className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-600 outline-none text-gray-600" />
+                  <input 
+                    type="date" 
+                    name="fechaNacimiento" 
+                    value={formData.fechaNacimiento} 
+                    onChange={handleChange} 
+                    className={`w-full px-3 py-2 border ${errores.fechaNacimiento ? 'border-red-500 bg-red-50' : 'border-gray-200'} rounded-lg focus:ring-2 focus:ring-green-600 outline-none ${!errores.fechaNacimiento && 'text-gray-600'}`} 
+                  />
+                  {errores.fechaNacimiento && <p className="text-red-500 text-xs mt-1 font-medium">{errores.fechaNacimiento}</p>}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Condición IVA</label>
@@ -139,22 +195,50 @@ export default function NuevoAseguradoModal({ isOpen, onClose, onSuccess, client
               <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider">Contacto y Domicilio</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Email Principal</label>
-                  <input type="email" name="email" value={formData.email} onChange={handleChange} className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-600 outline-none" />
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Email Principal *</label>
+                  <input 
+                    type="email" 
+                    name="email" 
+                    value={formData.email} 
+                    onChange={handleChange} 
+                    className={`w-full px-3 py-2 border ${errores.email ? 'border-red-500 bg-red-50' : 'border-gray-200'} rounded-lg focus:ring-2 focus:ring-green-600 outline-none`} 
+                  />
+                  {errores.email && <p className="text-red-500 text-xs mt-1 font-medium">{errores.email}</p>}
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Teléfono Celular</label>
-                  <input type="text" name="telefono" value={formData.telefono} onChange={handleChange} className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-600 outline-none" />
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Teléfono Celular *</label>
+                  <input 
+                    type="text" 
+                    name="telefono" 
+                    value={formData.telefono} 
+                    onChange={handleChange} 
+                    className={`w-full px-3 py-2 border ${errores.telefono ? 'border-red-500 bg-red-50' : 'border-gray-200'} rounded-lg focus:ring-2 focus:ring-green-600 outline-none`} 
+                  />
+                  {errores.telefono && <p className="text-red-500 text-xs mt-1 font-medium">{errores.telefono}</p>}
                 </div>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Dirección</label>
-                  <input type="text" name="direccion" value={formData.direccion} onChange={handleChange} className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-600 outline-none" />
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Dirección *</label>
+                  <input 
+                    type="text" 
+                    name="direccion" 
+                    value={formData.direccion} 
+                    onChange={handleChange} 
+                    className={`w-full px-3 py-2 border ${errores.direccion ? 'border-red-500 bg-red-50' : 'border-gray-200'} rounded-lg focus:ring-2 focus:ring-green-600 outline-none`} 
+                  />
+                  {errores.direccion && <p className="text-red-500 text-xs mt-1 font-medium">{errores.direccion}</p>}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">C. Postal</label>
-                  <input type="text" name="codigoPostal" value={formData.codigoPostal} onChange={handleChange} className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-600 outline-none" />
+                  <input 
+                    type="text" 
+                    name="codigoPostal" 
+                    value={formData.codigoPostal} 
+                    onChange={handleChange} 
+                    className={`w-full px-3 py-2 border ${errores.codigoPostal ? 'border-red-500 bg-red-50' : 'border-gray-200'} rounded-lg focus:ring-2 focus:ring-green-600 outline-none`} 
+                  />
+                  {errores.codigoPostal && <p className="text-red-500 text-xs mt-1 font-medium">{errores.codigoPostal}</p>}
                 </div>
               </div>
             </div>
@@ -171,7 +255,6 @@ export default function NuevoAseguradoModal({ isOpen, onClose, onSuccess, client
         </div>
       </div>
 
-      {/* 🔥 RENDEREAMOS EL MODAL SIN PASARLE PROPS PORQUE SE MANEJA SOLO CON EL STORE */}
       <UpgradeModal />
     </>
   );

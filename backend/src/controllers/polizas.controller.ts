@@ -364,7 +364,7 @@ export const importarPolizas = async (req: Request, res: Response): Promise<any>
     // 🔥 EL NUEVO ESCUDO CON MENSAJE AMIGABLE
     if (companias.length === 0) {
       return res.status(400).json({ 
-        error: '⚠️ Por favor, asegúrate de tener al menos una Compañía cargada en el sistema antes de importar las pólizas.' 
+        error: ' Por favor, asegúrate de tener al menos una Compañía cargada en el sistema antes de importar las pólizas.' 
       });
     }
 
