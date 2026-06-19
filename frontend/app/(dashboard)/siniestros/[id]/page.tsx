@@ -8,11 +8,17 @@ import {
   FileText, Calendar, ShieldCheck, MessageCircle
 } from "lucide-react";
 import Toast from "@/components/ui/Toast";
+import { apiFetch } from "@/services/api"; // 🔥 Usamos apiFetch para mandar el token
+import { useAuthStore } from "@/store/authStore"; // 🔥 Importamos el store de sesión
 
 export default function SiniestroDetallePage() {
   const { id } = useParams();
   const router = useRouter();
   
+  // 🔥 LEEMOS EL ROL DEL USUARIO
+  const { user } = useAuthStore();
+  const esSoloLectura = user?.role === "VIEWER";
+
   const [siniestro, setSiniestro] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [nuevaNota, setNuevaNota] = useState("");
@@ -25,22 +31,26 @@ export default function SiniestroDetallePage() {
   const [linkGenerado, setLinkGenerado] = useState("");
   const [isGenerandoLink, setIsGenerandoLink] = useState(false);
 
-  // 🔥 ACÁ ESTÁ LA CORRECCIÓN: Usamos window.location.origin
   const fetchSiniestro = async () => {
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/siniestros/${id}`);
-      const data = await res.json();
+      // 🔥 REEMPLAZAMOS FETCH POR APIFETCH
+      const res = await apiFetch(`/api/siniestros/${id}`);
       
-      if (res.ok) {
-        setSiniestro(data);
-        
-        // Si el siniestro ya tiene un link activo, lo armamos con el dominio actual
-        if (data.linksConsulta && data.linksConsulta.length > 0) {
-          setLinkGenerado(`${window.location.origin}/consulta/${data.linksConsulta[0].token}`);
-        }
+      if (!res.ok) {
+        setSiniestro(null);
+        return;
       }
+      
+      const data = await res.json();
+      setSiniestro(data);
+      
+      if (data.linksConsulta && data.linksConsulta.length > 0) {
+        setLinkGenerado(`${window.location.origin}/consulta/${data.linksConsulta[0].token}`);
+      }
+      
     } catch (err) {
       console.error("Error al cargar el siniestro:", err);
+      setSiniestro(null);
     } finally {
       setIsLoading(false);
     }
@@ -50,14 +60,14 @@ export default function SiniestroDetallePage() {
 
   const handleAgregarNota = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!nuevaNota.trim()) return;
+    if (!nuevaNota.trim() || esSoloLectura) return; // 🔥 Protección extra
 
     setIsSubmittingNota(true);
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/siniestros/${id}/notas`, {
+      // 🔥 REEMPLAZAMOS FETCH POR APIFETCH
+      const res = await apiFetch(`/api/siniestros/${id}/notas`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ texto: nuevaNota })
+        body: JSON.stringify({ texto: nuevaNota }) // apiFetch hace JSON.stringify y headers automáticos
       });
 
       if (!res.ok) throw new Error("Error al guardar la nota");
@@ -74,11 +84,12 @@ export default function SiniestroDetallePage() {
   };
 
   const handleCambiarEstadoRapido = async (nuevoEstado: string) => {
+    if (esSoloLectura) return; // 🔥 Protección extra
     setIsUpdatingEstado(true);
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/siniestros/${id}`, {
+      // 🔥 REEMPLAZAMOS FETCH POR APIFETCH
+      const res = await apiFetch(`/api/siniestros/${id}`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ...siniestro, estadoSiniestro: nuevoEstado })
       });
 
@@ -94,8 +105,28 @@ export default function SiniestroDetallePage() {
     }
   };
 
+  const handleGenerarLink = async () => {
+    if (esSoloLectura) return; // 🔥 Protección extra
+    setIsGenerandoLink(true);
+    try {
+      // 🔥 REEMPLAZAMOS FETCH POR APIFETCH
+      const res = await apiFetch(`/api/siniestros/${id}/generar-link`, { method: "POST" });
+      const data = await res.json();
+      
+      const urlFinal = data.urlPublica.replace(process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || '', window.location.origin);
+      setLinkGenerado(urlFinal);
+      
+      setMensajeToast("Enlace de seguimiento generado y listo");
+      setShowToast(true);
+    } catch (err) {
+      alert("Error al generar el link.");
+    } finally {
+      setIsGenerandoLink(false);
+    }
+  };
+
   if (isLoading) return <div className="p-8 text-gray-500 animate-pulse font-medium">Cargando expediente integral...</div>;
-  if (!siniestro) return <div className="p-8 text-red-500 font-bold">Error: El siniestro solicitado no existe.</div>;
+  if (!siniestro) return <div className="p-8 text-red-500 font-bold">Error: El siniestro solicitado no existe o no tenés permiso para verlo.</div>;
 
   const fechaHechoDate = new Date(siniestro.fechaHecho);
   const hoy = new Date();
@@ -116,25 +147,6 @@ export default function SiniestroDetallePage() {
   const poliza = siniestro.poliza || {};
   const asegurado = poliza.asegurado || {};
   const compania = poliza.compania || {};
-
-  const handleGenerarLink = async () => {
-    setIsGenerandoLink(true);
-    try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/siniestros/${id}/generar-link`, { method: "POST" });
-      const data = await res.json();
-      
-      // 🔥 CORRECCIÓN: Al generarlo por primera vez también usamos el dominio actual
-      const urlFinal = data.urlPublica.replace(process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || '', window.location.origin);
-      setLinkGenerado(urlFinal);
-      
-      setMensajeToast("Enlace de seguimiento generado y listo");
-      setShowToast(true);
-    } catch (err) {
-      alert("Error al generar el link.");
-    } finally {
-      setIsGenerandoLink(false);
-    }
-  };
 
   const copiarAlPortapapeles = () => {
     navigator.clipboard.writeText(linkGenerado);
@@ -167,7 +179,6 @@ export default function SiniestroDetallePage() {
           Volver a Siniestros
         </button>
         
-        {/* Header card */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-gray-50/40 p-4 md:p-6 rounded-2xl border border-gray-100">
           
           <div className="flex items-center gap-3 md:gap-5 w-full md:w-auto">
@@ -189,14 +200,14 @@ export default function SiniestroDetallePage() {
             </div>
           </div>
 
-          {/* Selector de estado */}
+          {/* Selector de estado (DESHABILITADO SI ES LECTOR) */}
           <div className="flex items-center gap-2 bg-white p-2 rounded-xl border border-gray-200 shadow-sm w-full md:w-auto">
             <span className="text-[10px] md:text-xs font-bold text-gray-400 uppercase pl-2">Estado:</span>
             <select
               value={siniestro.estadoSiniestro}
-              disabled={isUpdatingEstado}
+              disabled={isUpdatingEstado || esSoloLectura} 
               onChange={(e) => handleCambiarEstadoRapido(e.target.value)}
-              className="flex-1 md:flex-none text-sm font-bold text-gray-700 bg-transparent outline-none cursor-pointer pr-2"
+              className="flex-1 md:flex-none text-sm font-bold text-gray-700 bg-transparent outline-none cursor-pointer pr-2 disabled:opacity-60 disabled:cursor-not-allowed"
             >
               <option value="Denuncia Pendiente">Denuncia Pendiente</option>
               <option value="En Análisis">En Análisis</option>
@@ -232,22 +243,25 @@ export default function SiniestroDetallePage() {
               <MessageSquare size={18} className="text-orange-600 shrink-0" /> Historial de Seguimiento / Notas
             </h3>
             
-            <form onSubmit={handleAgregarNota} className="flex gap-3">
-              <input 
-                type="text" 
-                placeholder="Añadir una novedad interna (ej: 'Documentación enviada a la compañía')..." 
-                value={nuevaNota}
-                onChange={(e) => setNuevaNota(e.target.value)}
-                className="flex-1 px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 outline-none text-xs md:text-sm font-medium"
-              />
-              <button 
-                type="submit" 
-                disabled={isSubmittingNota || !nuevaNota.trim()}
-                className="bg-gray-900 hover:bg-gray-800 text-white px-4 md:px-5 py-3 rounded-xl font-bold transition-colors disabled:opacity-40 flex items-center gap-1.5 text-xs md:text-sm shrink-0"
-              >
-                <Send size={14} /> Registrar
-              </button>
-            </form>
+            {/* 🔥 EL CAMPO DE NOTAS SE OCULTA PARA EL LECTOR */}
+            {!esSoloLectura && (
+              <form onSubmit={handleAgregarNota} className="flex gap-3">
+                <input 
+                  type="text" 
+                  placeholder="Añadir una novedad interna (ej: 'Documentación enviada a la compañía')..." 
+                  value={nuevaNota}
+                  onChange={(e) => setNuevaNota(e.target.value)}
+                  className="flex-1 px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 outline-none text-xs md:text-sm font-medium"
+                />
+                <button 
+                  type="submit" 
+                  disabled={isSubmittingNota || !nuevaNota.trim()}
+                  className="bg-gray-900 hover:bg-gray-800 text-white px-4 md:px-5 py-3 rounded-xl font-bold transition-colors disabled:opacity-40 flex items-center gap-1.5 text-xs md:text-sm shrink-0"
+                >
+                  <Send size={14} /> Registrar
+                </button>
+              </form>
+            )}
 
             <div className="flex flex-col gap-3 mt-2">
               {siniestro.notas?.length === 0 ? (
@@ -355,7 +369,7 @@ export default function SiniestroDetallePage() {
             {!linkGenerado ? (
               <button 
                 onClick={handleGenerarLink}
-                disabled={isGenerandoLink}
+                disabled={isGenerandoLink || esSoloLectura} // 🔥 LECTOR NO PUEDE GENERAR LINK
                 className="mt-2 w-full bg-white text-gray-900 hover:bg-gray-100 px-4 py-2.5 rounded-xl font-bold text-xs md:text-sm transition-colors disabled:opacity-50 active:scale-95"
               >
                 {isGenerandoLink ? "Generando..." : "Crear Link de Seguimiento"}
