@@ -17,6 +17,7 @@ import AlertModal from "@/components/ui/AlertModal";
 import AseguradoTableRow from "@/components/asegurados/AseguradoTableRow";
 import SelectOrdenamiento from "@/components/ui/SelectOrdenamiento";
 import { apiFetch } from "@/services/api";
+import { useAuthStore } from "@/store/authStore"; // 🔥 Importamos el store
 
 const ExportarExcelModal = dynamic(() => import("@/components/ui/ExportarExcelModal"), { ssr: false });
 const ImportarAseguradosModal = dynamic(() => import("@/components/asegurados/ImportarAseguradosModal"), { ssr: false });
@@ -29,6 +30,10 @@ const OPCIONES_ORDEN = [
 ];
 
 export default function AseguradosPage() {
+  // 🔥 LEEMOS EL ROL DEL USUARIO
+  const { user } = useAuthStore();
+  const esSoloLectura = user?.role === "VIEWER";
+
   const [searchTerm, setSearchTerm] = useState("");
   const [filtroTipo, setFiltroTipo] = useState("Todos");
   const [filtroEstado, setFiltroEstado] = useState("Todos");
@@ -60,7 +65,6 @@ export default function AseguradosPage() {
       const res = await apiFetch('/api/asegurados');
       const data = await res.json();
       
-      // 🔥 PROTECCIÓN ANTI-CRASH
       if (Array.isArray(data)) {
         setAsegurados(data);
       } else {
@@ -131,7 +135,6 @@ export default function AseguradosPage() {
     setShowToast(true);
   };
 
-  // 🔥 PROTECCIÓN DE FILTROS: Manejamos nulos y aseguramos que es un Array
   let aseguradosFiltrados = (Array.isArray(asegurados) ? asegurados : []).filter((cliente) => {
     const busqueda = searchTerm.toLowerCase();
     const nombreCompleto = `${cliente?.nombre || ""} ${cliente?.apellido || ""}`.toLowerCase();
@@ -175,7 +178,8 @@ export default function AseguradosPage() {
     }));
   };
 
-  const columnas: TableColumn[] = [
+  // 🔥 COLUMNAS DINÁMICAS SEGÚN ROL
+  const columnasBase: TableColumn[] = [
     { label: <SortableHeader label="Nombre / Razón Social" sortKey="nombre" currentSort={sortConfig} requestSort={(key) => requestSort(key as any)} /> },
     { label: <SortableHeader label="DNI / CUIT" sortKey="dni" currentSort={sortConfig} requestSort={(key) => requestSort(key as any)} /> },
     { label: "Contacto" },
@@ -183,17 +187,20 @@ export default function AseguradosPage() {
     { label: <SortableHeader label="Fecha de Alta" sortKey="fechaRegistro" currentSort={sortConfig} requestSort={(key) => requestSort(key as any)} /> },
     { label: "Pólizas", align: "center" },
     { label: <SortableHeader label="Estado" sortKey="activo" currentSort={sortConfig} requestSort={(key) => requestSort(key as any)} /> },
-    { label: "Acciones", align: "right" },
   ];
- 
+
+  const columnas = esSoloLectura 
+    ? columnasBase 
+    : [...columnasBase, { label: "Acciones", align: "right" as const }];
+
   return (
     <div className="flex flex-col p-4 lg:p-8 w-full gap-5 lg:gap-8 bg-white min-h-screen overflow-x-hidden">
       
       <PageHeader 
         titulo="Asegurados" 
         descripcion="Gestioná tu cartera de clientes reales." 
-        textoBoton="Nuevo Asegurado" 
-        onNuevo={() => { setClienteAEditar(null); setIsModalOpen(true); }} 
+        textoBoton={esSoloLectura ? "" : "Nuevo Asegurado"} // 🔥 OCULTO PARA LECTOR
+        onNuevo={esSoloLectura ? () => {} : () => { setClienteAEditar(null); setIsModalOpen(true); }} // 🔥 ATAJO NINJA
       />
 
       <AseguradosFiltros 
@@ -208,9 +215,13 @@ export default function AseguradosPage() {
         </div>
         
         <div className="flex flex-col sm:flex-row items-center gap-3 w-full xl:w-auto">
-          <button onClick={() => setIsImportModalOpen(true)} className="flex justify-center items-center gap-2 w-full sm:w-auto px-4 py-2.5 lg:py-2 bg-gray-50 hover:bg-gray-100 border border-gray-200 text-gray-700 rounded-xl text-sm font-bold transition-all active:scale-95 shadow-sm">
-            <UploadCloud size={16} /> Importar Excel
-          </button>
+          {/* 🔥 IMPORTAR OCULTO PARA LECTOR */}
+          {!esSoloLectura && (
+            <button onClick={() => setIsImportModalOpen(true)} className="flex justify-center items-center gap-2 w-full sm:w-auto px-4 py-2.5 lg:py-2 bg-gray-50 hover:bg-gray-100 border border-gray-200 text-gray-700 rounded-xl text-sm font-bold transition-all active:scale-95 shadow-sm">
+              <UploadCloud size={16} /> Importar Excel
+            </button>
+          )}
+          
           <button onClick={() => { if(aseguradosOrdenados.length === 0) return alert("No hay datos para exportar."); setIsExportModalOpen(true); }} className="flex justify-center items-center gap-2 w-full sm:w-auto px-4 py-2.5 lg:py-2 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-700 rounded-xl text-sm font-bold transition-all active:scale-95 shadow-sm">
             <Download size={16} /> Exportar a Excel
           </button>
@@ -225,18 +236,27 @@ export default function AseguradosPage() {
             onClickPolizas={(c) => setAseguradoParaVerPolizas(c)}
             menuAbiertoId={menuAbiertoId}
             onToggleMenu={setMenuAbiertoId}
-            onEdit={(c) => { setClienteAEditar(c); setMenuAbiertoId(null); setIsModalOpen(true); }}
-            onToggleEstado={toggleEstado}
-            onEliminar={(c) => { setAseguradoAEliminar(c); setMenuAbiertoId(null); setIsConfirmOpen(true); }}
+            // 🔥 ACCIONES DESACTIVADAS PARA LECTOR
+            onEdit={esSoloLectura ? () => {} : (c) => { setClienteAEditar(c); setMenuAbiertoId(null); setIsModalOpen(true); }}
+            onToggleEstado={esSoloLectura ? () => {} : toggleEstado}
+            onEliminar={esSoloLectura ? () => {} : (c) => { setAseguradoAEliminar(c); setMenuAbiertoId(null); setIsConfirmOpen(true); }}
           />
         ))}
       </Table>
 
-      <NuevoAseguradoModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSuccess={() => { setIsModalOpen(false); fetchAsegurados(); setShowToast(true); setMensajeToast("Asegurado guardado correctamente"); }} clienteAEditar={clienteAEditar} />
+      {/* 🔥 MODALES OCULTOS DEL DOM PARA LECTORES (Seguridad extra) */}
+      {!esSoloLectura && (
+        <>
+          <NuevoAseguradoModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSuccess={() => { setIsModalOpen(false); fetchAsegurados(); setShowToast(true); setMensajeToast("Asegurado guardado correctamente"); }} clienteAEditar={clienteAEditar} />
+          <ImportarAseguradosModal isOpen={isImportModalOpen} onClose={() => setIsImportModalOpen(false)} onSuccess={handleImportSuccess} />
+          <ConfirmModal isOpen={isConfirmOpen} onClose={() => setIsConfirmOpen(false)} onConfirm={ejecutarEliminacion} isLoading={isDeleting} title="¿Eliminar asegurado?" message={`Esta acción eliminará a "${aseguradoAEliminar?.nombre} ${aseguradoAEliminar?.apellido || ''}" permanentemente. Solo es posible si no tiene pólizas activas.`} />
+        </>
+      )}
+
+      {/* Modales que SI puede ver el lector */}
       <ExportarExcelModal isOpen={isExportModalOpen} onClose={() => setIsExportModalOpen(false)} datos={prepararDatosParaExcel()} nombreArchivo={`Reporte_Clientes_${new Date().toISOString().split("T")[0]}`} />
-      <ImportarAseguradosModal isOpen={isImportModalOpen} onClose={() => setIsImportModalOpen(false)} onSuccess={handleImportSuccess} />
-      <ConfirmModal isOpen={isConfirmOpen} onClose={() => setIsConfirmOpen(false)} onConfirm={ejecutarEliminacion} isLoading={isDeleting} title="¿Eliminar asegurado?" message={`Esta acción eliminará a "${aseguradoAEliminar?.nombre} ${aseguradoAEliminar?.apellido || ''}" permanentemente. Solo es posible si no tiene pólizas activas.`} />
       <PolizasDelAseguradoModal isOpen={!!aseguradoParaVerPolizas} onClose={() => setAseguradoParaVerPolizas(null)} asegurado={aseguradoParaVerPolizas} />
+      
       <Toast message={mensajeToast} isVisible={showToast} onClose={() => setShowToast(false)} />
       <AlertModal isOpen={isAlertModalOpen} onClose={() => setIsAlertModalOpen(false)} title={alertModalInfo.title} message={alertModalInfo.message} />
     </div>
