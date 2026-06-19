@@ -183,9 +183,9 @@ export default function SiniestrosPage() {
             siniestro={siniestro}
             menuAbiertoId={menuAbiertoId}
             onToggleMenu={setMenuAbiertoId}
-            // 🔥 APAGAMOS LAS ACCIONES SI ES LECTOR
-            onEdit={esSoloLectura ? undefined : (s) => { setSiniestroAEditar(s); setMenuAbiertoId(null); setIsModalOpen(true); }}
-            onEliminar={esSoloLectura ? undefined : (s) => { setSiniestroAEliminar(s); setMenuAbiertoId(null); setIsConfirmOpen(true); }}
+            // 🔥 Usamos el atajo ninja: le mandamos una función vacía en vez de undefined
+            onEdit={esSoloLectura ? () => {} : (s) => { setSiniestroAEditar(s); setMenuAbiertoId(null); setIsModalOpen(true); }}
+            onEliminar={esSoloLectura ? () => {} : (s) => { setSiniestroAEliminar(s); setMenuAbiertoId(null); setIsConfirmOpen(true); }}
           />
         ))}
       </Table>

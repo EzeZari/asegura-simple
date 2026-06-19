@@ -4,9 +4,9 @@ import { Plus } from "lucide-react";
 
 interface Props {
   titulo: string;
-  descripcion: string;
-  textoBoton: string;
-  onNuevo: () => void;
+  descripcion?: string;
+  textoBoton?: string;
+  onNuevo?: () => void;
 }
 
 export default function PageHeader({ titulo, descripcion, textoBoton, onNuevo }: Props) {
