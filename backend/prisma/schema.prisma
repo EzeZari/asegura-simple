@@ -9,18 +9,22 @@ datasource db {
 // --- ITERACIÓN 1: CORE (Gestión de Pólizas y Asegurados) ---
 
 model Productor {
-  id             Int      @id @default(autoincrement())
-  nombre         String
-  apellido       String
-  email          String   @unique
-  telefono       String?
-  usuario        String   @unique
-  contrasenaHash String
-  fechaAlta      DateTime @default(now())
+  id               Int      @id @default(autoincrement())
+  nombre           String
+  apellido         String
+  email            String   @unique
+  telefono         String?
+  usuario          String   @unique
+  contrasenaHash   String
+  fechaAlta        DateTime @default(now())
 
   // Conexión con el sistema de autenticación
-  userId         Int?     @unique
-  user           User?    @relation(fields: [userId], references: [id])
+  userId           Int?     @unique
+  user             User?    @relation(fields: [userId], references: [id])
+
+  // 🔥 ACÁ AGREGAMOS LAS DOS LÍNEAS QUE PRISMA ESTÁ PIDIENDO
+  polizas            Poliza[]
+  siniestros         Siniestro[]
 
   asegurados         Asegurado[]
   companias          Compania[] 
@@ -71,7 +75,6 @@ model Compania {
   polizas            Poliza[]
 }
 
-Fragmento de código
 model Poliza {
   id               Int      @id @default(autoincrement())
   nroPoliza        String   // 🔥 1. BORRAMOS EL @unique
