@@ -14,7 +14,8 @@ import PageHeader from "@/components/ui/PageHeader";
 import SearchBar from "@/components/ui/SearchBar";
 import { ActionMenu, ActionMenuItem } from "@/components/ui/ActionMenu";
 import SelectOrdenamiento from "@/components/ui/SelectOrdenamiento"; 
-import { apiFetch } from "@/services/api"; // 🔥 IMPORTAMOS NUESTRO FETCH VIP
+import { apiFetch } from "@/services/api"; 
+import { useAuthStore } from "@/store/authStore"; // 🔥 Importamos el store de sesión
 
 const OPCIONES_ORDEN = [
   { value: "mas_recientes", label: "Últimas agregadas" },
@@ -23,6 +24,10 @@ const OPCIONES_ORDEN = [
 ];
 
 export default function CompaniasPage() {
+  // 🔥 LEEMOS EL ROL DEL USUARIO
+  const { user } = useAuthStore();
+  const esSoloLectura = user?.role === "VIEWER";
+
   const [searchTerm, setSearchTerm] = useState("");
   const [ordenActual, setOrdenActual] = useState("mas_recientes");
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -41,11 +46,9 @@ export default function CompaniasPage() {
   const fetchCompanias = async () => {
     setIsLoading(true);
     try {
-      // 🔥 REEMPLAZO 1: Usamos apiFetch para traer la lista
       const res = await apiFetch('/api/companias'); 
       const data = await res.json();
       
-      // 🔥 PROTECCIÓN ANTI-CRASH
       if (Array.isArray(data)) {
         setCompanias(data);
       } else {
@@ -80,7 +83,6 @@ export default function CompaniasPage() {
     if (!companiaAEliminar) return;
     setIsDeleting(true);
     try {
-      // 🔥 REEMPLAZO 2: Usamos apiFetch para el borrado
       const res = await apiFetch(`/api/companias/${companiaAEliminar.id}`, { method: 'DELETE' }); 
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Error al eliminar");
@@ -97,7 +99,6 @@ export default function CompaniasPage() {
     }
   };
 
-  // 🔥 PROTECCIÓN EN EL FILTER (asegurarse de que sea un array y manejar campos nulos)
   let companiasFiltradas = (Array.isArray(companias) ? companias : []).filter((c) => {
     const nombreSeguro = String(c?.nombre || "").toLowerCase();
     return nombreSeguro.includes(searchTerm.toLowerCase());
@@ -127,13 +128,17 @@ export default function CompaniasPage() {
     }));
   };
 
-  const columnas: TableColumn[] = [
+  // 🔥 COLUMNAS DINÁMICAS
+  const columnasBase: TableColumn[] = [
     { label: <SortableHeader label="Nombre" sortKey="nombre" currentSort={sortConfig} requestSort={(key) => requestSort(key as any)} /> },
     { label: <SortableHeader label="CUIT" sortKey="cuit" currentSort={sortConfig} requestSort={(key) => requestSort(key as any)} /> },
     { label: <SortableHeader label="Teléfono Siniestros" sortKey="telefonoSiniestros" currentSort={sortConfig} requestSort={(key) => requestSort(key as any)} /> },
     { label: <SortableHeader label="Email Contacto" sortKey="email" currentSort={sortConfig} requestSort={(key) => requestSort(key as any)} /> },
-    { label: "Acciones", align: "right" },
   ];
+
+  const columnas = esSoloLectura 
+    ? columnasBase 
+    : [...columnasBase, { label: "Acciones", align: "right" as const }];
 
   return (
     <div className="flex flex-col p-8 w-full gap-8 bg-white min-h-screen overflow-x-hidden">
@@ -141,8 +146,8 @@ export default function CompaniasPage() {
       <PageHeader 
         titulo="Compañías" 
         descripcion="Gestioná las aseguradoras con las que operás." 
-        textoBoton="Nueva Compañía" 
-        onNuevo={() => { setCompaniaAEditar(null); setIsModalOpen(true); }} 
+        textoBoton={esSoloLectura ? "" : "Nueva Compañía"} // 🔥 Atajo ninja
+        onNuevo={esSoloLectura ? () => {} : () => { setCompaniaAEditar(null); setIsModalOpen(true); }} // 🔥 Atajo ninja
       />
 
       <div className="w-full">
@@ -154,9 +159,14 @@ export default function CompaniasPage() {
           <SelectOrdenamiento opciones={OPCIONES_ORDEN} valorActual={ordenActual} onChange={setOrdenActual} />
         </div>
         <div className="flex items-center gap-3 w-full md:w-auto">
-          <button onClick={() => setIsImportModalOpen(true)} className="flex items-center gap-2 px-4 py-2 bg-white hover:bg-gray-50 border border-gray-200 text-gray-700 rounded-xl text-sm font-bold transition-all active:scale-95 shadow-sm">
-            <UploadCloud size={16} /> Importar Excel
-          </button>
+          
+          {/* 🔥 IMPORTAR OCULTO PARA LECTOR */}
+          {!esSoloLectura && (
+            <button onClick={() => setIsImportModalOpen(true)} className="flex items-center gap-2 px-4 py-2 bg-white hover:bg-gray-50 border border-gray-200 text-gray-700 rounded-xl text-sm font-bold transition-all active:scale-95 shadow-sm">
+              <UploadCloud size={16} /> Importar Excel
+            </button>
+          )}
+
           <button onClick={() => { if(companiasOrdenadas.length === 0) return alert("No hay datos para exportar."); setIsExportModalOpen(true); }} className="flex items-center gap-2 px-4 py-2 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-700 rounded-xl text-sm font-bold transition-all active:scale-95 shadow-sm">
             <Download size={16} /> Exportar a Excel
           </button>
@@ -170,20 +180,32 @@ export default function CompaniasPage() {
             <td className="px-6 py-4 text-gray-600 font-mono text-sm">{compania.cuit || "-"}</td>
             <td className="px-6 py-4 text-gray-900">{compania.telefonoSiniestros || "-"}</td>
             <td className="px-6 py-4 text-gray-600">{compania.email || "-"}</td>
-            <td className="px-6 py-4 text-right">
-              <ActionMenu isOpen={menuAbiertoId === compania.id} onToggle={() => setMenuAbiertoId(menuAbiertoId === compania.id ? null : compania.id)}>
-                <ActionMenuItem icon={Edit} label="Editar" onClick={() => { setCompaniaAEditar(compania); setMenuAbiertoId(null); setIsModalOpen(true); }} />
-                <ActionMenuItem icon={Trash2} label="Eliminar" color="red" onClick={() => confirmarEliminacion(compania)} />
-              </ActionMenu>
-            </td>
+            
+            {/* 🔥 OCULTAMOS LA CELDA DE ACCIONES AL LECTOR */}
+            {!esSoloLectura && (
+              <td className="px-6 py-4 text-right">
+                <ActionMenu isOpen={menuAbiertoId === compania.id} onToggle={() => setMenuAbiertoId(menuAbiertoId === compania.id ? null : compania.id)}>
+                  <ActionMenuItem icon={Edit} label="Editar" onClick={() => { setCompaniaAEditar(compania); setMenuAbiertoId(null); setIsModalOpen(true); }} />
+                  <ActionMenuItem icon={Trash2} label="Eliminar" color="red" onClick={() => confirmarEliminacion(compania)} />
+                </ActionMenu>
+              </td>
+            )}
           </tr>
         ))}
       </Table>
 
-      <NuevaCompaniaModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSuccess={handleSuccess} companiaAEditar={companiaAEditar} />
-      <ImportarCompaniasModal isOpen={isImportModalOpen} onClose={() => setIsImportModalOpen(false)} onSuccess={(mensaje) => { setIsImportModalOpen(false); fetchCompanias(); setMensajeToast(mensaje); setShowToast(true); }} />
+      {/* 🔥 MODALES BLOQUEADOS PARA EL LECTOR */}
+      {!esSoloLectura && (
+        <>
+          <NuevaCompaniaModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSuccess={handleSuccess} companiaAEditar={companiaAEditar} />
+          <ImportarCompaniasModal isOpen={isImportModalOpen} onClose={() => setIsImportModalOpen(false)} onSuccess={(mensaje) => { setIsImportModalOpen(false); fetchCompanias(); setMensajeToast(mensaje); setShowToast(true); }} />
+          <ConfirmModal isOpen={isConfirmOpen} onClose={() => setIsConfirmOpen(false)} onConfirm={ejecutarEliminacion} isLoading={isDeleting} title="¿Eliminar compañía?" message={`Esta acción eliminará a "${companiaAEliminar?.nombre}".`} />
+        </>
+      )}
+
+      {/* Este modal de descarga sí lo puede ver el lector */}
       <ExportarExcelModal isOpen={isExportModalOpen} onClose={() => setIsExportModalOpen(false)} datos={prepararDatosParaExcel()} nombreArchivo={`Reporte_Companias_${new Date().toISOString().split("T")[0]}`} />
-      <ConfirmModal isOpen={isConfirmOpen} onClose={() => setIsConfirmOpen(false)} onConfirm={ejecutarEliminacion} isLoading={isDeleting} title="¿Eliminar compañía?" message={`Esta acción eliminará a "${companiaAEliminar?.nombre}".`} />
+      
       <Toast message={mensajeToast} isVisible={showToast} onClose={() => setShowToast(false)} />
     </div>
   );
