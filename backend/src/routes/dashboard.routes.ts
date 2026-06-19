@@ -4,30 +4,33 @@ import { verificarToken } from '../middlewares/auth.middleware';
 
 const router = Router();
 
-// 🔥 Función helper para obtener el ID real de este Productor
+// 🔥 LA MAGIA ESTÁ ACÁ: Si el usuario tiene "jefeId", le mostramos la info del Jefe.
 const obtenerProductorId = async (userId: number): Promise<number> => {
-  let productor = await prisma.productor.findUnique({ where: { userId } });
+  const usuarioActual = await prisma.user.findUnique({ where: { id: userId } });
+  const idAgencia = usuarioActual?.jefeId ? usuarioActual.jefeId : userId;
+  
+  let productor = await prisma.productor.findUnique({ where: { userId: idAgencia } });
   
   if (!productor) {
-    const user = await prisma.user.findUnique({ where: { id: userId } });
-    const userEmail = user?.email || `user${userId}@asegurasimple.com`;
+    const userDueño = idAgencia === userId ? usuarioActual : await prisma.user.findUnique({ where: { id: idAgencia } });
+    const userEmail = userDueño?.email || `user${idAgencia}@asegurasimple.com`;
 
     productor = await prisma.productor.findUnique({ where: { email: userEmail } });
 
     if (productor) {
       productor = await prisma.productor.update({
         where: { id: productor.id },
-        data: { userId: userId }
+        data: { userId: idAgencia }
       });
     } else {
       productor = await prisma.productor.create({
         data: {
-          nombre: user?.nombre || 'Productor',
+          nombre: userDueño?.nombre || 'Productor',
           apellido: '',
           email: userEmail,
           usuario: userEmail,
           contrasenaHash: '',
-          userId: userId
+          userId: idAgencia
         }
       });
     }
@@ -48,7 +51,7 @@ router.get('/stats', verificarToken, async (req, res) => {
       return res.status(401).json({ error: 'Usuario no autenticado.' });
     }
 
-    // 🔥 Obtenemos el ID del Productor para filtrar sus actividades
+    // 🔥 Obtenemos el ID del Productor GLOBAL (La Agencia)
     const productorId = await obtenerProductorId(userId);
 
     const hoy = new Date();
@@ -65,24 +68,23 @@ router.get('/stats', verificarToken, async (req, res) => {
       totalCompanias,
       historial
     ] = await Promise.all([
+      // 🔥 Todos los queries ahora apuntan a la Agencia (productorId)
       prisma.asegurado.count({ 
-        where: { activo: true, productor: { userId: userId } } 
+        where: { activo: true, productorId: productorId } 
       }),
       prisma.poliza.count({ 
-        where: { estado: 'Vigente', asegurado: { productor: { userId: userId } } } 
+        where: { estado: 'Vigente', asegurado: { productorId: productorId } } 
       }),
       prisma.poliza.count({
         where: { 
           estado: 'Vigente', 
           fechaVencimiento: { gte: hoy, lte: fechaLimite },
-          asegurado: { productor: { userId: userId } }
+          asegurado: { productorId: productorId }
         }
       }),
       prisma.compania.count({
-        where: { polizas: { some: { asegurado: { productor: { userId: userId } } } } }
+        where: { productorId: productorId }
       }),
-
-      // 🔥 5. Historial de actividad AHORA SÍ FILTRADO POR PRODUCTOR
       prisma.actividad.findMany({
         where: { productorId: productorId },
         take: 6,
@@ -120,6 +122,9 @@ router.get('/graficos', verificarToken, async (req, res) => {
       return res.status(401).json({ error: 'Usuario no autenticado.' });
     }
     
+    // 🔥 Obtenemos el ID del Productor GLOBAL (La Agencia)
+    const productorId = await obtenerProductorId(userId);
+
     const hoy = new Date();
     let fechaInicioActual = new Date(0); 
     let fechaFinActual = new Date(); 
@@ -151,12 +156,13 @@ router.get('/graficos', verificarToken, async (req, res) => {
       fechaInicioAnterior = new Date(fechaFinAnterior.getTime() - diffTime);
     }
 
-    const whereActual: any = { asegurado: { productor: { userId: userId } } };
+    // 🔥 Todos los queries apuntan al productorId global
+    const whereActual: any = { asegurado: { productorId: productorId } };
     if (periodo !== 'historico') {
       whereActual.fechaInicio = { gte: fechaInicioActual, lte: fechaFinActual };
     }
 
-    const whereAnterior: any = { asegurado: { productor: { userId: userId } } };
+    const whereAnterior: any = { asegurado: { productorId: productorId } };
     if (periodo !== 'historico') {
       whereAnterior.fechaInicio = { gte: fechaInicioAnterior, lte: fechaFinAnterior };
     }
@@ -166,13 +172,13 @@ router.get('/graficos', verificarToken, async (req, res) => {
       totalSiniestrosAbiertos, polizasPeriodoActual, polizasPeriodoAnterior
     ] = await Promise.all([
       prisma.compania.findMany({
-        where: { polizas: { some: { asegurado: { productor: { userId: userId } } } } },
+        where: { productorId: productorId, polizas: { some: { asegurado: { productorId: productorId } } } },
         select: { nombre: true, _count: { select: { polizas: { where: whereActual } } } }
       }),
       prisma.poliza.groupBy({ by: ['tipoPoliza'], where: whereActual, _count: { _all: true } }),
       prisma.poliza.groupBy({ by: ['estado'], where: whereActual, _count: { _all: true } }),
       prisma.siniestro.count({ 
-        where: { estadoSiniestro: { not: 'Cerrado' }, poliza: { asegurado: { productor: { userId: userId } } } } 
+        where: { estadoSiniestro: { not: 'Cerrado' }, poliza: { asegurado: { productorId: productorId } } } 
       }),
       prisma.poliza.count({ where: whereActual }),
       prisma.poliza.count({ where: whereAnterior })
