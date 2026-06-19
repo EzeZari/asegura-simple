@@ -9,20 +9,29 @@ import PlantillasSettings from "@/components/configuracion/PlantillasSettings";
 import NotificacionesSettings from "@/components/configuracion/NotificacionesSettings";
 import EquipoSettings from "@/components/configuracion/EquipoSettings";
 import SeguridadSettings from "@/components/configuracion/SeguridadSettings";
-import SuscripcionSettings from "@/components/configuracion/SuscripcionSettings"; // Asegurate de tenerlo importado
+import SuscripcionSettings from "@/components/configuracion/SuscripcionSettings"; 
+import { useAuthStore } from "@/store/authStore"; // 🔥 Importamos la memoria de sesión
 
 export default function ConfiguracionPage() {
+  // 🔥 LEEMOS EL ROL DEL USUARIO
+  const { user } = useAuthStore();
+  const esSoloLectura = user?.role === "VIEWER";
+
   const [activeTab, setActiveTab] = useState("mi-perfil"); 
 
-  const tabs = [
+  // 🔥 Agregamos una propiedad "adminOnly" a las pestañas sensibles
+  const todasLasPestanas = [
     { id: "mi-perfil", label: "Mi Perfil", icon: UserCircle }, 
-    { id: "perfil", label: "Perfil de Agencia", icon: Building2 },
-    { id: "plantillas", label: "Plantillas", icon: MessageSquare },
-    { id: "notificaciones", label: "Notificaciones", icon: Bell },
-    { id: "equipo", label: "Equipo", icon: Users },
-    { id: "suscripcion", label: "Suscripción", icon: CreditCard }, // Lo agregué por si te faltaba en tu menú
-    { id: "seguridad", label: "Seguridad y Datos", icon: Shield },
+    { id: "perfil", label: "Perfil de Agencia", icon: Building2, adminOnly: true },
+    { id: "plantillas", label: "Plantillas", icon: MessageSquare, adminOnly: true },
+    { id: "notificaciones", label: "Notificaciones", icon: Bell, adminOnly: true },
+    { id: "equipo", label: "Equipo", icon: Users, adminOnly: true },
+    { id: "suscripcion", label: "Suscripción", icon: CreditCard, adminOnly: true },
+    { id: "seguridad", label: "Seguridad y Datos", icon: Shield }, // La dejamos para que puedan cambiar su contraseña
   ];
+
+  // 🔥 Filtramos mágicamente las pestañas: si es lector, volamos las que son adminOnly
+  const tabs = todasLasPestanas.filter(tab => !esSoloLectura || !tab.adminOnly);
 
   return (
     <div className="flex flex-col p-4 lg:p-8 w-full gap-4 lg:gap-6 bg-white min-h-screen overflow-x-hidden">
@@ -49,14 +58,14 @@ export default function ConfiguracionPage() {
         })}
       </div>
 
-      {/* 🔥 ACÁ ESTÁ LA MAGIA: Cambiamos max-w-4xl por w-full max-w-7xl */}
       <div className="mt-6 w-full max-w-7xl">
         {activeTab === "mi-perfil" && <MiPerfilSettings />}
-        {activeTab === "perfil" && <PerfilSettings />}
-        {activeTab === "plantillas" && <PlantillasSettings />}
-        {activeTab === "notificaciones" && <NotificacionesSettings />}
-        {activeTab === "equipo" && <EquipoSettings />}
-        {activeTab === "suscripcion" && <SuscripcionSettings />} 
+        {/* 🔥 Bloqueo de renderizado por seguridad */}
+        {!esSoloLectura && activeTab === "perfil" && <PerfilSettings />}
+        {!esSoloLectura && activeTab === "plantillas" && <PlantillasSettings />}
+        {!esSoloLectura && activeTab === "notificaciones" && <NotificacionesSettings />}
+        {!esSoloLectura && activeTab === "equipo" && <EquipoSettings />}
+        {!esSoloLectura && activeTab === "suscripcion" && <SuscripcionSettings />} 
         {activeTab === "seguridad" && <SeguridadSettings />} 
       </div>
     </div>
