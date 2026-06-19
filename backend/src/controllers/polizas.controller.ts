@@ -6,13 +6,9 @@ import fs from 'fs';
 
 // 🔥 FUNCIÓN HELPER ACTUALIZADA: Sincroniza y detecta si es Dueño o Vendedor
 const obtenerProductorId = async (userId: number): Promise<number> => {
-  // 1. Buscamos al usuario que acaba de iniciar sesión
   const usuarioActual = await prisma.user.findUnique({ where: { id: userId } });
-  
-  // 2. Si tiene jefeId, el dueño de las pólizas es el Jefe. Si no, es él mismo.
   const idAgencia = usuarioActual?.jefeId ? usuarioActual.jefeId : userId;
 
-  // 3. Buscamos el Productor atado al Dueño de la Agencia
   let productor = await prisma.productor.findUnique({ where: { userId: idAgencia } });
   
   if (!productor) {
@@ -48,7 +44,6 @@ export const obtenerTodas = async (req: Request, res: Response): Promise<any> =>
     const productorId = await obtenerProductorId(req.userId);
 
     const polizas = await prisma.poliza.findMany({
-      // 🔥 FILTRO MULTI-TENANT OPTIMIZADO
       where: { asegurado: { productorId: productorId } }, 
       include: { asegurado: true, compania: true },
       orderBy: { fechaVencimiento: 'asc' }
@@ -88,7 +83,6 @@ export const crearPoliza = async (req: Request, res: Response): Promise<any> => 
       patente, marca, modelo, ubicacionRiesgo, cantidadEmpleados 
     } = req.body;
 
-    // 🔥 SEGURIDAD EXTRA: Verificamos que el asegurado SEA DE LA AGENCIA
     const asegurado = await prisma.asegurado.findFirst({
       where: { id: parseInt(aseguradoId), productorId: productorId }
     });
@@ -118,7 +112,7 @@ export const crearPoliza = async (req: Request, res: Response): Promise<any> => 
         entidad: "Póliza",
         descripcion: `Póliza #${nroPoliza} (${tipoPoliza})`,
         cliente: `${nuevaPoliza.asegurado.nombre} ${nuevaPoliza.asegurado.apellido || ''}`.trim(),
-        productorId // 🔥 INYECTADO A LA AGENCIA
+        productorId 
       }
     });
 
@@ -134,7 +128,6 @@ export const actualizarPoliza = async (req: Request, res: Response): Promise<any
     const data = req.body;
     const productorId = await obtenerProductorId(req.userId!);
 
-    // 🔥 Buscamos si la póliza LE PERTENECE a la agencia
     const vieja = await prisma.poliza.findFirst({ 
       where: { 
         id: parseInt(id),
@@ -178,7 +171,7 @@ export const actualizarPoliza = async (req: Request, res: Response): Promise<any
         entidad: "Póliza",
         descripcion: textoDetalle,
         cliente: `${actualizada.asegurado.nombre} ${actualizada.asegurado.apellido || ''}`.trim(),
-        productorId // 🔥 INYECTADO
+        productorId 
       }
     });
 
@@ -218,7 +211,7 @@ export const eliminarPoliza = async (req: Request, res: Response): Promise<any> 
         entidad: "Póliza",
         descripcion: `Se eliminó la póliza #${polizaABorrar.nroPoliza}`,
         cliente: `${polizaABorrar.asegurado.nombre} ${polizaABorrar.asegurado.apellido || ''}`.trim(),
-        productorId // 🔥 INYECTADO
+        productorId 
       }
     });
 
@@ -285,7 +278,7 @@ export const avisarVencimiento = async (req: Request, res: Response): Promise<an
         entidad: "Póliza",
         descripcion: `Aviso de vencimiento enviado por correo (Póliza #${poliza.nroPoliza})`,
         cliente: `${poliza.asegurado.nombre} ${poliza.asegurado.apellido || ''}`.trim(),
-        productorId // 🔥 INYECTADO
+        productorId 
       }
     });
 
@@ -305,7 +298,6 @@ export const subirPdf = async (req: Request, res: Response): Promise<any> => {
       return res.status(400).json({ error: 'No se seleccionó ningún archivo o el formato no es PDF.' });
     }
 
-    // 🔥 Verificamos que esta póliza le pertenezca a la agencia
     const polizaExistente = await prisma.poliza.findFirst({
       where: { 
         id: parseInt(id),
@@ -338,7 +330,7 @@ export const subirPdf = async (req: Request, res: Response): Promise<any> => {
         entidad: "Póliza",
         descripcion: `Se adjuntó copia digital PDF a la Póliza #${polizaActualizada.nroPoliza}`,
         cliente: `${polizaActualizada.asegurado.nombre} ${polizaActualizada.asegurado.apellido || ''}`.trim(),
-        productorId // 🔥 INYECTADO
+        productorId 
       }
     });
 
@@ -358,7 +350,6 @@ export const importarPolizas = async (req: Request, res: Response): Promise<any>
       return res.status(400).json({ error: 'El formato de datos debe ser un arreglo.' });
     }
 
-    // 🔥 FILTRO CLAVE: Asegurados y Compañías de la Agencia
     const asegurados = await prisma.asegurado.findMany({ 
       where: { productorId: productorId },
       select: { id: true, dni: true } 
@@ -381,16 +372,32 @@ export const importarPolizas = async (req: Request, res: Response): Promise<any>
       return nuevoObj;
     };
 
+    // 🔥 TRADUCTOR DE FECHAS (Para leer el formato de Excel DD/MM/YYYY o YYYY-MM-DD)
+    const parsearFecha = (valorStr: any) => {
+      if (!valorStr) return null;
+      if (valorStr instanceof Date) return valorStr;
+      
+      const str = String(valorStr).trim();
+      const partes = str.split('/');
+      
+      if (partes.length === 3) {
+        // Asumimos formato Argentino DD/MM/YYYY
+        return new Date(`${partes[2]}-${partes[1]}-${partes[0]}T12:00:00Z`);
+      }
+      return new Date(str);
+    };
+
     let salteadasPorFaltaDeDatos = 0;
 
     const datosParaInsertar = polizasExcel
       .map((p: any) => {
         const row = normalizarLlaves(p);
 
+        // 🔥 ACÁ ESTABA EL SECRETO: Sumamos las palabras clave con las que tu frontend exporta el Excel
         const nroPoliza = String(row.nropoliza || row.poliza || row.numero || '').trim();
-        const dniCrudo = String(row.dni || row.documento || row.cuit || '').replace(/[^0-9]/g, '');
+        const dniCrudo = String(row.dnicuit || row.dni || row.documento || row.cuit || '').replace(/[^0-9]/g, '');
         const companiaCruda = String(row.compania || row.aseguradora || '').toLowerCase().trim();
-        const tipoPoliza = String(row.rama || row.tipo || row.riesgo || 'Automotor').trim();
+        const tipoPoliza = String(row.ramariesgo || row.rama || row.tipo || row.riesgo || 'Automotor').trim();
         const estado = String(row.estado || 'Vigente').trim();
 
         const aseguradoId = mapaAsegurados.get(dniCrudo);
@@ -400,12 +407,15 @@ export const importarPolizas = async (req: Request, res: Response): Promise<any>
           companiaId = companias[0].id; 
         }
 
-        let fechaInicio = new Date();
-        let fechaVencimiento = new Date();
-        fechaVencimiento.setMonth(fechaVencimiento.getMonth() + 6); 
+        // Usamos el traductor de fechas
+        let fechaInicio = parsearFecha(row.vigenciadesde || row.desde || row.fechainicio);
+        let fechaVencimiento = parsearFecha(row.vigenciahasta || row.hasta || row.fechavencimiento);
 
-        if (row.desde || row.fechainicio) fechaInicio = new Date(row.desde || row.fechainicio);
-        if (row.hasta || row.fechavencimiento) fechaVencimiento = new Date(row.hasta || row.fechavencimiento);
+        if (!fechaInicio) fechaInicio = new Date();
+        if (!fechaVencimiento) {
+          fechaVencimiento = new Date(fechaInicio);
+          fechaVencimiento.setMonth(fechaVencimiento.getMonth() + 6); 
+        }
 
         return {
           nroPoliza, aseguradoId, companiaId, tipoPoliza, estado, fechaInicio, fechaVencimiento,
@@ -414,13 +424,14 @@ export const importarPolizas = async (req: Request, res: Response): Promise<any>
         };
       })
       .filter((p: any) => {
+        // Exigimos Nro de Póliza y el DNI (aseguradoId)
         if (p.nroPoliza.length > 0 && p.aseguradoId) return true;
         salteadasPorFaltaDeDatos++;
         return false;
       });
 
     if (datosParaInsertar.length === 0) {
-      return res.status(400).json({ error: 'No se encontraron pólizas válidas. Asegurate de que los DNI del Excel ya estén cargados en TUS Clientes.' });
+      return res.status(400).json({ error: 'No se encontraron pólizas válidas. Asegurate de que los DNI del Excel ya estén cargados en tus Asegurados.' });
     }
 
     const resultado = await (prisma as any).poliza.createMany({
@@ -434,7 +445,7 @@ export const importarPolizas = async (req: Request, res: Response): Promise<any>
         entidad: "Póliza",
         descripcion: `Importación masiva: se cargaron ${resultado.count} pólizas.`,
         cliente: "Sistema / Excel",
-        productorId // 🔥 INYECTADO
+        productorId 
       }
     });
 

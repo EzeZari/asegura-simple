@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { UploadCloud, X, FileText, CheckCircle2, AlertTriangle, Loader2 } from "lucide-react";
 import * as XLSX from "xlsx";
+import { apiFetch } from "@/services/api"; // 🔥 IMPORTAMOS NUESTRO FETCH SEGURO
 
 interface ImportarCompaniasModalProps {
   isOpen: boolean;
@@ -83,10 +84,9 @@ export default function ImportarCompaniasModal({ isOpen, onClose, onSuccess }: I
     setErrorTexto("");
 
     try {
-      // 🔥 CORREGIDO (Backtick al final)
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/companias/importar`, {
+      // 🔥 REEMPLAZO: Usamos apiFetch para que viaje con el Token de Seguridad
+      const response = await apiFetch(`/api/companias/importar`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ companias: datosPreview }),
       });
 
