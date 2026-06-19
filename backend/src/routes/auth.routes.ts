@@ -1,27 +1,30 @@
 import { Router } from 'express';
 import { prisma } from '../config/db';
 import bcrypt from 'bcrypt';
-// 🔥 1. Sumamos refreshUserData a las importaciones de tu controlador
-import { register, login, refresh, refreshUserData, logout, forgotPassword, resetPassword, verify2FALogin, verifyEmail, resendConfirmationEmail } from '../controllers/auth.controller';
+// 🔥 Importamos tu función wipeData blindada desde el controlador
+import { 
+  register, login, refresh, refreshUserData, logout, 
+  forgotPassword, resetPassword, verify2FALogin, 
+  verifyEmail, resendConfirmationEmail, wipeData 
+} from '../controllers/auth.controller';
 import { sendMail } from '../utils/mailer'; 
-// 🔥 2. Importamos tu middleware de seguridad
+// 🔥 Importamos tu middleware de seguridad
 import { verificarToken } from '../middlewares/auth.middleware';
 
 const router = Router();
 
+// --- RUTAS DE AUTENTICACIÓN Y SESIÓN ---
 router.post('/register', register);
 router.post('/login', login);
 router.post('/verify-2fa', verify2FALogin); 
-
-// 🔥 3. Reemplazamos la ruta /refresh por la nueva que usa el token y refresca la info
-router.post('/refresh', verificarToken, refreshUserData);
-
+router.post('/refresh', verificarToken, refreshUserData); // 🔥 Usa la ruta fresca
 router.post('/logout', logout);
 router.post('/forgot-password', forgotPassword);
 router.get('/verify-email/:token', verifyEmail);
 router.post('/reset-password', resetPassword); 
 router.post('/resend-confirmation', resendConfirmationEmail);
 
+// --- RUTAS DE GESTIÓN DE PERFIL ---
 router.post('/change-password', async (req, res) => {
   try {
     const email = req.body.email?.toLowerCase();
@@ -58,21 +61,8 @@ router.put('/2fa', async (req, res) => {
   }
 });
 
-router.delete('/wipe-data', async (req, res) => {
-  try {
-    const { confirmacion } = req.body;
-    if (confirmacion !== "ELIMINAR") return res.status(400).json({ error: 'Confirmación inválida.' });
-
-    await prisma.actividad.deleteMany();
-    await prisma.poliza.deleteMany();
-    await prisma.asegurado.deleteMany();
-
-    res.json({ message: 'Base de datos vaciada con éxito.' });
-  } catch (error) {
-    console.error("Error al vaciar datos:", error);
-    res.status(500).json({ error: 'Error interno al vaciar la base de datos.' });
-  }
-});
+// 🔥 RUTA BLINDADA: Ahora usa la función de auth.controller.ts y requiere Token válido
+router.delete('/wipe-data', verificarToken, wipeData);
 
 router.put('/update-profile', async (req, res) => {
   try {

@@ -123,7 +123,7 @@ export const login = async (req: Request, res: Response): Promise<any> => {
         nombre: user.nombre, 
         email: user.email, 
         role: user.role,
-        jefeId: user.jefeId, // 🔥 MAGIA: Sumamos el jefeId al login
+        jefeId: user.jefeId,
         twoFactorEnabled: user.twoFactorEnabled,
         plan: user.plan, 
         suscripcion: user.suscripcion 
@@ -181,7 +181,7 @@ export const refresh = async (req: Request, res: Response): Promise<any> => {
         nombre: user.nombre, 
         email: user.email, 
         role: user.role, 
-        jefeId: user.jefeId, // 🔥 MAGIA: Sumamos el jefeId al refresh
+        jefeId: user.jefeId,
         twoFactorEnabled: user.twoFactorEnabled,
         plan: user.plan, 
         suscripcion: user.suscripcion 
@@ -292,7 +292,7 @@ export const verify2FALogin = async (req: Request, res: Response): Promise<any> 
         nombre: user.nombre, 
         email: user.email, 
         role: user.role, 
-        jefeId: user.jefeId, // 🔥 MAGIA: Sumamos el jefeId a 2FA
+        jefeId: user.jefeId,
         twoFactorEnabled: user.twoFactorEnabled,
         plan: user.plan,
         suscripcion: user.suscripcion 
@@ -369,7 +369,6 @@ export const refreshUserData = async (req: any, res: Response): Promise<any> => 
       { expiresIn: '24h' }
     );
 
-    // 🔥 MAGIA FINAL: Forzamos que la respuesta completa contenga el jefeId por las dudas
     res.json({ 
       user: {
         ...user,
@@ -380,5 +379,59 @@ export const refreshUserData = async (req: any, res: Response): Promise<any> => 
   } catch (error) {
     console.error("Error al refrescar datos:", error);
     res.status(500).json({ error: "Error interno del servidor" });
+  }
+};
+
+// 🔥 FUNCIÓN WIPE DATA TOTALMENTE BLINDADA
+export const wipeData = async (req: Request, res: Response): Promise<any> => {
+  try {
+    const { email, confirmacion } = req.body;
+
+    if (confirmacion !== "ELIMINAR") {
+      return res.status(400).json({ error: "Palabra de confirmación incorrecta." });
+    }
+
+    // Buscamos al usuario que hace la petición
+    const user = await prisma.user.findUnique({ where: { email } });
+    if (!user) return res.status(404).json({ error: "Usuario no encontrado." });
+
+    // Identificamos a qué Agencia (Productor) pertenece este usuario
+    const idAgencia = user.jefeId ? user.jefeId : user.id;
+    const productor = await prisma.productor.findUnique({ where: { userId: idAgencia } });
+
+    if (!productor) {
+      return res.status(404).json({ error: "No se encontró el perfil de productor." });
+    }
+
+    const productorId = productor.id;
+
+    // 🔥 PREVENCIÓN DE CASCADA: Buscamos primero los IDs de todo lo que le pertenece
+    const asegurados = await prisma.asegurado.findMany({ where: { productorId }, select: { id: true } });
+    const aseguradoIds = asegurados.map(a => a.id);
+
+    const polizas = await prisma.poliza.findMany({ where: { aseguradoId: { in: aseguradoIds } }, select: { id: true } });
+    const polizaIds = polizas.map(p => p.id);
+
+    const siniestros = await prisma.siniestro.findMany({ where: { polizaId: { in: polizaIds } }, select: { id: true } });
+    const siniestroIds = siniestros.map(s => s.id);
+
+    // 🔥 BORRADO SEGURO CON TRANSACCIÓN (Solo afecta a los IDs calculados arriba)
+    await prisma.$transaction([
+      prisma.notificacion.deleteMany({ where: { siniestroId: { in: siniestroIds } } }),
+      prisma.linkConsulta.deleteMany({ where: { siniestroId: { in: siniestroIds } } }),
+      prisma.historialSiniestro.deleteMany({ where: { productorId } }),
+      prisma.notaSiniestro.deleteMany({ where: { productorId } }),
+      prisma.siniestro.deleteMany({ where: { polizaId: { in: polizaIds } } }),
+      prisma.alerta.deleteMany({ where: { productorId } }),
+      prisma.poliza.deleteMany({ where: { aseguradoId: { in: aseguradoIds } } }),
+      prisma.compania.deleteMany({ where: { productorId } }),
+      prisma.asegurado.deleteMany({ where: { productorId } }),
+      prisma.actividad.deleteMany({ where: { productorId } })
+    ]);
+
+    res.status(200).json({ message: "La base de datos de tu agencia fue vaciada exitosamente." });
+  } catch (error) {
+    console.error("Error al vaciar datos:", error);
+    res.status(500).json({ error: "Ocurrió un error crítico al vaciar los datos." });
   }
 };
