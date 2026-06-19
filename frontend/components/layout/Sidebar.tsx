@@ -32,8 +32,8 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
   
   // 🔥 LÓGICA DE ROLES Y ETIQUETAS
   const esSoloLectura = user?.role === 'VIEWER';
-  // Es Admin invitado si tiene rol ADMIN pero pertenece a un jefe (tiene jefeId)
-  const esAdminSecundario = user?.role === 'ADMIN' && user?.jefeId; 
+  // 🔥 Le agregamos el (user as any) para que TypeScript no se queje del jefeId
+  const esAdminSecundario = user?.role === 'ADMIN' && (user as any)?.jefeId;
 
   const handleLogout = async () => {
     try {
