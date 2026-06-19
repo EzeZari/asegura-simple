@@ -65,7 +65,6 @@ export const login = async (req: Request, res: Response): Promise<any> => {
   const { email, password } = validData.data;
 
   try {
-    // 🔥 MAGIA 1: Incluimos la suscripción al buscar al usuario
     const user = await prisma.user.findUnique({ 
       where: { email },
       include: { suscripcion: true } 
@@ -123,10 +122,11 @@ export const login = async (req: Request, res: Response): Promise<any> => {
         id: user.id, 
         nombre: user.nombre, 
         email: user.email, 
-        role: user.role, 
+        role: user.role,
+        jefeId: user.jefeId, // 🔥 MAGIA: Sumamos el jefeId al login
         twoFactorEnabled: user.twoFactorEnabled,
-        plan: user.plan, // 🔥 Mandamos el plan
-        suscripcion: user.suscripcion // 🔥 Mandamos la suscripción
+        plan: user.plan, 
+        suscripcion: user.suscripcion 
       } 
     });
   } catch (error) {
@@ -165,7 +165,6 @@ export const refresh = async (req: Request, res: Response): Promise<any> => {
   try {
     const decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET as string) as { userId: number };
     
-    // 🔥 MAGIA 2: Incluimos la suscripción al rehidratar la sesión
     const user = await prisma.user.findUnique({ 
       where: { id: decoded.userId },
       include: { suscripcion: true }
@@ -182,9 +181,10 @@ export const refresh = async (req: Request, res: Response): Promise<any> => {
         nombre: user.nombre, 
         email: user.email, 
         role: user.role, 
+        jefeId: user.jefeId, // 🔥 MAGIA: Sumamos el jefeId al refresh
         twoFactorEnabled: user.twoFactorEnabled,
-        plan: user.plan, // 🔥 Mandamos el plan
-        suscripcion: user.suscripcion // 🔥 Mandamos la suscripción
+        plan: user.plan, 
+        suscripcion: user.suscripcion 
       }
     });
   } catch (error) {
@@ -263,7 +263,6 @@ export const verify2FALogin = async (req: Request, res: Response): Promise<any> 
   if (!userId || !codigo) return res.status(400).json({ error: 'Faltan datos de validación.' });
 
   try {
-    // 🔥 MAGIA 3: También lo agregamos en el login por 2FA por las dudas
     const user = await prisma.user.findUnique({ 
       where: { id: Number(userId) },
       include: { suscripcion: true }
@@ -293,6 +292,7 @@ export const verify2FALogin = async (req: Request, res: Response): Promise<any> 
         nombre: user.nombre, 
         email: user.email, 
         role: user.role, 
+        jefeId: user.jefeId, // 🔥 MAGIA: Sumamos el jefeId a 2FA
         twoFactorEnabled: user.twoFactorEnabled,
         plan: user.plan,
         suscripcion: user.suscripcion 
@@ -344,10 +344,9 @@ export const resendConfirmationEmail = async (req: Request, res: Response): Prom
     return res.status(500).json({ error: 'Ocurrió un error en el servidor al intentar reenviar el correo.' });
   }
 };
-// 🔥 NUEVO: Función para pedir un token fresco con el plan actualizado
+
 export const refreshUserData = async (req: any, res: Response): Promise<any> => {
   try {
-    // 🔥 Buscamos el ID en todos los lugares posibles según cómo se llame en tu middleware
     const idBruto = req.user?.userId || req.user?.id || req.usuario?.id || req.userId;
 
     if (!idBruto) {
@@ -355,7 +354,6 @@ export const refreshUserData = async (req: any, res: Response): Promise<any> => 
       return res.status(401).json({ error: "No se pudo extraer el ID del usuario del token." });
     }
 
-    // Convertimos a Número (Prisma lo exige)
     const userId = Number(idBruto);
 
     const user = await prisma.user.findUnique({
@@ -365,14 +363,20 @@ export const refreshUserData = async (req: any, res: Response): Promise<any> => 
 
     if (!user) return res.status(404).json({ error: "Usuario no encontrado" });
 
-    // Armamos el carnet nuevo con los datos frescos (le pasamos userId e id por las dudas)
     const accessToken = jwt.sign(
       { userId: user.id, id: user.id, email: user.email, plan: user.plan, role: user.role },
       process.env.JWT_SECRET || 'secret',
       { expiresIn: '24h' }
     );
 
-    res.json({ user, accessToken });
+    // 🔥 MAGIA FINAL: Forzamos que la respuesta completa contenga el jefeId por las dudas
+    res.json({ 
+      user: {
+        ...user,
+        jefeId: user.jefeId 
+      }, 
+      accessToken 
+    });
   } catch (error) {
     console.error("Error al refrescar datos:", error);
     res.status(500).json({ error: "Error interno del servidor" });

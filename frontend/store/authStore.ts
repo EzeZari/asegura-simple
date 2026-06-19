@@ -7,6 +7,7 @@ interface User {
   email: string;
   plan?: string;
   role: string;
+  jefeId?: number; // 🔥 ACÁ ESTÁ LA PIEZA FALTANTE
   suscripcion?: {
     estado: string;
   };
