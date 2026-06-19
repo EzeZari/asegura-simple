@@ -16,6 +16,7 @@ import PageHeader from "@/components/ui/PageHeader";
 import PolizaTableRow from "@/components/polizas/PolizaTableRow";
 import SelectOrdenamiento from "@/components/ui/SelectOrdenamiento";
 import { apiFetch } from "@/services/api";
+import { useAuthStore } from "@/store/authStore"; // 🔥 Importamos la memoria
 
 const ExportarExcelModal = dynamic(() => import("@/components/ui/ExportarExcelModal"), { ssr: false });
 const ImportarPolizasModal = dynamic(() => import("@/components/polizas/ImportarPolizasModal"), { ssr: false });
@@ -28,6 +29,10 @@ const OPCIONES_ORDEN = [
 ];
 
 export default function PolizasPage() {
+  // 🔥 LEEMOS EL ROL
+  const { user } = useAuthStore();
+  const esSoloLectura = user?.role === "VIEWER";
+
   const router = useRouter();
   const [searchTerm, setSearchTerm] = useState("");
   const [filtroRama, setFiltroRama] = useState("Todas");
@@ -52,12 +57,11 @@ export default function PolizasPage() {
       const res = await apiFetch('/api/polizas');
       const data = await res.json();
       
-      // 🔥 PROTECCIÓN ANTI-CRASH: Verificamos que los datos sean un Array real
       if (Array.isArray(data)) {
         setPolizas(data);
       } else {
         console.error("El backend no devolvió una lista válida:", data);
-        setPolizas([]); // Si hay error, vaciamos la tabla pero no rompemos la app
+        setPolizas([]); 
         setMensajeToast(data.error || "Error de conexión con el servidor.");
         setShowToast(true);
       }
@@ -125,11 +129,9 @@ export default function PolizasPage() {
     return poliza.estado; 
   };
 
-  // 🔥 PROTECCIÓN DE FILTROS: Manejo seguro de nulls y arrays
   let polizasFiltradas = (Array.isArray(polizas) ? polizas : []).filter((poliza) => {
     const busqueda = searchTerm.toLowerCase();
     
-    // Forzamos todo a String por si la DB devuelve nulos o números accidentales
     const nroPoliza = String(poliza?.nroPoliza || "").toLowerCase();
     const nombreCompleto = `${poliza?.asegurado?.nombre || ""} ${poliza?.asegurado?.apellido || ""}`.toLowerCase();
     const patente = String(poliza?.patente || "").toLowerCase();
@@ -188,7 +190,8 @@ export default function PolizasPage() {
     }));
   };
 
-  const columnas: TableColumn[] = [
+  // 🔥 COLUMNAS DINÁMICAS
+  const columnasBase: TableColumn[] = [
     { label: <SortableHeader label="Nro Póliza" sortKey="nroPoliza" currentSort={sortConfig} requestSort={(key) => requestSort(key as any)} /> },
     { label: "Titular" },
     { label: "Compañía" },
@@ -196,35 +199,72 @@ export default function PolizasPage() {
     { label: "Detalle del Riesgo" },
     { label: <SortableHeader label="Vigencia" sortKey="fechaVencimiento" currentSort={sortConfig} requestSort={(key) => requestSort(key as any)} /> },
     { label: <SortableHeader label="Estado" sortKey="estado" currentSort={sortConfig} requestSort={(key) => requestSort(key as any)} /> },
-    { label: "Acciones", align: "right" },
   ];
+
+  const columnas = esSoloLectura 
+    ? columnasBase 
+    : [...columnasBase, { label: "Acciones", align: "right" as const }];
 
   return (
     <div className="flex flex-col p-4 lg:p-8 w-full gap-5 lg:gap-8 bg-white min-h-screen overflow-x-hidden">
-      <PageHeader titulo="Pólizas" descripcion="Gestioná las coberturas activas de tus clientes." textoBoton="Nueva Póliza" onNuevo={() => { setPolizaAEditar(null); setIsModalOpen(true); }} />
+      
+      <PageHeader 
+        titulo="Pólizas" 
+        descripcion="Gestioná las coberturas activas de tus clientes." 
+        textoBoton={esSoloLectura ? "" : "Nueva Póliza"} // 🔥 Ninja atajo
+        onNuevo={esSoloLectura ? () => {} : () => { setPolizaAEditar(null); setIsModalOpen(true); }} // 🔥 Ninja atajo
+      />
+      
       <PolizasFiltros searchTerm={searchTerm} setSearchTerm={setSearchTerm} filtroRama={filtroRama} setFiltroRama={setFiltroRama} filtroEstado={filtroEstado} setFiltroEstado={setFiltroEstado} />
+      
       <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 w-full -mb-2 lg:-mb-4">
         <div className="w-full xl:w-auto">
           <SelectOrdenamiento opciones={OPCIONES_ORDEN} valorActual={ordenActual} onChange={setOrdenActual} />
         </div>
         <div className="flex flex-col sm:flex-row items-center gap-3 w-full xl:w-auto">
-          <button onClick={() => setIsImportModalOpen(true)} className="flex justify-center items-center gap-2 w-full sm:w-auto px-4 py-2.5 lg:py-2 bg-gray-50 hover:bg-gray-100 border border-gray-200 text-gray-700 rounded-xl text-sm font-bold transition-all active:scale-95 shadow-sm">
-            <UploadCloud size={16} /> Importar Excel
-          </button>
+          
+          {/* 🔥 IMPORTAR OCULTO PARA LECTOR */}
+          {!esSoloLectura && (
+            <button onClick={() => setIsImportModalOpen(true)} className="flex justify-center items-center gap-2 w-full sm:w-auto px-4 py-2.5 lg:py-2 bg-gray-50 hover:bg-gray-100 border border-gray-200 text-gray-700 rounded-xl text-sm font-bold transition-all active:scale-95 shadow-sm">
+              <UploadCloud size={16} /> Importar Excel
+            </button>
+          )}
+
           <button onClick={() => { if(polizasOrdenadas.length === 0) return alert("No hay datos para exportar."); setIsExportModalOpen(true); }} className="flex justify-center items-center gap-2 w-full sm:w-auto px-4 py-2.5 lg:py-2 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-700 rounded-xl text-sm font-bold transition-all active:scale-95 shadow-sm">
             <Download size={16} /> Exportar a Excel
           </button>
         </div>
       </div>
+
       <Table columns={columnas} isLoading={isLoading} isEmpty={polizasOrdenadas.length === 0} emptyContent={<div className="flex flex-col items-center justify-center text-gray-500 py-6"><FileText size={32} className="text-gray-300 mb-3" /><p className="font-medium text-gray-900">No se encontraron pólizas</p></div>}>
         {polizasOrdenadas.map((poliza) => (
-          <PolizaTableRow key={poliza.id} poliza={poliza} onClickDetalle={(id) => router.push(`/polizas/${id}`)} menuAbiertoId={menuAbiertoId} onToggleMenu={setMenuAbiertoId} onEdit={(p) => { setPolizaAEditar(p); setIsModalOpen(true); }} onAvisarVencimiento={enviarAvisoVencimiento} onCambiarEstado={cambiarEstadoRapido} onEliminar={(p) => { setPolizaAEliminar(p); setIsConfirmOpen(true); }} />
+          <PolizaTableRow 
+            key={poliza.id} 
+            poliza={poliza} 
+            onClickDetalle={(id) => router.push(`/polizas/${id}`)} 
+            menuAbiertoId={menuAbiertoId} 
+            onToggleMenu={setMenuAbiertoId} 
+            // 🔥 ACCIONES NINJA PARA LECTOR
+            onEdit={esSoloLectura ? () => {} : (p) => { setPolizaAEditar(p); setIsModalOpen(true); }} 
+            onAvisarVencimiento={esSoloLectura ? () => {} : enviarAvisoVencimiento} 
+            onCambiarEstado={esSoloLectura ? () => {} : cambiarEstadoRapido} 
+            onEliminar={esSoloLectura ? () => {} : (p) => { setPolizaAEliminar(p); setIsConfirmOpen(true); }} 
+          />
         ))}
       </Table>
-      <NuevaPolizaModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSuccess={() => { setIsModalOpen(false); fetchPolizas(); setShowToast(true); setMensajeToast("Póliza guardada con éxito"); }} polizaAEditar={polizaAEditar} />
-      <ImportarPolizasModal isOpen={isImportModalOpen} onClose={() => setIsImportModalOpen(false)} onSuccess={(mensaje) => { setIsImportModalOpen(false); fetchPolizas(); setMensajeToast(mensaje); setShowToast(true); }} />
+
+      {/* 🔥 MODALES BLOQUEADOS PARA EL LECTOR */}
+      {!esSoloLectura && (
+        <>
+          <NuevaPolizaModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSuccess={() => { setIsModalOpen(false); fetchPolizas(); setShowToast(true); setMensajeToast("Póliza guardada con éxito"); }} polizaAEditar={polizaAEditar} />
+          <ImportarPolizasModal isOpen={isImportModalOpen} onClose={() => setIsImportModalOpen(false)} onSuccess={(mensaje) => { setIsImportModalOpen(false); fetchPolizas(); setMensajeToast(mensaje); setShowToast(true); }} />
+          <ConfirmModal isOpen={isConfirmOpen} onClose={() => setIsConfirmOpen(false)} onConfirm={ejecutarEliminacion} isLoading={isDeleting} title="¿Eliminar póliza?" message={`Esta acción eliminará la póliza #${polizaAEliminar?.nroPoliza} permanentemente.`} />
+        </>
+      )}
+
+      {/* Este modal de descarga sí lo puede ver el lector */}
       <ExportarExcelModal isOpen={isExportModalOpen} onClose={() => setIsExportModalOpen(false)} datos={prepararDatosParaExcel()} nombreArchivo={`Reporte_Polizas_${new Date().toISOString().split("T")[0]}`} />
-      <ConfirmModal isOpen={isConfirmOpen} onClose={() => setIsConfirmOpen(false)} onConfirm={ejecutarEliminacion} isLoading={isDeleting} title="¿Eliminar póliza?" message={`Esta acción eliminará la póliza #${polizaAEliminar?.nroPoliza} permanentemente.`} />
+      
       <Toast message={mensajeToast} isVisible={showToast} onClose={() => setShowToast(false)} />
     </div>
   );
