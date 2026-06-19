@@ -361,6 +361,13 @@ export const importarPolizas = async (req: Request, res: Response): Promise<any>
       select: { id: true, nombre: true } 
     });
 
+    // 🔥 EL NUEVO ESCUDO CON MENSAJE AMIGABLE
+    if (companias.length === 0) {
+      return res.status(400).json({ 
+        error: '⚠️ Por favor, asegúrate de tener al menos una Compañía cargada en el sistema antes de importar las pólizas.' 
+      });
+    }
+
     const mapaAsegurados = new Map(asegurados.map(a => [String(a.dni).replace(/[^0-9]/g, ''), a.id]));
     const mapaCompanias = new Map(companias.map(c => [c.nombre.toLowerCase().trim(), c.id]));
 
