@@ -71,9 +71,10 @@ model Compania {
   polizas            Poliza[]
 }
 
+Fragmento de código
 model Poliza {
   id               Int      @id @default(autoincrement())
-  nroPoliza        String   @unique
+  nroPoliza        String   // 🔥 1. BORRAMOS EL @unique
   tipoPoliza       String
   fechaInicio      DateTime
   fechaVencimiento DateTime
@@ -85,6 +86,10 @@ model Poliza {
   
   companiaId       Int
   compania         Compania  @relation(fields: [companiaId], references: [id])
+
+  // 🔥 2. AGREGAMOS EL DUEÑO DIRECTO DE LA PÓLIZA
+  productorId      Int
+  productor        Productor @relation(fields: [productorId], references: [id])
 
   siniestros       Siniestro[]
   alertas          Alerta[]
@@ -99,6 +104,8 @@ model Poliza {
   ultimoAviso DateTime?
 
   pdfUrl        String?
+
+  @@unique([productorId, nroPoliza]) // 🔥 3. LA REGLA MAESTRA MULTI-TENANT
 }
 
 model Alerta {

@@ -11,7 +11,7 @@ interface Props {
   onSuccess: (mensaje: string) => void;
 }
 
-export default function ImportarAseguradosModal({ isOpen, onClose, onSuccess }: Props) {
+export default function ImportarPolizasModal({ isOpen, onClose, onSuccess }: Props) {
   const [file, setFile] = useState<File | null>(null);
   const [previewData, setPreviewData] = useState<any[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -56,8 +56,8 @@ export default function ImportarAseguradosModal({ isOpen, onClose, onSuccess }: 
     setError("");
 
     try {
-      // 🔥 REEMPLAZO: Usamos apiFetch para enviar el token y no tener error 401
-      const res = await apiFetch(`/api/asegurados/importar`, {
+      // 🔥 ACÁ ESTABA EL ERROR: Ahora sí apunta a Pólizas
+      const res = await apiFetch(`/api/polizas/importar`, {
         method: "POST",
         body: JSON.stringify(previewData),
       });
@@ -65,7 +65,7 @@ export default function ImportarAseguradosModal({ isOpen, onClose, onSuccess }: 
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Error en la carga.");
 
-      onSuccess(`¡Éxito! Se importaron ${data.creados} clientes (se omitieron ${data.salteados} por estar duplicados).`);
+      onSuccess(`¡Éxito! Se importaron ${data.creados} pólizas (se omitieron ${data.salteados} por falta de DNI o duplicados).`);
       handleClose();
     } catch (err: any) {
       setError(err.message);
@@ -84,11 +84,11 @@ export default function ImportarAseguradosModal({ isOpen, onClose, onSuccess }: 
 
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[200] p-4">
-      <div className="bg-white rounded-xl w-full max-w-2xl shadow-xl relative animate-in fade-in zoom-in duration-200">
+      <div className="bg-white rounded-xl w-full max-w-3xl shadow-xl relative animate-in fade-in zoom-in duration-200">
         
         <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50 rounded-t-xl">
           <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-            <FileSpreadsheet size={22} className="text-green-700" /> Importar Asegurados
+            <FileSpreadsheet size={22} className="text-green-700" /> Importar Pólizas
           </h2>
           <button onClick={handleClose} disabled={isProcessing} className="text-gray-400 hover:text-gray-700 transition-colors p-1">
             <X size={20} />
@@ -102,26 +102,28 @@ export default function ImportarAseguradosModal({ isOpen, onClose, onSuccess }: 
               <Info size={16} /> Estructura recomendada
             </h3>
             <p className="text-xs text-blue-800 mb-3 leading-relaxed">
-              Tu archivo Excel debe tener las siguientes columnas en la primera fila. Solo los campos marcados con <strong className="font-black">(*)</strong> son obligatorios para que el cliente se guarde correctamente.
+              Tu archivo Excel debe tener las siguientes columnas. Para que la póliza se asigne correctamente, <strong className="font-black">el DNI del Asegurado ya debe existir en tu lista de clientes</strong>.
             </p>
-            <div className="overflow-hidden rounded-lg border border-blue-200 bg-white">
-              <table className="w-full text-left text-[10px] text-gray-600">
+            <div className="overflow-x-auto rounded-lg border border-blue-200 bg-white">
+              <table className="w-full text-left text-[10px] text-gray-600 whitespace-nowrap">
                 <thead className="bg-blue-50 text-blue-900 font-bold uppercase">
                   <tr>
-                    <th className="px-3 py-2 border-r border-blue-100">Nombre *</th>
-                    <th className="px-3 py-2 border-r border-blue-100">Apellido</th>
+                    <th className="px-3 py-2 border-r border-blue-100">Nro Póliza *</th>
                     <th className="px-3 py-2 border-r border-blue-100">DNI / CUIT *</th>
-                    <th className="px-3 py-2 border-r border-blue-100">Teléfono</th>
-                    <th className="px-3 py-2">Email</th>
+                    <th className="px-3 py-2 border-r border-blue-100">Compañía</th>
+                    <th className="px-3 py-2 border-r border-blue-100">Rama / Riesgo</th>
+                    <th className="px-3 py-2 border-r border-blue-100">Vigencia Desde</th>
+                    <th className="px-3 py-2">Estado</th>
                   </tr>
                 </thead>
                 <tbody>
                   <tr>
-                    <td className="px-3 py-2 border-r border-gray-100 font-medium">Juan Perez</td>
-                    <td className="px-3 py-2 border-r border-gray-100">Gomez</td>
-                    <td className="px-3 py-2 border-r border-gray-100 font-bold text-emerald-600 font-mono">32111222</td>
-                    <td className="px-3 py-2 border-r border-gray-100">3415556666</td>
-                    <td className="px-3 py-2">juan@mail.com</td>
+                    <td className="px-3 py-2 border-r border-gray-100 font-bold text-emerald-600">3232232</td>
+                    <td className="px-3 py-2 border-r border-gray-100 font-mono">44576382</td>
+                    <td className="px-3 py-2 border-r border-gray-100">San Cristobal</td>
+                    <td className="px-3 py-2 border-r border-gray-100">Automotor</td>
+                    <td className="px-3 py-2 border-r border-gray-100">14/6/2026</td>
+                    <td className="px-3 py-2 font-medium">Vigente</td>
                   </tr>
                 </tbody>
               </table>
@@ -175,7 +177,7 @@ export default function ImportarAseguradosModal({ isOpen, onClose, onSuccess }: 
             className="px-4 py-2 bg-green-700 hover:bg-green-800 disabled:opacity-40 text-white rounded-lg font-bold transition-colors shadow-sm flex items-center gap-2"
           >
             {isProcessing ? <Loader2 size={16} className="animate-spin" /> : <UploadCloud size={16} />}
-            {isProcessing ? "Importando..." : "Importar Asegurados"}
+            {isProcessing ? "Importando..." : "Importar Pólizas"}
           </button>
         </div>
 

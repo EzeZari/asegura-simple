@@ -44,7 +44,7 @@ export const obtenerTodas = async (req: Request, res: Response): Promise<any> =>
     const productorId = await obtenerProductorId(req.userId);
 
     const polizas = await prisma.poliza.findMany({
-      where: { asegurado: { productorId: productorId } }, 
+      where: { productorId: productorId }, // 🔥 CONSULTA OPTIMIZADA DIRECTA
       include: { asegurado: true, compania: true },
       orderBy: { fechaVencimiento: 'asc' }
     });
@@ -62,7 +62,7 @@ export const obtenerPorId = async (req: Request, res: Response): Promise<any> =>
     const poliza = await prisma.poliza.findFirst({
       where: { 
         id: parseInt(id),
-        asegurado: { productorId: productorId } 
+        productorId: productorId // 🔥 CONSULTA OPTIMIZADA DIRECTA
       },
       include: { asegurado: true, compania: true }
     });
@@ -97,6 +97,7 @@ export const crearPoliza = async (req: Request, res: Response): Promise<any> => 
         estado, cobertura, 
         aseguradoId: parseInt(aseguradoId), 
         companiaId: parseInt(companiaId),
+        productorId, // 🔥 SE INYECTA EL DUEÑO DE LA PÓLIZA
         patente: patente || null,
         marca: marca || null,
         modelo: modelo || null,
@@ -131,7 +132,7 @@ export const actualizarPoliza = async (req: Request, res: Response): Promise<any
     const vieja = await prisma.poliza.findFirst({ 
       where: { 
         id: parseInt(id),
-        asegurado: { productorId: productorId }
+        productorId: productorId // 🔥 CONSULTA OPTIMIZADA DIRECTA
       },
       include: { asegurado: true, compania: true }
     });
@@ -189,7 +190,7 @@ export const eliminarPoliza = async (req: Request, res: Response): Promise<any> 
     const polizaABorrar = await prisma.poliza.findFirst({ 
       where: { 
         id: parseInt(id),
-        asegurado: { productorId: productorId }
+        productorId: productorId // 🔥 CONSULTA OPTIMIZADA DIRECTA
       },
       include: { asegurado: true } 
     });
@@ -229,7 +230,7 @@ export const avisarVencimiento = async (req: Request, res: Response): Promise<an
     const poliza = await prisma.poliza.findFirst({
       where: { 
         id: parseInt(id),
-        asegurado: { productorId: productorId }
+        productorId: productorId // 🔥 CONSULTA OPTIMIZADA DIRECTA
       },
       include: { asegurado: true, compania: true }
     });
@@ -301,7 +302,7 @@ export const subirPdf = async (req: Request, res: Response): Promise<any> => {
     const polizaExistente = await prisma.poliza.findFirst({
       where: { 
         id: parseInt(id),
-        asegurado: { productorId: productorId }
+        productorId: productorId // 🔥 CONSULTA OPTIMIZADA DIRECTA
       }
     });
 
@@ -360,7 +361,7 @@ export const importarPolizas = async (req: Request, res: Response): Promise<any>
       select: { id: true, nombre: true } 
     });
 
-    const mapaAsegurados = new Map(asegurados.map(a => [a.dni, a.id]));
+    const mapaAsegurados = new Map(asegurados.map(a => [String(a.dni).replace(/[^0-9]/g, ''), a.id]));
     const mapaCompanias = new Map(companias.map(c => [c.nombre.toLowerCase().trim(), c.id]));
 
     const normalizarLlaves = (obj: any) => {
@@ -372,19 +373,39 @@ export const importarPolizas = async (req: Request, res: Response): Promise<any>
       return nuevoObj;
     };
 
-    // 🔥 TRADUCTOR DE FECHAS (Para leer el formato de Excel DD/MM/YYYY o YYYY-MM-DD)
     const parsearFecha = (valorStr: any) => {
       if (!valorStr) return null;
-      if (valorStr instanceof Date) return valorStr;
+
+      if (valorStr instanceof Date) {
+        return isNaN(valorStr.getTime()) ? null : valorStr;
+      }
+
+      if (typeof valorStr === 'number') {
+        const excelEpoch = new Date(1899, 11, 30);
+        const diasMilisecons = valorStr * 86400000;
+        const result = new Date(excelEpoch.getTime() + diasMilisecons);
+        return isNaN(result.getTime()) ? null : result;
+      }
       
       const str = String(valorStr).trim();
       const partes = str.split('/');
       
+      let fechaResultante = null;
+
       if (partes.length === 3) {
-        // Asumimos formato Argentino DD/MM/YYYY
-        return new Date(`${partes[2]}-${partes[1]}-${partes[0]}T12:00:00Z`);
+        const dia = partes[0].padStart(2, '0');
+        const mes = partes[1].padStart(2, '0');
+        const anio = partes[2];
+        fechaResultante = new Date(`${anio}-${mes}-${dia}T12:00:00Z`);
+      } else {
+        fechaResultante = new Date(str);
       }
-      return new Date(str);
+
+      if (isNaN(fechaResultante.getTime())) {
+        return null;
+      }
+
+      return fechaResultante;
     };
 
     let salteadasPorFaltaDeDatos = 0;
@@ -393,7 +414,6 @@ export const importarPolizas = async (req: Request, res: Response): Promise<any>
       .map((p: any) => {
         const row = normalizarLlaves(p);
 
-        // 🔥 ACÁ ESTABA EL SECRETO: Sumamos las palabras clave con las que tu frontend exporta el Excel
         const nroPoliza = String(row.nropoliza || row.poliza || row.numero || '').trim();
         const dniCrudo = String(row.dnicuit || row.dni || row.documento || row.cuit || '').replace(/[^0-9]/g, '');
         const companiaCruda = String(row.compania || row.aseguradora || '').toLowerCase().trim();
@@ -407,11 +427,12 @@ export const importarPolizas = async (req: Request, res: Response): Promise<any>
           companiaId = companias[0].id; 
         }
 
-        // Usamos el traductor de fechas
         let fechaInicio = parsearFecha(row.vigenciadesde || row.desde || row.fechainicio);
         let fechaVencimiento = parsearFecha(row.vigenciahasta || row.hasta || row.fechavencimiento);
 
-        if (!fechaInicio) fechaInicio = new Date();
+        if (!fechaInicio) {
+          fechaInicio = new Date();
+        }
         if (!fechaVencimiento) {
           fechaVencimiento = new Date(fechaInicio);
           fechaVencimiento.setMonth(fechaVencimiento.getMonth() + 6); 
@@ -421,10 +442,10 @@ export const importarPolizas = async (req: Request, res: Response): Promise<any>
           nroPoliza, aseguradoId, companiaId, tipoPoliza, estado, fechaInicio, fechaVencimiento,
           cobertura: row.cobertura ? String(row.cobertura).trim() : null,
           patente: row.patente ? String(row.patente).trim().toUpperCase() : null,
+          productorId // 🔥 SE INYECTA EL DUEÑO A TODAS LAS PÓLIZAS DEL EXCEL
         };
       })
       .filter((p: any) => {
-        // Exigimos Nro de Póliza y el DNI (aseguradoId)
         if (p.nroPoliza.length > 0 && p.aseguradoId) return true;
         salteadasPorFaltaDeDatos++;
         return false;
