@@ -43,7 +43,7 @@ export const getSiniestros = async (req: Request, res: Response): Promise<any> =
     
     const siniestros = await prisma.siniestro.findMany({
       where: {
-        poliza: { asegurado: { productorId: productorId } } // 🔥 FILTRO DE AGENCIA
+        productorId: productorId // 🔥 BÚSQUEDA DIRECTA Y OPTIMIZADA
       },
       include: {
         poliza: {
@@ -86,7 +86,8 @@ export const createSiniestro = async (req: Request, res: Response): Promise<any>
         fechaHecho: new Date(fechaHecho),
         descripcionInicial,
         estadoSiniestro: estadoSiniestro || 'Denuncia Pendiente',
-        polizaId: Number(polizaId)
+        polizaId: Number(polizaId),
+        productorId: productorId // 🔥 ACÁ INYECTAMOS AL DUEÑO DEL SINIESTRO
       }
     });
 
@@ -115,7 +116,7 @@ export const updateSiniestro = async (req: Request, res: Response): Promise<any>
     const { nroSiniestro, fechaHecho, descripcionInicial, estadoSiniestro } = req.body;
 
     const siniestroExistente = await prisma.siniestro.findFirst({
-      where: { id: Number(id), poliza: { asegurado: { productorId: productorId } } }
+      where: { id: Number(id), productorId: productorId } // 🔥 BÚSQUEDA DIRECTA Y OPTIMIZADA
     });
 
     if (!siniestroExistente) return res.status(403).json({ error: 'Siniestro no encontrado o no autorizado.' });
@@ -148,7 +149,7 @@ export const deleteSiniestro = async (req: Request, res: Response): Promise<any>
     const { id } = req.params;
 
     const siniestroExistente = await prisma.siniestro.findFirst({
-      where: { id: Number(id), poliza: { asegurado: { productorId: productorId } } }
+      where: { id: Number(id), productorId: productorId } // 🔥 BÚSQUEDA DIRECTA Y OPTIMIZADA
     });
 
     if (!siniestroExistente) return res.status(403).json({ error: 'Siniestro no encontrado o no autorizado.' });
@@ -169,7 +170,7 @@ export const getSiniestroById = async (req: Request, res: Response): Promise<any
     const siniestro = await prisma.siniestro.findFirst({
       where: { 
         id: Number(id),
-        poliza: { asegurado: { productorId: productorId } } 
+        productorId: productorId // 🔥 BÚSQUEDA DIRECTA Y OPTIMIZADA
       },
       include: {
         poliza: { include: { asegurado: true, compania: true } },
@@ -198,7 +199,7 @@ export const agregarNota = async (req: Request, res: Response): Promise<any> => 
     }
 
     const siniestroCompleto = await prisma.siniestro.findFirst({
-      where: { id: Number(id), poliza: { asegurado: { productorId: productorId } } },
+      where: { id: Number(id), productorId: productorId }, // 🔥 BÚSQUEDA DIRECTA Y OPTIMIZADA
       include: {
         poliza: { include: { asegurado: true, compania: true } },
         linksConsulta: { where: { activo: true, expiracion: { gte: new Date() } } }
@@ -263,7 +264,7 @@ export const obtenerOGenerarLink = async (req: Request, res: Response): Promise<
     const { id } = req.params;
     
     const siniestroCompleto = await prisma.siniestro.findFirst({
-      where: { id: Number(id), poliza: { asegurado: { productorId: productorId } } },
+      where: { id: Number(id), productorId: productorId }, // 🔥 BÚSQUEDA DIRECTA Y OPTIMIZADA
       include: { poliza: { include: { asegurado: true, compania: true } } }
     });
 

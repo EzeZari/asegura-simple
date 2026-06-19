@@ -124,7 +124,7 @@ model Alerta {
 
 model Siniestro {
   id                 Int      @id @default(autoincrement())
-  nroSiniestro       String   @unique
+  nroSiniestro       String   // 🔥 1. CHAU CANDADO GLOBAL (@unique)
   fechaHecho         DateTime
   descripcionInicial String
   estadoSiniestro    String
@@ -134,10 +134,16 @@ model Siniestro {
   polizaId           Int
   poliza             Poliza   @relation(fields: [polizaId], references: [id])
 
+  // 🔥 2. LE AGREGAMOS EL DUEÑO DIRECTO
+  productorId        Int
+  productor          Productor @relation(fields: [productorId], references: [id])
+
   notas          NotaSiniestro[]
   historial      HistorialSiniestro[]
   linksConsulta  LinkConsulta[]
   notificaciones Notificacion[]
+
+  @@unique([productorId, nroSiniestro]) // 🔥 3. EL NUEVO CANDADO MULTI-AGENCIA
 }
 
 model NotaSiniestro {
