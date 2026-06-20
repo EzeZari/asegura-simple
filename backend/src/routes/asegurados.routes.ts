@@ -243,11 +243,6 @@ router.post('/importar', async (req, res): Promise<any> => {
   try {
     const productorId = await obtenerProductorId(req.userId!);
 
-    const validacion = await verificarLimiteAsegurados(req.userId!);
-    if (validacion.superado) {
-      return res.status(403).json({ error: validacion.mensaje, codigo: "LIMITE_EXCEDIDO" });
-    }
-
     const clientes = req.body;
     if (!Array.isArray(clientes)) {
       return res.status(400).json({ error: 'El formato de datos debe ser un arreglo.' });
@@ -305,6 +300,12 @@ router.post('/importar', async (req, res): Promise<any> => {
 
     if (datosParaInsertar.length === 0) {
       return res.status(400).json({ error: 'No se encontraron registros válidos.' });
+    }
+
+    // 🔥 ACÁ MOVIMOS LA VALIDACIÓN: Ahora sabe exactamente cuántos querés subir
+    const validacion = await verificarLimiteAsegurados(req.userId!, datosParaInsertar.length);
+    if (validacion.superado) {
+      return res.status(403).json({ error: validacion.mensaje, codigo: "LIMITE_EXCEDIDO" });
     }
 
     const resultado = await (prisma as any).asegurado.createMany({

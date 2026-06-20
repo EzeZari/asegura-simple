@@ -1,3 +1,4 @@
+// backend/src/utils/verificarLimites.ts
 import { prisma } from '../config/db';
 
 const LIMITES_ASEGURADOS = {
@@ -7,21 +8,19 @@ const LIMITES_ASEGURADOS = {
   AGENCIA: Infinity // Sin límite
 };
 
-export const verificarLimiteAsegurados = async (userId: number): Promise<{ superado: boolean; mensaje?: string }> => {
-  // 1. Buscamos al usuario y nos fijamos si es DUEÑO o EMPLEADO
+// 🔥 AHORA RECIBE UN SEGUNDO PARÁMETRO: cantidadAInsertar (por defecto es 1 para los modales simples)
+export const verificarLimiteAsegurados = async (userId: number, cantidadAInsertar: number = 1): Promise<{ superado: boolean; mensaje?: string }> => {
   const usuario = await prisma.user.findUnique({
     where: { id: userId },
-    select: { plan: true, email: true, jefeId: true } // 🔥 Agregamos jefeId
+    select: { plan: true, email: true, jefeId: true } 
   });
 
   if (!usuario) {
     return { superado: true, mensaje: "Usuario no encontrado." };
   }
 
-  // 2. 🔥 EL TRUCO DE LA AGENCIA: Identificamos quién es el dueño real
   const idAgencia = usuario.jefeId ? usuario.jefeId : userId;
 
-  // Buscamos los emails de toda la agencia (el dueño + todos sus vendedores)
   const miembrosAgencia = await prisma.user.findMany({
     where: {
       OR: [
@@ -34,11 +33,10 @@ export const verificarLimiteAsegurados = async (userId: number): Promise<{ super
 
   const emailsAgencia = miembrosAgencia.map(m => m.email);
 
-  // 3. Contamos cuántos asegurados cargó TODA LA AGENCIA en conjunto
   const cantidadActual = await prisma.asegurado.count({
     where: { 
       productor: {
-        email: { in: emailsAgencia } // 🔥 Cuenta los clientes de cualquier miembro del equipo
+        email: { in: emailsAgencia } 
       }
     }
   });
@@ -46,10 +44,18 @@ export const verificarLimiteAsegurados = async (userId: number): Promise<{ super
   const planActual = usuario.plan || "GRATUITO";
   const limiteMaximo = LIMITES_ASEGURADOS[planActual as keyof typeof LIMITES_ASEGURADOS] || 10;
 
-  if (cantidadActual >= limiteMaximo) {
+  // 🔥 ACÁ ESTÁ LA MAGIA: Sumamos lo que tenés + lo que querés meter
+  if ((cantidadActual + cantidadAInsertar) > limiteMaximo) {
+    const lugaresDisponibles = limiteMaximo - cantidadActual;
+    
+    // Armamos un mensaje inteligente dependiendo si intentan subir 1 a mano, o varios por Excel
+    const mensaje = cantidadAInsertar > 1 
+      ? `Tu plan ${planActual} permite hasta ${limiteMaximo} asegurados. Tenés ${lugaresDisponibles} lugares disponibles y el Excel tiene ${cantidadAInsertar} clientes. Mejorá tu suscripción.`
+      : `Tu agencia alcanzó el límite de ${limiteMaximo} asegurados del plan ${planActual}. Mejorá tu suscripción para seguir creciendo.`;
+
     return {
       superado: true,
-      mensaje: `Tu agencia alcanzó el límite de ${limiteMaximo} asegurados del plan ${planActual}. Mejorá tu suscripción para seguir creciendo.`
+      mensaje
     };
   }
 
