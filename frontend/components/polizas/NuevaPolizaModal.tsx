@@ -3,6 +3,8 @@
 import { useState, useEffect, useRef } from "react";
 import { X, UploadCloud, FileText } from "lucide-react";
 import { apiFetch } from "@/services/api"; 
+// 🔥 IMPORTAMOS LA NUEVA VALIDACIÓN ESTRICTA
+import { validarRequerido, validarPatente, validarNroPoliza } from "@/utils/validaciones";
 
 interface Props {
   isOpen: boolean;
@@ -33,7 +35,9 @@ export default function NuevaPolizaModal({ isOpen, onClose, onSuccess, polizaAEd
   const [clientes, setClientes] = useState<any[]>([]); 
   const [companias, setCompanias] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [errorGlobal, setErrorGlobal] = useState("");
+  
+  const [errores, setErrores] = useState<Record<string, string>>({});
   
   const [pdfFile, setPdfFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -87,7 +91,8 @@ export default function NuevaPolizaModal({ isOpen, onClose, onSuccess, polizaAEd
         setFormData(ESTADO_INICIAL);
       }
       
-      setError("");
+      setErrorGlobal("");
+      setErrores({});
       setPdfFile(null);
       if (fileInputRef.current) fileInputRef.current.value = '';
     }
@@ -97,54 +102,84 @@ export default function NuevaPolizaModal({ isOpen, onClose, onSuccess, polizaAEd
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
+    
+    if (errores[e.target.name]) {
+      setErrores({ ...errores, [e.target.name]: "" });
+    }
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
       if (file.type !== "application/pdf") {
-        setError("Solo se permiten archivos en formato PDF.");
+        setErrorGlobal("Solo se permiten archivos en formato PDF.");
         return;
       }
       setPdfFile(file);
-      setError(""); 
+      setErrorGlobal(""); 
     }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!formData.aseguradoId || !formData.companiaId) {
-      setError("Por favor, seleccioná un Asegurado y una Compañía.");
+    setErrorGlobal("");
+
+    // 🔥 EJECUTAMOS LAS VALIDACIONES ACTUALIZADAS
+    const nuevosErrores: Record<string, string> = {
+      aseguradoId: validarRequerido(formData.aseguradoId, "Asegurado"),
+      companiaId: validarRequerido(formData.companiaId, "Compañía"),
+      
+      // 🔥 AHORA USA LA REGLA QUE BLOQUEA LETRAS
+      nroPoliza: validarNroPoliza(formData.nroPoliza),
+      
+      fechaInicio: validarRequerido(formData.fechaInicio, "Vigencia Desde"),
+      fechaVencimiento: validarRequerido(formData.fechaVencimiento, "Vigencia Hasta"),
+    };
+
+    if (formData.tipoPoliza === "Automotor" || formData.tipoPoliza === "Motovehículo") {
+      nuevosErrores.patente = validarPatente(formData.patente, false); 
+    }
+
+    if (formData.fechaInicio && formData.fechaVencimiento) {
+      const fInicio = new Date(formData.fechaInicio);
+      const fVenc = new Date(formData.fechaVencimiento);
+      if (fVenc <= fInicio) {
+        nuevosErrores.fechaVencimiento = "El vencimiento debe ser posterior al inicio.";
+      }
+    }
+
+    const erroresFiltrados = Object.fromEntries(
+      Object.entries(nuevosErrores).filter(([_, v]) => v !== "")
+    );
+
+    if (Object.keys(erroresFiltrados).length > 0) {
+      setErrores(erroresFiltrados);
       return;
     }
 
     setIsLoading(true);
-    setError("");
 
     try {
       const isEditMode = polizaAEditar && !isRenovacion;
       const url = isEditMode ? `/api/polizas/${polizaAEditar.id}` : `/api/polizas`;
       const method = isEditMode ? "PUT" : "POST";
 
-      // 🔥 LIMPIEZA DEL PAYLOAD PARA EVITAR EL ERROR 500 DE PRISMA
       const payloadToSave: any = { ...formData };
-      delete payloadToSave.asegurado; // Sacamos los objetos anidados problemáticos
+      delete payloadToSave.asegurado; 
       delete payloadToSave.compania;  
       
       if (!isEditMode) {
-        delete payloadToSave.id; // Si estamos creando o renovando, Prisma genera un ID nuevo, no le mandamos el viejo
-        delete payloadToSave.pdfUrl; // Borramos la referencia al PDF de la póliza vieja
+        delete payloadToSave.id; 
+        delete payloadToSave.pdfUrl; 
       }
 
-      // Aseguramos que los IDs sean números como espera la base de datos
       payloadToSave.aseguradoId = parseInt(payloadToSave.aseguradoId);
       payloadToSave.companiaId = parseInt(payloadToSave.companiaId);
 
       const response = await apiFetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payloadToSave), // Mandamos los datos limpios
+        body: JSON.stringify(payloadToSave), 
       });
 
       const data = await response.json();
@@ -170,13 +205,13 @@ export default function NuevaPolizaModal({ isOpen, onClose, onSuccess, polizaAEd
         await apiFetch(`/api/polizas/${polizaAEditar.id}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ estado: "Renovada" }) // Solo mandamos lo que cambia para no romper nada
+          body: JSON.stringify({ estado: "Renovada" }) 
         });
       }
 
       onSuccess();
     } catch (err: any) {
-      setError(err.message);
+      setErrorGlobal(err.message);
     } finally {
       setIsLoading(false);
     }
@@ -197,7 +232,7 @@ export default function NuevaPolizaModal({ isOpen, onClose, onSuccess, polizaAEd
         </h2>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-6">
-          {error && <div className="bg-red-50 text-red-600 p-3 rounded-lg text-sm font-medium">{error}</div>}
+          {errorGlobal && <div className="bg-red-50 text-red-600 p-3 rounded-lg text-sm font-medium">{errorGlobal}</div>}
 
           <div className="space-y-4">
             <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider">Asignación</h3>
@@ -205,8 +240,10 @@ export default function NuevaPolizaModal({ isOpen, onClose, onSuccess, polizaAEd
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Asegurado Titular *</label>
                 <select 
-                  required name="aseguradoId" value={formData.aseguradoId} onChange={handleChange} 
-                  className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-600 outline-none bg-white"
+                  name="aseguradoId" 
+                  value={formData.aseguradoId} 
+                  onChange={handleChange} 
+                  className={`w-full px-3 py-2 border ${errores.aseguradoId ? 'border-red-500 bg-red-50' : 'border-gray-200'} rounded-lg focus:ring-2 focus:ring-green-600 outline-none bg-white`}
                   disabled={isRenovacion} 
                 >
                   <option value="" disabled>-- Seleccioná un cliente --</option>
@@ -214,18 +251,22 @@ export default function NuevaPolizaModal({ isOpen, onClose, onSuccess, polizaAEd
                     <option key={cliente.id} value={cliente.id}>{cliente.nombre} {cliente.apellido || ""} - {cliente.dni}</option>
                   ))}
                 </select>
+                {errores.aseguradoId && <p className="text-red-500 text-xs mt-1 font-medium">{errores.aseguradoId}</p>}
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Compañía Aseguradora *</label>
                 <select 
-                  required name="companiaId" value={formData.companiaId} onChange={handleChange} 
-                  className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-600 outline-none bg-white"
+                  name="companiaId" 
+                  value={formData.companiaId} 
+                  onChange={handleChange} 
+                  className={`w-full px-3 py-2 border ${errores.companiaId ? 'border-red-500 bg-red-50' : 'border-gray-200'} rounded-lg focus:ring-2 focus:ring-green-600 outline-none bg-white`}
                 >
                   <option value="" disabled>-- Seleccioná una compañía --</option>
                   {companias.map((compania) => (
                     <option key={compania.id} value={compania.id}>{compania.nombre}</option>
                   ))}
                 </select>
+                {errores.companiaId && <p className="text-red-500 text-xs mt-1 font-medium">{errores.companiaId}</p>}
               </div>
             </div>
           </div>
@@ -235,7 +276,15 @@ export default function NuevaPolizaModal({ isOpen, onClose, onSuccess, polizaAEd
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Número de Póliza *</label>
-                <input required type="text" name="nroPoliza" value={formData.nroPoliza} onChange={handleChange} placeholder="Ej: 12345678" className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-600 outline-none" />
+                <input 
+                  type="text" 
+                  name="nroPoliza" 
+                  value={formData.nroPoliza} 
+                  onChange={handleChange} 
+                  placeholder="Ej: 12345678" 
+                  className={`w-full px-3 py-2 border ${errores.nroPoliza ? 'border-red-500 bg-red-50' : 'border-gray-200'} rounded-lg focus:ring-2 focus:ring-green-600 outline-none`} 
+                />
+                {errores.nroPoliza && <p className="text-red-500 text-xs mt-1 font-medium">{errores.nroPoliza}</p>}
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Rama / Tipo</label>
@@ -253,11 +302,25 @@ export default function NuevaPolizaModal({ isOpen, onClose, onSuccess, polizaAEd
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Vigencia Desde *</label>
-                <input required type="date" name="fechaInicio" value={formData.fechaInicio} onChange={handleChange} className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-600 outline-none text-gray-600" />
+                <input 
+                  type="date" 
+                  name="fechaInicio" 
+                  value={formData.fechaInicio} 
+                  onChange={handleChange} 
+                  className={`w-full px-3 py-2 border ${errores.fechaInicio ? 'border-red-500 bg-red-50' : 'border-gray-200'} rounded-lg focus:ring-2 focus:ring-green-600 outline-none text-gray-600`} 
+                />
+                {errores.fechaInicio && <p className="text-red-500 text-xs mt-1 font-medium">{errores.fechaInicio}</p>}
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Vigencia Hasta *</label>
-                <input required type="date" name="fechaVencimiento" value={formData.fechaVencimiento} onChange={handleChange} className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-600 outline-none text-gray-600" />
+                <input 
+                  type="date" 
+                  name="fechaVencimiento" 
+                  value={formData.fechaVencimiento} 
+                  onChange={handleChange} 
+                  className={`w-full px-3 py-2 border ${errores.fechaVencimiento ? 'border-red-500 bg-red-50' : 'border-gray-200'} rounded-lg focus:ring-2 focus:ring-green-600 outline-none text-gray-600`} 
+                />
+                {errores.fechaVencimiento && <p className="text-red-500 text-xs mt-1 font-medium">{errores.fechaVencimiento}</p>}
               </div>
             </div>
 
@@ -286,7 +349,15 @@ export default function NuevaPolizaModal({ isOpen, onClose, onSuccess, polizaAEd
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Patente</label>
-                    <input type="text" name="patente" value={formData.patente || ""} onChange={handleChange} placeholder="Ej: AB123CD" className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-600 outline-none uppercase" />
+                    <input 
+                      type="text" 
+                      name="patente" 
+                      value={formData.patente || ""} 
+                      onChange={handleChange} 
+                      placeholder="Ej: AB123CD" 
+                      className={`w-full px-3 py-2 border ${errores.patente ? 'border-red-500 bg-red-50' : 'border-gray-200'} rounded-lg focus:ring-2 focus:ring-green-600 outline-none uppercase`} 
+                    />
+                    {errores.patente && <p className="text-red-500 text-xs mt-1 font-medium">{errores.patente}</p>}
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Marca</label>

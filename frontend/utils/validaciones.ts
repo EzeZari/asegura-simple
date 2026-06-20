@@ -75,3 +75,14 @@ export const validarCodigoPostal = (cp: string, obligatorio: boolean = false): s
   }
   return "";
 };
+export const validarNroPoliza = (valor: string): string => {
+  if (!valor || String(valor).trim() === "") return "El número de póliza es obligatorio.";
+  
+  // 🔥 Solo permite números, espacios y guiones. ¡Cero letras!
+  const regex = /^[0-9\-\s]+$/;
+  if (!regex.test(valor)) {
+    return "El número de póliza solo puede contener números y guiones.";
+  }
+  
+  return "";
+};
