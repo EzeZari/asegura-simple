@@ -1,18 +1,18 @@
 "use client";
 
 import { useAuthStore } from "@/store/authStore";
-import { useRouter } from "next/navigation";
 import { AlertCircle, LogIn } from "lucide-react";
 
 export default function SessionExpiredModal() {
   const { sessionExpired, logout } = useAuthStore();
-  const router = useRouter();
 
   if (!sessionExpired) return null;
 
   const handleReLogin = () => {
-    logout(); // Limpiamos los datos viejos
-    router.push("/login"); // Lo mandamos al login
+    logout(); // 🔥 Esto ahora borra los datos de Zustand Y destruye la cookie
+    
+    // 🔥 Redirección "dura" para limpiar la caché del navegador y Next.js
+    window.location.href = "/login"; 
   };
 
   return (

@@ -60,7 +60,14 @@ export const useAuthStore = create<AuthState>()(
         
       setSessionExpired: (status) => set({ sessionExpired: status }), // 🔥 IMPLEMENTACIÓN
         
-      logout: () => set({ user: null, accessToken: null, sessionExpired: false }), // 🔥 SE LIMPIA AL DESLOGUEAR
+      // 🔥 ACÁ ESTÁ EL LOGOUT ARREGLADO CON LA DESTRUCCIÓN DE LA COOKIE
+      logout: () => {
+        if (typeof document !== 'undefined') {
+          // Destruimos la cookie poniendo su tiempo de vida (max-age) en 0
+          document.cookie = "next_auth_token=; path=/; max-age=0; secure; samesite=strict";
+        }
+        set({ user: null, accessToken: null, sessionExpired: false });
+      },
     }),
     {
       name: 'auth-storage', 
