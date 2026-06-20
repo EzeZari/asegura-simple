@@ -21,9 +21,13 @@ interface AuthState {
   showUpgradeModal: boolean;
   upgradeMessage: string;
   
+  // 🔥 NUEVO ESTADO PARA LA SESIÓN EXPIRADA
+  sessionExpired: boolean;
+  
   setUser: (user: User) => void;
   setAccessToken: (token: string) => void;
   setShowUpgradeModal: (show: boolean, message?: string) => void;
+  setSessionExpired: (status: boolean) => void; // 🔥 NUEVO SETTER
   logout: () => void;
 }
 
@@ -34,6 +38,7 @@ export const useAuthStore = create<AuthState>()(
       accessToken: null,
       showUpgradeModal: false,
       upgradeMessage: "",
+      sessionExpired: false, // 🔥 ESTADO INICIAL
       
       setUser: (user) => {
         // 🔥 LOGICA DE FORZADO: Si sos vos, siempre sos AGENCIA y AUTORIZADO
@@ -53,7 +58,9 @@ export const useAuthStore = create<AuthState>()(
       setShowUpgradeModal: (show, message = "") => 
         set({ showUpgradeModal: show, upgradeMessage: message }),
         
-      logout: () => set({ user: null, accessToken: null }),
+      setSessionExpired: (status) => set({ sessionExpired: status }), // 🔥 IMPLEMENTACIÓN
+        
+      logout: () => set({ user: null, accessToken: null, sessionExpired: false }), // 🔥 SE LIMPIA AL DESLOGUEAR
     }),
     {
       name: 'auth-storage', 

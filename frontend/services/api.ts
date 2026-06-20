@@ -3,7 +3,7 @@ import { useAuthStore } from "@/store/authStore";
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
 export const apiFetch = async (endpoint: string, options: RequestInit = {}) => {
-  // 🔥 EL ÚNICO CAMBIO: Le pedimos a TypeScript solo el "accessToken", que es el que existe.
+  // 🔥 Le pedimos a Zustand el "accessToken", que es el que existe.
   const token = useAuthStore.getState().accessToken;
 
   // 1. Preparamos los headers base
@@ -20,8 +20,15 @@ export const apiFetch = async (endpoint: string, options: RequestInit = {}) => {
   }
 
   // 3. Ejecutamos el fetch SIN la propiedad credentials para evitar el choque de CORS
-  return fetch(`${API_URL || ''}${endpoint}`, {
+  const response = await fetch(`${API_URL || ''}${endpoint}`, {
     ...options,
     headers,
   });
+
+  // 🔥 4. INTERCEPTOR GLOBAL: Si el backend dice que el token venció (401), disparamos el modal
+  if (response.status === 401) {
+    useAuthStore.getState().setSessionExpired(true);
+  }
+
+  return response;
 };
