@@ -8,7 +8,7 @@ import {
 } from "lucide-react";
 import NuevaPolizaModal from "@/components/polizas/NuevaPolizaModal";
 import Toast from "@/components/ui/Toast";
-import { apiFetch } from "@/services/api"; // 🔥 IMPORTAMOS NUESTRO FETCH SEGURO
+import { apiFetch } from "@/services/api";
 
 export default function PolizaDetallePage() {
   const { id } = useParams();
@@ -26,7 +26,6 @@ export default function PolizaDetallePage() {
 
   const fetchPoliza = async () => {
     try {
-      // 🔥 REEMPLAZO 1: Usamos apiFetch para cargar el detalle de forma segura
       const res = await apiFetch(`/api/polizas/${id}`);
       if (!res.ok) throw new Error("No se pudo cargar la póliza.");
       const data = await res.json();
@@ -64,10 +63,9 @@ export default function PolizaDetallePage() {
     formData.append("pdf", file);
 
     try {
-      // 🔥 REEMPLAZO 2: Usamos apiFetch para subir el archivo de manera autorizada
       const res = await apiFetch(`/api/polizas/${id}/subir-pdf`, {
         method: "POST",
-        body: formData, // FormData hace que el navegador configure los headers multipart solos
+        body: formData, 
       });
       
       const data = await res.json();
@@ -75,7 +73,7 @@ export default function PolizaDetallePage() {
 
       setMensajeToast("Póliza digital guardada con éxito");
       setShowToast(true);
-      fetchPoliza(); // Recargamos para que aparezca el botón de "Ver Póliza"
+      fetchPoliza(); 
     } catch (error: any) {
       alert(error.message);
     } finally {
@@ -197,8 +195,9 @@ export default function PolizaDetallePage() {
 
             {poliza.pdfUrl ? (
               <div className="flex flex-col gap-3">
+                {/* 🔥 ACÁ ESTÁ LA MAGIA QUE ARREGLA EL LINK */}
                 <a 
-                  href={`${process.env.NEXT_PUBLIC_API_URL}/${poliza.pdfUrl}`}
+                  href={poliza.pdfUrl.startsWith('http') ? poliza.pdfUrl : `${process.env.NEXT_PUBLIC_API_URL}/${poliza.pdfUrl}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex justify-center items-center gap-2 bg-blue-50 hover:bg-blue-100 text-blue-700 py-4 rounded-xl font-bold transition-colors text-sm md:text-base"

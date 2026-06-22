@@ -1,8 +1,7 @@
 import { Request, Response } from 'express';
 import { prisma } from '../config/db';
 import { enviarAvisoVencimiento } from '../services/email.service';
-import path from 'path';
-import fs from 'fs';
+import { supabase } from '../config/supabase'; // 🔥 IMPORTAMOS SUPABASE PARA LOS PDF
 
 // 🔥 FUNCIÓN HELPER ACTUALIZADA: Sincroniza y detecta si es Dueño o Vendedor
 const obtenerProductorId = async (userId: number): Promise<number> => {
@@ -199,11 +198,11 @@ export const eliminarPoliza = async (req: Request, res: Response): Promise<any> 
     
     await prisma.poliza.delete({ where: { id: parseInt(id) } });
 
-    if (polizaABorrar.pdfUrl) {
-      const rutaPdfViejo = path.join(__dirname, '../../', polizaABorrar.pdfUrl);
-      if (fs.existsSync(rutaPdfViejo)) {
-        fs.unlinkSync(rutaPdfViejo);
-      }
+    // 🔥 SI TENÍA UN PDF EN SUPABASE, LO BORRAMOS TAMBIÉN DE LA NUBE
+    if (polizaABorrar.pdfUrl && polizaABorrar.pdfUrl.includes('supabase.co')) {
+      const partesUrl = polizaABorrar.pdfUrl.split('/');
+      const nombreArchivoViejo = partesUrl[partesUrl.length - 1];
+      await supabase.storage.from('polizas').remove([nombreArchivoViejo]);
     }
 
     await prisma.actividad.create({
@@ -295,14 +294,15 @@ export const subirPdf = async (req: Request, res: Response): Promise<any> => {
     const id = req.params.id as string; 
     const productorId = await obtenerProductorId(req.userId!);
 
-    if (!req.file) {
+    // 🔥 VERIFICACIÓN DEL BUFFER (viene de memoryStorage)
+    if (!req.file || !req.file.buffer) {
       return res.status(400).json({ error: 'No se seleccionó ningún archivo o el formato no es PDF.' });
     }
 
     const polizaExistente = await prisma.poliza.findFirst({
       where: { 
         id: parseInt(id),
-        productorId: productorId // 🔥 CONSULTA OPTIMIZADA DIRECTA
+        productorId: productorId 
       }
     });
 
@@ -310,18 +310,35 @@ export const subirPdf = async (req: Request, res: Response): Promise<any> => {
       return res.status(404).json({ error: 'Póliza no encontrada o no autorizada.' });
     }
 
-    if (polizaExistente.pdfUrl) {
-      const rutaPdfViejo = path.join(__dirname, '../../', polizaExistente.pdfUrl);
-      if (fs.existsSync(rutaPdfViejo)) {
-        fs.unlinkSync(rutaPdfViejo); 
-      }
+    // 1. 🔥 SI YA HABÍA UN PDF VIEJO EN SUPABASE, LO BORRAMOS PARA NO ACUMULAR BASURA
+    if (polizaExistente.pdfUrl && polizaExistente.pdfUrl.includes('supabase.co')) {
+      const partesUrl = polizaExistente.pdfUrl.split('/');
+      const nombreArchivoViejo = partesUrl[partesUrl.length - 1];
+      await supabase.storage.from('polizas').remove([nombreArchivoViejo]);
     }
 
-    const rutaNormalizada = req.file.path.replace(/\\/g, '/');
+    // 2. 🔥 ARMAMOS UN NOMBRE ÚNICO Y LO SUBIMOS A SUPABASE STORAGE
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    const fileName = `poliza-${id}-${uniqueSuffix}.pdf`;
+
+    const { data: uploadData, error: uploadError } = await supabase.storage
+      .from('polizas') 
+      .upload(fileName, req.file.buffer, {
+        contentType: 'application/pdf',
+        upsert: true
+      });
+
+    if (uploadError) {
+      throw new Error(`Error de Supabase: ${uploadError.message}`);
+    }
+
+    // 3. 🔥 OBTENEMOS LA URL PÚBLICA PARA GUARDARLA EN LA BASE DE DATOS
+    const { data: publicUrlData } = supabase.storage.from('polizas').getPublicUrl(fileName);
+    const publicUrl = publicUrlData.publicUrl;
 
     const polizaActualizada = await prisma.poliza.update({
       where: { id: parseInt(id) },
-      data: { pdfUrl: rutaNormalizada },
+      data: { pdfUrl: publicUrl }, // Guardamos el link directo de Supabase
       include: { asegurado: true }
     });
 
@@ -335,9 +352,9 @@ export const subirPdf = async (req: Request, res: Response): Promise<any> => {
       }
     });
 
-    return res.json({ message: 'PDF subido correctamente', pdfUrl: rutaNormalizada });
+    return res.json({ message: 'PDF subido correctamente a la nube', pdfUrl: publicUrl });
   } catch (error: any) {
-    console.error("Error al subir PDF:", error);
+    console.error("Error al subir PDF a Supabase:", error);
     return res.status(500).json({ error: error.message || 'Error interno al procesar el archivo.' });
   }
 };

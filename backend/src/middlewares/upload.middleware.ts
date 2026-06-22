@@ -1,15 +1,8 @@
 import multer from 'multer';
-import path from 'path';
 
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, 'uploads/');
-  },
-  filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, `poliza-${uniqueSuffix}${path.extname(file.originalname)}`);
-  }
-});
+// 🔥 EN LUGAR DE DISK STORAGE, USAMOS MEMORY STORAGE
+// Esto guarda el archivo en la RAM del servidor por un segundo, lo justo para pasárselo a Supabase.
+const storage = multer.memoryStorage();
 
 export const upload = multer({ 
   storage: storage,
