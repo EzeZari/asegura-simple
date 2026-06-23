@@ -7,7 +7,7 @@ import ConfirmModal from "../ui/ConfirmModal";
 import NuevaPolizaModal from "../polizas/NuevaPolizaModal";
 import { apiFetch } from "@/services/api"; 
 import { useAuthStore } from "@/store/authStore"; 
-import { PERMISOS, tienePermiso } from "@/utils/roles"; // 🔥 IMPORTAMOS EL DICCIONARIO
+import { PERMISOS, tienePermiso } from "@/utils/roles"; 
 
 interface Props {
   poliza: any;
@@ -18,6 +18,7 @@ export default function AlertaCard({ poliza, nivel }: Props) {
   const router = useRouter();
   
   // 🔥 EVALUAMOS LOS PERMISOS ACÁ ADENTRO
+  // Esto da TRUE para el Dueño y el Admin Secundario. Da FALSE para el Lector.
   const { user } = useAuthStore();
   const puedeModificar = tienePermiso(user, PERMISOS.PUEDE_MODIFICAR_DATOS);
 
@@ -46,7 +47,7 @@ export default function AlertaCard({ poliza, nivel }: Props) {
   };
 
   const ejecutarBaja = async () => {
-    if (!puedeModificar) return; // 🔥 Protección Ninja
+    if (!puedeModificar) return; // 🔥 El Lector no pasa de acá
 
     setIsBajaLoading(true);
     try {
@@ -70,7 +71,7 @@ export default function AlertaCard({ poliza, nivel }: Props) {
     return hoy === ultimoAviso;
   };
 
-  // 🔥 ESTA FUNCIÓN QUEDA LIBRE PORQUE EL BACKEND YA LA PERMITE PARA TODOS
+  // 🔥 ESTA FUNCIÓN QUEDA LIBRE PARA TODOS (Incluso el Lector)
   const enviarAvisoEmail = async () => {
     if (!poliza.asegurado?.email || yaAvisadoHoy()) return;
     
@@ -157,7 +158,7 @@ export default function AlertaCard({ poliza, nivel }: Props) {
 
         <div className="mt-auto ml-2 flex gap-2 pt-4 border-t border-gray-50">
           
-          {/* 🔥 LOS BOTONES DE ANULAR/RENOVAR DESAPARECEN PARA EL VENDEDOR */}
+          {/* 🔥 DUEÑO Y ADMIN SECUNDARIO VEN ESTO. EL LECTOR NO. */}
           {puedeModificar && (
             nivel === "vencida" ? (
               <button 
@@ -209,7 +210,7 @@ export default function AlertaCard({ poliza, nivel }: Props) {
         </div>
       </div>
 
-      {/* 🔥 LOS MODALES NI SIQUIERA SE RENDERIZAN SI ES LECTOR */}
+      {/* 🔥 DUEÑO Y ADMIN SECUNDARIO VEN ESTO. EL LECTOR NO. */}
       {puedeModificar && (
         <>
           <ConfirmModal 
