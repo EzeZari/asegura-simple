@@ -55,7 +55,8 @@ router.get('/', async (req, res) => {
 
     const polizasCaducadas = await prisma.poliza.findMany({
       where: {
-        estado: 'Vigente',
+        // 🔥 AHORA LIMPIA TANTO VIGENTES COMO PENDIENTES DE PAGO QUE SE VENCIERON HACE MUCHO
+        estado: { in: ['Vigente', 'Pendiente de Pago'] },
         fechaVencimiento: { lt: hace30Dias },
         asegurado: { productorId: productorId } // 🔥 SEGURIDAD: Solo limpia TUS pólizas
       },
@@ -74,7 +75,8 @@ router.get('/', async (req, res) => {
             accion: "Edición",
             entidad: "Póliza",
             descripcion: `Anulada automáticamente (> 30 días vencida)`,
-            cliente: `${poliza.asegurado.nombre} ${poliza.asegurado.apellido || ''}`.trim()
+            cliente: `${poliza.asegurado.nombre} ${poliza.asegurado.apellido || ''}`.trim(),
+            productorId // 🔥 INYECTAMOS EL PRODUCTOR PARA QUE QUEDE EN SU HISTORIAL
           }
         });
       }
@@ -82,13 +84,14 @@ router.get('/', async (req, res) => {
     // --- FIN LIMPIEZA AUTOMÁTICA ---
 
     // --- LÓGICA DINÁMICA DE ALERTAS ---
-    // Buscamos todas las pólizas vigentes hasta el rango máximo configurado
+    // Buscamos todas las pólizas vigentes o pendientes de pago hasta el rango máximo
     const enXDias = new Date();
     enXDias.setDate(hoy.getDate() + diasMax);
 
     const polizasPorVencer = await prisma.poliza.findMany({
       where: {
-        estado: 'Vigente',
+        // 🔥 ACÁ ESTÁ LA CLAVE: TRAE LAS PÓLIZAS ACTIVAS Y LAS QUE DEBEN PLATA
+        estado: { in: ['Vigente', 'Pendiente de Pago'] },
         fechaVencimiento: { lte: enXDias },
         asegurado: { productorId: productorId } // 🔥 SEGURIDAD: Solo trae TUS alertas
       },
