@@ -4,8 +4,9 @@ import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation'; 
 import { 
   Home, Users, FileText, Building, CarFront, Bell, Settings, LogOut, BarChart3, X, Eye, ShieldCheck 
-} from 'lucide-react'; // 🔥 Sumamos ShieldCheck para el Admin secundario
+} from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
+import { PERMISOS, tienePermiso } from '@/utils/roles'; // 🔥 IMPORTAMOS EL DICCIONARIO
 
 const menuItems = [
   { name: 'Inicio', icon: Home, path: '/' },
@@ -30,10 +31,14 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
   const user = useAuthStore((state) => state.user);
   const clearStore = useAuthStore((state) => state.logout);
   
-  // 🔥 LÓGICA DE ROLES Y ETIQUETAS
+  // 🔥 LÓGICA DE ROLES Y ETIQUETAS USANDO NUESTRA HERRAMIENTA SENIOR
   const esSoloLectura = user?.role === 'VIEWER';
-  // 🔥 Le agregamos el (user as any) para que TypeScript no se queje del jefeId
-  const esAdminSecundario = user?.role === 'ADMIN' && (user as any)?.jefeId;
+  
+  const esDueno = tienePermiso(user, PERMISOS.PUEDE_EDITAR_PLAN);
+  const puedeModificar = tienePermiso(user, PERMISOS.PUEDE_MODIFICAR_DATOS);
+  
+  // Un admin secundario es alguien que PUEDE modificar, pero NO ES dueño
+  const esAdminSecundario = puedeModificar && !esDueno;
 
   const handleLogout = async () => {
     try {
@@ -82,17 +87,17 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                 Hola, {user.nombre}
               </span>
               
-              {/* 🔥 ETIQUETA: MODO LECTOR (Fondo oscuro transparente) */}
+              {/* 🔥 ETIQUETA: MODO LECTOR */}
               {esSoloLectura && (
                 <span className="mt-2 flex items-center gap-1.5 bg-black/20 text-green-50 text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider">
                   <Eye size={12} /> Modo Lector
                 </span>
               )}
 
-              {/* 🔥 ETIQUETA: ADMIN DE EQUIPO (Fondo azulado distintivo) */}
+              {/* 🔥 ETIQUETA: ADMIN SECUNDARIO */}
               {esAdminSecundario && (
                 <span className="mt-2 flex items-center gap-1.5 bg-blue-900/40 border border-blue-400/20 text-blue-50 text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider">
-                  <ShieldCheck size={12} /> Colaborador
+                  <ShieldCheck size={12} /> Admin Secundario
                 </span>
               )}
             </div>
