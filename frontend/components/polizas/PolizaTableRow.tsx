@@ -1,3 +1,5 @@
+"use client";
+
 import { FileText, Trash2, Edit, Mail } from "lucide-react";
 import { ActionMenu, ActionMenuItem, ActionMenuDivider } from "@/components/ui/ActionMenu";
 
@@ -6,14 +8,20 @@ interface Props {
   onClickDetalle: (id: number) => void;
   menuAbiertoId: number | null;
   onToggleMenu: (id: number | null) => void;
-  onEdit: (poliza: any) => void;
-  onAvisarVencimiento: (poliza: any) => void;
-  onCambiarEstado: (poliza: any, estado: string) => void;
-  onEliminar: (poliza: any) => void;
+  
+  // 🔥 RECIBIMOS LA ORDEN DE SI PUEDE MODIFICAR O NO
+  puedeModificar: boolean;
+
+  // 🔥 Las funciones ahora son opcionales (?) porque si es Vendedor, no se las pasamos
+  onEdit?: (poliza: any) => void;
+  onAvisarVencimiento?: (poliza: any) => void;
+  onCambiarEstado?: (poliza: any, estado: string) => void;
+  onEliminar?: (poliza: any) => void;
 }
 
 export default function PolizaTableRow({
   poliza, onClickDetalle, menuAbiertoId, onToggleMenu,
+  puedeModificar, // Lo leemos acá
   onEdit, onAvisarVencimiento, onCambiarEstado, onEliminar
 }: Props) {
 
@@ -44,7 +52,6 @@ export default function PolizaTableRow({
 
   return (
     <tr className="hover:bg-gray-50/50 transition-colors group">
-      {/* 🔥 Usamos whitespace-nowrap para que los datos no se rompan en varios renglones */}
       <td className="px-4 lg:px-6 py-4 font-mono font-medium text-green-700 cursor-pointer hover:underline hover:text-green-800 whitespace-nowrap" onClick={() => onClickDetalle(poliza.id)}>
         #{poliza.nroPoliza}
       </td>
@@ -73,17 +80,21 @@ export default function PolizaTableRow({
           {getEstadoInteligente(poliza)}
         </span>
       </td>
-      <td className="px-4 lg:px-6 py-4 text-right relative whitespace-nowrap">
-        <ActionMenu isOpen={menuAbiertoId === poliza.id} onToggle={() => onToggleMenu(menuAbiertoId === poliza.id ? null : poliza.id)}>
-          <ActionMenuItem icon={Edit} label="Editar" onClick={() => { onEdit(poliza); onToggleMenu(null); }} />
-          {poliza.asegurado?.email && getEstadoInteligente(poliza) !== "Anulada" && (
-            <ActionMenuItem icon={Mail} label="Avisar Vencimiento" onClick={() => onAvisarVencimiento(poliza)} />
-          )}
-          <ActionMenuDivider />
-          <ActionMenuItem icon={Trash2} label="Anular" color="red" onClick={() => onCambiarEstado(poliza, "Anulada")} />
-          <ActionMenuItem icon={Trash2} label="Eliminar" color="red" onClick={() => { onEliminar(poliza); onToggleMenu(null); }} />
-        </ActionMenu>
-      </td>
+      
+      {/* 🔥 ACÁ ESTÁ EL ESCUDO: Todo este 'td' desaparece si el usuario es Solo Lectura */}
+      {puedeModificar && (
+        <td className="px-4 lg:px-6 py-4 text-right relative whitespace-nowrap">
+          <ActionMenu isOpen={menuAbiertoId === poliza.id} onToggle={() => onToggleMenu(menuAbiertoId === poliza.id ? null : poliza.id)}>
+            <ActionMenuItem icon={Edit} label="Editar" onClick={() => { onEdit?.(poliza); onToggleMenu(null); }} />
+            {poliza.asegurado?.email && getEstadoInteligente(poliza) !== "Anulada" && (
+              <ActionMenuItem icon={Mail} label="Avisar Vencimiento" onClick={() => onAvisarVencimiento?.(poliza)} />
+            )}
+            <ActionMenuDivider />
+            <ActionMenuItem icon={Trash2} label="Anular" color="red" onClick={() => onCambiarEstado?.(poliza, "Anulada")} />
+            <ActionMenuItem icon={Trash2} label="Eliminar" color="red" onClick={() => { onEliminar?.(poliza); onToggleMenu(null); }} />
+          </ActionMenu>
+        </td>
+      )}
     </tr>
   );
 }

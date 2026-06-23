@@ -17,7 +17,8 @@ import AlertModal from "@/components/ui/AlertModal";
 import AseguradoTableRow from "@/components/asegurados/AseguradoTableRow";
 import SelectOrdenamiento from "@/components/ui/SelectOrdenamiento";
 import { apiFetch } from "@/services/api";
-import { useAuthStore } from "@/store/authStore"; // 🔥 Importamos el store
+import { useAuthStore } from "@/store/authStore"; 
+import { PERMISOS, tienePermiso } from "@/utils/roles"; // 🔥 IMPORTAMOS NUESTRO DICCIONARIO
 
 const ExportarExcelModal = dynamic(() => import("@/components/ui/ExportarExcelModal"), { ssr: false });
 const ImportarAseguradosModal = dynamic(() => import("@/components/asegurados/ImportarAseguradosModal"), { ssr: false });
@@ -30,9 +31,10 @@ const OPCIONES_ORDEN = [
 ];
 
 export default function AseguradosPage() {
-  // 🔥 LEEMOS EL ROL DEL USUARIO
   const { user } = useAuthStore();
-  const esSoloLectura = user?.role === "VIEWER";
+  
+  // 🔥 EVALUAMOS LOS PERMISOS CON NUESTRA HERRAMIENTA SENIOR
+  const puedeModificar = tienePermiso(user, PERMISOS.PUEDE_MODIFICAR_DATOS);
 
   const [searchTerm, setSearchTerm] = useState("");
   const [filtroTipo, setFiltroTipo] = useState("Todos");
@@ -189,9 +191,10 @@ export default function AseguradosPage() {
     { label: <SortableHeader label="Estado" sortKey="activo" currentSort={sortConfig} requestSort={(key) => requestSort(key as any)} /> },
   ];
 
-  const columnas = esSoloLectura 
-    ? columnasBase 
-    : [...columnasBase, { label: "Acciones", align: "right" as const }];
+  // Si tiene permisos sumamos la columna Acciones, si no, queda limpia
+  const columnas = puedeModificar 
+    ? [...columnasBase, { label: "Acciones", align: "right" as const }]
+    : columnasBase;
 
   return (
     <div className="flex flex-col p-4 lg:p-8 w-full gap-5 lg:gap-8 bg-white min-h-screen overflow-x-hidden">
@@ -199,8 +202,8 @@ export default function AseguradosPage() {
       <PageHeader 
         titulo="Asegurados" 
         descripcion="Gestioná tu cartera de clientes reales." 
-        textoBoton={esSoloLectura ? "" : "Nuevo Asegurado"} // 🔥 OCULTO PARA LECTOR
-        onNuevo={esSoloLectura ? () => {} : () => { setClienteAEditar(null); setIsModalOpen(true); }} // 🔥 ATAJO NINJA
+        textoBoton={puedeModificar ? "Nuevo Asegurado" : ""} // 🔥 OCULTO PARA LECTOR
+        onNuevo={puedeModificar ? () => { setClienteAEditar(null); setIsModalOpen(true); } : undefined} // 🔥 ATAJO NINJA
       />
 
       <AseguradosFiltros 
@@ -216,7 +219,7 @@ export default function AseguradosPage() {
         
         <div className="flex flex-col sm:flex-row items-center gap-3 w-full xl:w-auto">
           {/* 🔥 IMPORTAR OCULTO PARA LECTOR */}
-          {!esSoloLectura && (
+          {puedeModificar && (
             <button onClick={() => setIsImportModalOpen(true)} className="flex justify-center items-center gap-2 w-full sm:w-auto px-4 py-2.5 lg:py-2 bg-gray-50 hover:bg-gray-100 border border-gray-200 text-gray-700 rounded-xl text-sm font-bold transition-all active:scale-95 shadow-sm">
               <UploadCloud size={16} /> Importar Excel
             </button>
@@ -236,16 +239,17 @@ export default function AseguradosPage() {
             onClickPolizas={(c) => setAseguradoParaVerPolizas(c)}
             menuAbiertoId={menuAbiertoId}
             onToggleMenu={setMenuAbiertoId}
-            // 🔥 ACCIONES DESACTIVADAS PARA LECTOR
-            onEdit={esSoloLectura ? () => {} : (c) => { setClienteAEditar(c); setMenuAbiertoId(null); setIsModalOpen(true); }}
-            onToggleEstado={esSoloLectura ? () => {} : toggleEstado}
-            onEliminar={esSoloLectura ? () => {} : (c) => { setAseguradoAEliminar(c); setMenuAbiertoId(null); setIsConfirmOpen(true); }}
+            // 🔥 LE PASAMOS LA VARIABLE AL COMPONENTE HIJO
+            puedeModificar={puedeModificar}
+            onEdit={puedeModificar ? (c) => { setClienteAEditar(c); setMenuAbiertoId(null); setIsModalOpen(true); } : undefined}
+            onToggleEstado={puedeModificar ? toggleEstado : undefined}
+            onEliminar={puedeModificar ? (c) => { setAseguradoAEliminar(c); setMenuAbiertoId(null); setIsConfirmOpen(true); } : undefined}
           />
         ))}
       </Table>
 
       {/* 🔥 MODALES OCULTOS DEL DOM PARA LECTORES (Seguridad extra) */}
-      {!esSoloLectura && (
+      {puedeModificar && (
         <>
           <NuevoAseguradoModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSuccess={() => { setIsModalOpen(false); fetchAsegurados(); setShowToast(true); setMensajeToast("Asegurado guardado correctamente"); }} clienteAEditar={clienteAEditar} />
           <ImportarAseguradosModal isOpen={isImportModalOpen} onClose={() => setIsImportModalOpen(false)} onSuccess={handleImportSuccess} />

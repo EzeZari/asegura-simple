@@ -4,14 +4,17 @@ import { useState, useEffect } from "react";
 import { Shield, Smartphone, Laptop, AlertOctagon, TriangleAlert } from "lucide-react";
 import { useAuthStore } from "@/store/authStore"; 
 import Toast from "@/components/ui/Toast";
-import { apiFetch } from "@/services/api"; // 🔥 IMPORTAMOS NUESTRO FETCH SEGURO
+import { apiFetch } from "@/services/api";
+import { PERMISOS, tienePermiso } from "@/utils/roles"; // 🔥 IMPORTAMOS EL DICCIONARIO
 
 export default function OpcionesAvanzadas() {
   const user = useAuthStore((state) => state.user);
   const setUser = useAuthStore((state: any) => state.setUser); 
 
+  // 🔥 ESTO ES EXCLUSIVO DEL DUEÑO DE LA AGENCIA
+  const esDueno = tienePermiso(user, PERMISOS.PUEDE_EDITAR_PLAN);
+
   const [twoFactorEnabled, setTwoFactorEnabled] = useState(false);
-  
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState("");
 
@@ -31,7 +34,6 @@ export default function OpcionesAvanzadas() {
     setTwoFactorEnabled(newState); 
 
     try {
-      // 🔥 ACTUALIZADO A APIFETCH
       const res = await apiFetch('/api/auth/2fa', {
         method: "PUT",
         body: JSON.stringify({ email: user?.email, enabled: newState })
@@ -58,7 +60,6 @@ export default function OpcionesAvanzadas() {
     setIsDeleting(true);
 
     try {
-      // 🔥 ACTUALIZADO A APIFETCH PARA VIAJAR CON TOKEN
       const res = await apiFetch('/api/auth/wipe-data', {
         method: "DELETE",
         body: JSON.stringify({ email: user?.email, confirmacion: palabraConfirmacion })
@@ -120,22 +121,26 @@ export default function OpcionesAvanzadas() {
         </div>
       </div>
 
-      <div className="bg-red-50/30 p-4 md:p-6 rounded-2xl border border-red-200 shadow-sm flex flex-col gap-4">
-        <h3 className="text-lg font-bold text-red-700 border-b border-red-100 pb-2 flex items-center gap-2">
-          <AlertOctagon size={18} /> Zona de Peligro
-        </h3>
-        <p className="text-sm text-red-900/80">Acciones irreversibles. Procedé con absoluta precaución. Una vez que borrás la información, no hay vuelta atrás.</p>
-        <div className="flex gap-4 mt-2">
-          <button 
-            onClick={() => setShowDangerModal(true)}
-            className="w-full sm:w-auto bg-white border border-red-200 text-red-700 hover:bg-red-50 px-4 py-2.5 sm:py-2 rounded-lg text-sm font-bold transition-colors"
-          >
-            Vaciar toda la base de datos
-          </button>
+      {/* 🔥 ZONA DE PELIGRO: ESTO ES EXCLUSIVO DEL DUEÑO */}
+      {esDueno && (
+        <div className="bg-red-50/30 p-4 md:p-6 rounded-2xl border border-red-200 shadow-sm flex flex-col gap-4">
+          <h3 className="text-lg font-bold text-red-700 border-b border-red-100 pb-2 flex items-center gap-2">
+            <AlertOctagon size={18} /> Zona de Peligro
+          </h3>
+          <p className="text-sm text-red-900/80">Acciones irreversibles. Procedé con absoluta precaución. Una vez que borrás la información, no hay vuelta atrás.</p>
+          <div className="flex gap-4 mt-2">
+            <button 
+              onClick={() => setShowDangerModal(true)}
+              className="w-full sm:w-auto bg-white border border-red-200 text-red-700 hover:bg-red-50 px-4 py-2.5 sm:py-2 rounded-lg text-sm font-bold transition-colors"
+            >
+              Vaciar toda la base de datos
+            </button>
+          </div>
         </div>
-      </div>
+      )}
 
-      {showDangerModal && (
+      {/* MODAL DE CONFIRMACIÓN (También exclusivo del Dueño) */}
+      {esDueno && showDangerModal && (
         <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in duration-200">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden flex flex-col">
             <div className="bg-red-600 p-4 md:p-6 flex flex-col items-center justify-center text-white gap-3">

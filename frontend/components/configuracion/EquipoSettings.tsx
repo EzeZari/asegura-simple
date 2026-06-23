@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Users, Crown, Mail, Shield, UserPlus, Trash2, AlertCircle, Loader2, X, CheckCircle2 } from "lucide-react";
 import { useAuthStore } from "@/store/authStore";
 import { apiFetch } from "@/services/api";
+import { ROLES, PERMISOS, tienePermiso } from "@/utils/roles"; // 🔥 IMPORTAMOS EL DICCIONARIO
 import AlertModal from "@/components/ui/AlertModal";
 import ConfirmModal from "@/components/ui/ConfirmModal";
 import Toast from "@/components/ui/Toast";
@@ -13,12 +14,15 @@ export default function EquipoSettings() {
   const user = useAuthStore((state: any) => state.user);
   const router = useRouter();
 
+  // 🔥 1. ESCUDO FRONTEND: Verificamos si tiene permiso para ver esta pantalla
+  const puedeGestionarEquipo = tienePermiso(user, PERMISOS.PUEDE_GESTIONAR_EQUIPO);
+
   const [equipo, setEquipo] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [nuevoMiembro, setNuevoMiembro] = useState({ nombre: "", email: "", password: "", role: "VIEWER" });
+  const [nuevoMiembro, setNuevoMiembro] = useState({ nombre: "", email: "", password: "", role: ROLES.VIEWER });
   
   const [showToast, setShowToast] = useState(false);
   const [alertConfig, setAlertConfig] = useState({ isOpen: false, title: "", message: "" });
@@ -37,6 +41,13 @@ export default function EquipoSettings() {
   const isPasswordValid = nuevoMiembro.password.length >= 6;
   const isFormValid = isNombreValid && isEmailValid && isPasswordValid;
 
+  // 🔥 2. PATEAMOS A LOS INTRUSOS: Si entra por URL directa y no es Dueño, lo mandamos al inicio
+  useEffect(() => {
+    if (user && !puedeGestionarEquipo) {
+      router.push('/'); 
+    }
+  }, [user, puedeGestionarEquipo, router]);
+
   const fetchEquipo = async () => {
     try {
       const res = await apiFetch('/api/equipo');
@@ -52,22 +63,30 @@ export default function EquipoSettings() {
   };
 
   useEffect(() => {
-    fetchEquipo();
-  }, []);
+    if (puedeGestionarEquipo) {
+      fetchEquipo();
+    }
+  }, [puedeGestionarEquipo]);
 
+  // Si no tiene permisos, no renderizamos absolutamente nada de la pantalla
+  if (!puedeGestionarEquipo) return null;
+
+  // 🔥 Mapeo inteligente usando las constantes del diccionario
   const listaMiembros = [
     { 
       id: 'dueno', 
       nombre: user?.nombre || "Usuario Principal", 
       email: user?.email || "tu@email.com", 
-      rol: "Dueño", 
+      rolId: ROLES.DUENO,
+      rolLabel: "Dueño", 
       estado: "Activo" 
     },
     ...equipo.map(m => ({
       id: m.id,
       nombre: m.nombre,
       email: m.email,
-      rol: m.role === "VIEWER" ? "Vendedor" : "Administrador",
+      rolId: m.role,
+      rolLabel: m.role === ROLES.VIEWER ? "Vendedor" : "Administrador",
       estado: "Activo"
     }))
   ];
@@ -84,14 +103,13 @@ export default function EquipoSettings() {
       return;
     }
     
-    // Reseteamos el formulario al abrir
-    setNuevoMiembro({ nombre: "", email: "", password: "", role: "VIEWER" });
+    setNuevoMiembro({ nombre: "", email: "", password: "", role: ROLES.VIEWER });
     setShowInviteModal(true);
   };
 
   const handleAgregarMiembro = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!isFormValid) return; // Doble barrera de seguridad
+    if (!isFormValid) return; 
 
     setIsSubmitting(true);
     try {
@@ -103,7 +121,7 @@ export default function EquipoSettings() {
 
       if (res.ok) {
         setShowToast(true);
-        setNuevoMiembro({ nombre: "", email: "", password: "", role: "VIEWER" });
+        setNuevoMiembro({ nombre: "", email: "", password: "", role: ROLES.VIEWER });
         setShowInviteModal(false);
         fetchEquipo();
       } else {
@@ -203,7 +221,7 @@ export default function EquipoSettings() {
                     <td className="py-4 px-1 sm:px-0 whitespace-nowrap">
                       <div className="flex items-center gap-3">
                         <div className={`h-10 w-10 rounded-full flex items-center justify-center font-bold text-sm shrink-0 ${
-                          miembro.rol === 'Dueño' ? 'bg-orange-100 text-orange-700' : 'bg-green-100 text-green-700'
+                          miembro.rolId === ROLES.DUENO ? 'bg-orange-100 text-orange-700' : 'bg-green-100 text-green-700'
                         }`}>
                           {miembro.nombre.substring(0, 2).toUpperCase()}
                         </div>
@@ -217,9 +235,9 @@ export default function EquipoSettings() {
                     </td>
                     <td className="py-4 px-1 sm:px-0 whitespace-nowrap">
                       <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-bold border ${
-                        miembro.rol === 'Dueño' ? 'bg-orange-50 text-orange-700 border-orange-100' : 'bg-purple-50 text-purple-700 border-purple-100'
+                        miembro.rolId === ROLES.DUENO ? 'bg-orange-50 text-orange-700 border-orange-100' : 'bg-purple-50 text-purple-700 border-purple-100'
                       }`}>
-                        <Shield size={12} /> {miembro.rol}
+                        <Shield size={12} /> {miembro.rolLabel}
                       </span>
                     </td>
                     <td className="py-4 px-1 sm:px-0 whitespace-nowrap">
@@ -229,7 +247,7 @@ export default function EquipoSettings() {
                       </span>
                     </td>
                     <td className="py-4 px-1 sm:px-0 text-right whitespace-nowrap">
-                      {miembro.rol === "Dueño" ? (
+                      {miembro.rolId === ROLES.DUENO ? (
                         <span className="text-xs text-gray-400 italic font-medium">Intocable</span>
                       ) : (
                         <button 
@@ -342,8 +360,8 @@ export default function EquipoSettings() {
                   value={nuevoMiembro.role} onChange={(e) => setNuevoMiembro({...nuevoMiembro, role: e.target.value})}
                   className="w-full text-sm border border-gray-200 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none bg-gray-50 focus:bg-white transition-colors cursor-pointer"
                 >
-                  <option value="VIEWER">Vendedor (Solo lectura)</option>
-                  <option value="PRODUCTOR">Administrador Secundario</option>
+                  <option value={ROLES.VIEWER}>Vendedor (Solo lectura)</option>
+                  <option value={ROLES.PRODUCTOR}>Administrador Secundario</option>
                 </select>
               </div>
 

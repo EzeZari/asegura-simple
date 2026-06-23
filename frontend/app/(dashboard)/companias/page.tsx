@@ -2,9 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Edit, Trash2, Download, UploadCloud } from "lucide-react"; 
-import NuevaCompaniaModal from "@/components/companias/NuevaCompaniaModal";
-import ImportarCompaniasModal from "@/components/companias/ImportarCompaniasModal"; 
-import ExportarExcelModal from "@/components/ui/ExportarExcelModal"; 
+import dynamic from "next/dynamic";
 import Table, { TableColumn } from "@/components/ui/Table";
 import Toast from "@/components/ui/Toast";
 import ConfirmModal from "@/components/ui/ConfirmModal"; 
@@ -15,7 +13,13 @@ import SearchBar from "@/components/ui/SearchBar";
 import { ActionMenu, ActionMenuItem } from "@/components/ui/ActionMenu";
 import SelectOrdenamiento from "@/components/ui/SelectOrdenamiento"; 
 import { apiFetch } from "@/services/api"; 
-import { useAuthStore } from "@/store/authStore"; // 🔥 Importamos el store de sesión
+import { useAuthStore } from "@/store/authStore"; 
+import { PERMISOS, tienePermiso } from "@/utils/roles"; // 🔥 IMPORTAMOS NUESTRO DICCIONARIO
+
+// Los modales pesados los cargamos de forma diferida (dinámica) para no trabar la pantalla
+const NuevaCompaniaModal = dynamic(() => import("@/components/companias/NuevaCompaniaModal"), { ssr: false });
+const ImportarCompaniasModal = dynamic(() => import("@/components/companias/ImportarCompaniasModal"), { ssr: false });
+const ExportarExcelModal = dynamic(() => import("@/components/ui/ExportarExcelModal"), { ssr: false });
 
 const OPCIONES_ORDEN = [
   { value: "mas_recientes", label: "Últimas agregadas" },
@@ -24,9 +28,10 @@ const OPCIONES_ORDEN = [
 ];
 
 export default function CompaniasPage() {
-  // 🔥 LEEMOS EL ROL DEL USUARIO
   const { user } = useAuthStore();
-  const esSoloLectura = user?.role === "VIEWER";
+  
+  // 🔥 EVALUAMOS LOS PERMISOS CON NUESTRA HERRAMIENTA SENIOR
+  const puedeModificar = tienePermiso(user, PERMISOS.PUEDE_MODIFICAR_DATOS);
 
   const [searchTerm, setSearchTerm] = useState("");
   const [ordenActual, setOrdenActual] = useState("mas_recientes");
@@ -128,7 +133,6 @@ export default function CompaniasPage() {
     }));
   };
 
-  // 🔥 COLUMNAS DINÁMICAS
   const columnasBase: TableColumn[] = [
     { label: <SortableHeader label="Nombre" sortKey="nombre" currentSort={sortConfig} requestSort={(key) => requestSort(key as any)} /> },
     { label: <SortableHeader label="CUIT" sortKey="cuit" currentSort={sortConfig} requestSort={(key) => requestSort(key as any)} /> },
@@ -136,9 +140,10 @@ export default function CompaniasPage() {
     { label: <SortableHeader label="Email Contacto" sortKey="email" currentSort={sortConfig} requestSort={(key) => requestSort(key as any)} /> },
   ];
 
-  const columnas = esSoloLectura 
-    ? columnasBase 
-    : [...columnasBase, { label: "Acciones", align: "right" as const }];
+  // Si tiene permisos sumamos la columna Acciones, si no, queda limpia
+  const columnas = puedeModificar 
+    ? [...columnasBase, { label: "Acciones", align: "right" as const }]
+    : columnasBase;
 
   return (
     <div className="flex flex-col p-8 w-full gap-8 bg-white min-h-screen overflow-x-hidden">
@@ -146,8 +151,8 @@ export default function CompaniasPage() {
       <PageHeader 
         titulo="Compañías" 
         descripcion="Gestioná las aseguradoras con las que operás." 
-        textoBoton={esSoloLectura ? "" : "Nueva Compañía"} // 🔥 Atajo ninja
-        onNuevo={esSoloLectura ? () => {} : () => { setCompaniaAEditar(null); setIsModalOpen(true); }} // 🔥 Atajo ninja
+        textoBoton={puedeModificar ? "Nueva Compañía" : ""} // 🔥 OCULTO PARA LECTOR
+        onNuevo={puedeModificar ? () => { setCompaniaAEditar(null); setIsModalOpen(true); } : undefined} 
       />
 
       <div className="w-full">
@@ -161,7 +166,7 @@ export default function CompaniasPage() {
         <div className="flex items-center gap-3 w-full md:w-auto">
           
           {/* 🔥 IMPORTAR OCULTO PARA LECTOR */}
-          {!esSoloLectura && (
+          {puedeModificar && (
             <button onClick={() => setIsImportModalOpen(true)} className="flex items-center gap-2 px-4 py-2 bg-white hover:bg-gray-50 border border-gray-200 text-gray-700 rounded-xl text-sm font-bold transition-all active:scale-95 shadow-sm">
               <UploadCloud size={16} /> Importar Excel
             </button>
@@ -182,7 +187,7 @@ export default function CompaniasPage() {
             <td className="px-6 py-4 text-gray-600">{compania.email || "-"}</td>
             
             {/* 🔥 OCULTAMOS LA CELDA DE ACCIONES AL LECTOR */}
-            {!esSoloLectura && (
+            {puedeModificar && (
               <td className="px-6 py-4 text-right">
                 <ActionMenu isOpen={menuAbiertoId === compania.id} onToggle={() => setMenuAbiertoId(menuAbiertoId === compania.id ? null : compania.id)}>
                   <ActionMenuItem icon={Edit} label="Editar" onClick={() => { setCompaniaAEditar(compania); setMenuAbiertoId(null); setIsModalOpen(true); }} />
@@ -195,10 +200,10 @@ export default function CompaniasPage() {
       </Table>
 
       {/* 🔥 MODALES BLOQUEADOS PARA EL LECTOR */}
-      {!esSoloLectura && (
+      {puedeModificar && (
         <>
           <NuevaCompaniaModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSuccess={handleSuccess} companiaAEditar={companiaAEditar} />
-          <ImportarCompaniasModal isOpen={isImportModalOpen} onClose={() => setIsImportModalOpen(false)} onSuccess={(mensaje) => { setIsImportModalOpen(false); fetchCompanias(); setMensajeToast(mensaje); setShowToast(true); }} />
+          <ImportarCompaniasModal isOpen={isImportModalOpen} onClose={() => setIsImportModalOpen(false)} onSuccess={(mensaje: string) => { setIsImportModalOpen(false); fetchCompanias(); setMensajeToast(mensaje); setShowToast(true); }} />
           <ConfirmModal isOpen={isConfirmOpen} onClose={() => setIsConfirmOpen(false)} onConfirm={ejecutarEliminacion} isLoading={isDeleting} title="¿Eliminar compañía?" message={`Esta acción eliminará a "${companiaAEliminar?.nombre}".`} />
         </>
       )}

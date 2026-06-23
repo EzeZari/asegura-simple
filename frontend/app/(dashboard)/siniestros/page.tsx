@@ -11,8 +11,9 @@ import PageHeader from "@/components/ui/PageHeader";
 import { useTableSort } from "@/hooks/useTableSort";
 import SortableHeader from "@/components/ui/SortableHeader";
 import SelectOrdenamiento from "@/components/ui/SelectOrdenamiento"; 
-import { useAuthStore } from "@/store/authStore"; // 🔥 Importamos la memoria del usuario
-import { apiFetch } from "@/services/api"; // 🔥 Importamos el fetch autorizado
+import { useAuthStore } from "@/store/authStore"; 
+import { apiFetch } from "@/services/api"; 
+import { PERMISOS, tienePermiso } from "@/utils/roles"; // 🔥 Importamos el diccionario
 
 const OPCIONES_ORDEN = [
   { value: "mas_recientes", label: "Carga más reciente" },
@@ -22,9 +23,10 @@ const OPCIONES_ORDEN = [
 ];
 
 export default function SiniestrosPage() {
-  // 🔥 LEEMOS EL ROL DEL USUARIO
   const { user } = useAuthStore();
-  const esSoloLectura = user?.role === "VIEWER";
+  
+  // 🔥 EVALUAMOS LOS PERMISOS CON NUESTRA HERRAMIENTA SENIOR
+  const puedeModificar = tienePermiso(user, PERMISOS.PUEDE_MODIFICAR_DATOS);
 
   const [siniestros, setSiniestros] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -47,16 +49,14 @@ export default function SiniestrosPage() {
 
   const fetchSiniestros = async () => {
     try {
-      // 🔥 USAMOS APIFETCH PARA MANDAR EL TOKEN
       const res = await apiFetch('/api/siniestros');
       const data = await res.json();
       
-      // 🔥 EL ESCUDO ANTI-CRASH DE REACT
       if (Array.isArray(data)) {
         setSiniestros(data);
       } else {
         console.error("El servidor devolvió un error en vez de una lista:", data);
-        setSiniestros([]); // Forzamos una lista vacía
+        setSiniestros([]); 
       }
     } catch (error) { 
       console.error("Error al cargar siniestros:", error); 
@@ -72,7 +72,6 @@ export default function SiniestrosPage() {
     if (!siniestroAEliminar) return;
     setIsDeleting(true);
     try {
-      // 🔥 USAMOS APIFETCH PARA ELIMINAR
       const res = await apiFetch(`/api/siniestros/${siniestroAEliminar.id}`, { method: 'DELETE' });
       if (!res.ok) throw new Error((await res.json()).error);
       
@@ -124,9 +123,10 @@ export default function SiniestrosPage() {
     { label: <SortableHeader label="Estado del Trámite" sortKey="estadoSiniestro" currentSort={sortConfig} requestSort={(key) => requestSort(key as any)} /> },
   ];
 
-  const columnas = esSoloLectura 
-    ? columnasBase 
-    : [...columnasBase, { label: "Acciones", align: "right" as const }];
+  // Si tiene permisos sumamos la columna Acciones, si no, queda limpia
+  const columnas = puedeModificar 
+    ? [...columnasBase, { label: "Acciones", align: "right" as const }]
+    : columnasBase;
 
   return (
     <div className="flex flex-col p-4 lg:p-8 w-full gap-5 lg:gap-8 bg-white min-h-screen overflow-x-hidden">
@@ -134,8 +134,8 @@ export default function SiniestrosPage() {
       <PageHeader 
         titulo="Gestión de Siniestros" 
         descripcion="Seguimiento de reclamos, choques y eventos de tus clientes." 
-        textoBoton={esSoloLectura ? undefined : "Reportar Siniestro"} // 🔥 SE OCULTA SI ES LECTOR
-        onNuevo={esSoloLectura ? undefined : () => { setSiniestroAEditar(null); setIsModalOpen(true); }} 
+        textoBoton={puedeModificar ? "Reportar Siniestro" : ""} // 🔥 SE OCULTA SI ES LECTOR
+        onNuevo={puedeModificar ? () => { setSiniestroAEditar(null); setIsModalOpen(true); } : undefined} 
       />
 
       <div className="flex flex-col md:flex-row gap-4 bg-gray-50/50 p-4 rounded-2xl border border-gray-100">
@@ -183,15 +183,15 @@ export default function SiniestrosPage() {
             siniestro={siniestro}
             menuAbiertoId={menuAbiertoId}
             onToggleMenu={setMenuAbiertoId}
-            // 🔥 Usamos el atajo ninja: le mandamos una función vacía en vez de undefined
-            onEdit={esSoloLectura ? () => {} : (s) => { setSiniestroAEditar(s); setMenuAbiertoId(null); setIsModalOpen(true); }}
-            onEliminar={esSoloLectura ? () => {} : (s) => { setSiniestroAEliminar(s); setMenuAbiertoId(null); setIsConfirmOpen(true); }}
+            puedeModificar={puedeModificar} // 🔥 PASAMOS LA ORDEN DE OCULTAR BOTONES AL HIJO
+            onEdit={puedeModificar ? (s) => { setSiniestroAEditar(s); setMenuAbiertoId(null); setIsModalOpen(true); } : undefined}
+            onEliminar={puedeModificar ? (s) => { setSiniestroAEliminar(s); setMenuAbiertoId(null); setIsConfirmOpen(true); } : undefined}
           />
         ))}
       </Table>
 
       {/* 🔥 SI ES LECTOR, NI SIQUIERA DIBUJAMOS LOS MODALES EN SEGUNDO PLANO */}
-      {!esSoloLectura && (
+      {puedeModificar && (
         <>
           <NuevoSiniestroModal 
             isOpen={isModalOpen} 

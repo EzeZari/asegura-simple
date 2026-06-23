@@ -8,16 +8,17 @@ import {
   FileText, Calendar, ShieldCheck, MessageCircle
 } from "lucide-react";
 import Toast from "@/components/ui/Toast";
-import { apiFetch } from "@/services/api"; // 🔥 Usamos apiFetch para mandar el token
-import { useAuthStore } from "@/store/authStore"; // 🔥 Importamos el store de sesión
+import { apiFetch } from "@/services/api"; 
+import { useAuthStore } from "@/store/authStore"; 
+import { PERMISOS, tienePermiso } from "@/utils/roles"; // 🔥 IMPORTAMOS NUESTRO DICCIONARIO
 
 export default function SiniestroDetallePage() {
   const { id } = useParams();
   const router = useRouter();
   
-  // 🔥 LEEMOS EL ROL DEL USUARIO
+  // 🔥 EVALUAMOS LOS PERMISOS CON NUESTRA HERRAMIENTA SENIOR
   const { user } = useAuthStore();
-  const esSoloLectura = user?.role === "VIEWER";
+  const puedeModificar = tienePermiso(user, PERMISOS.PUEDE_MODIFICAR_DATOS);
 
   const [siniestro, setSiniestro] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -33,7 +34,6 @@ export default function SiniestroDetallePage() {
 
   const fetchSiniestro = async () => {
     try {
-      // 🔥 REEMPLAZAMOS FETCH POR APIFETCH
       const res = await apiFetch(`/api/siniestros/${id}`);
       
       if (!res.ok) {
@@ -60,14 +60,13 @@ export default function SiniestroDetallePage() {
 
   const handleAgregarNota = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!nuevaNota.trim() || esSoloLectura) return; // 🔥 Protección extra
+    if (!nuevaNota.trim() || !puedeModificar) return; // 🔥 Protección extra
 
     setIsSubmittingNota(true);
     try {
-      // 🔥 REEMPLAZAMOS FETCH POR APIFETCH
       const res = await apiFetch(`/api/siniestros/${id}/notas`, {
         method: "POST",
-        body: JSON.stringify({ texto: nuevaNota }) // apiFetch hace JSON.stringify y headers automáticos
+        body: JSON.stringify({ texto: nuevaNota }) 
       });
 
       if (!res.ok) throw new Error("Error al guardar la nota");
@@ -84,10 +83,9 @@ export default function SiniestroDetallePage() {
   };
 
   const handleCambiarEstadoRapido = async (nuevoEstado: string) => {
-    if (esSoloLectura) return; // 🔥 Protección extra
+    if (!puedeModificar) return; // 🔥 Protección extra
     setIsUpdatingEstado(true);
     try {
-      // 🔥 REEMPLAZAMOS FETCH POR APIFETCH
       const res = await apiFetch(`/api/siniestros/${id}`, {
         method: "PUT",
         body: JSON.stringify({ ...siniestro, estadoSiniestro: nuevoEstado })
@@ -106,10 +104,9 @@ export default function SiniestroDetallePage() {
   };
 
   const handleGenerarLink = async () => {
-    if (esSoloLectura) return; // 🔥 Protección extra
+    if (!puedeModificar) return; // 🔥 Protección extra
     setIsGenerandoLink(true);
     try {
-      // 🔥 REEMPLAZAMOS FETCH POR APIFETCH
       const res = await apiFetch(`/api/siniestros/${id}/generar-link`, { method: "POST" });
       const data = await res.json();
       
@@ -205,7 +202,7 @@ export default function SiniestroDetallePage() {
             <span className="text-[10px] md:text-xs font-bold text-gray-400 uppercase pl-2">Estado:</span>
             <select
               value={siniestro.estadoSiniestro}
-              disabled={isUpdatingEstado || esSoloLectura} 
+              disabled={isUpdatingEstado || !puedeModificar} // 🔥 LECTOR NO PUEDE CAMBIAR EL ESTADO
               onChange={(e) => handleCambiarEstadoRapido(e.target.value)}
               className="flex-1 md:flex-none text-sm font-bold text-gray-700 bg-transparent outline-none cursor-pointer pr-2 disabled:opacity-60 disabled:cursor-not-allowed"
             >
@@ -244,7 +241,7 @@ export default function SiniestroDetallePage() {
             </h3>
             
             {/* 🔥 EL CAMPO DE NOTAS SE OCULTA PARA EL LECTOR */}
-            {!esSoloLectura && (
+            {puedeModificar && (
               <form onSubmit={handleAgregarNota} className="flex gap-3">
                 <input 
                   type="text" 
@@ -369,7 +366,7 @@ export default function SiniestroDetallePage() {
             {!linkGenerado ? (
               <button 
                 onClick={handleGenerarLink}
-                disabled={isGenerandoLink || esSoloLectura} // 🔥 LECTOR NO PUEDE GENERAR LINK
+                disabled={isGenerandoLink || !puedeModificar} // 🔥 LECTOR NO PUEDE GENERAR LINK
                 className="mt-2 w-full bg-white text-gray-900 hover:bg-gray-100 px-4 py-2.5 rounded-xl font-bold text-xs md:text-sm transition-colors disabled:opacity-50 active:scale-95"
               >
                 {isGenerandoLink ? "Generando..." : "Crear Link de Seguimiento"}

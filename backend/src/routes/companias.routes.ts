@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { prisma } from '../config/db';
 import { verificarToken } from '../middlewares/auth.middleware';
+import { verificarRol } from '../middlewares/role.middleware'; // 🔥 Importamos el guardia
 
 const router = Router();
 router.use(verificarToken);
@@ -38,6 +39,7 @@ const obtenerProductorId = async (userId: number): Promise<number> => {
   return productor.id;
 };
 
+// 🟢 LECTURA: Pasa directo (Solo requiere token)
 router.get('/', async (req, res) => {
   try {
     const productorId = await obtenerProductorId(req.userId!);
@@ -52,7 +54,8 @@ router.get('/', async (req, res) => {
   }
 });
 
-router.post('/', async (req, res) => {
+// 🔴 ESCRITURA: Protegido por verificarRol
+router.post('/', verificarRol(['DUENO', 'PRODUCTOR']), async (req, res) => {
   try {
     const { nombre, cuit, telefonoSiniestros, email } = req.body;
     const productorId = await obtenerProductorId(req.userId!);
@@ -79,7 +82,8 @@ router.post('/', async (req, res) => {
   }
 });
 
-router.post('/importar', async (req, res): Promise<any> => {
+// 🔴 ESCRITURA: Protegido por verificarRol
+router.post('/importar', verificarRol(['DUENO', 'PRODUCTOR']), async (req, res): Promise<any> => {
   try {
     const { companias } = req.body;
     const productorId = await obtenerProductorId(req.userId!);
@@ -136,9 +140,11 @@ router.post('/importar', async (req, res): Promise<any> => {
   }
 });
 
-router.put('/:id', async (req, res): Promise<any> => {
+// 🔴 ESCRITURA: Protegido por verificarRol
+router.put('/:id', verificarRol(['DUENO', 'PRODUCTOR']), async (req, res): Promise<any> => {
   try {
-    const { id } = req.params;
+    // 🔥 CORRECCIÓN TYPESCRIPT
+    const id = req.params.id as string;
     const data = req.body;
     const productorId = await obtenerProductorId(req.userId!);
 
@@ -179,9 +185,11 @@ router.put('/:id', async (req, res): Promise<any> => {
   }
 });
 
-router.delete('/:id', async (req, res): Promise<any> => {
+// 🔴 ESCRITURA: Protegido por verificarRol
+router.delete('/:id', verificarRol(['DUENO', 'PRODUCTOR']), async (req, res): Promise<any> => {
   try {
-    const { id } = req.params;
+    // 🔥 CORRECCIÓN TYPESCRIPT
+    const id = req.params.id as string;
     const productorId = await obtenerProductorId(req.userId!);
     
     const companiaABorrar = await prisma.compania.findFirst({ 

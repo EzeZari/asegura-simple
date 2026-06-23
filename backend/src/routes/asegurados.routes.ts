@@ -2,29 +2,23 @@ import { Router } from 'express';
 import { prisma } from '../config/db';
 import { enviarCorreoBienvenida } from '../services/email.service';
 import { verificarLimiteAsegurados } from '../utils/verificarLimites';
-import { verificarToken } from '../middlewares/auth.middleware'; // 🔥 Tu middleware de Auth
-import { verificarSuscripcionActiva } from '../middlewares/suscripcion.middleware'; // 🔥 El nuevo middleware
+import { verificarToken } from '../middlewares/auth.middleware';
+import { verificarSuscripcionActiva } from '../middlewares/suscripcion.middleware';
+import { verificarRol } from '../middlewares/role.middleware'; 
 
 const router = Router();
 
 // 🔥 MIDDLEWARES GLOBALES PARA ESTE ARCHIVO
 router.use(verificarToken);
-router.use(verificarSuscripcionActiva); // 🛡️ El "Patovica" protege automáticamente los POST, PUT y DELETE
+router.use(verificarSuscripcionActiva);
 
 // Función helper para obtener la Agencia (Productor) del usuario o su jefe
 const obtenerProductorId = async (userId: number): Promise<number> => {
-  // 1. Buscamos al usuario que acaba de iniciar sesión
   const usuarioActual = await prisma.user.findUnique({ where: { id: userId } });
-  
-  // 2. 🔥 EL NÚCLEO DE LA AGENCIA: 
-  // Si el usuario tiene un "jefeId", el dueño de los datos es el Jefe. 
-  // Si no tiene jefe (es el dueño), el dueño de los datos es él mismo.
   const idAgencia = usuarioActual?.jefeId ? usuarioActual.jefeId : userId;
 
-  // 3. Ahora buscamos el perfil de "Productor" que le pertenece a la AGENCIA (al Dueño)
   let productor = await prisma.productor.findUnique({ where: { userId: idAgencia } });
   
-  // (El resto es tu código original para crearlo si por alguna razón no existe)
   if (!productor) {
     const userDueño = idAgencia === userId ? usuarioActual : await prisma.user.findUnique({ where: { id: idAgencia } });
     const userEmail = userDueño?.email || `user${idAgencia}@asegurasimple.com`;
@@ -53,8 +47,10 @@ const obtenerProductorId = async (userId: number): Promise<number> => {
   return productor.id;
 };
 
-// RUTA: GET /api/asegurados
-// (Pasa directo porque el patovica ignora los GET)
+// ==========================================
+// 🟢 ZONA DE LECTURA (Acceso para Dueños, Productores y Vendedores)
+// ==========================================
+
 router.get('/', async (req, res) => {
   try {
     const productorId = await obtenerProductorId(req.userId!);
@@ -70,14 +66,12 @@ router.get('/', async (req, res) => {
   }
 });
 
-// RUTA: GET /api/asegurados/:id/polizas
-// (Pasa directo porque el patovica ignora los GET)
-router.get('/:id/polizas', async (req, res) => {
+router.get('/:id/polizas', async (req, res): Promise<any> => {
   try {
-    const { id } = req.params;
+    // 🔥 CORRECCIÓN TYPESCRIPT
+    const id = req.params.id as string;
     const productorId = await obtenerProductorId(req.userId!);
 
-    // 🔥 SEGURIDAD: Verificamos que el asegurado te pertenezca antes de mostrar sus pólizas
     const asegurado = await prisma.asegurado.findFirst({
       where: { id: parseInt(id), productorId }
     });
@@ -98,9 +92,11 @@ router.get('/:id/polizas', async (req, res) => {
   }
 });
 
-// RUTA: POST /api/asegurados
-// ⛔ (Bloqueado si no pagó la suscripción)
-router.post('/', async (req, res): Promise<any> => {
+// ==========================================
+// 🔴 ZONA DE ESCRITURA (Bloqueada para Vendedores/VIEWERS)
+// ==========================================
+
+router.post('/', verificarRol(['DUENO', 'PRODUCTOR']), async (req, res): Promise<any> => {
   try {
     const productorId = await obtenerProductorId(req.userId!);
 
@@ -137,7 +133,6 @@ router.post('/', async (req, res): Promise<any> => {
       }
     });
 
-    // TODO: La agencia con ID 1 sigue acá. A futuro podríamos cambiarlo para que lea la config del productor.
     const agencia = await prisma.agencia.findUnique({ where: { id: 1 } });
     if ((agencia?.enviarMailBienvenida ?? true) && data.email) {
       enviarCorreoBienvenida(data.email, data.nombre, data.apellido, data.dni, data.telefono);
@@ -146,17 +141,15 @@ router.post('/', async (req, res): Promise<any> => {
     res.status(201).json(nuevoAsegurado);
 
   } catch (error: any) {
-    // 🔥 AJUSTE: Mensaje más específico para un entorno Multi-tenant
     if (error.code === 'P2002') return res.status(400).json({ error: 'Ya existe un cliente con este DNI o CUIT en tu cartera.' });
     res.status(500).json({ error: 'Hubo un error al guardar el asegurado.' });
   }
 });
 
-// RUTA: PUT /api/asegurados/:id
-// ⛔ (Bloqueado si no pagó la suscripción)
-router.put('/:id', async (req, res): Promise<any> => {
+router.put('/:id', verificarRol(['DUENO', 'PRODUCTOR']), async (req, res): Promise<any> => {
   try {
-    const { id } = req.params;
+    // 🔥 CORRECCIÓN TYPESCRIPT
+    const id = req.params.id as string;
     const data = req.body;
     const productorId = await obtenerProductorId(req.userId!);
 
@@ -200,17 +193,15 @@ router.put('/:id', async (req, res): Promise<any> => {
 
     res.json(aseguradoActualizado);
   } catch (error: any) {
-    // 🔥 AJUSTE: Si editan el cliente y ponen un DNI que ya tienen, Prisma salta.
     if (error.code === 'P2002') return res.status(400).json({ error: 'No podés guardar estos cambios. Ya tenés otro cliente con este DNI en tu cartera.' });
     res.status(500).json({ error: 'Hubo un error al actualizar el asegurado.' });
   }
 });
 
-// RUTA: DELETE /api/asegurados/:id
-// ⛔ (Bloqueado si no pagó la suscripción)
-router.delete('/:id', async (req, res): Promise<any> => {
+router.delete('/:id', verificarRol(['DUENO', 'PRODUCTOR']), async (req, res): Promise<any> => {
   try {
-    const { id } = req.params;
+    // 🔥 CORRECCIÓN TYPESCRIPT
+    const id = req.params.id as string;
     const productorId = await obtenerProductorId(req.userId!);
 
     const aseguradoABorrar = await prisma.asegurado.findFirst({ 
@@ -237,9 +228,7 @@ router.delete('/:id', async (req, res): Promise<any> => {
   }
 });
 
-// RUTA: POST /api/asegurados/importar
-// ⛔ (Bloqueado si no pagó la suscripción)
-router.post('/importar', async (req, res): Promise<any> => {
+router.post('/importar', verificarRol(['DUENO', 'PRODUCTOR']), async (req, res): Promise<any> => {
   try {
     const productorId = await obtenerProductorId(req.userId!);
 
@@ -302,7 +291,6 @@ router.post('/importar', async (req, res): Promise<any> => {
       return res.status(400).json({ error: 'No se encontraron registros válidos.' });
     }
 
-    // 🔥 ACÁ MOVIMOS LA VALIDACIÓN: Ahora sabe exactamente cuántos querés subir
     const validacion = await verificarLimiteAsegurados(req.userId!, datosParaInsertar.length);
     if (validacion.superado) {
       return res.status(403).json({ error: validacion.mensaje, codigo: "LIMITE_EXCEDIDO" });
@@ -310,8 +298,6 @@ router.post('/importar', async (req, res): Promise<any> => {
 
     const resultado = await (prisma as any).asegurado.createMany({
       data: datosParaInsertar,
-      // 🔥 MAGIA DE PRISMA: Como la regla ahora es @@unique([productorId, dni]), 
-      // skipDuplicates omitirá SOLO los DNI que ya estén en la cuenta de ESTE productorId.
       skipDuplicates: true
     });
 

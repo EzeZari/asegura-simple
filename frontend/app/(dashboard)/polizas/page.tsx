@@ -16,7 +16,8 @@ import PageHeader from "@/components/ui/PageHeader";
 import PolizaTableRow from "@/components/polizas/PolizaTableRow";
 import SelectOrdenamiento from "@/components/ui/SelectOrdenamiento";
 import { apiFetch } from "@/services/api";
-import { useAuthStore } from "@/store/authStore"; // 🔥 Importamos la memoria
+import { useAuthStore } from "@/store/authStore"; 
+import { PERMISOS, tienePermiso } from "@/utils/roles"; // 🔥 IMPORTAMOS NUESTRO DICCIONARIO
 
 const ExportarExcelModal = dynamic(() => import("@/components/ui/ExportarExcelModal"), { ssr: false });
 const ImportarPolizasModal = dynamic(() => import("@/components/polizas/ImportarPolizasModal"), { ssr: false });
@@ -29,9 +30,10 @@ const OPCIONES_ORDEN = [
 ];
 
 export default function PolizasPage() {
-  // 🔥 LEEMOS EL ROL
   const { user } = useAuthStore();
-  const esSoloLectura = user?.role === "VIEWER";
+  
+  // 🔥 EVALUAMOS LOS PERMISOS CON NUESTRA HERRAMIENTA SENIOR
+  const puedeModificar = tienePermiso(user, PERMISOS.PUEDE_MODIFICAR_DATOS);
 
   const router = useRouter();
   const [searchTerm, setSearchTerm] = useState("");
@@ -201,9 +203,10 @@ export default function PolizasPage() {
     { label: <SortableHeader label="Estado" sortKey="estado" currentSort={sortConfig} requestSort={(key) => requestSort(key as any)} /> },
   ];
 
-  const columnas = esSoloLectura 
-    ? columnasBase 
-    : [...columnasBase, { label: "Acciones", align: "right" as const }];
+  // Si tiene permisos sumamos la columna Acciones, si no, queda limpia
+  const columnas = puedeModificar 
+    ? [...columnasBase, { label: "Acciones", align: "right" as const }]
+    : columnasBase;
 
   return (
     <div className="flex flex-col p-4 lg:p-8 w-full gap-5 lg:gap-8 bg-white min-h-screen overflow-x-hidden">
@@ -211,8 +214,8 @@ export default function PolizasPage() {
       <PageHeader 
         titulo="Pólizas" 
         descripcion="Gestioná las coberturas activas de tus clientes." 
-        textoBoton={esSoloLectura ? "" : "Nueva Póliza"} // 🔥 Ninja atajo
-        onNuevo={esSoloLectura ? () => {} : () => { setPolizaAEditar(null); setIsModalOpen(true); }} // 🔥 Ninja atajo
+        textoBoton={puedeModificar ? "Nueva Póliza" : ""} // 🔥 OCULTO PARA LECTOR
+        onNuevo={puedeModificar ? () => { setPolizaAEditar(null); setIsModalOpen(true); } : undefined} 
       />
       
       <PolizasFiltros searchTerm={searchTerm} setSearchTerm={setSearchTerm} filtroRama={filtroRama} setFiltroRama={setFiltroRama} filtroEstado={filtroEstado} setFiltroEstado={setFiltroEstado} />
@@ -224,7 +227,7 @@ export default function PolizasPage() {
         <div className="flex flex-col sm:flex-row items-center gap-3 w-full xl:w-auto">
           
           {/* 🔥 IMPORTAR OCULTO PARA LECTOR */}
-          {!esSoloLectura && (
+          {puedeModificar && (
             <button onClick={() => setIsImportModalOpen(true)} className="flex justify-center items-center gap-2 w-full sm:w-auto px-4 py-2.5 lg:py-2 bg-gray-50 hover:bg-gray-100 border border-gray-200 text-gray-700 rounded-xl text-sm font-bold transition-all active:scale-95 shadow-sm">
               <UploadCloud size={16} /> Importar Excel
             </button>
@@ -244,17 +247,18 @@ export default function PolizasPage() {
             onClickDetalle={(id) => router.push(`/polizas/${id}`)} 
             menuAbiertoId={menuAbiertoId} 
             onToggleMenu={setMenuAbiertoId} 
-            // 🔥 ACCIONES NINJA PARA LECTOR
-            onEdit={esSoloLectura ? () => {} : (p) => { setPolizaAEditar(p); setIsModalOpen(true); }} 
-            onAvisarVencimiento={esSoloLectura ? () => {} : enviarAvisoVencimiento} 
-            onCambiarEstado={esSoloLectura ? () => {} : cambiarEstadoRapido} 
-            onEliminar={esSoloLectura ? () => {} : (p) => { setPolizaAEliminar(p); setIsConfirmOpen(true); }} 
+            // 🔥 LE PASAMOS LA VARIABLE AL COMPONENTE HIJO
+            puedeModificar={puedeModificar}
+            onEdit={puedeModificar ? (p) => { setPolizaAEditar(p); setIsModalOpen(true); } : undefined} 
+            onAvisarVencimiento={puedeModificar ? enviarAvisoVencimiento : undefined} 
+            onCambiarEstado={puedeModificar ? cambiarEstadoRapido : undefined} 
+            onEliminar={puedeModificar ? (p) => { setPolizaAEliminar(p); setIsConfirmOpen(true); } : undefined} 
           />
         ))}
       </Table>
 
       {/* 🔥 MODALES BLOQUEADOS PARA EL LECTOR */}
-      {!esSoloLectura && (
+      {puedeModificar && (
         <>
           <NuevaPolizaModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSuccess={() => { setIsModalOpen(false); fetchPolizas(); setShowToast(true); setMensajeToast("Póliza guardada con éxito"); }} polizaAEditar={polizaAEditar} />
           <ImportarPolizasModal isOpen={isImportModalOpen} onClose={() => setIsImportModalOpen(false)} onSuccess={(mensaje) => { setIsImportModalOpen(false); fetchPolizas(); setMensajeToast(mensaje); setShowToast(true); }} />

@@ -8,11 +8,23 @@ interface Props {
   siniestro: any;
   menuAbiertoId: number | null;
   onToggleMenu: (id: number | null) => void;
-  onEdit: (siniestro: any) => void;
-  onEliminar: (siniestro: any) => void;
+  
+  // 🔥 RECIBIMOS LA ORDEN DESDE EL PADRE
+  puedeModificar: boolean;
+
+  // 🔥 LAS HACEMOS OPCIONALES
+  onEdit?: (siniestro: any) => void;
+  onEliminar?: (siniestro: any) => void;
 }
 
-export default function SiniestroTableRow({ siniestro, menuAbiertoId, onToggleMenu, onEdit, onEliminar }: Props) {
+export default function SiniestroTableRow({ 
+  siniestro, 
+  menuAbiertoId, 
+  onToggleMenu, 
+  puedeModificar, // La extraemos acá
+  onEdit, 
+  onEliminar 
+}: Props) {
   const router = useRouter();
 
   const getStatusBadge = (estado: string) => {
@@ -62,14 +74,18 @@ export default function SiniestroTableRow({ siniestro, menuAbiertoId, onToggleMe
       <td className="px-4 lg:px-6 py-4 whitespace-nowrap">
         {getStatusBadge(siniestro.estadoSiniestro)}
       </td>
-      <td className="px-4 lg:px-6 py-4 text-right relative whitespace-nowrap">
-        <ActionMenu isOpen={menuAbiertoId === siniestro.id} onToggle={() => onToggleMenu(menuAbiertoId === siniestro.id ? null : siniestro.id)}>
-          <ActionMenuItem icon={Eye} label="Ver Expediente" onClick={() => router.push(`/siniestros/${siniestro.id}`)} />
-          <ActionMenuItem icon={Edit} label="Editar Datos" onClick={() => onEdit(siniestro)} />
-          <ActionMenuDivider />
-          <ActionMenuItem icon={Trash2} label="Eliminar" color="red" onClick={() => onEliminar(siniestro)} />
-        </ActionMenu>
-      </td>
+      
+      {/* 🔥 EL ESCUDO: Todo este 'td' desaparece si el usuario es Solo Lectura */}
+      {puedeModificar && (
+        <td className="px-4 lg:px-6 py-4 text-right relative whitespace-nowrap">
+          <ActionMenu isOpen={menuAbiertoId === siniestro.id} onToggle={() => onToggleMenu(menuAbiertoId === siniestro.id ? null : siniestro.id)}>
+            <ActionMenuItem icon={Eye} label="Ver Expediente" onClick={() => router.push(`/siniestros/${siniestro.id}`)} />
+            <ActionMenuItem icon={Edit} label="Editar Datos" onClick={() => onEdit?.(siniestro)} />
+            <ActionMenuDivider />
+            <ActionMenuItem icon={Trash2} label="Eliminar" color="red" onClick={() => onEliminar?.(siniestro)} />
+          </ActionMenu>
+        </td>
+      )}
     </tr>
   );
 }

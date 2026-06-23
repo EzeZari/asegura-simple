@@ -10,28 +10,30 @@ import NotificacionesSettings from "@/components/configuracion/NotificacionesSet
 import EquipoSettings from "@/components/configuracion/EquipoSettings";
 import SeguridadSettings from "@/components/configuracion/SeguridadSettings";
 import SuscripcionSettings from "@/components/configuracion/SuscripcionSettings"; 
-import { useAuthStore } from "@/store/authStore"; // 🔥 Importamos la memoria de sesión
+import { useAuthStore } from "@/store/authStore"; 
+import { PERMISOS, tienePermiso } from "@/utils/roles"; // 🔥 IMPORTAMOS EL DICCIONARIO
 
 export default function ConfiguracionPage() {
-  // 🔥 LEEMOS EL ROL DEL USUARIO
   const { user } = useAuthStore();
-  const esSoloLectura = user?.role === "VIEWER";
+  
+  // 🔥 EVALUAMOS PERMISOS (Solo Dueño o Productor pueden ver opciones sensibles)
+  const esAdmin = tienePermiso(user, PERMISOS.PUEDE_MODIFICAR_DATOS);
+  const esDueno = tienePermiso(user, PERMISOS.PUEDE_EDITAR_PLAN); // El plan y el equipo son cosas exclusivas
 
   const [activeTab, setActiveTab] = useState("mi-perfil"); 
 
-  // 🔥 Agregamos una propiedad "adminOnly" a las pestañas sensibles
+  // 🔥 Filtramos las pestañas basándonos en roles y permisos
   const todasLasPestanas = [
-    { id: "mi-perfil", label: "Mi Perfil", icon: UserCircle }, 
-    { id: "perfil", label: "Perfil de Agencia", icon: Building2, adminOnly: true },
-    { id: "plantillas", label: "Plantillas", icon: MessageSquare, adminOnly: true },
-    { id: "notificaciones", label: "Notificaciones", icon: Bell, adminOnly: true },
-    { id: "equipo", label: "Equipo", icon: Users, adminOnly: true },
-    { id: "suscripcion", label: "Suscripción", icon: CreditCard, adminOnly: true },
-    { id: "seguridad", label: "Seguridad y Datos", icon: Shield }, // La dejamos para que puedan cambiar su contraseña
+    { id: "mi-perfil", label: "Mi Perfil", icon: UserCircle, show: true }, // Todos
+    { id: "perfil", label: "Perfil de Agencia", icon: Building2, show: esAdmin }, 
+    { id: "plantillas", label: "Plantillas", icon: MessageSquare, show: esAdmin },
+    { id: "notificaciones", label: "Notificaciones", icon: Bell, show: esAdmin },
+    { id: "equipo", label: "Equipo", icon: Users, show: esDueno }, // Solo dueño administra a la gente
+    { id: "suscripcion", label: "Suscripción", icon: CreditCard, show: esDueno }, // Solo dueño paga
+    { id: "seguridad", label: "Seguridad y Datos", icon: Shield, show: true }, // Todos pueden cambiar su contraseña
   ];
 
-  // 🔥 Filtramos mágicamente las pestañas: si es lector, volamos las que son adminOnly
-  const tabs = todasLasPestanas.filter(tab => !esSoloLectura || !tab.adminOnly);
+  const tabs = todasLasPestanas.filter(tab => tab.show);
 
   return (
     <div className="flex flex-col p-4 lg:p-8 w-full gap-4 lg:gap-6 bg-white min-h-screen overflow-x-hidden">
@@ -60,12 +62,11 @@ export default function ConfiguracionPage() {
 
       <div className="mt-6 w-full max-w-7xl">
         {activeTab === "mi-perfil" && <MiPerfilSettings />}
-        {/* 🔥 Bloqueo de renderizado por seguridad */}
-        {!esSoloLectura && activeTab === "perfil" && <PerfilSettings />}
-        {!esSoloLectura && activeTab === "plantillas" && <PlantillasSettings />}
-        {!esSoloLectura && activeTab === "notificaciones" && <NotificacionesSettings />}
-        {!esSoloLectura && activeTab === "equipo" && <EquipoSettings />}
-        {!esSoloLectura && activeTab === "suscripcion" && <SuscripcionSettings />} 
+        {esAdmin && activeTab === "perfil" && <PerfilSettings />}
+        {esAdmin && activeTab === "plantillas" && <PlantillasSettings />}
+        {esAdmin && activeTab === "notificaciones" && <NotificacionesSettings />}
+        {esDueno && activeTab === "equipo" && <EquipoSettings />}
+        {esDueno && activeTab === "suscripcion" && <SuscripcionSettings />} 
         {activeTab === "seguridad" && <SeguridadSettings />} 
       </div>
     </div>

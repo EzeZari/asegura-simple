@@ -1,22 +1,25 @@
 import { Router } from 'express';
-import * as polizasController from '../controllers/polizas.controller';
-import { upload } from '../middlewares/upload.middleware';
+import { 
+  obtenerTodas, obtenerPorId, crearPoliza, 
+  actualizarPoliza, eliminarPoliza, avisarVencimiento, 
+  subirPdf, importarPolizas 
+} from '../controllers/polizas.controller';
 import { verificarToken } from '../middlewares/auth.middleware';
-import { verificarSuscripcionActiva } from '../middlewares/suscripcion.middleware'; // 🔥 El nuevo middleware
+import { verificarRol } from '../middlewares/role.middleware';
+import { upload } from '../middlewares/upload.middleware';
 
 const router = Router();
 
-// 🔥 Aplicamos los patovicas a TODO el archivo de una sola vez
-router.use(verificarToken);
-router.use(verificarSuscripcionActiva); // 🛡️ Deja leer (GET), pero bloquea crear/editar (POST/PUT/DELETE) si no pagó
+// 🟢 LECTURA: Todos los autenticados (Dueño, Admin Secundario y Empleado)
+router.get('/', verificarToken, obtenerTodas);
+router.get('/:id', verificarToken, obtenerPorId);
 
-router.get('/', polizasController.obtenerTodas);
-router.get('/:id', polizasController.obtenerPorId);
-router.post('/', polizasController.crearPoliza);
-router.put('/:id', polizasController.actualizarPoliza);
-router.delete('/:id', polizasController.eliminarPoliza);
-router.post('/importar', polizasController.importarPolizas);
-router.post('/:id/avisar-vencimiento', polizasController.avisarVencimiento);
-router.post('/:id/subir-pdf', upload.single('pdf'), polizasController.subirPdf);
+// 🔴 ESCRITURA/MODIFICACIÓN: Solo Dueño y Admin Secundario ('PRODUCTOR')
+router.post('/', verificarToken, verificarRol(['DUENO', 'PRODUCTOR']), crearPoliza);
+router.put('/:id', verificarToken, verificarRol(['DUENO', 'PRODUCTOR']), actualizarPoliza);
+router.delete('/:id', verificarToken, verificarRol(['DUENO', 'PRODUCTOR']), eliminarPoliza);
+router.post('/:id/aviso', verificarToken, verificarRol(['DUENO', 'PRODUCTOR']), avisarVencimiento);
+router.post('/:id/subir-pdf', verificarToken, verificarRol(['DUENO', 'PRODUCTOR']), upload.single('pdf'), subirPdf);
+router.post('/importar', verificarToken, verificarRol(['DUENO', 'PRODUCTOR']), importarPolizas);
 
 export default router;

@@ -9,11 +9,17 @@ import {
 import NuevaPolizaModal from "@/components/polizas/NuevaPolizaModal";
 import Toast from "@/components/ui/Toast";
 import { apiFetch } from "@/services/api";
+import { useAuthStore } from "@/store/authStore"; 
+import { PERMISOS, tienePermiso } from "@/utils/roles"; // 🔥 IMPORTAMOS NUESTRO DICCIONARIO
 
 export default function PolizaDetallePage() {
   const { id } = useParams();
   const router = useRouter();
   
+  // 🔥 EVALUAMOS LOS PERMISOS CON NUESTRA HERRAMIENTA SENIOR
+  const { user } = useAuthStore();
+  const puedeModificar = tienePermiso(user, PERMISOS.PUEDE_MODIFICAR_DATOS);
+
   const [poliza, setPoliza] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -50,6 +56,8 @@ export default function PolizaDetallePage() {
   };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!puedeModificar) return; // 🔥 Bloqueo de seguridad ninja
+    
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -126,12 +134,15 @@ export default function PolizaDetallePage() {
             </div>
           </div>
           
-          <button 
-            onClick={() => setIsModalOpen(true)}
-            className="w-full md:w-auto flex justify-center items-center gap-2 bg-gray-900 hover:bg-gray-800 text-white px-6 py-3 rounded-xl font-bold transition-all shadow-md active:scale-95 text-sm md:text-base"
-          >
-            <Edit size={18} /> Editar Póliza
-          </button>
+          {/* 🔥 EL BOTÓN DE EDITAR DESAPARECE SI ES VENDEDOR */}
+          {puedeModificar && (
+            <button 
+              onClick={() => setIsModalOpen(true)}
+              className="w-full md:w-auto flex justify-center items-center gap-2 bg-gray-900 hover:bg-gray-800 text-white px-6 py-3 rounded-xl font-bold transition-all shadow-md active:scale-95 text-sm md:text-base"
+            >
+              <Edit size={18} /> Editar Póliza
+            </button>
+          )}
         </div>
       </div>
 
@@ -195,7 +206,7 @@ export default function PolizaDetallePage() {
 
             {poliza.pdfUrl ? (
               <div className="flex flex-col gap-3">
-                {/* 🔥 ACÁ ESTÁ LA MAGIA QUE ARREGLA EL LINK */}
+                {/* Botón para ver el PDF (Esto SI lo puede hacer el Vendedor) */}
                 <a 
                   href={poliza.pdfUrl.startsWith('http') ? poliza.pdfUrl : `${process.env.NEXT_PUBLIC_API_URL}/${poliza.pdfUrl}`}
                   target="_blank"
@@ -204,29 +215,41 @@ export default function PolizaDetallePage() {
                 >
                   <FileText size={20} /> Ver Póliza Digital
                 </a>
-                <button 
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={isUploading}
-                  className="text-[10px] md:text-xs text-gray-400 hover:text-gray-700 text-center font-medium transition-colors"
-                >
-                  {isUploading ? "Subiendo..." : "¿Querés reemplazar el archivo?"}
-                </button>
+                
+                {/* Botón de reemplazar (Solo Dueños y Admins) */}
+                {puedeModificar && (
+                  <button 
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={isUploading}
+                    className="text-[10px] md:text-xs text-gray-400 hover:text-gray-700 text-center font-medium transition-colors"
+                  >
+                    {isUploading ? "Subiendo..." : "¿Querés reemplazar el archivo?"}
+                  </button>
+                )}
               </div>
             ) : (
               <div className="flex flex-col gap-3">
-                <button 
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={isUploading}
-                  className="flex flex-col justify-center items-center gap-2 border-2 border-dashed border-gray-200 hover:border-green-400 hover:bg-green-50 text-gray-500 hover:text-green-700 py-6 md:py-8 rounded-xl font-medium transition-all text-sm md:text-base"
-                >
-                  {isUploading ? (
-                    <Loader2 size={24} className="animate-spin text-green-600 mb-1" />
-                  ) : (
-                    <UploadCloud size={24} className="mb-1" />
-                  )}
-                  {isUploading ? "Procesando archivo..." : "Cargar copia en PDF"}
-                </button>
-                <p className="text-[10px] text-center text-gray-400 uppercase tracking-wider">Solo formato PDF</p>
+                {/* Botón grande de subir PDF (Solo Dueños y Admins) */}
+                {puedeModificar ? (
+                  <button 
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={isUploading}
+                    className="flex flex-col justify-center items-center gap-2 border-2 border-dashed border-gray-200 hover:border-green-400 hover:bg-green-50 text-gray-500 hover:text-green-700 py-6 md:py-8 rounded-xl font-medium transition-all text-sm md:text-base"
+                  >
+                    {isUploading ? (
+                      <Loader2 size={24} className="animate-spin text-green-600 mb-1" />
+                    ) : (
+                      <UploadCloud size={24} className="mb-1" />
+                    )}
+                    {isUploading ? "Procesando archivo..." : "Cargar copia en PDF"}
+                  </button>
+                ) : (
+                   <div className="flex flex-col justify-center items-center gap-2 border-2 border-dashed border-gray-100 bg-gray-50 text-gray-400 py-6 md:py-8 rounded-xl text-sm md:text-base italic">
+                     <FileText size={24} className="mb-1 opacity-50" />
+                     No hay póliza digital cargada.
+                   </div>
+                )}
+                {puedeModificar && <p className="text-[10px] text-center text-gray-400 uppercase tracking-wider">Solo formato PDF</p>}
               </div>
             )}
           </div>
@@ -264,12 +287,15 @@ export default function PolizaDetallePage() {
         </div>
       </div>
 
-      <NuevaPolizaModal 
-        isOpen={isModalOpen} 
-        onClose={() => setIsModalOpen(false)} 
-        onSuccess={handleEditSuccess} 
-        polizaAEditar={poliza} 
-      />
+      {/* 🔥 MODAL BLOQUEADO PARA LECTORES */}
+      {puedeModificar && (
+        <NuevaPolizaModal 
+          isOpen={isModalOpen} 
+          onClose={() => setIsModalOpen(false)} 
+          onSuccess={handleEditSuccess} 
+          polizaAEditar={poliza} 
+        />
+      )}
 
       <Toast message={mensajeToast} isVisible={showToast} onClose={() => setShowToast(false)} />
     </div>

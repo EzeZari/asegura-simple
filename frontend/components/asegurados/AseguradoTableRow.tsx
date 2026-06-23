@@ -1,3 +1,5 @@
+"use client";
+
 import { Shield, Building2, User, Trash2, Edit } from "lucide-react";
 import { ActionMenu, ActionMenuItem, ActionMenuDivider } from "@/components/ui/ActionMenu";
 
@@ -6,15 +8,28 @@ interface Props {
   onClickPolizas: (cliente: any) => void;
   menuAbiertoId: number | null;
   onToggleMenu: (id: number | null) => void;
-  onEdit: (cliente: any) => void;
-  onToggleEstado: (cliente: any) => void;
-  onEliminar: (cliente: any) => void;
+  
+  // 🔥 NUEVA PROP PARA EL ESCUDO VISUAL
+  puedeModificar: boolean; 
+  
+  // 🔥 AHORA SON OPCIONALES (porque si es Vendedor, el padre no le pasa nada)
+  onEdit?: (cliente: any) => void;
+  onToggleEstado?: (cliente: any) => void;
+  onEliminar?: (cliente: any) => void;
 }
 
-export default function AseguradoTableRow({ cliente, onClickPolizas, menuAbiertoId, onToggleMenu, onEdit, onToggleEstado, onEliminar }: Props) {
+export default function AseguradoTableRow({ 
+  cliente, 
+  onClickPolizas, 
+  menuAbiertoId, 
+  onToggleMenu, 
+  puedeModificar, // Lo recibimos
+  onEdit, 
+  onToggleEstado, 
+  onEliminar 
+}: Props) {
   return (
     <tr className="hover:bg-gray-50/50 transition-colors group">
-      {/* 🔥 AJUSTE: whitespace-nowrap en todas las celdas */}
       <td className="px-4 lg:px-6 py-4 font-medium text-gray-900 whitespace-nowrap">{cliente.nombre} {cliente.apellido}</td>
       <td className="px-4 lg:px-6 py-4 text-gray-600 font-mono text-xs whitespace-nowrap">{cliente.dni}</td>
       <td className="px-4 lg:px-6 py-4 whitespace-nowrap">
@@ -43,22 +58,26 @@ export default function AseguradoTableRow({ cliente, onClickPolizas, menuAbierto
           {cliente.activo ? "Activo" : "Inactivo"}
         </span>
       </td>
-      <td className="px-4 lg:px-6 py-4 text-right relative whitespace-nowrap">
-        <ActionMenu isOpen={menuAbiertoId === cliente.id} onToggle={() => onToggleMenu(menuAbiertoId === cliente.id ? null : cliente.id)}>
-          <ActionMenuItem icon={Edit} label="Editar" onClick={() => onEdit(cliente)} />
-          <ActionMenuItem
-            icon={cliente.activo ? Trash2 : Shield}
-            label={cliente.activo ? "Desactivar" : "Activar"}
-            color={cliente.activo ? "amber" : "green"}
-            onClick={() => onToggleEstado(cliente)}
-          />
-          <ActionMenuDivider />
-          <ActionMenuItem
-            icon={Trash2} label="Eliminar" color="red"
-            onClick={() => onEliminar(cliente)}
-          />
-        </ActionMenu>
-      </td>
+
+      {/* 🔥 ACÁ APLICAMOS LA MAGIA: Solo renderizamos el <td> de opciones si tiene permisos */}
+      {puedeModificar && (
+        <td className="px-4 lg:px-6 py-4 text-right relative whitespace-nowrap">
+          <ActionMenu isOpen={menuAbiertoId === cliente.id} onToggle={() => onToggleMenu(menuAbiertoId === cliente.id ? null : cliente.id)}>
+            <ActionMenuItem icon={Edit} label="Editar" onClick={() => onEdit?.(cliente)} />
+            <ActionMenuItem
+              icon={cliente.activo ? Trash2 : Shield}
+              label={cliente.activo ? "Desactivar" : "Activar"}
+              color={cliente.activo ? "amber" : "green"}
+              onClick={() => onToggleEstado?.(cliente)}
+            />
+            <ActionMenuDivider />
+            <ActionMenuItem
+              icon={Trash2} label="Eliminar" color="red"
+              onClick={() => onEliminar?.(cliente)}
+            />
+          </ActionMenu>
+        </td>
+      )}
     </tr>
   );
 }

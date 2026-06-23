@@ -5,7 +5,9 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import ConfirmModal from "../ui/ConfirmModal"; 
 import NuevaPolizaModal from "../polizas/NuevaPolizaModal";
-import { apiFetch } from "@/services/api"; // 🔥 IMPORTAMOS EL APIFETCH
+import { apiFetch } from "@/services/api"; 
+import { useAuthStore } from "@/store/authStore"; 
+import { PERMISOS, tienePermiso } from "@/utils/roles"; // 🔥 IMPORTAMOS EL DICCIONARIO
 
 interface Props {
   poliza: any;
@@ -14,6 +16,11 @@ interface Props {
 
 export default function AlertaCard({ poliza, nivel }: Props) {
   const router = useRouter();
+  
+  // 🔥 EVALUAMOS LOS PERMISOS ACÁ ADENTRO
+  const { user } = useAuthStore();
+  const puedeModificar = tienePermiso(user, PERMISOS.PUEDE_MODIFICAR_DATOS);
+
   const [isBajaLoading, setIsBajaLoading] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [showRenovarModal, setShowRenovarModal] = useState(false);
@@ -39,9 +46,10 @@ export default function AlertaCard({ poliza, nivel }: Props) {
   };
 
   const ejecutarBaja = async () => {
+    if (!puedeModificar) return; // 🔥 Protección Ninja
+
     setIsBajaLoading(true);
     try {
-      // 🔥 REEMPLAZO 1: Anular Póliza usando apiFetch
       await apiFetch(`/api/polizas/${poliza.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -62,12 +70,12 @@ export default function AlertaCard({ poliza, nivel }: Props) {
     return hoy === ultimoAviso;
   };
 
+  // 🔥 ESTA FUNCIÓN QUEDA LIBRE PORQUE EL BACKEND YA LA PERMITE PARA TODOS
   const enviarAvisoEmail = async () => {
     if (!poliza.asegurado?.email || yaAvisadoHoy()) return;
     
     setEstadoEmail("loading");
     try {
-      // 🔥 REEMPLAZO 2: Enviar email usando apiFetch
       const res = await apiFetch(`/api/polizas/${poliza.id}/avisar-vencimiento`, { 
         method: "POST" 
       });
@@ -148,22 +156,26 @@ export default function AlertaCard({ poliza, nivel }: Props) {
         </div>
 
         <div className="mt-auto ml-2 flex gap-2 pt-4 border-t border-gray-50">
-          {nivel === "vencida" ? (
-            <button 
-              onClick={() => setShowConfirmModal(true)}
-              className="flex-1 flex justify-center items-center gap-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 py-2 rounded-xl text-sm font-bold transition-colors"
-              title="Anular póliza"
-            >
-              <Trash2 size={16} /> <span className="hidden sm:inline">Anular</span>
-            </button>
-          ) : (
-            <button 
-              onClick={() => setShowRenovarModal(true)}
-              className="flex-1 flex justify-center items-center gap-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 py-2 rounded-xl text-sm font-bold transition-colors"
-              title="Renovar póliza"
-            >
-              <RefreshCcw size={16} /> <span className="hidden sm:inline">Renovar</span>
-            </button>
+          
+          {/* 🔥 LOS BOTONES DE ANULAR/RENOVAR DESAPARECEN PARA EL VENDEDOR */}
+          {puedeModificar && (
+            nivel === "vencida" ? (
+              <button 
+                onClick={() => setShowConfirmModal(true)}
+                className="flex-1 flex justify-center items-center gap-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 py-2 rounded-xl text-sm font-bold transition-colors"
+                title="Anular póliza"
+              >
+                <Trash2 size={16} /> <span className="hidden sm:inline">Anular</span>
+              </button>
+            ) : (
+              <button 
+                onClick={() => setShowRenovarModal(true)}
+                className="flex-1 flex justify-center items-center gap-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 py-2 rounded-xl text-sm font-bold transition-colors"
+                title="Renovar póliza"
+              >
+                <RefreshCcw size={16} /> <span className="hidden sm:inline">Renovar</span>
+              </button>
+            )
           )}
 
           <a 
@@ -197,23 +209,28 @@ export default function AlertaCard({ poliza, nivel }: Props) {
         </div>
       </div>
 
-      <ConfirmModal 
-        isOpen={showConfirmModal}
-        onClose={() => setShowConfirmModal(false)}
-        onConfirm={ejecutarBaja}
-        isLoading={isBajaLoading}
-        title="Anular Póliza"
-        message={`¿Estás seguro que querés anular la póliza de ${poliza.asegurado?.nombre}? Esta acción la sacará de tus alertas activas.`}
-        confirmText="Anular"
-      />
+      {/* 🔥 LOS MODALES NI SIQUIERA SE RENDERIZAN SI ES LECTOR */}
+      {puedeModificar && (
+        <>
+          <ConfirmModal 
+            isOpen={showConfirmModal}
+            onClose={() => setShowConfirmModal(false)}
+            onConfirm={ejecutarBaja}
+            isLoading={isBajaLoading}
+            title="Anular Póliza"
+            message={`¿Estás seguro que querés anular la póliza de ${poliza.asegurado?.nombre}? Esta acción la sacará de tus alertas activas.`}
+            confirmText="Anular"
+          />
 
-      <NuevaPolizaModal 
-        isOpen={showRenovarModal}
-        onClose={() => setShowRenovarModal(false)}
-        onSuccess={() => window.location.reload()}
-        polizaAEditar={poliza}
-        isRenovacion={true}
-      />
+          <NuevaPolizaModal 
+            isOpen={showRenovarModal}
+            onClose={() => setShowRenovarModal(false)}
+            onSuccess={() => window.location.reload()}
+            polizaAEditar={poliza}
+            isRenovacion={true}
+          />
+        </>
+      )}
     </>
   );
 }
