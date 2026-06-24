@@ -17,6 +17,7 @@ import agenciaRoutes from './routes/agencia.routes';
 import siniestrosRoutes from './routes/siniestros.routes';
 import mpRoutes from './routes/mp.routes'; 
 import equipoRoutes from './routes/equipo.routes'; // 🔥 1. IMPORTAMOS LAS RUTAS DE EQUIPO
+import adminRoutes from './routes/admin.routes';
 
 dotenv.config();
 
@@ -65,7 +66,7 @@ app.use('/api/agencia', agenciaRoutes);
 app.use('/api/siniestros', siniestrosRoutes);
 app.use('/api/pagos', mpRoutes); 
 app.use('/api/equipo', equipoRoutes); // 🔥 2. LE DECIMOS A EXPRESS QUE ESCUCHE ESTA RUTA
-
+app.use('/api/admin', adminRoutes);
 
 const PORT = process.env.PORT || 3001;
 
