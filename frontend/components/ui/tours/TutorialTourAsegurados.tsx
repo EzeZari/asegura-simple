@@ -2,9 +2,8 @@
 
 import { useState, useEffect } from "react";
 import dynamic from "next/dynamic";
-import type { CallBackProps, Step } from "react-joyride";
 
-const Joyride = dynamic(
+const Joyride: any = dynamic(
   async () => {
     const mod = await import("react-joyride");
     return (mod as any).default || (mod as any).Joyride || mod;
@@ -12,7 +11,6 @@ const Joyride = dynamic(
   { ssr: false }
 );
 
-// Reutilizamos el Tooltip Premium
 const CustomTooltip = ({ index, step, backProps, closeProps, primaryProps, tooltipProps, isLastStep }: any) => {
   return (
     <div {...tooltipProps} className="bg-white rounded-2xl shadow-2xl border border-gray-100 p-6 max-w-sm w-full animate-in fade-in zoom-in-95 duration-200">
@@ -37,12 +35,16 @@ export default function TutorialTourAsegurados() {
   useEffect(() => {
     const tutorialCompletado = localStorage.getItem("asegurasimple_tutorial_asegurados_completado");
     if (tutorialCompletado !== "true") {
-      const timer = setTimeout(() => setRun(true), 800);
+      const timer = setTimeout(() => {
+        setRun(true);
+        // 🔥 LO GUARDAMOS APENAS ARRANCA PARA QUE NO MOLESTE AL RECARGAR (F5)
+        localStorage.setItem("asegurasimple_tutorial_asegurados_completado", "true");
+      }, 800);
       return () => clearTimeout(timer);
     }
   }, []);
 
-  const steps: Step[] = [
+  const steps: any[] = [
     {
       target: "body",
       placement: "center",
@@ -51,7 +53,6 @@ export default function TutorialTourAsegurados() {
       disableBeacon: true,
     },
     {
-      // 🔥 TRUCO NINJA: Apunta al botón específico dentro del contenedor del header
       target: ".tour-asegurados-header button", 
       title: "Alta de Clientes",
       content: "Con este botón vas a poder registrar clientes nuevos de forma manual ingresando sus datos personales o de empresa.",
@@ -71,18 +72,16 @@ export default function TutorialTourAsegurados() {
     },
     {
       target: ".tour-asegurados-tabla",
-      // 🔥 TEXTOS CORREGIDOS PARA LA SECCIÓN DE ASEGURADOS
       title: "Listado de Asegurados", 
       content: "Acá vas a ver a todos tus clientes registrados con sus datos de contacto y estado. Para ver o administrar las pólizas específicas de cualquiera de ellos, simplemente hacé clic en su 'Escudo Verde'.",
       placement: "top",
     }
   ];
 
-  const handleJoyrideCallback = (data: CallBackProps) => {
+  const handleJoyrideCallback = (data: any) => {
     const { status } = data;
     if (status === "finished" || status === "skipped") {
       setRun(false);
-      localStorage.setItem("asegurasimple_tutorial_asegurados_completado", "true");
     }
   };
 

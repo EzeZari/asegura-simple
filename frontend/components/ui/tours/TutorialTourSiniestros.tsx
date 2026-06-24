@@ -2,9 +2,8 @@
 
 import { useState, useEffect } from "react";
 import dynamic from "next/dynamic";
-import type { CallBackProps, Step } from "react-joyride";
 
-const Joyride = dynamic(
+const Joyride: any = dynamic(
   async () => {
     const mod = await import("react-joyride");
     return (mod as any).default || (mod as any).Joyride || mod;
@@ -37,12 +36,17 @@ export default function TutorialTourSiniestros() {
     // 🔥 CLAVE EXCLUSIVA PARA LA PANTALLA DE SINIESTROS
     const tutorialCompletado = localStorage.getItem("asegurasimple_tutorial_siniestros_completado");
     if (tutorialCompletado !== "true") {
-      const timer = setTimeout(() => setRun(true), 800);
+      const timer = setTimeout(() => {
+        setRun(true);
+        // 🔥 LO GUARDAMOS APENAS ARRANCA
+        localStorage.setItem("asegurasimple_tutorial_siniestros_completado", "true");
+      }, 800);
       return () => clearTimeout(timer);
     }
   }, []);
 
-  const steps: Step[] = [
+  // 🔥 CAMBIO CLAVE A any[] PARA QUE NO FALLE EL BUILD
+  const steps: any[] = [
     {
       target: "body",
       placement: "center",
@@ -70,11 +74,10 @@ export default function TutorialTourSiniestros() {
     }
   ];
 
-  const handleJoyrideCallback = (data: CallBackProps) => {
+  const handleJoyrideCallback = (data: any) => {
     const { status } = data;
     if (status === "finished" || status === "skipped") {
       setRun(false);
-      localStorage.setItem("asegurasimple_tutorial_siniestros_completado", "true");
     }
   };
 

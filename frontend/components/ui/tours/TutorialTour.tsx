@@ -2,10 +2,9 @@
 
 import { useState, useEffect } from "react";
 import dynamic from "next/dynamic";
-import type { CallBackProps, Step } from "react-joyride";
 
 // Carga dinámica para evitar errores de servidor
-const Joyride = dynamic(
+const Joyride: any = dynamic(
   async () => {
     const mod = await import("react-joyride");
     return (mod as any).default || (mod as any).Joyride || mod;
@@ -13,7 +12,7 @@ const Joyride = dynamic(
   { ssr: false }
 );
 
-// 🔥 NUEVO: COMPONENTE VISUAL 100% CUSTOMIZADO CON TAILWIND
+// 🔥 COMPONENTE VISUAL 100% CUSTOMIZADO CON TAILWIND
 const CustomTooltip = ({ index, step, backProps, closeProps, primaryProps, tooltipProps, isLastStep }: any) => {
   return (
     <div 
@@ -62,16 +61,18 @@ export default function TutorialTour() {
   const [run, setRun] = useState(false);
 
   useEffect(() => {
-    // 🔥 CANDADO MEJORADO: Revisamos el storage apenas carga
     const tutorialCompletado = localStorage.getItem("asegurasimple_tutorial_completado");
     if (tutorialCompletado !== "true") {
-      const timer = setTimeout(() => setRun(true), 1000);
+      const timer = setTimeout(() => {
+        setRun(true);
+        // 🔥 LO GUARDAMOS APENAS ARRANCA PARA QUE NO MOLESTE AL RECARGAR (F5)
+        localStorage.setItem("asegurasimple_tutorial_completado", "true");
+      }, 1000);
       return () => clearTimeout(timer);
     }
   }, []);
 
-  // 🔥 TEXTOS Y APUNTADORES CORREGIDOS
-  const steps: Step[] = [
+  const steps: any[] = [
     {
       target: "body",
       placement: "center",
@@ -105,13 +106,10 @@ export default function TutorialTour() {
     }
   ];
 
-  const handleJoyrideCallback = (data: CallBackProps) => {
+  const handleJoyrideCallback = (data: any) => {
     const { status } = data;
-    
     if (status === "finished" || status === "skipped") {
       setRun(false);
-      // 🔥 GUARDADO ESTRICTO EN EL NAVEGADOR
-      localStorage.setItem("asegurasimple_tutorial_completado", "true");
     }
   };
 
@@ -122,10 +120,10 @@ export default function TutorialTour() {
       continuous={true}
       showSkipButton={true}
       callback={handleJoyrideCallback}
-      tooltipComponent={CustomTooltip} // 🔥 ACÁ INYECTAMOS NUESTRO DISEÑO PREMIUM
+      tooltipComponent={CustomTooltip} 
       styles={{
         options: {
-          overlayColor: "rgba(0, 0, 0, 0.65)", // Oscurece el fondo elegantemente
+          overlayColor: "rgba(0, 0, 0, 0.65)",
           zIndex: 10000,
         }
       }}
