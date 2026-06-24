@@ -140,13 +140,14 @@ export const updateSiniestro = async (req: Request, res: Response): Promise<any>
   }
 };
 
+// 🔥 ACÁ ESTÁ LA SOLUCIÓN AL ERROR 500
 export const deleteSiniestro = async (req: Request, res: Response): Promise<any> => {
   try {
     if (!req.userId) return res.status(401).json({ error: 'No autorizado' });
     const productorId = await obtenerProductorId(req.userId);
     const { id } = req.params;
 
-    // 🔥 BUSCAMOS EL SINIESTRO CON SUS DATOS PARA EL HISTORIAL
+    // 1. Buscamos el siniestro para obtener los datos del historial
     const siniestroExistente = await prisma.siniestro.findFirst({
       where: { id: Number(id), productorId: productorId },
       include: { poliza: { include: { asegurado: true } } }
@@ -154,22 +155,32 @@ export const deleteSiniestro = async (req: Request, res: Response): Promise<any>
 
     if (!siniestroExistente) return res.status(403).json({ error: 'Siniestro no encontrado o no autorizado.' });
 
+    // 2. 🔥 BORRAMOS TODAS LAS DEPENDENCIAS (Hijos) PARA EVITAR EL FOREIGN KEY CONSTRAINT ERROR (500)
+    await prisma.notaSiniestro.deleteMany({ where: { siniestroId: Number(id) } });
+    await prisma.linkConsulta.deleteMany({ where: { siniestroId: Number(id) } });
+    await prisma.notificacion.deleteMany({ where: { siniestroId: Number(id) } });
+
+    // 3. Ahora sí, borramos el siniestro principal (Padre)
     await prisma.siniestro.delete({ where: { id: Number(id) } });
 
-    // 🔥 GUARDAMOS EL REGISTRO DE AUDITORÍA
+    // 4. Guardamos la actividad de auditoría
+    const clienteNombre = siniestroExistente.poliza?.asegurado?.nombre || 'Cliente';
+    const clienteApellido = siniestroExistente.poliza?.asegurado?.apellido || '';
+
     await prisma.actividad.create({
       data: {
         accion: "Baja",
         entidad: "Siniestro",
         descripcion: `Se eliminó el expediente de siniestro #${siniestroExistente.nroSiniestro}.`,
-        cliente: `${siniestroExistente.poliza.asegurado.nombre} ${siniestroExistente.poliza.asegurado.apellido || ''}`.trim(),
+        cliente: `${clienteNombre} ${clienteApellido}`.trim(),
         productorId 
       }
     });
 
     return res.json({ message: 'Siniestro eliminado correctamente.' });
   } catch (error: any) {
-    return res.status(500).json({ error: 'Error al eliminar el siniestro.' });
+    console.error("Error crítico al eliminar siniestro:", error);
+    return res.status(500).json({ error: 'Error interno en la base de datos al intentar eliminar el registro.' });
   }
 };
 
