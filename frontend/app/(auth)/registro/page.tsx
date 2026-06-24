@@ -14,6 +14,9 @@ export default function RegisterPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+  
+  // 🔥 NUEVO ESTADO PARA EL CHECKBOX LEGAL
+  const [aceptaTerminos, setAceptaTerminos] = useState(false);
 
   // Estados nuevos para el reenvío
   const [isResending, setIsResending] = useState(false);
@@ -29,6 +32,13 @@ export default function RegisterPage() {
       setError("Por favor, completá todos los campos.");
       return;
     }
+    
+    // 🔥 VALIDACIÓN LEGAL: No pasa si no acepta
+    if (!aceptaTerminos) {
+      setError("Debes aceptar los Términos y Condiciones para crear tu cuenta.");
+      return;
+    }
+
     if (password !== confirmPassword) {
       setError("Las contraseñas no coinciden.");
       return;
@@ -112,7 +122,6 @@ export default function RegisterPage() {
               Volver a Iniciar Sesión
             </Link>
             
-            {/* El botón camuflado como link */}
             <button 
               onClick={handleResendEmail}
               disabled={isResending}
@@ -121,7 +130,6 @@ export default function RegisterPage() {
               {isResending ? "Reenviando..." : "¿No recibiste el correo? Reenviar"}
             </button>
             
-            {/* Mensaje sutil de éxito/error */}
             {resendMessage.text && (
               <p className={`text-sm mt-1 ${resendMessage.type === 'success' ? 'text-green-600' : 'text-red-600'}`}>
                 {resendMessage.text}
@@ -161,7 +169,30 @@ export default function RegisterPage() {
               </ul>
             </div>
 
-            <button type="submit" disabled={isLoading} className="w-full bg-green-700 text-white text-base font-bold rounded-lg py-3.5 mt-2 hover:bg-green-800 transition-colors disabled:bg-green-700/70 shadow-sm flex items-center justify-center">
+            {/* 🔥 CHECKBOX LEGAL OBLIGATORIO */}
+            <div className="flex items-start gap-3 mt-2">
+              <input
+                type="checkbox"
+                id="terminos"
+                checked={aceptaTerminos}
+                onChange={(e) => setAceptaTerminos(e.target.checked)}
+                disabled={isLoading}
+                className="mt-1 w-4 h-4 text-green-600 border-gray-300 rounded focus:ring-green-600 cursor-pointer disabled:opacity-50"
+              />
+              <label htmlFor="terminos" className="text-xs text-gray-600 leading-relaxed cursor-pointer select-none">
+                He leído y acepto los{" "}
+                <Link href="/terminos" target="_blank" className="text-green-700 font-semibold hover:underline">
+                  Términos y Condiciones
+                </Link>
+                {" "}y la{" "}
+                <Link href="/privacidad" target="_blank" className="text-green-700 font-semibold hover:underline">
+                  Política de Privacidad
+                </Link>
+                .
+              </label>
+            </div>
+
+            <button type="submit" disabled={isLoading || !aceptaTerminos} className="w-full bg-green-700 text-white text-base font-bold rounded-lg py-3.5 mt-2 hover:bg-green-800 transition-colors disabled:bg-green-700/50 shadow-sm flex items-center justify-center">
               {isLoading ? "Enviando correo..." : "Registrarse"}
             </button>
           </form>
