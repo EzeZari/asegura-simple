@@ -7,13 +7,14 @@ import SiniestroTableRow from "@/components/siniestros/SiniestroTableRow";
 import Toast from "@/components/ui/Toast";
 import Table, { TableColumn } from "@/components/ui/Table";
 import ConfirmModal from "@/components/ui/ConfirmModal";
+import AlertModal from "@/components/ui/AlertModal"; // 🔥 IMPORTAMOS EL MODAL FACHERO
 import PageHeader from "@/components/ui/PageHeader";
 import { useTableSort } from "@/hooks/useTableSort";
 import SortableHeader from "@/components/ui/SortableHeader";
 import SelectOrdenamiento from "@/components/ui/SelectOrdenamiento"; 
 import { useAuthStore } from "@/store/authStore"; 
 import { apiFetch } from "@/services/api"; 
-import { PERMISOS, tienePermiso } from "@/utils/roles"; // 🔥 Importamos el diccionario
+import { PERMISOS, tienePermiso } from "@/utils/roles"; 
 
 const OPCIONES_ORDEN = [
   { value: "mas_recientes", label: "Carga más reciente" },
@@ -24,8 +25,6 @@ const OPCIONES_ORDEN = [
 
 export default function SiniestrosPage() {
   const { user } = useAuthStore();
-  
-  // 🔥 EVALUAMOS LOS PERMISOS CON NUESTRA HERRAMIENTA SENIOR
   const puedeModificar = tienePermiso(user, PERMISOS.PUEDE_MODIFICAR_DATOS);
 
   const [siniestros, setSiniestros] = useState<any[]>([]);
@@ -33,7 +32,6 @@ export default function SiniestrosPage() {
   
   const [searchTerm, setSearchTerm] = useState("");
   const [filtroEstado, setFiltroEstado] = useState("Todos");
-
   const [ordenActual, setOrdenActual] = useState("mas_recientes");
 
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -43,6 +41,9 @@ export default function SiniestrosPage() {
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [siniestroAEliminar, setSiniestroAEliminar] = useState<any>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // 🔥 NUEVO ESTADO PARA EL MODAL DE ERROR
+  const [errorModalMsg, setErrorModalMsg] = useState("");
 
   const [showToast, setShowToast] = useState(false);
   const [mensajeToast, setMensajeToast] = useState("");
@@ -55,11 +56,9 @@ export default function SiniestrosPage() {
       if (Array.isArray(data)) {
         setSiniestros(data);
       } else {
-        console.error("El servidor devolvió un error en vez de una lista:", data);
         setSiniestros([]); 
       }
     } catch (error) { 
-      console.error("Error al cargar siniestros:", error); 
       setSiniestros([]); 
     } finally { 
       setIsLoading(false); 
@@ -79,7 +78,14 @@ export default function SiniestrosPage() {
       setMensajeToast("Siniestro eliminado del sistema.");
       setShowToast(true);
       setIsConfirmOpen(false);
-    } catch (error: any) { alert(error.message); } finally { setIsDeleting(false); setSiniestroAEliminar(null); }
+    } catch (error: any) { 
+      // 🔥 CHAU ALERT VIEJO. USAMOS EL MODAL.
+      setIsConfirmOpen(false);
+      setErrorModalMsg(error.message || "Ocurrió un error al intentar eliminar el siniestro. Verificá tus permisos."); 
+    } finally { 
+      setIsDeleting(false); 
+      setSiniestroAEliminar(null); 
+    }
   };
 
   let siniestrosFiltrados = siniestros.filter((s) => {
@@ -113,7 +119,6 @@ export default function SiniestrosPage() {
 
   const { items: siniestrosOrdenados, requestSort, sortConfig } = useTableSort(siniestrosFiltrados);
 
-  // 🔥 CONFIGURACIÓN DINÁMICA DE COLUMNAS SEGÚN EL ROL
   const columnasBase: TableColumn[] = [
     { label: <SortableHeader label="Nro / Fecha" sortKey="nroSiniestro" currentSort={sortConfig} requestSort={(key) => requestSort(key as any)} /> },
     { label: "Titular / DNI" },
@@ -123,7 +128,6 @@ export default function SiniestrosPage() {
     { label: <SortableHeader label="Estado del Trámite" sortKey="estadoSiniestro" currentSort={sortConfig} requestSort={(key) => requestSort(key as any)} /> },
   ];
 
-  // Si tiene permisos sumamos la columna Acciones, si no, queda limpia
   const columnas = puedeModificar 
     ? [...columnasBase, { label: "Acciones", align: "right" as const }]
     : columnasBase;
@@ -134,7 +138,7 @@ export default function SiniestrosPage() {
       <PageHeader 
         titulo="Gestión de Siniestros" 
         descripcion="Seguimiento de reclamos, choques y eventos de tus clientes." 
-        textoBoton={puedeModificar ? "Reportar Siniestro" : ""} // 🔥 SE OCULTA SI ES LECTOR
+        textoBoton={puedeModificar ? "Reportar Siniestro" : ""}
         onNuevo={puedeModificar ? () => { setSiniestroAEditar(null); setIsModalOpen(true); } : undefined} 
       />
 
@@ -162,11 +166,7 @@ export default function SiniestrosPage() {
 
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 w-full -mb-2 lg:-mb-4">
         <div className="w-full md:w-auto">
-          <SelectOrdenamiento 
-            opciones={OPCIONES_ORDEN}
-            valorActual={ordenActual}
-            onChange={setOrdenActual}
-          />
+          <SelectOrdenamiento opciones={OPCIONES_ORDEN} valorActual={ordenActual} onChange={setOrdenActual} />
         </div>
       </div>
 
@@ -183,14 +183,13 @@ export default function SiniestrosPage() {
             siniestro={siniestro}
             menuAbiertoId={menuAbiertoId}
             onToggleMenu={setMenuAbiertoId}
-            puedeModificar={puedeModificar} // 🔥 PASAMOS LA ORDEN DE OCULTAR BOTONES AL HIJO
+            puedeModificar={puedeModificar} 
             onEdit={puedeModificar ? (s) => { setSiniestroAEditar(s); setMenuAbiertoId(null); setIsModalOpen(true); } : undefined}
             onEliminar={puedeModificar ? (s) => { setSiniestroAEliminar(s); setMenuAbiertoId(null); setIsConfirmOpen(true); } : undefined}
           />
         ))}
       </Table>
 
-      {/* 🔥 SI ES LECTOR, NI SIQUIERA DIBUJAMOS LOS MODALES EN SEGUNDO PLANO */}
       {puedeModificar && (
         <>
           <NuevoSiniestroModal 
@@ -208,6 +207,14 @@ export default function SiniestrosPage() {
         </>
       )}
       
+      {/* 🔥 MODAL PARA ERRORES DE BACKEND */}
+      <AlertModal
+        isOpen={!!errorModalMsg}
+        onClose={() => setErrorModalMsg("")}
+        title="Operación Denegada"
+        message={errorModalMsg}
+      />
+
       <Toast message={mensajeToast} isVisible={showToast} onClose={() => setShowToast(false)} />
     </div>
   );

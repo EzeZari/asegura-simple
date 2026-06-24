@@ -12,19 +12,32 @@ export const verificarSuscripcionActiva = async (req: Request, res: Response, ne
   }
 
   try {
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
+    // 1. Buscamos al usuario que está haciendo la petición
+    const currentUser = await prisma.user.findUnique({
+      where: { id: userId }
+    });
+
+    if (!currentUser) return res.status(404).json({ error: 'Usuario no encontrado' });
+
+    // 🔥 LA MAGIA DEL EQUIPO: Determinar de quién es la cuenta principal
+    // Si tiene un jefe (jefeId), miramos la suscripción del jefe. Si no, miramos la suya.
+    const accountOwnerId = currentUser.jefeId ? currentUser.jefeId : userId;
+
+    // 2. Buscamos al dueño de la cuenta con su suscripción y su plan
+    const accountOwner = await prisma.user.findUnique({
+      where: { id: accountOwnerId },
       include: { suscripcion: true }
     });
 
-    if (!user) return res.status(404).json({ error: 'Usuario no encontrado' });
+    if (!accountOwner) return res.status(404).json({ error: 'Dueño de cuenta no encontrado' });
 
-    // Si es plan Gratuito, no verificamos pagos, pero el límite de 10 clientes lo ataja otro middleware
-    if (user.plan === 'GRATUITO') {
+    // Si la agencia entera está en plan Gratuito, no verificamos pagos
+    // (El límite de 10 clientes lo ataja otro middleware)
+    if (accountOwner.plan === 'GRATUITO') {
       return next();
     }
 
-    const suscripcion = user.suscripcion;
+    const suscripcion = accountOwner.suscripcion;
 
     const pagoAutorizado = suscripcion?.estado === 'autorizado';
     

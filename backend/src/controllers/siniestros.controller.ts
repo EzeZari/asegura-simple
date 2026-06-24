@@ -3,7 +3,6 @@ import { prisma } from '../config/db';
 import crypto from 'crypto';
 import { enviarNotificacionSiniestro } from '../services/email.service';
 
-// 🔥 HELPER EXACTAMENTE IGUAL AL DE PÓLIZAS
 const obtenerProductorId = async (userId: number): Promise<number> => {
   const usuarioActual = await prisma.user.findUnique({ where: { id: userId } });
   const idAgencia = usuarioActual?.jefeId ? usuarioActual.jefeId : userId;
@@ -43,7 +42,7 @@ export const getSiniestros = async (req: Request, res: Response): Promise<any> =
     
     const siniestros = await prisma.siniestro.findMany({
       where: {
-        productorId: productorId // 🔥 BÚSQUEDA DIRECTA Y OPTIMIZADA
+        productorId: productorId 
       },
       include: {
         poliza: {
@@ -75,7 +74,6 @@ export const createSiniestro = async (req: Request, res: Response): Promise<any>
 
     if (!poliza) return res.status(403).json({ error: 'La póliza no te pertenece o no existe.' });
 
-    // 🔥 GENERACIÓN BLINDADA
     const nroFinal = nroSiniestro && nroSiniestro.trim() !== "" 
       ? nroSiniestro.trim() 
       : `SIN-${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
@@ -87,7 +85,7 @@ export const createSiniestro = async (req: Request, res: Response): Promise<any>
         descripcionInicial,
         estadoSiniestro: estadoSiniestro || 'Denuncia Pendiente',
         polizaId: Number(polizaId),
-        productorId: productorId // 🔥 ACÁ INYECTAMOS AL DUEÑO DEL SINIESTRO
+        productorId: productorId 
       }
     });
 
@@ -116,7 +114,7 @@ export const updateSiniestro = async (req: Request, res: Response): Promise<any>
     const { nroSiniestro, fechaHecho, descripcionInicial, estadoSiniestro } = req.body;
 
     const siniestroExistente = await prisma.siniestro.findFirst({
-      where: { id: Number(id), productorId: productorId } // 🔥 BÚSQUEDA DIRECTA Y OPTIMIZADA
+      where: { id: Number(id), productorId: productorId } 
     });
 
     if (!siniestroExistente) return res.status(403).json({ error: 'Siniestro no encontrado o no autorizado.' });
@@ -148,13 +146,27 @@ export const deleteSiniestro = async (req: Request, res: Response): Promise<any>
     const productorId = await obtenerProductorId(req.userId);
     const { id } = req.params;
 
+    // 🔥 BUSCAMOS EL SINIESTRO CON SUS DATOS PARA EL HISTORIAL
     const siniestroExistente = await prisma.siniestro.findFirst({
-      where: { id: Number(id), productorId: productorId } // 🔥 BÚSQUEDA DIRECTA Y OPTIMIZADA
+      where: { id: Number(id), productorId: productorId },
+      include: { poliza: { include: { asegurado: true } } }
     });
 
     if (!siniestroExistente) return res.status(403).json({ error: 'Siniestro no encontrado o no autorizado.' });
 
     await prisma.siniestro.delete({ where: { id: Number(id) } });
+
+    // 🔥 GUARDAMOS EL REGISTRO DE AUDITORÍA
+    await prisma.actividad.create({
+      data: {
+        accion: "Baja",
+        entidad: "Siniestro",
+        descripcion: `Se eliminó el expediente de siniestro #${siniestroExistente.nroSiniestro}.`,
+        cliente: `${siniestroExistente.poliza.asegurado.nombre} ${siniestroExistente.poliza.asegurado.apellido || ''}`.trim(),
+        productorId 
+      }
+    });
+
     return res.json({ message: 'Siniestro eliminado correctamente.' });
   } catch (error: any) {
     return res.status(500).json({ error: 'Error al eliminar el siniestro.' });
@@ -170,7 +182,7 @@ export const getSiniestroById = async (req: Request, res: Response): Promise<any
     const siniestro = await prisma.siniestro.findFirst({
       where: { 
         id: Number(id),
-        productorId: productorId // 🔥 BÚSQUEDA DIRECTA Y OPTIMIZADA
+        productorId: productorId 
       },
       include: {
         poliza: { include: { asegurado: true, compania: true } },
@@ -199,7 +211,7 @@ export const agregarNota = async (req: Request, res: Response): Promise<any> => 
     }
 
     const siniestroCompleto = await prisma.siniestro.findFirst({
-      where: { id: Number(id), productorId: productorId }, // 🔥 BÚSQUEDA DIRECTA Y OPTIMIZADA
+      where: { id: Number(id), productorId: productorId }, 
       include: {
         poliza: { include: { asegurado: true, compania: true } },
         linksConsulta: { where: { activo: true, expiracion: { gte: new Date() } } }
@@ -264,7 +276,7 @@ export const obtenerOGenerarLink = async (req: Request, res: Response): Promise<
     const { id } = req.params;
     
     const siniestroCompleto = await prisma.siniestro.findFirst({
-      where: { id: Number(id), productorId: productorId }, // 🔥 BÚSQUEDA DIRECTA Y OPTIMIZADA
+      where: { id: Number(id), productorId: productorId }, 
       include: { poliza: { include: { asegurado: true, compania: true } } }
     });
 
