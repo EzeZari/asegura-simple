@@ -6,6 +6,7 @@ import { Users, FileText, AlertCircle, Building } from "lucide-react";
 import StatCard from "@/components/dashboard/StatCard";
 import RecentActivity from "@/components/dashboard/RecentActivity";
 import { apiFetch } from "@/services/api";
+import TutorialTour from "@/components/ui/tours/TutorialTour";
 
 export default function DashboardPage() {
   const user = useAuthStore((state) => state.user);
@@ -47,6 +48,10 @@ export default function DashboardPage() {
 
   return (
     <div className="flex-1 flex flex-col p-4 lg:p-8 w-full gap-5 lg:gap-8 bg-white min-h-screen">
+      
+      {/* 🔥 ACÁ SE MONTA EL TUTORIAL INVISIBLE (se activa solo si es la 1ra vez) */}
+      <TutorialTour />
+
       <div className="pb-2 lg:pb-4">
         <h1 className="text-2xl lg:text-3xl font-bold text-gray-900 tracking-tight">
           Bienvenido de nuevo, {mounted ? user?.nombre : "Productor"}
@@ -56,13 +61,15 @@ export default function DashboardPage() {
         </p>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-6">
+      {/* 🔥 CLASE tour-estadisticas APLICADA AL CONTENEDOR */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-6 tour-estadisticas">
         {statsReales.map((stat, index) => (
           <StatCard key={index} {...stat} trend={stat.trend as any} />
         ))}
       </div>
 
-      <div className="mt-2 lg:mt-4 pb-10">
+      {/* 🔥 CLASE tour-alertas APLICADA AL CONTENEDOR */}
+      <div className="mt-2 lg:mt-4 pb-10 tour-actividad">
         <RecentActivity data={isLoading ? [] : actividadSegura} />
         {isLoading && (
           <div className="text-center text-gray-400 mt-4 animate-pulse text-sm">

@@ -18,7 +18,10 @@ import AseguradoTableRow from "@/components/asegurados/AseguradoTableRow";
 import SelectOrdenamiento from "@/components/ui/SelectOrdenamiento";
 import { apiFetch } from "@/services/api";
 import { useAuthStore } from "@/store/authStore"; 
-import { PERMISOS, tienePermiso } from "@/utils/roles"; // 🔥 IMPORTAMOS NUESTRO DICCIONARIO
+import { PERMISOS, tienePermiso } from "@/utils/roles";
+
+// 🔥 IMPORTAMOS EL TOUR CONTEXTUAL
+import TutorialTourAsegurados from "@/components/ui/tours/TutorialTourAsegurados";
 
 const ExportarExcelModal = dynamic(() => import("@/components/ui/ExportarExcelModal"), { ssr: false });
 const ImportarAseguradosModal = dynamic(() => import("@/components/asegurados/ImportarAseguradosModal"), { ssr: false });
@@ -32,8 +35,6 @@ const OPCIONES_ORDEN = [
 
 export default function AseguradosPage() {
   const { user } = useAuthStore();
-  
-  // 🔥 EVALUAMOS LOS PERMISOS CON NUESTRA HERRAMIENTA SENIOR
   const puedeModificar = tienePermiso(user, PERMISOS.PUEDE_MODIFICAR_DATOS);
 
   const [searchTerm, setSearchTerm] = useState("");
@@ -180,7 +181,6 @@ export default function AseguradosPage() {
     }));
   };
 
-  // 🔥 COLUMNAS DINÁMICAS SEGÚN ROL
   const columnasBase: TableColumn[] = [
     { label: <SortableHeader label="Nombre / Razón Social" sortKey="nombre" currentSort={sortConfig} requestSort={(key) => requestSort(key as any)} /> },
     { label: <SortableHeader label="DNI / CUIT" sortKey="dni" currentSort={sortConfig} requestSort={(key) => requestSort(key as any)} /> },
@@ -191,7 +191,6 @@ export default function AseguradosPage() {
     { label: <SortableHeader label="Estado" sortKey="activo" currentSort={sortConfig} requestSort={(key) => requestSort(key as any)} /> },
   ];
 
-  // Si tiene permisos sumamos la columna Acciones, si no, queda limpia
   const columnas = puedeModificar 
     ? [...columnasBase, { label: "Acciones", align: "right" as const }]
     : columnasBase;
@@ -199,26 +198,35 @@ export default function AseguradosPage() {
   return (
     <div className="flex flex-col p-4 lg:p-8 w-full gap-5 lg:gap-8 bg-white min-h-screen overflow-x-hidden">
       
-      <PageHeader 
-        titulo="Asegurados" 
-        descripcion="Gestioná tu cartera de clientes reales." 
-        textoBoton={puedeModificar ? "Nuevo Asegurado" : ""} // 🔥 OCULTO PARA LECTOR
-        onNuevo={puedeModificar ? () => { setClienteAEditar(null); setIsModalOpen(true); } : undefined} // 🔥 ATAJO NINJA
-      />
+      {/* 🔥 MONTAJE DEL TOUR CONTEXTUAL */}
+      <TutorialTourAsegurados />
 
-      <AseguradosFiltros 
-        searchTerm={searchTerm} setSearchTerm={setSearchTerm}
-        filtroTipo={filtroTipo} setFiltroTipo={setFiltroTipo}
-        filtroEstado={filtroEstado} setFiltroEstado={setFiltroEstado}
-      />
+      {/* 🔥 ETIQUETA HEADER */}
+      <div className="tour-asegurados-header">
+        <PageHeader 
+          titulo="Asegurados" 
+          descripcion="Gestioná tu cartera de clientes reales." 
+          textoBoton={puedeModificar ? "Nuevo Asegurado" : ""} 
+          onNuevo={puedeModificar ? () => { setClienteAEditar(null); setIsModalOpen(true); } : undefined} 
+        />
+      </div>
 
-      <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 w-full -mb-2 lg:-mb-4">
+      {/* 🔥 ETIQUETA FILTROS */}
+      <div className="tour-asegurados-filtros">
+        <AseguradosFiltros 
+          searchTerm={searchTerm} setSearchTerm={setSearchTerm}
+          filtroTipo={filtroTipo} setFiltroTipo={setFiltroTipo}
+          filtroEstado={filtroEstado} setFiltroEstado={setFiltroEstado}
+        />
+      </div>
+
+      {/* 🔥 ETIQUETA HERRAMIENTAS */}
+      <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 w-full -mb-2 lg:-mb-4 tour-asegurados-herramientas">
         <div className="w-full xl:w-auto">
           <SelectOrdenamiento opciones={OPCIONES_ORDEN} valorActual={ordenActual} onChange={setOrdenActual} />
         </div>
         
         <div className="flex flex-col sm:flex-row items-center gap-3 w-full xl:w-auto">
-          {/* 🔥 IMPORTAR OCULTO PARA LECTOR */}
           {puedeModificar && (
             <button onClick={() => setIsImportModalOpen(true)} className="flex justify-center items-center gap-2 w-full sm:w-auto px-4 py-2.5 lg:py-2 bg-gray-50 hover:bg-gray-100 border border-gray-200 text-gray-700 rounded-xl text-sm font-bold transition-all active:scale-95 shadow-sm">
               <UploadCloud size={16} /> Importar Excel
@@ -231,24 +239,25 @@ export default function AseguradosPage() {
         </div>
       </div>
 
-      <Table columns={columnas} isLoading={isLoading} isEmpty={aseguradosOrdenados.length === 0} emptyContent={<div className="flex flex-col items-center justify-center text-gray-500 py-6"><Search size={32} className="text-gray-300 mb-3" /><p className="font-medium text-gray-900">No se encontraron clientes</p></div>}>
-        {aseguradosOrdenados.map((cliente) => (
-          <AseguradoTableRow 
-            key={cliente.id}
-            cliente={cliente}
-            onClickPolizas={(c) => setAseguradoParaVerPolizas(c)}
-            menuAbiertoId={menuAbiertoId}
-            onToggleMenu={setMenuAbiertoId}
-            // 🔥 LE PASAMOS LA VARIABLE AL COMPONENTE HIJO
-            puedeModificar={puedeModificar}
-            onEdit={puedeModificar ? (c) => { setClienteAEditar(c); setMenuAbiertoId(null); setIsModalOpen(true); } : undefined}
-            onToggleEstado={puedeModificar ? toggleEstado : undefined}
-            onEliminar={puedeModificar ? (c) => { setAseguradoAEliminar(c); setMenuAbiertoId(null); setIsConfirmOpen(true); } : undefined}
-          />
-        ))}
-      </Table>
+      {/* 🔥 ETIQUETA TABLA */}
+      <div className="tour-asegurados-tabla">
+        <Table columns={columnas} isLoading={isLoading} isEmpty={aseguradosOrdenados.length === 0} emptyContent={<div className="flex flex-col items-center justify-center text-gray-500 py-6"><Search size={32} className="text-gray-300 mb-3" /><p className="font-medium text-gray-900">No se encontraron clientes</p></div>}>
+          {aseguradosOrdenados.map((cliente) => (
+            <AseguradoTableRow 
+              key={cliente.id}
+              cliente={cliente}
+              onClickPolizas={(c) => setAseguradoParaVerPolizas(c)}
+              menuAbiertoId={menuAbiertoId}
+              onToggleMenu={setMenuAbiertoId}
+              puedeModificar={puedeModificar}
+              onEdit={puedeModificar ? (c) => { setClienteAEditar(c); setMenuAbiertoId(null); setIsModalOpen(true); } : undefined}
+              onToggleEstado={puedeModificar ? toggleEstado : undefined}
+              onEliminar={puedeModificar ? (c) => { setAseguradoAEliminar(c); setMenuAbiertoId(null); setIsConfirmOpen(true); } : undefined}
+            />
+          ))}
+        </Table>
+      </div>
 
-      {/* 🔥 MODALES OCULTOS DEL DOM PARA LECTORES (Seguridad extra) */}
       {puedeModificar && (
         <>
           <NuevoAseguradoModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSuccess={() => { setIsModalOpen(false); fetchAsegurados(); setShowToast(true); setMensajeToast("Asegurado guardado correctamente"); }} clienteAEditar={clienteAEditar} />
@@ -257,7 +266,6 @@ export default function AseguradosPage() {
         </>
       )}
 
-      {/* Modales que SI puede ver el lector */}
       <ExportarExcelModal isOpen={isExportModalOpen} onClose={() => setIsExportModalOpen(false)} datos={prepararDatosParaExcel()} nombreArchivo={`Reporte_Clientes_${new Date().toISOString().split("T")[0]}`} />
       <PolizasDelAseguradoModal isOpen={!!aseguradoParaVerPolizas} onClose={() => setAseguradoParaVerPolizas(null)} asegurado={aseguradoParaVerPolizas} />
       

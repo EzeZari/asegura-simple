@@ -7,7 +7,6 @@ import { Menu } from "lucide-react";
 import { apiFetch } from "@/services/api"; 
 import UpgradeModal from "@/components/ui/UpgradeModal";
 import GracePeriodBanner from "@/components/layout/GracePeriodBanner"; 
-// 🔥 IMPORTAMOS EL NUEVO MODAL DE SESIÓN EXPIRADA
 import SessionExpiredModal from "@/components/ui/SessionExpiredModal";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {

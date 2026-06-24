@@ -7,7 +7,7 @@ import SiniestroTableRow from "@/components/siniestros/SiniestroTableRow";
 import Toast from "@/components/ui/Toast";
 import Table, { TableColumn } from "@/components/ui/Table";
 import ConfirmModal from "@/components/ui/ConfirmModal";
-import AlertModal from "@/components/ui/AlertModal"; // 🔥 IMPORTAMOS EL MODAL FACHERO
+import AlertModal from "@/components/ui/AlertModal"; 
 import PageHeader from "@/components/ui/PageHeader";
 import { useTableSort } from "@/hooks/useTableSort";
 import SortableHeader from "@/components/ui/SortableHeader";
@@ -15,6 +15,9 @@ import SelectOrdenamiento from "@/components/ui/SelectOrdenamiento";
 import { useAuthStore } from "@/store/authStore"; 
 import { apiFetch } from "@/services/api"; 
 import { PERMISOS, tienePermiso } from "@/utils/roles"; 
+
+// 🔥 IMPORTAMOS EL TOUR DESDE SU NUEVA CARPETA
+import TutorialTourSiniestros from "@/components/ui/tours/TutorialTourSiniestros";
 
 const OPCIONES_ORDEN = [
   { value: "mas_recientes", label: "Carga más reciente" },
@@ -40,11 +43,9 @@ export default function SiniestrosPage() {
   const [menuAbiertoId, setMenuAbiertoId] = useState<number | null>(null);
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [siniestroAEliminar, setSiniestroAEliminar] = useState<any>(null);
-  const [isDeleting, setIsDeleting] = useState(false);
+  const [isDeleting, setIsLoadingDeleting] = useState(false);
 
-  // 🔥 NUEVO ESTADO PARA EL MODAL DE ERROR
   const [errorModalMsg, setErrorModalMsg] = useState("");
-
   const [showToast, setShowToast] = useState(false);
   const [mensajeToast, setMensajeToast] = useState("");
 
@@ -69,7 +70,7 @@ export default function SiniestrosPage() {
 
   const ejecutarEliminacion = async () => {
     if (!siniestroAEliminar) return;
-    setIsDeleting(true);
+    setIsLoadingDeleting(true);
     try {
       const res = await apiFetch(`/api/siniestros/${siniestroAEliminar.id}`, { method: 'DELETE' });
       if (!res.ok) throw new Error((await res.json()).error);
@@ -79,11 +80,10 @@ export default function SiniestrosPage() {
       setShowToast(true);
       setIsConfirmOpen(false);
     } catch (error: any) { 
-      // 🔥 CHAU ALERT VIEJO. USAMOS EL MODAL.
       setIsConfirmOpen(false);
       setErrorModalMsg(error.message || "Ocurrió un error al intentar eliminar el siniestro. Verificá tus permisos."); 
     } finally { 
-      setIsDeleting(false); 
+      setIsLoadingDeleting(false); 
       setSiniestroAEliminar(null); 
     }
   };
@@ -135,14 +135,21 @@ export default function SiniestrosPage() {
   return (
     <div className="flex flex-col p-4 lg:p-8 w-full gap-5 lg:gap-8 bg-white min-h-screen overflow-x-hidden">
       
-      <PageHeader 
-        titulo="Gestión de Siniestros" 
-        descripcion="Seguimiento de reclamos, choques y eventos de tus clientes." 
-        textoBoton={puedeModificar ? "Reportar Siniestro" : ""}
-        onNuevo={puedeModificar ? () => { setSiniestroAEditar(null); setIsModalOpen(true); } : undefined} 
-      />
+      {/* 🔥 INYECTAMOS EL TOUR INVISIBLE */}
+      <TutorialTourSiniestros />
 
-      <div className="flex flex-col md:flex-row gap-4 bg-gray-50/50 p-4 rounded-2xl border border-gray-100">
+      {/* 🔥 CLASE HEADER */}
+      <div className="tour-siniestros-header">
+        <PageHeader 
+          titulo="Gestión de Siniestros" 
+          descripcion="Seguimiento de reclamos, choques y eventos de tus clientes." 
+          textoBoton={puedeModificar ? "Reportar Siniestro" : ""}
+          onNuevo={puedeModificar ? () => { setSiniestroAEditar(null); setIsModalOpen(true); } : undefined} 
+        />
+      </div>
+
+      {/* 🔥 CLASE FILTROS */}
+      <div className="flex flex-col md:flex-row gap-4 bg-gray-50/50 p-4 rounded-2xl border border-gray-100 tour-siniestros-filtros">
         <div className="flex-1 relative w-full">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
           <input 
@@ -170,25 +177,28 @@ export default function SiniestrosPage() {
         </div>
       </div>
 
-      <Table columns={columnas} isLoading={isLoading} isEmpty={siniestrosOrdenados.length === 0} emptyContent={
-        <div className="flex flex-col items-center justify-center text-gray-500 py-10">
-          <AlertTriangle size={40} className="text-gray-300 mb-4" />
-          <p className="font-medium text-gray-900 text-lg">No se encontraron siniestros</p>
-          <p className="text-sm">Tranquilidad pura. Tus clientes están a salvo.</p>
-        </div>
-      }>
-        {siniestrosOrdenados.map((siniestro) => (
-          <SiniestroTableRow 
-            key={siniestro.id}
-            siniestro={siniestro}
-            menuAbiertoId={menuAbiertoId}
-            onToggleMenu={setMenuAbiertoId}
-            puedeModificar={puedeModificar} 
-            onEdit={puedeModificar ? (s) => { setSiniestroAEditar(s); setMenuAbiertoId(null); setIsModalOpen(true); } : undefined}
-            onEliminar={puedeModificar ? (s) => { setSiniestroAEliminar(s); setMenuAbiertoId(null); setIsConfirmOpen(true); } : undefined}
-          />
-        ))}
-      </Table>
+      {/* 🔥 CLASE TABLA */}
+      <div className="tour-siniestros-tabla">
+        <Table columns={columnas} isLoading={isLoading} isEmpty={siniestrosOrdenados.length === 0} emptyContent={
+          <div className="flex flex-col items-center justify-center text-gray-500 py-10">
+            <AlertTriangle size={40} className="text-gray-300 mb-4" />
+            <p className="font-medium text-gray-900 text-lg">No se encontraron siniestros</p>
+            <p className="text-sm">Tranquilidad pura. Tus clientes están a salvo.</p>
+          </div>
+        }>
+          {siniestrosOrdenados.map((siniestro) => (
+            <SiniestroTableRow 
+              key={siniestro.id}
+              siniestro={siniestro}
+              menuAbiertoId={menuAbiertoId}
+              onToggleMenu={setMenuAbiertoId}
+              puedeModificar={puedeModificar} 
+              onEdit={puedeModificar ? (s) => { setSiniestroAEditar(s); setMenuAbiertoId(null); setIsModalOpen(true); } : undefined}
+              onEliminar={puedeModificar ? (s) => { setSiniestroAEliminar(s); setMenuAbiertoId(null); setIsConfirmOpen(true); } : undefined}
+            />
+          ))}
+        </Table>
+      </div>
 
       {puedeModificar && (
         <>
@@ -207,7 +217,6 @@ export default function SiniestrosPage() {
         </>
       )}
       
-      {/* 🔥 MODAL PARA ERRORES DE BACKEND */}
       <AlertModal
         isOpen={!!errorModalMsg}
         onClose={() => setErrorModalMsg("")}

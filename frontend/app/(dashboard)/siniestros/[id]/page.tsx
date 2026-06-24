@@ -10,13 +10,15 @@ import {
 import Toast from "@/components/ui/Toast";
 import { apiFetch } from "@/services/api"; 
 import { useAuthStore } from "@/store/authStore"; 
-import { PERMISOS, tienePermiso } from "@/utils/roles"; // 🔥 IMPORTAMOS NUESTRO DICCIONARIO
+import { PERMISOS, tienePermiso } from "@/utils/roles";
+
+// 🔥 IMPORTAMOS EL TOUR DESDE SU NUEVA CARPETA
+import TutorialTourDetalleSiniestro from "@/components/ui/tours/TutorialTourDetalleSiniestro";
 
 export default function SiniestroDetallePage() {
   const { id } = useParams();
   const router = useRouter();
   
-  // 🔥 EVALUAMOS LOS PERMISOS CON NUESTRA HERRAMIENTA SENIOR
   const { user } = useAuthStore();
   const puedeModificar = tienePermiso(user, PERMISOS.PUEDE_MODIFICAR_DATOS);
 
@@ -60,7 +62,7 @@ export default function SiniestroDetallePage() {
 
   const handleAgregarNota = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!nuevaNota.trim() || !puedeModificar) return; // 🔥 Protección extra
+    if (!nuevaNota.trim() || !puedeModificar) return; 
 
     setIsSubmittingNota(true);
     try {
@@ -83,7 +85,7 @@ export default function SiniestroDetallePage() {
   };
 
   const handleCambiarEstadoRapido = async (nuevoEstado: string) => {
-    if (!puedeModificar) return; // 🔥 Protección extra
+    if (!puedeModificar) return; 
     setIsUpdatingEstado(true);
     try {
       const res = await apiFetch(`/api/siniestros/${id}`, {
@@ -104,7 +106,7 @@ export default function SiniestroDetallePage() {
   };
 
   const handleGenerarLink = async () => {
-    if (!puedeModificar) return; // 🔥 Protección extra
+    if (!puedeModificar) return; 
     setIsGenerandoLink(true);
     try {
       const res = await apiFetch(`/api/siniestros/${id}/generar-link`, { method: "POST" });
@@ -166,7 +168,9 @@ export default function SiniestroDetallePage() {
   return (
     <div className="flex flex-col p-4 md:p-8 w-full gap-6 md:gap-8 bg-white min-h-screen overflow-x-hidden">
       
-      {/* Header Principal */}
+      {/* 🔥 INYECTAMOS EL TOUR INVISIBLE */}
+      <TutorialTourDetalleSiniestro />
+
       <div className="flex flex-col gap-6">
         <button 
           onClick={() => router.back()}
@@ -197,12 +201,12 @@ export default function SiniestroDetallePage() {
             </div>
           </div>
 
-          {/* Selector de estado (DESHABILITADO SI ES LECTOR) */}
-          <div className="flex items-center gap-2 bg-white p-2 rounded-xl border border-gray-200 shadow-sm w-full md:w-auto">
+          {/* 🔥 CLASE ESTADO */}
+          <div className="flex items-center gap-2 bg-white p-2 rounded-xl border border-gray-200 shadow-sm w-full md:w-auto tour-detalle-estado">
             <span className="text-[10px] md:text-xs font-bold text-gray-400 uppercase pl-2">Estado:</span>
             <select
               value={siniestro.estadoSiniestro}
-              disabled={isUpdatingEstado || !puedeModificar} // 🔥 LECTOR NO PUEDE CAMBIAR EL ESTADO
+              disabled={isUpdatingEstado || !puedeModificar} 
               onChange={(e) => handleCambiarEstadoRapido(e.target.value)}
               className="flex-1 md:flex-none text-sm font-bold text-gray-700 bg-transparent outline-none cursor-pointer pr-2 disabled:opacity-60 disabled:cursor-not-allowed"
             >
@@ -219,10 +223,8 @@ export default function SiniestroDetallePage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8">
         
-        {/* Columna Principal */}
         <div className="lg:col-span-2 flex flex-col gap-6 md:gap-8">
           
-          {/* Declaración Inicial */}
           <div className="p-5 md:p-6 border border-gray-100 rounded-3xl bg-white shadow-sm flex flex-col gap-5">
             <h3 className="text-sm md:text-base font-bold text-gray-900 flex items-center gap-2 border-b border-gray-50 pb-3">
               <FileText size={18} className="text-orange-600 shrink-0" /> Declaración Inicial del Siniestro
@@ -234,13 +236,12 @@ export default function SiniestroDetallePage() {
             </div>
           </div>
 
-          {/* Bitácora de Seguimiento */}
-          <div className="flex flex-col gap-4">
+          {/* 🔥 CLASE NOTAS */}
+          <div className="flex flex-col gap-4 tour-detalle-notas">
             <h3 className="text-sm md:text-base font-bold text-gray-900 flex items-center gap-2">
               <MessageSquare size={18} className="text-orange-600 shrink-0" /> Historial de Seguimiento / Notas
             </h3>
             
-            {/* 🔥 EL CAMPO DE NOTAS SE OCULTA PARA EL LECTOR */}
             {puedeModificar && (
               <form onSubmit={handleAgregarNota} className="flex gap-3">
                 <input 
@@ -283,10 +284,9 @@ export default function SiniestroDetallePage() {
           </div>
         </div>
 
-        {/* Columna Lateral */}
-        <div className="flex flex-col gap-6">
+        {/* 🔥 CLASE INFORMACION (Engloba las 3 tarjetas de datos) */}
+        <div className="flex flex-col gap-6 tour-detalle-informacion">
           
-          {/* Tarjeta Riesgo / Vehículo */}
           <div className="p-5 md:p-6 border border-gray-100 rounded-3xl bg-white shadow-sm flex flex-col gap-4">
             <h3 className="font-bold text-gray-400 uppercase text-[10px] md:text-xs tracking-widest border-b border-gray-50 pb-2">Riesgo Cubierto</h3>
             <div className="flex flex-col gap-3">
@@ -314,13 +314,12 @@ export default function SiniestroDetallePage() {
               {(poliza.marca || poliza.modelo || poliza.cobertura) && (
                 <div className="bg-gray-50/30 p-3 md:p-4 rounded-xl border border-gray-100 flex flex-col gap-2 text-[10px] md:text-xs font-medium text-gray-600">
                   {poliza.marca && <p><span className="text-gray-400">Vehículo:</span> {poliza.marca} {poliza.modelo}</p>}
-                  {poliza.cobertura && <p>• <span className="text-gray-400">Cobertura:</span> {poliza.cobertura}</p>}
+                  {poliza.cobertura && <p><span className="text-gray-400">Cobertura:</span> {poliza.cobertura}</p>}
                 </div>
               )}
             </div>
           </div>
 
-          {/* Tarjeta Asegurado */}
           <div className="p-5 md:p-6 border border-gray-100 rounded-3xl bg-white shadow-sm flex flex-col gap-4">
             <h3 className="font-bold text-gray-400 uppercase text-[10px] md:text-xs tracking-widest border-b border-gray-50 pb-2">Asegurado Titular</h3>
             <div className="flex flex-col gap-3">
@@ -337,7 +336,6 @@ export default function SiniestroDetallePage() {
             </div>
           </div>
 
-          {/* Tarjeta Compañía */}
           <div className="p-5 md:p-6 border border-gray-100 rounded-3xl bg-white shadow-sm flex flex-col gap-4">
             <h3 className="font-bold text-gray-400 uppercase text-[10px] md:text-xs tracking-widest border-b border-gray-50 pb-2">Compañía Emisora</h3>
             <div className="flex items-center gap-3 md:gap-4">
@@ -351,8 +349,8 @@ export default function SiniestroDetallePage() {
             </div>
           </div>
 
-          {/* Tarjeta Link de Seguimiento */}
-          <div className="p-5 md:p-6 border border-gray-100 rounded-3xl bg-gray-900 text-white shadow-lg flex flex-col gap-4 relative overflow-hidden">
+          {/* 🔥 CLASE LINK */}
+          <div className="p-5 md:p-6 border border-gray-100 rounded-3xl bg-gray-900 text-white shadow-lg flex flex-col gap-4 relative overflow-hidden tour-detalle-link">
             <div className="absolute top-0 right-0 p-4 opacity-10 pointer-events-none">
               <ShieldCheck size={80} />
             </div>
@@ -366,7 +364,7 @@ export default function SiniestroDetallePage() {
             {!linkGenerado ? (
               <button 
                 onClick={handleGenerarLink}
-                disabled={isGenerandoLink || !puedeModificar} // 🔥 LECTOR NO PUEDE GENERAR LINK
+                disabled={isGenerandoLink || !puedeModificar} 
                 className="mt-2 w-full bg-white text-gray-900 hover:bg-gray-100 px-4 py-2.5 rounded-xl font-bold text-xs md:text-sm transition-colors disabled:opacity-50 active:scale-95"
               >
                 {isGenerandoLink ? "Generando..." : "Crear Link de Seguimiento"}
@@ -397,7 +395,6 @@ export default function SiniestroDetallePage() {
             )}
           </div>
 
-          {/* Auditoría Temporal */}
           <div className="p-4 bg-gray-50/50 rounded-2xl border border-gray-100 flex flex-col gap-1.5 text-[10px] md:text-xs text-gray-400 font-bold uppercase tracking-wider">
             <div className="flex justify-between">
               <span>Fecha de Reporte:</span>

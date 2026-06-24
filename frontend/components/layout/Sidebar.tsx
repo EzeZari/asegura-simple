@@ -6,7 +6,7 @@ import {
   Home, Users, FileText, Building, CarFront, Bell, Settings, LogOut, BarChart3, X, Eye, ShieldCheck 
 } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
-import { PERMISOS, tienePermiso } from '@/utils/roles'; // 🔥 IMPORTAMOS EL DICCIONARIO
+import { PERMISOS, tienePermiso } from '@/utils/roles';
 
 const menuItems = [
   { name: 'Inicio', icon: Home, path: '/' },
@@ -31,13 +31,11 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
   const user = useAuthStore((state) => state.user);
   const clearStore = useAuthStore((state) => state.logout);
   
-  // 🔥 LÓGICA DE ROLES Y ETIQUETAS USANDO NUESTRA HERRAMIENTA SENIOR
   const esSoloLectura = user?.role === 'VIEWER';
   
   const esDueno = tienePermiso(user, PERMISOS.PUEDE_EDITAR_PLAN);
   const puedeModificar = tienePermiso(user, PERMISOS.PUEDE_MODIFICAR_DATOS);
   
-  // Un admin secundario es alguien que PUEDE modificar, pero NO ES dueño
   const esAdminSecundario = puedeModificar && !esDueno;
 
   const handleLogout = async () => {
@@ -65,7 +63,9 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
         />
       )}
 
+      {/* 🔥 AGREGAMOS tour-sidebar AL ASIDE PRINCIPAL */}
       <aside className={`
+        tour-sidebar
         w-64 h-screen bg-green-700 text-white flex flex-col fixed left-0 top-0 z-50 
         transition-transform duration-300 ease-in-out shadow-2xl lg:shadow-none
         ${isOpen ? 'translate-x-0' : '-translate-x-full'} 
@@ -87,14 +87,12 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                 Hola, {user.nombre}
               </span>
               
-              {/* 🔥 ETIQUETA: MODO LECTOR */}
               {esSoloLectura && (
                 <span className="mt-2 flex items-center gap-1.5 bg-black/20 text-green-50 text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider">
                   <Eye size={12} /> Modo Lector
                 </span>
               )}
 
-              {/* 🔥 ETIQUETA: ADMIN SECUNDARIO */}
               {esAdminSecundario && (
                 <span className="mt-2 flex items-center gap-1.5 bg-blue-900/40 border border-blue-400/20 text-blue-50 text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider">
                   <ShieldCheck size={12} /> Admin Secundario
@@ -108,6 +106,9 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
           {menuItems.map((item) => {
             const Icon = item.icon;
             const isActive = pathname === item.path || (item.path !== '/' && pathname.startsWith(item.path));
+            
+            // 🔥 DETECTAMOS SI ES EL BOTÓN DE CONFIGURACIÓN PARA PONERLE LA ETIQUETA
+            const isConfig = item.path === '/configuracion';
 
             return (
               <Link
@@ -118,7 +119,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                   isActive 
                     ? 'bg-green-800/80 font-bold border-l-4 border-white pl-3' 
                     : 'hover:bg-green-600/50 font-medium border-l-4 border-transparent' 
-                }`}
+                } ${isConfig ? 'tour-configuracion' : ''}`}
               >
                 <Icon size={20} className={isActive ? 'text-white' : 'text-green-100'} />
                 <span className={isActive ? 'text-white' : 'text-green-50'}>{item.name}</span>
