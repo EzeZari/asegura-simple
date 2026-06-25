@@ -29,29 +29,29 @@ function PlanesContent() {
       id: "GRATUITO",
       nombre: "Plan Prueba",
       precio: "Gratis",
-      descripcion: "Para conocer la plataforma.",
+      descripcion: "14 días para conocer la plataforma.",
       icon: Sparkles,
       features: [
+        "Prueba libre por 14 días",
         "Hasta 10 asegurados",
         "1 Usuario administrador",
-        "Gestión básica de pólizas",
         "Sin tarjeta de crédito"
       ],
       color: "border-gray-200 bg-gray-50 text-gray-900",
       btnColor: "bg-white hover:bg-gray-100 text-gray-800 border border-gray-200",
-      btnText: "Empezar Gratis"
+      btnText: "Empezar Mis 14 Días"
     },
     {
       id: "BASICO",
       nombre: "Plan Básico",
-      precio: "$100",
+      precio: "$9.990",
       descripcion: "Para productores independientes.",
       icon: UserIcon,
       features: [
         "Hasta 100 asegurados",
         "1 Usuario administrador",
         "Gestión de pólizas y siniestros",
-        "Notificaciones por mail"
+        "Soporte estándar"
       ],
       color: "border-gray-200 bg-white text-gray-900",
       btnColor: "bg-gray-900 hover:bg-gray-800 text-white",
@@ -60,7 +60,7 @@ function PlanesContent() {
     {
       id: "PROFESIONAL",
       nombre: "Plan Profesional",
-      precio: "$14.000",
+      precio: "$14.990",
       descripcion: "Para equipos en crecimiento.",
       icon: Zap,
       features: [
@@ -77,14 +77,14 @@ function PlanesContent() {
     {
       id: "AGENCIA",
       nombre: "Plan Agencia",
-      precio: "$22.000",
+      precio: "$24.990",
       descripcion: "Para carteras masivas.",
       icon: Users,
       features: [
         "Asegurados ilimitados",
-        "Usuarios ilimitados",
+        "Hasta 10 usuarios",
         "Reportes consolidados",
-        "Asesor dedicado"
+        "Asesor de cuenta dedicado"
       ],
       color: "border-gray-200 bg-white text-gray-900",
       btnColor: "bg-gray-900 hover:bg-gray-800 text-white",

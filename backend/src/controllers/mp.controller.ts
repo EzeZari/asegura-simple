@@ -1,18 +1,17 @@
 import { Request, Response } from 'express';
-// 🔥 Agregamos Payment a la importación
 import { MercadoPagoConfig, PreApproval, Payment } from 'mercadopago';
 import { prisma } from '../config/db';
 
 const client = new MercadoPagoConfig({ accessToken: process.env.MERCADO_PAGO_ACCESS_TOKEN || '' });
 
 export const crearSuscripcion = async (req: Request, res: Response): Promise<any> => {
-  // 🔥 1. Ahora también extraemos mpEmail (el correo que eligen en el modal)
   const { plan, email, mpEmail } = req.body;
 
+  // 🔥 NUEVOS PRECIOS ESTRATÉGICOS
   const planes = {
-    BASICO: { title: "Plan Básico - AseguraSimple", price: 100 },
-    PROFESIONAL: { title: "Plan Profesional - AseguraSimple", price: 14000 },
-    AGENCIA: { title: "Plan Agencia - AseguraSimple", price: 22000 }
+    BASICO: { title: "Plan Básico - AseguraSimple", price: 9990 },
+    PROFESIONAL: { title: "Plan Profesional - AseguraSimple", price: 14990 },
+    AGENCIA: { title: "Plan Agencia - AseguraSimple", price: 24990 }
   };
 
   const planSeleccionado = planes[plan as keyof typeof planes];
@@ -43,7 +42,6 @@ export const crearSuscripcion = async (req: Request, res: Response): Promise<any
         },
         back_url: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/login?exito=true`,
         external_reference: `${email}|${plan}`,
-        // 🔥 2. Mercado Pago usará el mpEmail para validar la cuenta al pagar
         payer_email: mpEmail || email 
       }
     });
@@ -56,16 +54,12 @@ export const crearSuscripcion = async (req: Request, res: Response): Promise<any
 };
 
 export const webhookMercadoPago = async (req: Request, res: Response) => {
-  // Le respondemos "OK" rápido a MP para que no vuelva a insistir
   res.status(200).send("OK");
 
   try {
     const { type, topic, data } = req.body;
-    
-    // 🔥 1. Blindaje: MP a veces manda 'type' y a veces 'topic'. Aceptamos los dos.
     const evento = type || topic;
 
-    // 🔥 2. Registro: Esto aparecerá en los logs de Railway para saber si MP nos está hablando
     if (evento) {
       console.log(`📩 Webhook MP recibido - Evento: ${evento} - ID: ${data?.id}`);
     }
@@ -87,7 +81,6 @@ export const webhookMercadoPago = async (req: Request, res: Response) => {
               data: { plan: planNombre as any }
             });
 
-            // Calculamos 30 días a partir del momento en que entra el pago
             const fechaVencimiento = new Date();
             fechaVencimiento.setDate(fechaVencimiento.getDate() + 30);
 
@@ -124,7 +117,6 @@ export const webhookMercadoPago = async (req: Request, res: Response) => {
       const payment = new Payment(client);
       const infoPago = await payment.get({ id: data.id });
 
-      // Buscamos a quién le cobró Mercado Pago
       let email = "";
       if (infoPago.external_reference) {
         email = infoPago.external_reference.split("|")[0];
@@ -136,7 +128,6 @@ export const webhookMercadoPago = async (req: Request, res: Response) => {
         const user = await prisma.user.findUnique({ where: { email } });
 
         if (user) {
-          // Buscamos si ya lo registramos (a veces MP manda el aviso 2 veces)
           const pagoExistente = await prisma.pago.findUnique({
             where: { mpPagoId: infoPago.id?.toString() }
           });
@@ -154,11 +145,25 @@ export const webhookMercadoPago = async (req: Request, res: Response) => {
             });
             console.log(`💰 ¡Caja! Pago de $${infoPago.transaction_amount} registrado para ${email}`);
           } else {
-            // Si ya existe, le actualizamos el estado (ej: de "pendiente" a "aprobado")
             await prisma.pago.update({
               where: { mpPagoId: infoPago.id?.toString() },
               data: { estado: infoPago.status || pagoExistente.estado }
             });
+          }
+
+          // 🔥 LA SOLUCIÓN AL "BUG DEL MES 2": Renovamos por 30 días si el pago es aprobado
+          if (infoPago.status === 'approved') {
+            const nuevaFechaVencimiento = new Date();
+            nuevaFechaVencimiento.setDate(nuevaFechaVencimiento.getDate() + 30);
+
+            await prisma.suscripcion.updateMany({
+              where: { userId: user.id },
+              data: { 
+                estado: 'autorizado',
+                fechaVencimiento: nuevaFechaVencimiento 
+              }
+            });
+            console.log(`🔄 Suscripción de ${email} extendida por 30 días exitosamente.`);
           }
         }
       }
@@ -168,10 +173,9 @@ export const webhookMercadoPago = async (req: Request, res: Response) => {
   }
 };
 
-// 🔥 NUEVA FUNCIÓN: Cancelar suscripción activa en MP
+// 🔥 FUNCIÓN: Cancelar suscripción activa en MP (Restaurada)
 export const cancelarSuscripcion = async (req: any, res: Response): Promise<any> => {
   try {
-    // 🔥 Buscamos el ID en todos los lugares posibles
     const idBruto = req.user?.userId || req.user?.id || req.usuario?.id || req.userId;
 
     if (!idBruto) {
@@ -179,7 +183,6 @@ export const cancelarSuscripcion = async (req: any, res: Response): Promise<any>
       return res.status(401).json({ error: "No se pudo extraer el ID del usuario del token." });
     }
 
-    // Convertimos a Número
     const userId = Number(idBruto);
 
     const user = await prisma.user.findUnique({
@@ -191,14 +194,12 @@ export const cancelarSuscripcion = async (req: any, res: Response): Promise<any>
       return res.status(400).json({ error: "No se encontró una suscripción activa para cancelar." });
     }
 
-    // 1. Le avisamos a Mercado Pago que cancele el débito automático
     const preapproval = new PreApproval(client);
     await preapproval.update({
       id: user.suscripcion.mpPreapprovalId,
       body: { status: 'cancelled' }
     });
 
-    // 2. Actualizamos nuestra base de datos local
     await prisma.suscripcion.update({
       where: { userId: user.id },
       data: { estado: 'cancelled' }
@@ -211,7 +212,7 @@ export const cancelarSuscripcion = async (req: any, res: Response): Promise<any>
   }
 };
 
-// 🔥 NUEVA FUNCIÓN: Obtener historial de pagos
+// 🔥 FUNCIÓN: Obtener historial de pagos (Restaurada)
 export const obtenerHistorialPagos = async (req: any, res: Response): Promise<any> => {
   try {
     const idBruto = req.user?.userId || req.user?.id || req.usuario?.id || req.userId;
@@ -219,7 +220,6 @@ export const obtenerHistorialPagos = async (req: any, res: Response): Promise<an
 
     if (!userId) return res.status(401).json({ error: "No autorizado" });
 
-    // Traemos los pagos ordenados del más nuevo al más viejo
     const pagos = await prisma.pago.findMany({
       where: { userId },
       orderBy: { fechaPago: 'desc' }

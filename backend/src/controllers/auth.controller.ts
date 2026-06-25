@@ -38,8 +38,26 @@ export const register = async (req: Request, res: Response): Promise<any> => {
     const hashedPassword = await bcrypt.hash(password, 10);
     const verificationToken = crypto.randomBytes(32).toString('hex');
 
+    // 🔥 1. CALCULAMOS LA FECHA DE VENCIMIENTO DEL PLAN DE PRUEBA (14 DÍAS)
+    const fechaVencimiento = new Date();
+    fechaVencimiento.setDate(fechaVencimiento.getDate() + 14);
+
+    // 🔥 2. CREAMOS EL USUARIO Y SU SUSCRIPCIÓN EN EL MISMO PASO
     const newUser = await prisma.user.create({
-      data: { nombre, email, telefono, password: hashedPassword, verificationToken },
+      data: { 
+        nombre, 
+        email, 
+        telefono, 
+        password: hashedPassword, 
+        verificationToken,
+        // Al crear el usuario, le anexamos directamente la suscripción gratuita
+        suscripcion: {
+          create: {
+            estado: 'trial', // Estado especial para saber que está en prueba
+            fechaVencimiento: fechaVencimiento
+          }
+        }
+      },
     });
 
     const baseUrl = process.env.API_URL || `${req.protocol}://${req.get('host')}`;

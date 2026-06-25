@@ -31,23 +31,35 @@ export const verificarSuscripcionActiva = async (req: Request, res: Response, ne
 
     if (!accountOwner) return res.status(404).json({ error: 'Dueño de cuenta no encontrado' });
 
-    // Si la agencia entera está en plan Gratuito, no verificamos pagos
-    // (El límite de 10 clientes lo ataja otro middleware)
+    const suscripcion = accountOwner.suscripcion;
+    const hoy = new Date();
+
+    // --- 🔥 3A. LÓGICA PARA EL PLAN DE PRUEBA (GRATUITO) ---
     if (accountOwner.plan === 'GRATUITO') {
+      // Verificamos si tiene fecha de vencimiento (los 14 días que le dimos al registrarse)
+      if (suscripcion?.fechaVencimiento) {
+        const fechaVencimiento = new Date(suscripcion.fechaVencimiento);
+        
+        // Si el día de hoy ya superó su fecha límite... lo pasamos a Solo Lectura
+        if (hoy > fechaVencimiento) {
+          return res.status(403).json({ 
+            error: 'Tu prueba gratuita de 14 días ha finalizado. Tu cuenta está en Modo Solo Lectura. Elegí un plan para seguir operando.',
+            codigo: 'PRUEBA_VENCIDA' // Un código específico para que el frontend lo reconozca
+          });
+        }
+      }
+      
+      // Si la fecha todavía no pasó (o si es una cuenta de administrador muy vieja sin fecha), lo dejamos seguir
       return next();
     }
 
-    const suscripcion = accountOwner.suscripcion;
-
+    // --- 🔥 3B. LÓGICA PARA LOS PLANES PAGOS (BASICO, PROFESIONAL, AGENCIA) ---
     const pagoAutorizado = suscripcion?.estado === 'autorizado';
-    
-    // Obtenemos la fecha de vencimiento (si no tiene, usamos una muy vieja)
     const fechaVencimiento = suscripcion?.fechaVencimiento ? new Date(suscripcion.fechaVencimiento) : new Date(0);
-    const hoy = new Date();
 
     const tieneDiasAFavor = fechaVencimiento > hoy;
 
-    // 🔥 EL CHANGÜÍ: Calculamos 3 días extra de gracia
+    // EL CHANGÜÍ: Calculamos 3 días extra de gracia SOLO para los que ya pagan
     const fechaLimiteGracia = new Date(fechaVencimiento);
     fechaLimiteGracia.setDate(fechaLimiteGracia.getDate() + 3);
     

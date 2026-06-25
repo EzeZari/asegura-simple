@@ -1,7 +1,6 @@
 "use client";
 
 import { useAuthStore } from "@/store/authStore";
-// 🔥 Agregamos el icono FileText para la tabla
 import { CreditCard, Calendar, CheckCircle2, AlertTriangle, Zap, ExternalLink, RefreshCw, FileText } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
@@ -17,7 +16,7 @@ export default function SuscripcionSettings() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
   
-  // 🔥 Nuevo estado para guardar los pagos
+  // Estado para guardar los pagos
   const [pagos, setPagos] = useState<any[]>([]);
 
   const [showConfirm, setShowConfirm] = useState(false);
@@ -26,19 +25,25 @@ export default function SuscripcionSettings() {
   const fetchLatestData = async () => {
     setIsRefreshing(true);
     try {
-        // Esto le pide al backend que busque TU usuario real en la DB
-        const res = await apiFetch(`/api/auth/refresh`, { method: "POST" });
-        if (res.ok) {
-            const data = await res.json();
-            // Esto actualiza el estado global con los datos frescos de la DB
+        // 1. Refrescar datos del usuario
+        const resUser = await apiFetch(`/api/auth/refresh`, { method: "POST" });
+        if (resUser.ok) {
+            const data = await resUser.json();
             useAuthStore.getState().setUser(data.user); 
+        }
+
+        // 🔥 2. AGREGADO: Hacer fetch al backend para traer el historial de pagos
+        const resPagos = await apiFetch(`/api/pagos/historial`);
+        if (resPagos.ok) {
+            const dataPagos = await resPagos.json();
+            setPagos(dataPagos);
         }
     } catch (error) {
         console.error("Error:", error);
     } finally {
         setIsRefreshing(false);
     }
-};
+  };
 
   useEffect(() => {
     fetchLatestData();
@@ -113,8 +118,11 @@ export default function SuscripcionSettings() {
               <div className="p-2.5 bg-green-50 text-green-700 rounded-xl">
                 <Zap size={24} />
               </div>
+              {/* 🔥 CORREGIDO: Ahora el gratis dice "Prueba", no "Básico" */}
               {esGratis ? (
-                <span className="px-3 py-1 bg-gray-100 text-gray-600 text-xs font-bold rounded-full">Básico</span>
+                <span className="px-3 py-1 bg-blue-100 text-blue-700 text-xs font-bold rounded-full">
+                  Prueba 14 Días
+                </span>
               ) : estaActivo ? (
                 <span className="px-3 py-1 bg-green-100 text-green-700 text-xs font-bold rounded-full flex items-center gap-1">
                   <CheckCircle2 size={14} /> Al día
@@ -133,11 +141,12 @@ export default function SuscripcionSettings() {
             <h3 className="text-gray-500 text-sm font-medium mb-1">Plan Actual</h3>
             <p className="text-2xl font-black text-gray-900 capitalize">{plan.toLowerCase()}</p>
             
-            {!esGratis && fechaVencimiento && (
+            {/* 🔥 CORREGIDO: Ahora muestra la fecha de fin de prueba a los gratuitos */}
+            {fechaVencimiento && (
               <div className="flex items-center gap-2 mt-4 text-sm text-gray-600 bg-gray-50 p-3 rounded-lg border border-gray-100">
                 <Calendar size={16} className="text-gray-400" />
                 <span>
-                  {estaCancelado ? "Tu acceso termina el:" : "Próximo cobro:"} <strong className="text-gray-900">{fechaVencimiento}</strong>
+                  {esGratis ? "Fin de la prueba:" : estaCancelado ? "Tu acceso termina el:" : "Próximo cobro:"} <strong className="text-gray-900">{fechaVencimiento}</strong>
                 </span>
               </div>
             )}
@@ -148,7 +157,7 @@ export default function SuscripcionSettings() {
               href={`/planes?email=${user.email}`}
               className="flex-1 bg-gray-900 hover:bg-gray-800 text-white text-center text-sm font-bold py-2.5 rounded-xl transition-colors"
             >
-              {esGratis ? "Mejorar Plan" : estaCancelado ? "Reactivar Plan" : "Cambiar Plan"}
+              {esGratis ? "Elegir un Plan Pago" : estaCancelado ? "Reactivar Plan" : "Cambiar Plan"}
             </Link>
           </div>
         </div>
@@ -189,7 +198,7 @@ export default function SuscripcionSettings() {
         </div>
       </div>
 
-      {/* 🔥 SECCIÓN NUEVA: Historial de Pagos */}
+      {/* Historial de Pagos */}
       <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm mt-8">
         <div className="flex items-center gap-3 mb-6 border-b border-gray-100 pb-4">
           <div className="p-2 bg-blue-50 text-blue-600 rounded-lg">
