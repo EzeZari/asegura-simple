@@ -82,3 +82,29 @@ export const updatePlan = async (req: Request, res: Response): Promise<void> => 
     res.status(500).json({ error: 'Ocurrió un error al intentar actualizar el plan de la cuenta.' });
   }
 };
+// 4. ELIMINAR UNA CUENTA
+export const deleteAgencia = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+
+    // Buscamos si el usuario existe
+    const usuario = await prisma.user.findUnique({
+      where: { id: Number(id) }
+    });
+
+    if (!usuario) {
+      res.status(404).json({ error: 'La cuenta no existe.' });
+      return;
+    }
+
+    // Eliminamos la cuenta (Prisma se encargará de eliminar en cascada lo asociado si está configurado)
+    await prisma.user.delete({
+      where: { id: Number(id) }
+    });
+
+    res.json({ message: 'Cuenta eliminada exitosamente del sistema.' });
+  } catch (error) {
+    console.error("Error al eliminar la cuenta:", error);
+    res.status(500).json({ error: 'Ocurrió un error al intentar eliminar la cuenta. Verifica que no tenga registros dependientes bloqueando la acción.' });
+  }
+};
