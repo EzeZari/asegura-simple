@@ -5,6 +5,8 @@ import { useSearchParams } from "next/navigation";
 import { Check, Shield, Users, Zap, Loader2, Sparkles } from "lucide-react";
 import Toast from "@/components/ui/Toast";
 import { useAuthStore } from "@/store/authStore"; 
+// Importamos el componente Image de Next.js (opcional, pero recomendado)
+import Image from "next/image";
 
 function PlanesContent() {
   const searchParams = useSearchParams();
@@ -13,7 +15,6 @@ function PlanesContent() {
   const user = useAuthStore((state: any) => state.user);
   const planActual = user?.plan || null;
   
-  // 🔥 Extraemos si el usuario tiene su suscripción cancelada
   const suscripcionEstado = user?.suscripcion?.estado;
   const estaCancelado = suscripcionEstado === "cancelled" || suscripcionEstado === "paused";
 
@@ -70,7 +71,7 @@ function PlanesContent() {
         "Soporte prioritario"
       ],
       popular: true,
-      color: "border-orange-500 bg-white text-gray-900 shadow-xl ring-4 ring-orange-500/10 lg:scale-105 z-10",
+      color: "border-orange-500 bg-white text-gray-900 shadow-xl ring-4 ring-orange-500/10 xl:scale-105 z-10",
       btnColor: "bg-orange-600 hover:bg-orange-700 text-white shadow-md",
       btnText: "Elegir Profesional"
     },
@@ -142,52 +143,59 @@ function PlanesContent() {
   };
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen p-4 md:p-8 bg-gray-50 overflow-x-hidden w-full">
-      <div className="flex flex-col gap-4 text-center max-w-3xl mb-12 mt-8">
-        <h1 className="text-3xl md:text-5xl font-black text-gray-900 tracking-tight">
-          ¡Cuenta confirmada con éxito!
+    <div className="flex flex-col items-center justify-center min-h-screen px-4 py-12 md:py-16 bg-gray-50 w-full">
+      
+      {/* 🔥 LOGO DE LA MARCA CON LA SOMBRA ESTÁNDAR DE TU APP */}
+      <div className="mb-6 md:mb-8 flex justify-center">
+        <img 
+          src="/logo.png" 
+          alt="AseguraSimple" 
+          className="h-10 md:h-14 lg:h-16 object-contain drop-shadow-md transition-transform hover:scale-105"
+        />
+      </div>
+
+      <div className="flex flex-col gap-4 text-center max-w-3xl mb-14">
+        <h1 className="text-4xl md:text-5xl lg:text-6xl font-black text-gray-900 tracking-tight">
+          Elegí tu plan ideal
         </h1>
-        <p className="text-base md:text-lg text-gray-600 font-medium">
-          Elegí cómo querés arrancar en AseguraSimple. Podés usar la versión de prueba o elegir un plan según tu volumen de asegurados.
+        <p className="text-base md:text-lg lg:text-xl text-gray-600 font-medium px-2">
+          Arrancá con la versión de prueba de 14 días gratis, o potenciá tu agencia con las herramientas de nuestros planes avanzados.
         </p>
       </div>
 
-      {/* 🔥 GRID ACTUALIZADO: Mejoramos los gaps, anchos máximos y comportamiento en desktop */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 lg:gap-8 items-stretch max-w-[1400px] w-full px-2 lg:px-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 xl:gap-8 items-stretch w-full max-w-7xl px-2 lg:px-8">
         {planes.map((plan) => {
           const IconComponent = plan.icon;
-          
           const esPlanActualActivo = plan.id === planActual && !estaCancelado;
           const esPlanCancelado = plan.id === planActual && estaCancelado;
 
           return (
             <div key={plan.id} className={`border p-6 md:p-8 rounded-3xl flex flex-col relative bg-white transition-all duration-300 ${plan.color}`}>
               {plan.popular && (
-                <span className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-orange-600 text-white px-5 py-1.5 rounded-full text-xs font-black uppercase tracking-widest whitespace-nowrap shadow-md">
+                <span className="absolute -top-4 left-1/2 -translate-x-1/2 bg-orange-600 text-white px-6 py-1.5 rounded-full text-xs font-black uppercase tracking-widest whitespace-nowrap shadow-md">
                   El más elegido
                 </span>
               )}
 
               <div className="flex flex-col gap-4 mb-6">
-                <div className={`p-3.5 rounded-2xl border w-fit ${plan.popular ? 'bg-orange-50 text-orange-600 border-orange-100' : 'bg-gray-50 text-gray-600 border-gray-100'}`}>
-                  <IconComponent size={26} />
+                <div className={`p-4 rounded-2xl border w-fit ${plan.popular ? 'bg-orange-50 text-orange-600 border-orange-100' : 'bg-gray-50 text-gray-600 border-gray-100'}`}>
+                  <IconComponent size={28} />
                 </div>
                 <div>
-                  <h3 className="font-bold text-xl text-gray-900 mb-1">{plan.nombre}</h3>
-                  {/* 🔥 CORRECCIÓN: Quitamos el 'h-8' que rompía el texto y dejamos que fluya */}
+                  <h3 className="font-bold text-2xl text-gray-900 mb-2">{plan.nombre}</h3>
                   <p className="text-sm text-gray-500 font-medium leading-relaxed">{plan.descripcion}</p>
                 </div>
               </div>
 
-              <div className="flex items-baseline gap-1.5 border-b border-gray-100 pb-6 mb-6">
-                <span className="text-4xl md:text-5xl font-black tracking-tight text-gray-900">{plan.precio}</span>
-                {plan.id !== "GRATUITO" && <span className="text-sm md:text-base font-bold text-gray-400">/mes</span>}
+              <div className="flex items-baseline gap-1.5 border-b border-gray-100 pb-8 mb-6">
+                <span className="text-4xl lg:text-5xl font-black tracking-tight text-gray-900">{plan.precio}</span>
+                {plan.id !== "GRATUITO" && <span className="text-base font-bold text-gray-400">/mes</span>}
               </div>
 
               <ul className="flex flex-col gap-4 flex-1 mb-8">
                 {plan.features.map((feature, idx) => (
-                  <li key={idx} className="flex items-start gap-3 text-sm font-medium text-gray-700">
-                    <Check size={18} className={`mt-0.5 shrink-0 ${plan.popular ? 'text-orange-500' : 'text-green-600'}`} />
+                  <li key={idx} className="flex items-start gap-3 text-sm md:text-base font-medium text-gray-700">
+                    <Check size={20} className={`mt-0.5 shrink-0 ${plan.popular ? 'text-orange-500' : 'text-green-600'}`} />
                     <span className="leading-tight">{feature}</span>
                   </li>
                 ))}
@@ -196,7 +204,7 @@ function PlanesContent() {
               <button
                 onClick={() => handleSeleccionarPlan(plan.id)}
                 disabled={loadingPlan !== null || esPlanActualActivo}
-                className={`w-full py-4 mt-auto rounded-xl font-bold text-sm md:text-base transition-all active:scale-[0.98] disabled:opacity-70 flex items-center justify-center gap-2 ${
+                className={`w-full py-4 mt-auto rounded-xl font-bold text-base transition-all active:scale-[0.98] disabled:opacity-70 flex items-center justify-center gap-2 ${
                   esPlanActualActivo ? 'bg-green-600 text-white cursor-not-allowed shadow-md' : plan.btnColor
                 }`}
               >
@@ -217,10 +225,10 @@ function PlanesContent() {
         })}
       </div>
 
-      <div className="mt-16 bg-white p-5 md:p-6 rounded-2xl border border-gray-200 max-w-3xl w-full flex items-center justify-center gap-4 shadow-sm">
+      <div className="mt-16 bg-white p-5 md:p-6 rounded-2xl border border-gray-200 max-w-3xl w-full flex items-center justify-center gap-4 shadow-sm px-6">
         <Shield size={24} className="text-green-600 shrink-0" />
-        <p className="text-xs md:text-sm text-gray-600 font-medium text-center md:text-left leading-relaxed">
-          Los pagos recurrentes se procesan de forma segura a través de <strong>Mercado Pago</strong>. Podés cancelar o cambiar tu suscripción en cualquier momento desde tu panel de control.
+        <p className="text-sm text-gray-600 font-medium text-center md:text-left leading-relaxed">
+          Los pagos recurrentes se procesan de forma segura a través de <strong>Mercado Pago</strong>. Podés cancelar en cualquier momento.
         </p>
       </div>
 
@@ -234,7 +242,7 @@ function PlanesContent() {
               <h3 className="text-xl md:text-2xl font-black text-gray-900 tracking-tight">Checkout Seguro</h3>
             </div>
             
-            <p className="text-sm md:text-base text-gray-600 leading-relaxed font-medium">
+            <p className="text-sm text-gray-600 leading-relaxed font-medium">
               Por seguridad, Mercado Pago exige que el pago se haga con la cuenta del correo ingresado. 
               Si vas a pagar usando <strong>otra cuenta</strong>, cambialo acá abajo:
             </p>
@@ -245,7 +253,7 @@ function PlanesContent() {
                  type="email" 
                  value={mpEmail} 
                  onChange={(e) => setMpEmail(e.target.value)}
-                 className="w-full border-2 border-gray-200 rounded-xl px-4 py-3.5 text-gray-900 font-bold focus:ring-4 focus:ring-[#009EE3]/20 focus:border-[#009EE3] outline-none transition-all placeholder:font-medium placeholder:text-gray-400"
+                 className="w-full border-2 border-gray-200 rounded-xl px-4 py-3 text-gray-900 font-bold focus:ring-4 focus:ring-[#009EE3]/20 focus:border-[#009EE3] outline-none transition-all placeholder:font-medium placeholder:text-gray-400"
                  placeholder="tu-email@mercadopago.com"
                />
             </div>
@@ -253,13 +261,13 @@ function PlanesContent() {
             <div className="flex flex-col-reverse sm:flex-row justify-end gap-3 mt-6 pt-6 border-t border-gray-100">
               <button 
                 onClick={() => { setShowMpModal(false); setLoadingPlan(null); }}
-                className="w-full sm:w-auto px-6 py-3.5 text-gray-600 hover:bg-gray-100 hover:text-gray-900 rounded-xl font-bold transition-colors"
+                className="w-full sm:w-auto px-6 py-3 text-gray-600 hover:bg-gray-100 hover:text-gray-900 rounded-xl font-bold transition-colors"
               >
                 Cancelar
               </button>
               <button 
                 onClick={confirmarPagoMP}
-                className="w-full sm:w-auto px-8 py-3.5 bg-[#009EE3] hover:bg-[#0080B7] text-white rounded-xl font-black shadow-lg shadow-[#009EE3]/30 transition-all active:scale-[0.98] flex items-center justify-center gap-2"
+                className="w-full sm:w-auto px-8 py-3 bg-[#009EE3] hover:bg-[#0080B7] text-white rounded-xl font-black shadow-lg shadow-[#009EE3]/30 transition-all active:scale-[0.98] flex items-center justify-center gap-2"
               >
                 Ir a pagar <Zap size={18} className="fill-current" />
               </button>
