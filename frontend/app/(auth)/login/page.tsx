@@ -225,6 +225,15 @@ export default function LoginPage() {
       <div className="text-sm text-gray-600 mt-2">
         ¿No tenés cuenta? <Link href="/registro" className="text-green-700 font-bold hover:underline">Creá una cuenta</Link>
       </div>
+
+      {/* 🔥 FOOTER LEGAL (Sutil y profesional) */}
+      <div className="mt-12 pt-6 border-t border-gray-100 text-xs text-gray-400 flex flex-col sm:flex-row justify-between items-center gap-2 w-full">
+        <p>© {new Date().getFullYear()} AseguraSimple. Todos los derechos reservados.</p>
+        <div className="flex gap-4 font-medium">
+          <Link href="/terminos" className="hover:text-green-700 transition-colors">Términos</Link>
+          <Link href="/privacidad" className="hover:text-green-700 transition-colors">Privacidad</Link>
+        </div>
+      </div>
     </div>
   );
 }
