@@ -77,7 +77,8 @@ export default function AlertaCard({ poliza, nivel }: Props) {
     
     setEstadoEmail("loading");
     try {
-      const res = await apiFetch(`/api/polizas/${poliza.id}/avisar-vencimiento`, { 
+      // 🔥 FIX: Cambiamos /avisar-vencimiento por /aviso
+      const res = await apiFetch(`/api/polizas/${poliza.id}/aviso`, { 
         method: "POST" 
       });
       
