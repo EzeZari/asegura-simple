@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { Save, BellRing, AlertTriangle, Clock, Bot, Send, Mail } from "lucide-react";
 import Toast from "@/components/ui/Toast";
+import { apiFetch } from "@/services/api";
 
 export default function NotificacionesSettings() {
   const [showToast, setShowToast] = useState(false);
@@ -21,7 +22,7 @@ export default function NotificacionesSettings() {
   useEffect(() => {
     const fetchAgencia = async () => {
       try {
-        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/agencia`);
+        const res = await apiFetch(`/api/agencia`);
         const data = await res.json();
         setAgencia({
           ...data,
@@ -44,9 +45,8 @@ export default function NotificacionesSettings() {
   const guardarCambios = async () => {
     setIsSaving(true);
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/agencia`, { 
+      const res = await apiFetch(`/api/agencia`, { 
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(agencia),
       });
 
@@ -80,7 +80,6 @@ export default function NotificacionesSettings() {
   return (
     <div className="flex flex-col gap-6 animate-in fade-in duration-300">
       
-      {/* 🔥 AJUSTE: p-4 en móvil, p-6 en PC */}
       <div className="bg-white p-4 md:p-6 rounded-2xl border border-gray-100 shadow-sm flex flex-col gap-5 md:gap-6">
         <h3 className="text-lg font-bold text-gray-900 border-b border-gray-50 pb-2 flex items-center gap-2">
           <BellRing size={18} className="text-gray-400" /> Preferencias de Alertas y Envíos
@@ -115,8 +114,9 @@ export default function NotificacionesSettings() {
                 <label className={`flex items-center gap-2 text-sm font-bold mb-1 ${agencia.envioAutomaticoActivo ? 'text-emerald-900' : 'text-gray-700'}`}>
                   <Bot size={18} /> Asistente de Envío Automático
                 </label>
+                {/* 🔥 TEXTO ACTUALIZADO PARA EXPLICAR EL DOBLE AVISO */}
                 <p className="text-xs text-gray-500">
-                  El sistema revisará todos los días y enviará los correos de aviso de vencimiento por vos.
+                  El sistema enviará un primer aviso según los días de anticipación, y un segundo recordatorio urgente según tus Vencimientos Críticos.
                 </p>
               </div>
               
@@ -146,7 +146,7 @@ export default function NotificacionesSettings() {
                 
                 <div className="flex flex-col gap-1 w-full sm:w-auto">
                   <label className="text-xs font-bold text-emerald-800 flex items-center gap-1">
-                    <Send size={14} /> Días de anticipación
+                    <Send size={14} /> Días de anticipación (1er Aviso)
                   </label>
                   <div className="flex items-center gap-2">
                     <input 
@@ -169,8 +169,9 @@ export default function NotificacionesSettings() {
             <label className="flex items-center gap-2 text-sm font-bold text-orange-900 mb-1">
               <AlertTriangle size={16} /> Vencimientos Críticos
             </label>
+            {/* 🔥 TEXTO ACTUALIZADO PARA CONECTARLO CON EL SEGUNDO AVISO */}
             <p className="text-xs text-orange-700 mb-3">
-              ¿Cuántos días antes del vencimiento querés que la alerta se marque como urgente/crítica?
+              ¿Cuántos días antes querés que la póliza se marque como urgente y se envíe el segundo correo automático?
             </p>
             <div className="flex items-center gap-3">
               <input 
@@ -210,7 +211,6 @@ export default function NotificacionesSettings() {
         </div>
 
         <div className="flex justify-end border-t border-gray-50 pt-4 mt-2">
-          {/* 🔥 AJUSTE: Botón w-full en celular */}
           <button 
             onClick={guardarCambios} 
             disabled={isSaving}

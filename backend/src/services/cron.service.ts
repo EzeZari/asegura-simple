@@ -3,12 +3,16 @@ import { prisma } from '../config/db';
 import { enviarAvisoVencimiento } from './email.service';
 
 export const iniciarTareasProgramadas = () => {
-  // Ejecutar al inicio de cada hora
+  // Ejecutar al inicio de cada hora (En producción usar '0 * * * *')
   cron.schedule('0 * * * *', async () => {
     try {
-      console.log("[ROBOT] Iniciando escaneo de vencimientos...");
+      console.log("[ROBOT] Iniciando escaneo de vencimientos preventivos y críticos...");
 
-      // 1. Buscamos TODOS los productores que tienen el envío automático activo
+      // 🔥 1. Traemos la configuración global de la Agencia para saber los Días Críticos
+      const agenciaGlobal = await prisma.agencia.findUnique({ where: { id: 1 } });
+      const diasAlertaCritica = agenciaGlobal?.diasAlertaCritica || 7; // 7 por defecto si falla algo
+
+      // 2. Buscamos TODOS los productores que tienen el envío automático activo
       const productores = await prisma.productor.findMany({
         where: { envioAutomaticoActivo: true },
         select: {
@@ -19,33 +23,51 @@ export const iniciarTareasProgramadas = () => {
         }
       });
 
-      for (const productor of productores) {
-        // 2. Verificamos si la hora actual coincide con la configuración de este productor
-        // Nos aseguramos de manejar la comparación de horas en formato '09'
-        const horaConfigurada = productor.horaEnvioAutomatico.split(':')[0].padStart(2, '0');
-        const horaActual = new Date().getHours().toString().padStart(2, '0');
+      const ahoraArg = new Date(new Date().toLocaleString("en-US", { timeZone: "America/Argentina/Buenos_Aires" }));
+      const horaActualArg = ahoraArg.getHours().toString().padStart(2, '0');
 
-        if (horaConfigurada !== horaActual) continue;
+      for (const productor of productores) {
+        const horaConfigurada = productor.horaEnvioAutomatico.split(':')[0].padStart(2, '0');
+
+        // Comparamos la hora de su configuración con la hora actual de Argentina
+        if (horaConfigurada !== horaActualArg) continue;
 
         console.log(`[ROBOT] Procesando productor: ${productor.nombre} (ID: ${productor.id})`);
 
-        // 3. Calculamos la fecha objetivo (Hoy + días configurados)
-        const fechaObjetivo = new Date();
-        fechaObjetivo.setDate(fechaObjetivo.getDate() + productor.diasAvisoAutomatico);
-        fechaObjetivo.setHours(0, 0, 0, 0);
+        const year = ahoraArg.getFullYear();
+        const month = ahoraArg.getMonth(); 
+        const date = ahoraArg.getDate();
 
-        const fechaSiguiente = new Date(fechaObjetivo);
-        fechaSiguiente.setDate(fechaSiguiente.getDate() + 1);
+        // 🔥 RANGO 1: El Aviso Preventivo (Ej: 15 días antes)
+        const fechaObjAviso = new Date(Date.UTC(year, month, date + productor.diasAvisoAutomatico));
+        const fechaSigAviso = new Date(Date.UTC(year, month, date + productor.diasAvisoAutomatico + 1));
 
-        // 4. Buscamos pólizas de ESTE productor que venzan ese día
+        // 🔥 RANGO 2: El Aviso Crítico/Urgente (Ej: 3 días antes)
+        const fechaObjCritico = new Date(Date.UTC(year, month, date + diasAlertaCritica));
+        const fechaSigCritico = new Date(Date.UTC(year, month, date + diasAlertaCritica + 1));
+
+        console.log(`[🔍 DEBUG] 1er Aviso: pólizas que venzan el ${fechaObjAviso.toISOString().split('T')[0]}`);
+        console.log(`[🔍 DEBUG] 2do Aviso (Crítico): pólizas que venzan el ${fechaObjCritico.toISOString().split('T')[0]}`);
+
+        // 3. Buscamos pólizas que coincidan con ALGUNA de las dos fechas
         const polizasAVencer = await prisma.poliza.findMany({
           where: {
             estado: 'Vigente',
-            asegurado: { productorId: productor.id },
-            fechaVencimiento: { 
-              gte: fechaObjetivo, 
-              lt: fechaSiguiente 
-            },
+            productorId: productor.id,
+            OR: [
+              {
+                fechaVencimiento: { 
+                  gte: fechaObjAviso, 
+                  lt: fechaSigAviso 
+                }
+              },
+              {
+                fechaVencimiento: { 
+                  gte: fechaObjCritico, 
+                  lt: fechaSigCritico 
+                }
+              }
+            ]
           },
           include: { asegurado: true, compania: true }
         });
@@ -68,7 +90,7 @@ export const iniciarTareasProgramadas = () => {
               poliza.cantidadEmpleados
             );
 
-            // Actualizamos la marca de "último aviso" para evitar duplicados
+            // Actualizamos la marca de "último aviso"
             await prisma.poliza.update({
               where: { id: poliza.id },
               data: { ultimoAviso: new Date() }
@@ -77,13 +99,13 @@ export const iniciarTareasProgramadas = () => {
           }
         }
 
-        // 5. Registro de actividad por productor
+        // 4. Registro de actividad por productor
         if (enviados > 0) {
           await prisma.actividad.create({
             data: {
               accion: "Automatización",
               entidad: "Sistema",
-              descripcion: `Robot automático: ${enviados} avisos enviados.`,
+              descripcion: `Robot automático: ${enviados} avisos enviados (Preventivos + Críticos).`,
               cliente: "Robot",
               productorId: productor.id 
             }
@@ -98,5 +120,5 @@ export const iniciarTareasProgramadas = () => {
     timezone: "America/Argentina/Buenos_Aires"
   });
   
-  console.log("⏱️ Robot automático (Multi-tenant) cargado en memoria.");
+  console.log("⏱️ Robot automático de correos (Preventivos + Críticos) cargado en memoria.");
 };
