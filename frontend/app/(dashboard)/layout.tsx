@@ -8,6 +8,7 @@ import { apiFetch } from "@/services/api";
 import UpgradeModal from "@/components/ui/UpgradeModal";
 import GracePeriodBanner from "@/components/layout/GracePeriodBanner"; 
 import SessionExpiredModal from "@/components/ui/SessionExpiredModal";
+import Script from "next/script"; // 🔥 IMPORTAMOS EL COMPONENTE SCRIPT
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const setUser = useAuthStore((state: any) => state.setUser); 
@@ -64,6 +65,19 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       {/* MODALES GLOBALES DE LA APLICACIÓN */}
       <UpgradeModal />
       <SessionExpiredModal />
+
+      {/* 🔥 WIDGET DE SOPORTE (CRISP CHAT) */}
+      <Script id="crisp-widget" strategy="afterInteractive">
+        {`
+          window.$crisp=[];
+          window.CRISP_WEBSITE_ID="2f806907-e4f4-41c4-a37b-e8601b2a4f9e";
+          (function(){
+            d=document;s=d.createElement("script");
+            s.src="https://client.crisp.chat/l.js";
+            s.async=1;d.getElementsByTagName("head")[0].appendChild(s);
+          })();
+        `}
+      </Script>
     </div>
   );
 }
