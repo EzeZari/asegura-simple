@@ -3,7 +3,6 @@
 import { useState, useEffect, useRef } from "react";
 import { X, UploadCloud, FileText } from "lucide-react";
 import { apiFetch } from "@/services/api"; 
-// 🔥 IMPORTAMOS LA NUEVA VALIDACIÓN ESTRICTA
 import { validarRequerido, validarPatente, validarNroPoliza } from "@/utils/validaciones";
 
 interface Props {
@@ -20,6 +19,7 @@ const ESTADO_INICIAL = {
   fechaInicio: "",
   fechaVencimiento: "",
   estado: "Vigente",
+  formaPago: "", // 🔥 AGREGADO: Nuevo campo
   cobertura: "",
   aseguradoId: "", 
   companiaId: "", 
@@ -77,6 +77,7 @@ export default function NuevaPolizaModal({ isOpen, onClose, onSuccess, polizaAEd
             estado: "Vigente", 
             aseguradoId: polizaAEditar.aseguradoId.toString(),
             companiaId: polizaAEditar.companiaId?.toString() || "",
+            formaPago: polizaAEditar.formaPago || "", // 🔥 Cargamos la forma de pago si existe
           });
         } else {
           setFormData({
@@ -85,6 +86,7 @@ export default function NuevaPolizaModal({ isOpen, onClose, onSuccess, polizaAEd
             fechaVencimiento: polizaAEditar.fechaVencimiento.split('T')[0],
             aseguradoId: polizaAEditar.aseguradoId.toString(),
             companiaId: polizaAEditar.companiaId?.toString() || "",
+            formaPago: polizaAEditar.formaPago || "", // 🔥 Cargamos la forma de pago si existe
           });
         }
       } else {
@@ -124,14 +126,10 @@ export default function NuevaPolizaModal({ isOpen, onClose, onSuccess, polizaAEd
     e.preventDefault();
     setErrorGlobal("");
 
-    // 🔥 EJECUTAMOS LAS VALIDACIONES ACTUALIZADAS
     const nuevosErrores: Record<string, string> = {
       aseguradoId: validarRequerido(formData.aseguradoId, "Asegurado"),
       companiaId: validarRequerido(formData.companiaId, "Compañía"),
-      
-      // 🔥 AHORA USA LA REGLA QUE BLOQUEA LETRAS
       nroPoliza: validarNroPoliza(formData.nroPoliza),
-      
       fechaInicio: validarRequerido(formData.fechaInicio, "Vigencia Desde"),
       fechaVencimiento: validarRequerido(formData.fechaVencimiento, "Vigencia Hasta"),
     };
@@ -289,12 +287,24 @@ export default function NuevaPolizaModal({ isOpen, onClose, onSuccess, polizaAEd
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Rama / Tipo</label>
                 <select name="tipoPoliza" value={formData.tipoPoliza} onChange={handleChange} className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-600 outline-none bg-white">
-                  <option value="Automotor">Automotor</option>
-                  <option value="Motovehículo">Motovehículo</option>
-                  <option value="Combinado Familiar">Combinado Familiar</option>
-                  <option value="Vida">Vida</option>
+                  {/* 🔥 LISTA DE RAMAS COMPLETA Y ACTUALIZADA */}
+                  <option value="Accidentes personales">Accidentes personales</option>
                   <option value="ART">ART</option>
-                  <option value="Integral de Comercio">Integral de Comercio</option>
+                  <option value="Automotor">Automotor</option>
+                  <option value="Cascos">Cascos</option>
+                  <option value="Caución">Caución</option>
+                  <option value="Combinado familiar">Combinado familiar</option>
+                  <option value="Ecomovilidad">Ecomovilidad</option>
+                  <option value="Incendio">Incendio</option>
+                  <option value="Integral para comercio">Integral para comercio</option>
+                  <option value="Motovehículo">Motovehículo</option>
+                  <option value="Responsabilidad civil">Responsabilidad civil</option>
+                  <option value="Robo">Robo</option>
+                  <option value="Seguro técnico">Seguro técnico</option>
+                  <option value="Transporte">Transporte</option>
+                  <option value="Vida colectivo">Vida colectivo</option>
+                  <option value="Vida individual">Vida individual</option>
+                  <option value="Vida simple">Vida simple</option>
                 </select>
               </div>
             </div>
@@ -324,7 +334,8 @@ export default function NuevaPolizaModal({ isOpen, onClose, onSuccess, polizaAEd
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* 🔥 SECCIÓN DE ESTADO, PAGO Y COBERTURA (3 Columnas) */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Estado</label>
                 <select name="estado" value={formData.estado} onChange={handleChange} className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-600 outline-none bg-white">
@@ -335,12 +346,23 @@ export default function NuevaPolizaModal({ isOpen, onClose, onSuccess, polizaAEd
                 </select>
               </div>
               <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Forma de Pago</label>
+                <select name="formaPago" value={formData.formaPago} onChange={handleChange} className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-600 outline-none bg-white">
+                  <option value="">-- Seleccionar --</option>
+                  <option value="Tarjeta de Crédito">Tarjeta de Crédito</option>
+                  <option value="Tarjeta de Débito">Tarjeta de Débito</option>
+                  <option value="CBU / Débito Automático">CBU / Débito Automático</option>
+                  <option value="Efectivo / Cupón">Efectivo / Pago Fácil</option>
+                  <option value="Transferencia">Transferencia Bancaria</option>
+                </select>
+              </div>
+              <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Cobertura</label>
-                <input type="text" name="cobertura" value={formData.cobertura} onChange={handleChange} placeholder="Ej: Terceros Completo" className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-600 outline-none" />
+                <input type="text" name="cobertura" value={formData.cobertura} onChange={handleChange} placeholder="Ej: Terceros" className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-600 outline-none" />
               </div>
             </div>
 
-            {/* CAMPOS CONDICIONALES */}
+            {/* CAMPOS CONDICIONALES ACTUALIZADOS */}
             {(formData.tipoPoliza === "Automotor" || formData.tipoPoliza === "Motovehículo") && (
               <div className="space-y-4 pt-4 border-t border-gray-100 mt-4 animate-in fade-in slide-in-from-top-2 duration-300">
                 <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider flex items-center gap-2">
@@ -371,7 +393,7 @@ export default function NuevaPolizaModal({ isOpen, onClose, onSuccess, polizaAEd
               </div>
             )}
 
-            {(formData.tipoPoliza === "Combinado Familiar" || formData.tipoPoliza === "Integral de Comercio") && (
+            {(formData.tipoPoliza === "Combinado familiar" || formData.tipoPoliza === "Integral para comercio") && (
               <div className="space-y-4 pt-4 border-t border-gray-100 mt-4 animate-in fade-in slide-in-from-top-2 duration-300">
                  <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider flex items-center gap-2">
                   Ubicación del Riesgo <span className="text-[10px] bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full normal-case">Opcional</span>
@@ -395,7 +417,6 @@ export default function NuevaPolizaModal({ isOpen, onClose, onSuccess, polizaAEd
               </div>
             )}
 
-            {/* 🔥 BLOQUE NUEVO: SUBIDA DE ARCHIVO PDF EN LA CREACIÓN */}
             <div className="space-y-4 pt-4 border-t border-gray-100 mt-4">
               <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider flex items-center gap-2">
                 Póliza Digital <span className="text-[10px] bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full normal-case">Opcional</span>

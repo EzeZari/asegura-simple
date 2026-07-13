@@ -8,11 +8,7 @@ interface Props {
   onClickDetalle: (id: number) => void;
   menuAbiertoId: number | null;
   onToggleMenu: (id: number | null) => void;
-  
-  // 🔥 RECIBIMOS LA ORDEN DE SI PUEDE MODIFICAR O NO
   puedeModificar: boolean;
-
-  // 🔥 Las funciones ahora son opcionales (?) porque si es Vendedor, no se las pasamos
   onEdit?: (poliza: any) => void;
   onAvisarVencimiento?: (poliza: any) => void;
   onCambiarEstado?: (poliza: any, estado: string) => void;
@@ -21,7 +17,7 @@ interface Props {
 
 export default function PolizaTableRow({
   poliza, onClickDetalle, menuAbiertoId, onToggleMenu,
-  puedeModificar, // Lo leemos acá
+  puedeModificar,
   onEdit, onAvisarVencimiento, onCambiarEstado, onEliminar
 }: Props) {
 
@@ -64,24 +60,45 @@ export default function PolizaTableRow({
         <div className="font-medium text-gray-900">{poliza.tipoPoliza}</div>
         <div className="text-xs text-gray-500 truncate max-w-[150px]">{poliza.cobertura || "Sin detalle"}</div>
       </td>
+      
       <td className="px-4 lg:px-6 py-4 whitespace-nowrap">
-        {poliza.tipoPoliza === "Automotor" || poliza.tipoPoliza === "Motovehículo" ? (
-          <div className="text-sm text-gray-900">{poliza.patente?.toUpperCase() || "-"}</div>
-        ) : (
-          <div className="text-sm text-gray-900 truncate max-w-[150px]">{poliza.ubicacionRiesgo || "-"}</div>
-        )}
+        {(() => {
+          const rama = (poliza.tipoPoliza || "").toLowerCase();
+          
+          if (rama.includes("auto") || rama.includes("moto")) {
+            return <div className="text-sm text-gray-900 font-medium">{poliza.patente?.toUpperCase() || "-"}</div>;
+          }
+          
+          if (rama.includes("combinado") || rama.includes("integral") || rama.includes("incendio") || rama.includes("robo")) {
+            return <div className="text-sm text-gray-900 truncate max-w-[150px]">{poliza.ubicacionRiesgo || "-"}</div>;
+          }
+          
+          if (rama === "art") {
+            // 🔥 CORREGIDO: Ahora dice "empleados" en vez de "cápitas"
+            return <div className="text-sm text-gray-900">{poliza.cantidadEmpleados ? `${poliza.cantidadEmpleados} empleados` : "-"}</div>;
+          }
+
+          return <div className="text-sm text-gray-400 italic">N/A</div>;
+        })()}
       </td>
+
       <td className="px-4 lg:px-6 py-4 whitespace-nowrap">
         <div className="text-gray-900 text-xs">{new Date(poliza.fechaInicio).toLocaleDateString("es-AR")}</div>
         <div className="text-xs font-bold text-gray-700">al {new Date(poliza.fechaVencimiento).toLocaleDateString("es-AR")}</div>
       </td>
+      
+      <td className="px-4 lg:px-6 py-4 whitespace-nowrap">
+        <div className="text-sm text-gray-700 font-medium">
+          {poliza.formaPago || <span className="text-gray-400 italic text-xs">No definida</span>}
+        </div>
+      </td>
+
       <td className="px-4 lg:px-6 py-4 whitespace-nowrap">
         <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold shadow-sm ${getEstadoBadge(getEstadoInteligente(poliza))}`}>
           {getEstadoInteligente(poliza)}
         </span>
       </td>
       
-      {/* 🔥 ACÁ ESTÁ EL ESCUDO: Todo este 'td' desaparece si el usuario es Solo Lectura */}
       {puedeModificar && (
         <td className="px-4 lg:px-6 py-4 text-right relative whitespace-nowrap">
           <ActionMenu isOpen={menuAbiertoId === poliza.id} onToggle={() => onToggleMenu(menuAbiertoId === poliza.id ? null : poliza.id)}>

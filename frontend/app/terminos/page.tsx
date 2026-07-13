@@ -1,3 +1,5 @@
+"use client";
+
 import Link from "next/link";
 import Image from "next/image";
 import { ArrowLeft, Scale } from "lucide-react";
@@ -13,7 +15,6 @@ export default function TerminosPage() {
             <ArrowLeft size={16} /> Volver al Registro
           </Link>
           <div className="flex items-center">
-            {/* 🔥 Logo ampliado y con sombra para que el texto blanco resalte */}
             <Image 
               src="/logo.png" 
               alt="AseguraSimple Logo" 
@@ -32,40 +33,50 @@ export default function TerminosPage() {
 
         <div className="prose prose-green max-w-none text-gray-700 space-y-8 text-sm md:text-base leading-relaxed">
           <p className="font-medium text-gray-900 bg-gray-50 p-5 rounded-xl border border-gray-100">
-            El presente documento establece las condiciones mediante las cuales los usuarios (en adelante, "el Usuario", "el Productor" o "la Agencia") podrán acceder y utilizar la plataforma de software como servicio provista por AseguraSimple (en adelante, "la Plataforma"). Al crear una cuenta, el Usuario acepta someterse a estos términos en su totalidad.
+            El presente documento constituye un contrato legalmente vinculante (Contrato de Adhesión bajo el Art. 984 del CCCN) entre AseguraSimple y los profesionales que utilicen la plataforma. Al registrarse y tildar la casilla de aceptación, el Usuario confirma comprender y aceptar íntegramente estas estipulaciones.
           </p>
 
           <section>
-            <h2 className="text-xl font-bold text-gray-900 mb-3 border-l-4 border-green-600 pl-3">1. Naturaleza del Servicio</h2>
-            <p>AseguraSimple es una solución tecnológica (SaaS) destinada a facilitar la gestión administrativa, operativa y de cartera de Productores Asesores de Seguros. <strong>AseguraSimple no es una compañía aseguradora, ni un broker, ni comercializa pólizas de seguro, ni interviene en la relación contractual entre el Productor y sus clientes finales.</strong> La responsabilidad por el asesoramiento, emisión, cobranza y liquidación de siniestros recae exclusiva y excluyentemente sobre el Usuario y/o las compañías aseguradoras correspondientes.</p>
+            <h2 className="text-xl font-bold text-gray-900 mb-3 border-l-4 border-green-600 pl-3">1. Naturaleza Comercial (SaaS B2B) y Exclusión de Consumo</h2>
+            <p>El Usuario declara y garantiza que contrata y utiliza la plataforma AseguraSimple de manera exclusiva en su calidad de Productor Asesor de Seguros (PAS) independiente, agencia o profesional comercial, integrando el software a su proceso productivo para gestionar sus operaciones. Por consiguiente, <strong>las Partes reconocen expresamente la inexistencia de una relación de consumo, excluyendo la aplicación de la Ley N° 24.240 de Defensa del Consumidor</strong> y sometiendo este contrato a la legislación civil y comercial ordinaria.</p>
           </section>
 
           <section>
-            <h2 className="text-xl font-bold text-gray-900 mb-3 border-l-4 border-green-600 pl-3">2. Registro y Seguridad de la Cuenta</h2>
-            <p>El Usuario se compromete a proporcionar información veraz, actual y completa durante el proceso de registro. Es responsabilidad exclusiva del Usuario mantener la confidencialidad de sus credenciales de acceso. AseguraSimple no será responsable por ninguna pérdida o daño derivado del acceso no autorizado a la cuenta del Usuario como consecuencia de la negligencia en la custodia de sus contraseñas.</p>
+            <h2 className="text-xl font-bold text-gray-900 mb-3 border-l-4 border-green-600 pl-3">2. Limitación Contractual de Responsabilidad (Liability Cap)</h2>
+            <p>AseguraSimple provee la plataforma en modalidad de "software como servicio" (SaaS) bajo la condición "como está" (<em>As Is</em>) y "según disponibilidad". No garantizamos que el servicio será ininterrumpido, infalible o estará exento de caídas sistémicas.</p>
+            <p className="mt-2 text-red-700 font-medium">AseguraSimple se exime expresamente de cualquier responsabilidad patrimonial frente al Usuario o terceros por lucro cesante, pérdida de chance comercial, pérdida de ventas o de datos derivados de interrupciones del servicio. El Usuario asume la carga de mantener copias de respaldo (backups) de su información.</p>
+            <p className="mt-2">En el hipotético caso en que se decrete judicialmente responsabilidad patrimonial por parte de AseguraSimple (excluyendo dolo), la indemnización máxima acumulada quedará estrictamente limitada al monto total efectivamente abonado por el Usuario en concepto de suscripciones durante los seis (6) meses previos al evento dañoso.</p>
           </section>
 
           <section>
-            <h2 className="text-xl font-bold text-gray-900 mb-3 border-l-4 border-green-600 pl-3">3. Planes, Facturación y Períodos de Gracia</h2>
+            <h2 className="text-xl font-bold text-gray-900 mb-3 border-l-4 border-green-600 pl-3">3. Facturación, Régimen Cambiario y Renuncia al Art. 765 CCCN</h2>
+            <p>La tarifa de suscripción mensual se encuentra fijada nominalmente en Dólares Estadounidenses (USD) para preservar la intangibilidad del servicio tecnológico. El Usuario reconoce que la fijación en dicha moneda extranjera es un componente esencial del contrato.</p>
+            <p className="mt-2 font-bold text-gray-900">En uso de la autonomía de la voluntad, el Usuario renuncia de forma expresa e irrevocable a las facultades conferidas por el Artículo 765 del Código Civil y Comercial de la Nación, comprometiéndose a no invocar la pesificación al tipo de cambio oficial.</p>
+            <p className="mt-2">El pago se procesará a través de Mercado Pago en Pesos Argentinos (ARS), aplicando AseguraSimple un tipo de cambio financiero legal, libre y de referencia (como el Dólar MEP o CCL) al cierre del día hábil anterior a la facturación.</p>
+          </section>
+
+          <section>
+            <h2 className="text-xl font-bold text-gray-900 mb-3 border-l-4 border-green-600 pl-3">4. Pagos y Suscripciones Recurrentes</h2>
             <ul className="list-disc pl-5 space-y-2 mt-2">
-              <li><strong>Plan Gratuito:</strong> Está estrictamente limitado a la gestión de un máximo de diez (10) clientes/asegurados. La creación de múltiples cuentas vinculadas a un mismo Productor para evadir este límite constituye una violación de estos términos y resultará en la baja definitiva del servicio.</li>
-              <li><strong>Suscripciones Pagas:</strong> Se abonan de manera anticipada. Ante la falta de pago, la Plataforma otorgará un período de gracia automático de tres (3) días corridos. Finalizado dicho plazo, la cuenta adoptará la modalidad de "Solo Lectura", inhabilitando la creación o modificación de registros hasta la regularización de la deuda.</li>
+              <li>El método de pago asociado a la suscripción mediante Mercado Pago debe ser ineludiblemente una tarjeta de débito o crédito bancaria. El uso exclusivo de "dinero en cuenta" puede generar la expiración anticipada del token de cobro tras 30 días, derivando en la cancelación automática del plan por parte de la pasarela.</li>
+              <li>Ante la falta de pago tras los reintentos automáticos configurados por Mercado Pago, la plataforma aplicará un período de gracia de tres (3) días. Vencido este plazo, la cuenta pasará a modalidad "Solo Lectura", inhabilitando operaciones operativas hasta regularizar la situación.</li>
             </ul>
           </section>
 
           <section>
-            <h2 className="text-xl font-bold text-gray-900 mb-3 border-l-4 border-green-600 pl-3">4. Propiedad Intelectual e Información</h2>
-            <p>AseguraSimple retiene todos los derechos, títulos e intereses (incluyendo derechos de autor, marcas y patentes) sobre el código fuente, diseño, bases de datos y algoritmos de la Plataforma. Por su parte, <strong>el Usuario conserva la propiedad absoluta e intransferible sobre todos los datos, clientes y pólizas que ingrese al sistema.</strong> AseguraSimple no retendrá ni comercializará la cartera de clientes del Usuario bajo ninguna circunstancia.</p>
+            <h2 className="text-xl font-bold text-gray-900 mb-3 border-l-4 border-green-600 pl-3">5. Descargo Operativo: Rúbrica Digital (SSN)</h2>
+            <p>AseguraSimple provee un módulo para la generación y exportación de archivos (formatos XML/TXT) compatibles con los estándares de la Superintendencia de Seguros de la Nación (SSN) para la Rúbrica Digital de Productores.</p>
+            <p className="mt-2"><strong>El Usuario entiende y acepta que AseguraSimple únicamente provee el archivo informático.</strong> La responsabilidad indelegable de ingresar al sistema de la AFIP, validar la estructura, realizar las liquidaciones y presentar los registros dentro del plazo legal exigido recae exclusivamente sobre el Productor. AseguraSimple no responderá frente a multas, suspensiones o inhabilitaciones de matrícula impuestas por la SSN derivadas de omisiones, retrasos o errores en las presentaciones efectuadas por el PAS.</p>
           </section>
 
           <section>
-            <h2 className="text-xl font-bold text-gray-900 mb-3 border-l-4 border-green-600 pl-3">5. Niveles de Servicio y Limitación de Responsabilidad</h2>
-            <p>Si bien AseguraSimple emplea infraestructura en la nube de alta disponibilidad, el servicio se provee "tal cual es" (as is). No garantizamos que el funcionamiento sea ininterrumpido o libre de errores. En ningún caso AseguraSimple será responsable por lucro cesante, pérdida de ventas, pérdida de datos o daños indirectos derivados de caídas del servidor, fallas de conectividad o causas de fuerza mayor.</p>
+            <h2 className="text-xl font-bold text-gray-900 mb-3 border-l-4 border-green-600 pl-3">6. Cláusula de Indemnidad</h2>
+            <p>El Usuario se obliga irrevocablemente a mantener indemne a AseguraSimple, a sus directores, empleados y proveedores de infraestructura, frente a cualquier reclamo, demanda civil, administrativa o penal interpuesta por terceros (incluyendo asegurados finales o autoridades de control) que tenga como causa el uso indebido de la plataforma, la carga de datos sin el consentimiento legal, o el incumplimiento de sus deberes profesionales como Productor de Seguros.</p>
           </section>
 
           <section>
-            <h2 className="text-xl font-bold text-gray-900 mb-3 border-l-4 border-green-600 pl-3">6. Jurisdicción y Ley Aplicable</h2>
-            <p>Estos Términos y Condiciones se regirán e interpretarán de acuerdo con las leyes de la República Argentina. Cualquier controversia derivada de la aplicación, interpretación o ejecución de este contrato, será sometida a la jurisdicción de los Tribunales Ordinarios de la ciudad de Rosario, Provincia de Santa Fe, renunciando las partes a cualquier otro fuero que pudiera corresponderles.</p>
+            <h2 className="text-xl font-bold text-gray-900 mb-3 border-l-4 border-green-600 pl-3">7. Jurisdicción y Ley Aplicable</h2>
+            <p>Estos Términos y Condiciones se regirán e interpretarán de acuerdo con las leyes de la República Argentina. Cualquier controversia será sometida a la jurisdicción exclusiva de los Tribunales Ordinarios de la ciudad de Rosario, Provincia de Santa Fe, renunciando las partes a cualquier otro fuero que pudiera corresponderles.</p>
           </section>
         </div>
       </div>

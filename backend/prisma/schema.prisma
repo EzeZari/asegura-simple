@@ -83,6 +83,7 @@ model Poliza {
   fechaVencimiento DateTime
   estado           String
   cobertura        String?
+  formaPago          String?   // 🔥 ESTE ES EL CAMPO NUEVO
 
   aseguradoId      Int
   asegurado        Asegurado @relation(fields: [aseguradoId], references: [id])

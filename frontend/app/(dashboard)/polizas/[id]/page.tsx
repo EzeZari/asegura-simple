@@ -10,13 +10,12 @@ import NuevaPolizaModal from "@/components/polizas/NuevaPolizaModal";
 import Toast from "@/components/ui/Toast";
 import { apiFetch } from "@/services/api";
 import { useAuthStore } from "@/store/authStore"; 
-import { PERMISOS, tienePermiso } from "@/utils/roles"; // 🔥 IMPORTAMOS NUESTRO DICCIONARIO
+import { PERMISOS, tienePermiso } from "@/utils/roles"; 
 
 export default function PolizaDetallePage() {
   const { id } = useParams();
   const router = useRouter();
   
-  // 🔥 EVALUAMOS LOS PERMISOS CON NUESTRA HERRAMIENTA SENIOR
   const { user } = useAuthStore();
   const puedeModificar = tienePermiso(user, PERMISOS.PUEDE_MODIFICAR_DATOS);
 
@@ -26,7 +25,6 @@ export default function PolizaDetallePage() {
   const [showToast, setShowToast] = useState(false);
   const [mensajeToast, setMensajeToast] = useState("");
   
-  // Estados y refs para el manejo del PDF
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -56,7 +54,7 @@ export default function PolizaDetallePage() {
   };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!puedeModificar) return; // 🔥 Bloqueo de seguridad ninja
+    if (!puedeModificar) return; 
     
     const file = e.target.files?.[0];
     if (!file) return;
@@ -134,7 +132,6 @@ export default function PolizaDetallePage() {
             </div>
           </div>
           
-          {/* 🔥 EL BOTÓN DE EDITAR DESAPARECE SI ES VENDEDOR */}
           {puedeModificar && (
             <button 
               onClick={() => setIsModalOpen(true)}
@@ -165,6 +162,9 @@ export default function PolizaDetallePage() {
               <DataField label="Vigencia Inicio" value={new Date(poliza.fechaInicio).toLocaleDateString("es-AR")} />
               <DataField label="Vigencia Fin" value={new Date(poliza.fechaVencimiento).toLocaleDateString("es-AR")} />
               
+              {/* 🔥 NUEVO CAMPO: FORMA DE PAGO */}
+              <DataField label="Forma de Pago" value={poliza.formaPago || "No especificada"} />
+
               {(poliza.tipoPoliza === "Automotor" || poliza.tipoPoliza === "Motovehículo") && (
                 <>
                   <DataField label="Dominio / Patente" value={poliza.patente?.toUpperCase() || "-"} />
@@ -172,7 +172,8 @@ export default function PolizaDetallePage() {
                 </>
               )}
 
-              {(poliza.tipoPoliza === "Combinado Familiar" || poliza.tipoPoliza === "Integral de Comercio") && (
+              {/* 🔥 ACTUALIZADO CON LOS NUEVOS NOMBRES OFICIALES DE LAS RAMAS */}
+              {(poliza.tipoPoliza === "Combinado familiar" || poliza.tipoPoliza === "Combinado Familiar" || poliza.tipoPoliza === "Integral para comercio" || poliza.tipoPoliza === "Integral de Comercio") && (
                 <DataField label="Ubicación del Riesgo" value={poliza.ubicacionRiesgo || "-"} />
               )}
 
@@ -206,7 +207,6 @@ export default function PolizaDetallePage() {
 
             {poliza.pdfUrl ? (
               <div className="flex flex-col gap-3">
-                {/* Botón para ver el PDF (Esto SI lo puede hacer el Vendedor) */}
                 <a 
                   href={poliza.pdfUrl.startsWith('http') ? poliza.pdfUrl : `${process.env.NEXT_PUBLIC_API_URL}/${poliza.pdfUrl}`}
                   target="_blank"
@@ -216,7 +216,6 @@ export default function PolizaDetallePage() {
                   <FileText size={20} /> Ver Póliza Digital
                 </a>
                 
-                {/* Botón de reemplazar (Solo Dueños y Admins) */}
                 {puedeModificar && (
                   <button 
                     onClick={() => fileInputRef.current?.click()}
@@ -229,7 +228,6 @@ export default function PolizaDetallePage() {
               </div>
             ) : (
               <div className="flex flex-col gap-3">
-                {/* Botón grande de subir PDF (Solo Dueños y Admins) */}
                 {puedeModificar ? (
                   <button 
                     onClick={() => fileInputRef.current?.click()}
@@ -287,7 +285,6 @@ export default function PolizaDetallePage() {
         </div>
       </div>
 
-      {/* 🔥 MODAL BLOQUEADO PARA LECTORES */}
       {puedeModificar && (
         <NuevaPolizaModal 
           isOpen={isModalOpen} 

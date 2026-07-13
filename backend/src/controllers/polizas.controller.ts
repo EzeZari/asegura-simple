@@ -79,7 +79,7 @@ export const crearPoliza = async (req: Request, res: Response): Promise<any> => 
     const { 
       nroPoliza, tipoPoliza, fechaInicio, fechaVencimiento, estado, 
       cobertura, aseguradoId, companiaId,
-      patente, marca, modelo, ubicacionRiesgo, cantidadEmpleados 
+      patente, marca, modelo, ubicacionRiesgo, cantidadEmpleados, formaPago 
     } = req.body;
 
     const asegurado = await prisma.asegurado.findFirst({
@@ -102,6 +102,7 @@ export const crearPoliza = async (req: Request, res: Response): Promise<any> => 
         modelo: modelo || null,
         ubicacionRiesgo: ubicacionRiesgo || null,
         cantidadEmpleados: cantidadEmpleados || null,
+        formaPago: formaPago || null, // 🔥 AGREGADO PARA QUE SE GUARDE
       },
       include: { asegurado: true }
     });
@@ -154,6 +155,7 @@ export const actualizarPoliza = async (req: Request, res: Response): Promise<any
         modelo: data.modelo || null,
         ubicacionRiesgo: data.ubicacionRiesgo || null,
         cantidadEmpleados: data.cantidadEmpleados || null,
+        formaPago: data.formaPago || null, // 🔥 AGREGADO PARA QUE SE ACTUALICE
       },
       include: { asegurado: true, compania: true }
     });

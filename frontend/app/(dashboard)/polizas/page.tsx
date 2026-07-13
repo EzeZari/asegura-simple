@@ -17,7 +17,7 @@ import PolizaTableRow from "@/components/polizas/PolizaTableRow";
 import SelectOrdenamiento from "@/components/ui/SelectOrdenamiento";
 import { apiFetch } from "@/services/api";
 import { useAuthStore } from "@/store/authStore"; 
-import { PERMISOS, tienePermiso } from "@/utils/roles"; // 🔥 IMPORTAMOS NUESTRO DICCIONARIO
+import { PERMISOS, tienePermiso } from "@/utils/roles"; 
 
 const ExportarExcelModal = dynamic(() => import("@/components/ui/ExportarExcelModal"), { ssr: false });
 const ImportarPolizasModal = dynamic(() => import("@/components/polizas/ImportarPolizasModal"), { ssr: false });
@@ -32,7 +32,6 @@ const OPCIONES_ORDEN = [
 export default function PolizasPage() {
   const { user } = useAuthStore();
   
-  // 🔥 EVALUAMOS LOS PERMISOS CON NUESTRA HERRAMIENTA SENIOR
   const puedeModificar = tienePermiso(user, PERMISOS.PUEDE_MODIFICAR_DATOS);
 
   const router = useRouter();
@@ -188,22 +187,23 @@ export default function PolizasPage() {
       "Empleados": p.cantidadEmpleados?.toString() || "",
       "Vigencia Desde": p.fechaInicio ? new Date(p.fechaInicio).toLocaleDateString("es-AR") : "",
       "Vigencia Hasta": p.fechaVencimiento ? new Date(p.fechaVencimiento).toLocaleDateString("es-AR") : "",
+      "Forma de Pago": p.formaPago || "No especificada", // 🔥 AGREGADO AL EXCEL
       "Estado": getEstadoInteligente(p),
     }));
   };
 
-  // 🔥 COLUMNAS DINÁMICAS
+  // 🔥 COLUMNAS DINÁMICAS (Se agregó "Forma de Pago")
   const columnasBase: TableColumn[] = [
     { label: <SortableHeader label="Nro Póliza" sortKey="nroPoliza" currentSort={sortConfig} requestSort={(key) => requestSort(key as any)} /> },
     { label: "Titular" },
     { label: "Compañía" },
     { label: <SortableHeader label="Rama / Cobertura" sortKey="tipoPoliza" currentSort={sortConfig} requestSort={(key) => requestSort(key as any)} /> },
-    { label: "Detalle del Riesgo" },
+    { label: "Patente / Detalle" },
     { label: <SortableHeader label="Vigencia" sortKey="fechaVencimiento" currentSort={sortConfig} requestSort={(key) => requestSort(key as any)} /> },
+    { label: "Forma de Pago" }, // 🔥 NUEVA COLUMNA
     { label: <SortableHeader label="Estado" sortKey="estado" currentSort={sortConfig} requestSort={(key) => requestSort(key as any)} /> },
   ];
 
-  // Si tiene permisos sumamos la columna Acciones, si no, queda limpia
   const columnas = puedeModificar 
     ? [...columnasBase, { label: "Acciones", align: "right" as const }]
     : columnasBase;
@@ -214,7 +214,7 @@ export default function PolizasPage() {
       <PageHeader 
         titulo="Pólizas" 
         descripcion="Gestioná las coberturas activas de tus clientes." 
-        textoBoton={puedeModificar ? "Nueva Póliza" : ""} // 🔥 OCULTO PARA LECTOR
+        textoBoton={puedeModificar ? "Nueva Póliza" : ""} 
         onNuevo={puedeModificar ? () => { setPolizaAEditar(null); setIsModalOpen(true); } : undefined} 
       />
       
@@ -226,7 +226,6 @@ export default function PolizasPage() {
         </div>
         <div className="flex flex-col sm:flex-row items-center gap-3 w-full xl:w-auto">
           
-          {/* 🔥 IMPORTAR OCULTO PARA LECTOR */}
           {puedeModificar && (
             <button onClick={() => setIsImportModalOpen(true)} className="flex justify-center items-center gap-2 w-full sm:w-auto px-4 py-2.5 lg:py-2 bg-gray-50 hover:bg-gray-100 border border-gray-200 text-gray-700 rounded-xl text-sm font-bold transition-all active:scale-95 shadow-sm">
               <UploadCloud size={16} /> Importar Excel
@@ -247,7 +246,6 @@ export default function PolizasPage() {
             onClickDetalle={(id) => router.push(`/polizas/${id}`)} 
             menuAbiertoId={menuAbiertoId} 
             onToggleMenu={setMenuAbiertoId} 
-            // 🔥 LE PASAMOS LA VARIABLE AL COMPONENTE HIJO
             puedeModificar={puedeModificar}
             onEdit={puedeModificar ? (p) => { setPolizaAEditar(p); setIsModalOpen(true); } : undefined} 
             onAvisarVencimiento={puedeModificar ? enviarAvisoVencimiento : undefined} 
@@ -257,7 +255,6 @@ export default function PolizasPage() {
         ))}
       </Table>
 
-      {/* 🔥 MODALES BLOQUEADOS PARA EL LECTOR */}
       {puedeModificar && (
         <>
           <NuevaPolizaModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSuccess={() => { setIsModalOpen(false); fetchPolizas(); setShowToast(true); setMensajeToast("Póliza guardada con éxito"); }} polizaAEditar={polizaAEditar} />
@@ -266,7 +263,6 @@ export default function PolizasPage() {
         </>
       )}
 
-      {/* Este modal de descarga sí lo puede ver el lector */}
       <ExportarExcelModal isOpen={isExportModalOpen} onClose={() => setIsExportModalOpen(false)} datos={prepararDatosParaExcel()} nombreArchivo={`Reporte_Polizas_${new Date().toISOString().split("T")[0]}`} />
       
       <Toast message={mensajeToast} isVisible={showToast} onClose={() => setShowToast(false)} />
