@@ -75,10 +75,10 @@ export default function Hero() {
             {/* Contenedor de la imagen */}
             <div className="bg-gray-50 flex items-center justify-center relative w-full h-auto">
               <img
-  src="/dashboard.png"
-  alt="Dashboard de AseguraSimple"
-  className="w-full h-auto object-cover"
-/>
+              src="/dashboard.png"
+              alt="Dashboard de AseguraSimple"
+              className="w-full h-auto object-cover"
+              />
             </div>
 
           </div>
