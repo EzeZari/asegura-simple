@@ -11,7 +11,9 @@ import SessionExpiredModal from "@/components/ui/SessionExpiredModal";
 import Script from "next/script"; // 🔥 IMPORTAMOS EL COMPONENTE SCRIPT
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+  // 🔥 AHORA TAMBIÉN TRAEMOS LOS DATOS DEL USUARIO (user)
   const setUser = useAuthStore((state: any) => state.setUser); 
+  const user = useAuthStore((state: any) => state.user); 
   
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
@@ -36,6 +38,18 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
     rehidratarSesion();
   }, [setUser]);
+
+  // 🔥 NUEVO EFECTO: Le pasamos los datos del usuario a Crisp automáticamente
+  useEffect(() => {
+    if (user && typeof window !== "undefined") {
+      // Usamos (window as any) para que TypeScript no tire errores
+      const crisp = (window as any).$crisp;
+      if (crisp) {
+        crisp.push(["set", "user:email", [user.email]]);
+        crisp.push(["set", "user:nickname", [`${user.nombre} ${user.apellido || ""}`.trim()]]);
+      }
+    }
+  }, [user]);
 
   return (
     <div className="flex min-h-screen bg-gray-50 relative">
