@@ -47,6 +47,11 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
       
       document.cookie = "next_auth_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
       
+      // 🔥 RESET DE CRISP CHAT ANTES DE SALIR
+      if (typeof window !== "undefined" && (window as any).$crisp) {
+        (window as any).$crisp.push(["do", "session:reset"]);
+      }
+      
       clearStore();
       router.push('/login');
     } catch (error) {
