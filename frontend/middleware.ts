@@ -1,4 +1,4 @@
-// v4 - fix rutas legales publicas + admin
+// v5 - fix landing page publica + redireccion de usuarios
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
@@ -15,6 +15,7 @@ export function middleware(request: NextRequest) {
 
   // 🔥 2. RUTAS PÚBLICAS
   const isPublicRoute = 
+    pathname === '/' || // <-- ACÁ PERMITIMOS LA LANDING PAGE
     pathname.startsWith('/consulta') || 
     pathname.startsWith('/planes') ||
     pathname.startsWith('/terminos') ||
@@ -38,7 +39,8 @@ export function middleware(request: NextRequest) {
 
   // Si YA tiene token y está intentando entrar al login/registro -> Lo mandamos al dashboard
   if (token && isAuthRoute) {
-    return NextResponse.redirect(new URL('/', request.url));
+    // 🔥 ACÁ LO MANDAMOS AL DASHBOARD (Ajustá '/inicio' si tu ruta principal es otra, como '/estadisticas')
+    return NextResponse.redirect(new URL('/inicio', request.url));
   }
 
   return NextResponse.next();
