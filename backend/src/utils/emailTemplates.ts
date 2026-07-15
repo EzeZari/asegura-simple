@@ -230,3 +230,36 @@ export const templateInvitacionEquipo = (nombre: string, jefeNombre: string, ema
     </div>
   </div>
 `;
+export const templateContacto = (nombre: string, email: string, mensaje: string) => `
+  <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 25px; border: 1px solid #e5e7eb; border-radius: 16px; border-top: 6px solid #15803d; background-color: #ffffff;">
+    <div style="text-align: center; margin-bottom: 25px;">
+      <h2 style="color: #15803d; margin: 0; font-size: 24px; letter-spacing: -0.5px;">¡Nueva Consulta Web!</h2>
+      <p style="color: #6b7280; font-size: 14px; margin-top: 5px;">Alguien completó el formulario en AseguraSimple</p>
+    </div>
+    
+    <p style="color: #374151; font-size: 16px; line-height: 1.6;">Hola <strong>Ezequiel</strong>,</p>
+    <p style="color: #374151; font-size: 16px; line-height: 1.6;">Recibiste un nuevo mensaje desde la Landing Page. A continuación te detallamos los datos del contacto:</p>
+    
+    <div style="background-color: #f9fafb; border: 1px solid #f3f4f6; padding: 20px; border-radius: 12px; margin: 24px 0;">
+      <p style="margin: 5px 0; color: #1f2937; font-size: 15px;"><strong>👤 Nombre:</strong> ${nombre}</p>
+      <p style="margin: 5px 0; color: #1f2937; font-size: 15px;"><strong>📧 Email:</strong> <a href="mailto:${email}" style="color: #15803d; text-decoration: none;">${email}</a></p>
+      
+      <div style="margin-top: 15px; padding-top: 15px; border-top: 1px dashed #e5e7eb;">
+        <p style="margin: 0 0 8px 0; color: #1f2937; font-size: 15px; font-weight: bold;">💬 Mensaje:</p>
+        <p style="margin: 0; color: #4b5563; font-style: italic; background-color: #ffffff; padding: 15px; border-radius: 8px; border: 1px solid #e5e7eb; line-height: 1.6;">
+          "${mensaje}"
+        </p>
+      </div>
+    </div>
+
+    <div style="text-align: center; margin: 35px 0 10px 0;">
+      <a href="mailto:${email}" style="background-color: #15803d; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px; display: inline-block; box-shadow: 0 4px 6px -1px rgba(21, 128, 61, 0.2);">
+        Responder a ${nombre}
+      </a>
+    </div>
+    
+    <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #f3f4f6;">
+      <p style="color: #9ca3af; font-size: 11px; text-align: center; margin-top: 10px;">Este es un mensaje automático del sistema de AseguraSimple.</p>
+    </div>
+  </div>
+`;

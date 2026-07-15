@@ -3,7 +3,8 @@ import {
   templateBienvenida, 
   templateVencimiento, 
   templateSiniestro,
-  templateInvitacionEquipo // 🔥 Agregamos la importación acá
+  templateInvitacionEquipo,
+  templateContacto // 🔥 Agregamos esta
 } from '../utils/emailTemplates';
 
 export const enviarCorreoBienvenida = async (email: string, nombre: string, apellido: string, dni: string, telefono: string) => {
@@ -77,5 +78,17 @@ export const enviarCorreoInvitacion = async (email: string, nombre: string, cont
     console.log(`📧 Mail de invitación enviado a ${email}`);
   } catch (error) {
     console.error("Error al enviar el correo de invitación:", error);
+  }
+};
+export const enviarCorreoContacto = async (nombre: string, email: string, mensaje: string) => {
+  try {
+    await sendMail({
+      to: 'asegurasimple@gmail.com', // 🔥 Todo llega directo acá
+      subject: `🚨 Nueva consulta en AseguraSimple de ${nombre}`,
+      html: templateContacto(nombre, email, mensaje)
+    });
+    console.log(`📧 Mail de contacto recibido de ${email}`);
+  } catch (error) {
+    console.error("Error al enviar el correo de contacto:", error);
   }
 };
