@@ -73,7 +73,7 @@ export default function LoginPage() {
       document.cookie = `next_auth_token=${data.accessToken}; path=/; max-age=86400; secure; samesite=strict`;
       setAccessToken(data.accessToken);
       setUser(data.user);
-      router.push("/");
+      router.push("/inicio");
     } catch (err) {
       setError("Error de conexión con el servidor.");
       setIsLoading(false);
@@ -129,7 +129,7 @@ export default function LoginPage() {
       document.cookie = `next_auth_token=${data.accessToken}; path=/; max-age=86400; secure; samesite=strict`;
       setAccessToken(data.accessToken);
       setUser(data.user);
-      router.push("/");
+      router.push("/inicio");
     } catch (err) {
       setError("Error de conexión con el servidor.");
       setIsLoading(false);
