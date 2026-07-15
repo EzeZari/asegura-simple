@@ -19,7 +19,7 @@ export default function CtaFinal() {
         className="max-w-4xl mx-auto px-4 relative z-10"
       >
         <h2 className="text-4xl md:text-5xl font-extrabold mb-6 tracking-tight">
-          Empezá hoy. Tu primer mes es gratis.
+          Empezá hoy. Probá 14 días gratis.
         </h2>
         <p className="text-xl text-green-100 mb-10 max-w-2xl mx-auto">
           Unite a los productores que ya digitalizaron su cartera, automatizaron sus procesos y ahorran horas de trabajo por semana.

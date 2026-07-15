@@ -53,9 +53,11 @@ export default function Hero() {
           <Link href="/registro" className="w-full sm:w-auto px-8 py-4 text-lg font-bold rounded-xl text-white bg-green-700 hover:bg-green-600 transition-all shadow-lg hover:shadow-green-700/40 flex items-center justify-center gap-2">
             Empezar gratis <ArrowRight size={20} />
           </Link>
+          {/* BOTÓN DEMO OCULTO TEMPORALMENTE 
           <button className="w-full sm:w-auto px-8 py-4 text-lg font-bold rounded-xl text-gray-700 bg-white border-2 border-gray-200 hover:bg-gray-50 hover:border-gray-300 transition-all flex items-center justify-center gap-2">
             <PlayCircle size={20} className="text-green-600" /> Ver demo
           </button>
+          */}
         </motion.div>
 
         {/* Captura de pantalla animada */}
