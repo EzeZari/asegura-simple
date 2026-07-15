@@ -1,38 +1,37 @@
 import { Router } from 'express';
 import { prisma } from '../config/db';
 import bcrypt from 'bcrypt';
-// 🔥 Importamos tu función wipeData blindada desde el controlador
 import { 
   register, login, refresh, refreshUserData, logout, 
   forgotPassword, resetPassword, verify2FALogin, 
   verifyEmail, resendConfirmationEmail, wipeData 
 } from '../controllers/auth.controller';
 import { sendMail } from '../utils/mailer'; 
-// 🔥 Importamos tu middleware de seguridad
 import { verificarToken } from '../middlewares/auth.middleware';
 
 const router = Router();
 
-// --- RUTAS DE AUTENTICACIÓN Y SESIÓN ---
+// --- RUTAS PÚBLICAS (sin token) ---
 router.post('/register', register);
 router.post('/login', login);
 router.post('/verify-2fa', verify2FALogin); 
-router.post('/refresh', verificarToken, refreshUserData); // 🔥 Usa la ruta fresca
 router.post('/logout', logout);
 router.post('/forgot-password', forgotPassword);
 router.get('/verify-email/:token', verifyEmail);
 router.post('/reset-password', resetPassword); 
 router.post('/resend-confirmation', resendConfirmationEmail);
 
-// --- RUTAS DE GESTIÓN DE PERFIL ---
-router.post('/change-password', async (req, res) => {
+// --- RUTAS PROTEGIDAS (requieren token) ---
+router.post('/refresh', verificarToken, refreshUserData);
+
+// ✅ CORREGIDO: Token obligatorio + usa req.userId del token (no del body)
+router.post('/change-password', verificarToken, async (req, res): Promise<any> => {
   try {
-    const email = req.body.email?.toLowerCase();
     const { actual, nueva } = req.body;
 
-    if (!email || !actual || !nueva) return res.status(400).json({ error: 'Faltan campos obligatorios.' });
+    if (!actual || !nueva) return res.status(400).json({ error: 'Faltan campos obligatorios.' });
 
-    const usuario = await prisma.user.findUnique({ where: { email } });
+    const usuario = await prisma.user.findUnique({ where: { id: req.userId } });
     if (!usuario) return res.status(404).json({ error: 'Usuario no encontrado.' });
 
     const passwordCorrecta = await bcrypt.compare(actual, usuario.password);
@@ -41,7 +40,7 @@ router.post('/change-password', async (req, res) => {
     const salt = await bcrypt.genSalt(10);
     const nuevaPasswordEncriptada = await bcrypt.hash(nueva, salt);
 
-    await prisma.user.update({ where: { email }, data: { password: nuevaPasswordEncriptada } });
+    await prisma.user.update({ where: { id: req.userId }, data: { password: nuevaPasswordEncriptada } });
 
     return res.json({ message: 'Contraseña actualizada con éxito.' });
   } catch (error) {
@@ -50,27 +49,30 @@ router.post('/change-password', async (req, res) => {
   }
 });
 
-router.put('/2fa', async (req, res) => {
+// ✅ CORREGIDO: Token obligatorio + usa req.userId del token
+router.put('/2fa', verificarToken, async (req, res): Promise<any> => {
   try {
-    const email = req.body.email?.toLowerCase();
     const { enabled } = req.body;
-    await prisma.user.update({ where: { email }, data: { twoFactorEnabled: enabled } });
+    await prisma.user.update({ 
+      where: { id: req.userId }, 
+      data: { twoFactorEnabled: enabled } 
+    });
     res.json({ message: 'Preferencia de 2FA actualizada.' });
   } catch (error) {
     res.status(500).json({ error: 'Error al actualizar 2FA' });
   }
 });
 
-// 🔥 RUTA BLINDADA: Ahora usa la función de auth.controller.ts y requiere Token válido
 router.delete('/wipe-data', verificarToken, wipeData);
 
-router.put('/update-profile', async (req, res) => {
+// ✅ CORREGIDO: Token obligatorio + usa req.userId del token (no el id del body)
+router.put('/update-profile', verificarToken, async (req, res): Promise<any> => {
   try {
-    const { id, nombre, email } = req.body;
-    if (!id || !nombre || !email) return res.status(400).json({ error: 'ID, nombre y email son obligatorios.' });
+    const { nombre, email } = req.body;
+    if (!nombre || !email) return res.status(400).json({ error: 'Nombre y email son obligatorios.' });
 
     const usuarioActualizado = await prisma.user.update({
-      where: { id: Number(id) },
+      where: { id: req.userId },
       data: { nombre, email }
     });
 
@@ -82,13 +84,16 @@ router.put('/update-profile', async (req, res) => {
   }
 });
 
-router.post('/request-email-change', async (req, res) => {
+// ✅ CORREGIDO: Token obligatorio + usa req.userId del token
+router.post('/request-email-change', verificarToken, async (req, res): Promise<any> => {
   try {
-    const { id, newEmail } = req.body;
+    const { newEmail } = req.body;
+    if (!newEmail) return res.status(400).json({ error: 'El nuevo email es obligatorio.' });
+
     const codigo = Math.floor(100000 + Math.random() * 900000).toString();
 
     await prisma.user.update({
-      where: { id: Number(id) },
+      where: { id: req.userId },
       data: { codigoVerificacion: codigo, emailPendiente: newEmail }
     });
 
@@ -115,10 +120,11 @@ router.post('/request-email-change', async (req, res) => {
   }
 });
 
-router.post('/verify-email-change', async (req, res) => {
+// ✅ CORREGIDO: Token obligatorio + usa req.userId del token
+router.post('/verify-email-change', verificarToken, async (req, res): Promise<any> => {
   try {
-    const { id, codigo } = req.body;
-    const usuario = await prisma.user.findUnique({ where: { id: Number(id) } });
+    const { codigo } = req.body;
+    const usuario = await prisma.user.findUnique({ where: { id: req.userId } });
 
     if (!usuario || usuario.codigoVerificacion !== codigo) {
       return res.status(400).json({ error: 'El código ingresado es incorrecto o expiró.' });
@@ -129,7 +135,7 @@ router.post('/verify-email-change', async (req, res) => {
     }
 
     const usuarioActualizado = await prisma.user.update({
-      where: { id: Number(id) },
+      where: { id: req.userId },
       data: { email: usuario.emailPendiente, codigoVerificacion: null, emailPendiente: null }
     });
 
