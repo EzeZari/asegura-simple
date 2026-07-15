@@ -16,6 +16,7 @@ export function middleware(request: NextRequest) {
   // 🔥 2. RUTAS PÚBLICAS
   const isPublicRoute = 
     pathname === '/' || // <-- ACÁ PERMITIMOS LA LANDING PAGE
+    pathname.startsWith('/contacto') ||
     pathname.startsWith('/consulta') || 
     pathname.startsWith('/planes') ||
     pathname.startsWith('/terminos') ||
