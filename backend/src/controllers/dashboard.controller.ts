@@ -44,11 +44,11 @@ export const getDashboardStats = async (req: Request, res: Response): Promise<an
       where: { productorId: productorId, activo: true }
     });
 
-    // 2. Pólizas Activas (Vigentes)
+    // 2. Pólizas Activas (Vigentes reales)
     const polizasActivas = await prisma.poliza.count({
       where: { 
         asegurado: { productorId: productorId },
-        estado: { not: 'Anulada' } // Excluimos las anuladas
+        estado: 'Vigente' // 🔥 CORREGIDO: Ahora busca estrictamente "Vigente"
       }
     });
 
@@ -62,7 +62,7 @@ export const getDashboardStats = async (req: Request, res: Response): Promise<an
       where: {
         asegurado: { productorId: productorId },
         fechaVencimiento: { gte: hoy, lte: en30Dias },
-        estado: { not: 'Anulada' }
+        estado: 'Vigente' // 🔥 CORREGIDO: Solo alerta sobre vencimientos de las que están vigentes
       }
     });
 

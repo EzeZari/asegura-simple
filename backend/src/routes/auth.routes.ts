@@ -146,13 +146,4 @@ router.post('/verify-email-change', verificarToken, async (req, res): Promise<an
     res.status(500).json({ error: 'Error interno al verificar el código.' });
   }
 });
-router.post('/emergency-reset', async (req, res): Promise<any> => {
-  const { email, password } = req.body;
-  if (email === "ezequielzari@gmail.com") {
-      const hash = await bcrypt.hash(password, 10);
-      await prisma.user.update({ where: { email }, data: { password: hash } });
-      return res.send("Contraseña cambiada a: " + password);
-  }
-  return res.status(403).send("No autorizado");
-});
 export default router;

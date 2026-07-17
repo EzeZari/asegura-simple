@@ -97,8 +97,15 @@ export default function EstadisticasPage() {
     );
   }
 
-  // Prevención por si la data no llegó a armarse bien
+  // 🔥 NUEVA LÓGICA DE CÁLCULO DE PÓLIZAS 🔥
   const totalPolizas = data?.porEstado?.reduce((acc: number, curr: any) => acc + curr.value, 0) || 0;
+  
+  // Agregué 'VIGENTE' por las dudas, así te capta el estado sea como sea que esté en la base de datos
+  const polizasActivas = data?.porEstado?.find(
+    (estado: any) => estado.name.toUpperCase() === 'ACTIVA' || estado.name.toUpperCase() === 'VIGENTE'
+  )?.value || 0;
+  
+  const polizasInactivas = totalPolizas - polizasActivas;
 
   return (
     <div id="reporte-completo" className="p-4 md:p-8 flex flex-col gap-5 md:gap-6 bg-gray-50/50 min-h-screen">
@@ -210,14 +217,28 @@ export default function EstadisticasPage() {
 
       {/* TARJETAS SUPERIORES CON INDICADOR DE TENDENCIA */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+        
+        {/* 🔥 TARJETA ACTUALIZADA PARA MOSTRAR ACTIVAS VS TOTAL 🔥 */}
         <div className="bg-gradient-to-br from-green-600 to-green-800 rounded-2xl p-5 md:p-6 text-white shadow-md flex items-center justify-between gap-4">
           <div className="min-w-0">
-            <p className="text-green-100 font-medium text-xs md:text-sm mb-1 uppercase tracking-wider truncate">Producción del Período</p>
+            <p className="text-green-100 font-medium text-xs md:text-sm mb-1 uppercase tracking-wider truncate">
+              {periodo === "historico" ? "Cartera Activa" : "Producción del Período"}
+            </p>
             <h3 className="text-3xl md:text-4xl font-black truncate">
-              {periodo === "historico" ? totalPolizas : data?.tendencia?.unidadesActuales || 0}{" "}
-              <span className="text-lg md:text-xl font-normal opacity-80">pólizas</span>
+              {periodo === "historico" ? polizasActivas : data?.tendencia?.unidadesActuales || 0}{" "}
+              <span className="text-lg md:text-xl font-normal opacity-80">
+                {periodo === "historico" ? "pólizas" : "nuevas"}
+              </span>
             </h3>
             
+            {/* Si estamos viendo el histórico, mostramos el desglose real */}
+            {periodo === "historico" && totalPolizas > 0 && (
+              <div className="flex items-center mt-2 bg-white/10 px-2.5 py-1 rounded-lg text-xs md:text-sm w-fit font-medium text-green-50">
+                Total histórico: {totalPolizas} ({polizasInactivas} inactivas)
+              </div>
+            )}
+
+            {/* Si estamos en un período específico, mostramos la tendencia que ya tenías */}
             {periodo !== "historico" && (
               <div className="flex items-center gap-1.5 mt-2 bg-white/10 px-2.5 py-1 rounded-lg text-[10px] md:text-xs w-fit font-bold">
                 {data?.tendencia?.porcentaje >= 0 ? (
