@@ -39,7 +39,6 @@ const obtenerProductorId = async (userId: number): Promise<number> => {
   return productor.id;
 };
 
-
 // =======================================================
 // RUTA 1: ESTADÍSTICAS BÁSICAS DE INICIO (dashboard/KPIs)
 // =======================================================
@@ -51,10 +50,11 @@ router.get('/stats', verificarToken, async (req, res) => {
       return res.status(401).json({ error: 'Usuario no autenticado.' });
     }
 
-    // 🔥 Obtenemos el ID del Productor GLOBAL (La Agencia)
     const productorId = await obtenerProductorId(userId);
 
     const hoy = new Date();
+    hoy.setHours(0, 0, 0, 0); // 🔥 Clave: Empezar a contar desde las 00:00 de hoy
+
     const agencia = await prisma.agencia.findUnique({ where: { id: 1 } });
     const diasParaAviso = agencia?.diasAlertaVencimiento || 30;
 
@@ -68,17 +68,21 @@ router.get('/stats', verificarToken, async (req, res) => {
       totalCompanias,
       historial
     ] = await Promise.all([
-      // 🔥 Todos los queries ahora apuntan a la Agencia (productorId)
       prisma.asegurado.count({ 
         where: { activo: true, productorId: productorId } 
       }),
+      // 🔥 AHORA MIRAMOS LA FECHA REAL: Si no venció y no está anulada, está activa
       prisma.poliza.count({ 
-        where: { estado: 'Vigente', asegurado: { productorId: productorId } } 
+        where: { 
+          fechaVencimiento: { gte: hoy },
+          estado: { notIn: ['Anulada', 'Renovada', 'Vencida'] },
+          asegurado: { productorId: productorId } 
+        } 
       }),
       prisma.poliza.count({
         where: { 
-          estado: 'Vigente', 
           fechaVencimiento: { gte: hoy, lte: fechaLimite },
+          estado: { notIn: ['Anulada', 'Renovada', 'Vencida'] },
           asegurado: { productorId: productorId }
         }
       }),
@@ -122,10 +126,11 @@ router.get('/graficos', verificarToken, async (req, res) => {
       return res.status(401).json({ error: 'Usuario no autenticado.' });
     }
     
-    // 🔥 Obtenemos el ID del Productor GLOBAL (La Agencia)
     const productorId = await obtenerProductorId(userId);
 
     const hoy = new Date();
+    hoy.setHours(0, 0, 0, 0); // 🔥 Setear a 00:00 para comparar bien las fechas
+
     let fechaInicioActual = new Date(0); 
     let fechaFinActual = new Date(); 
     let fechaInicioAnterior = new Date(0);
@@ -156,7 +161,6 @@ router.get('/graficos', verificarToken, async (req, res) => {
       fechaInicioAnterior = new Date(fechaFinAnterior.getTime() - diffTime);
     }
 
-    // 🔥 Todos los queries apuntan al productorId global
     const whereActual: any = { asegurado: { productorId: productorId } };
     if (periodo !== 'historico') {
       whereActual.fechaInicio = { gte: fechaInicioActual, lte: fechaFinActual };
@@ -167,8 +171,35 @@ router.get('/graficos', verificarToken, async (req, res) => {
       whereAnterior.fechaInicio = { gte: fechaInicioAnterior, lte: fechaFinAnterior };
     }
 
+    // 🔥 1. TRAEMOS TODAS LAS PÓLIZAS PARA JUZGARLAS NOSOTROS POR FECHA
+    const polizasRaw = await prisma.poliza.findMany({
+      where: whereActual,
+      select: { estado: true, fechaVencimiento: true }
+    });
+
+    const conteoEstados: Record<string, number> = {};
+    
+    // 🔥 2. FILTRO INTELIGENTE: Clasificamos mirando la fecha de vencimiento real
+    polizasRaw.forEach(p => {
+      let estadoReal = p.estado;
+      
+      // Si la fecha ya pasó, y la póliza no estaba Anulada ni Renovada explícitamente, es Vencida.
+      if (new Date(p.fechaVencimiento) < hoy && !['Anulada', 'Renovada'].includes(p.estado)) {
+        estadoReal = 'Vencida';
+      }
+
+      conteoEstados[estadoReal] = (conteoEstados[estadoReal] || 0) + 1;
+    });
+
+    // 3. Armamos el array exacto que espera el frontend
+    const polizasPorEstadoCalculado = Object.keys(conteoEstados).map(key => ({
+      name: key,
+      value: conteoEstados[key]
+    }));
+
+    // Ejecutamos el resto de las consultas a la DB
     const [
-      companiasConPolizas, polizasPorTipo, polizasPorEstado,
+      companiasConPolizas, polizasPorTipo,
       totalSiniestrosAbiertos, polizasPeriodoActual, polizasPeriodoAnterior
     ] = await Promise.all([
       prisma.compania.findMany({
@@ -176,7 +207,6 @@ router.get('/graficos', verificarToken, async (req, res) => {
         select: { nombre: true, _count: { select: { polizas: { where: whereActual } } } }
       }),
       prisma.poliza.groupBy({ by: ['tipoPoliza'], where: whereActual, _count: { _all: true } }),
-      prisma.poliza.groupBy({ by: ['estado'], where: whereActual, _count: { _all: true } }),
       prisma.siniestro.count({ 
         where: { estadoSiniestro: { not: 'Cerrado' }, poliza: { asegurado: { productorId: productorId } } } 
       }),
@@ -194,7 +224,7 @@ router.get('/graficos', verificarToken, async (req, res) => {
     res.json({
       porCompania: companiasConPolizas.map(c => ({ name: c.nombre, value: c._count.polizas })).filter(c => c.value > 0), 
       porTipo: polizasPorTipo.map(p => ({ name: p.tipoPoliza, value: p._count._all })),
-      porEstado: polizasPorEstado.map(p => ({ name: p.estado, value: p._count._all })),
+      porEstado: polizasPorEstadoCalculado, // 🔥 LE PASAMOS EL CÁLCULO INTELIGENTE
       siniestrosAbiertos: totalSiniestrosAbiertos,
       tendencia: { porcentaje: Math.round(tendenciaPorcentaje), unidadesActuales: polizasPeriodoActual }
     });
