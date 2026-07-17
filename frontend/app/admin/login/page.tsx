@@ -17,7 +17,7 @@ export default function AdminLoginPage() {
     setIsLoading(true);
 
     try {
-      const res = await fetch("http://localhost:3001/api/admin/login", {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/admin/login`, { // ← CAMBIO
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
@@ -48,7 +48,6 @@ export default function AdminLoginPage() {
     <div className="min-h-screen bg-gray-950 flex flex-col justify-center items-center p-4 selection:bg-green-500/30">
       <div className="w-full max-w-md bg-gray-900 rounded-3xl border border-gray-800 shadow-2xl p-8 relative overflow-hidden">
         
-        {/* Decoración de fondo */}
         <div className="absolute top-0 right-0 p-8 opacity-5 pointer-events-none -translate-y-1/4 translate-x-1/4">
           <ShieldCheck size={200} />
         </div>

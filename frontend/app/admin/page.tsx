@@ -5,29 +5,28 @@ import { useRouter } from "next/navigation";
 import { ShieldCheck, LogOut, Users, Mail, Phone, CreditCard, Crown, Star, X, Check, Loader2, Trash2, AlertTriangle } from "lucide-react";
 import Toast from "@/components/ui/Toast";
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL; // ← CAMBIO: variable global
+
 export default function AdminDashboard() {
   const router = useRouter();
   const [agencias, setAgencias] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   
-  // Estados para Modal de Cambio de Plan
   const [modalOpen, setModalOpen] = useState(false);
   const [agenciaSeleccionada, setAgenciaSeleccionada] = useState<any>(null);
   const [planSeleccionado, setPlanSeleccionado] = useState<string>("GRATUITO");
   const [isUpdating, setIsUpdating] = useState(false);
 
-  // 🔥 Estados para Modal de Eliminar Cuenta
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [agenciaAEliminar, setAgenciaAEliminar] = useState<any>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   
-  // Estado para notificaciones
   const [toast, setToast] = useState({ show: false, msg: "" });
 
   const fetchAgencias = async () => {
     try {
       const token = localStorage.getItem("asegurasimple_admin_token");
-      const res = await fetch("http://localhost:3001/api/admin/agencias", {
+      const res = await fetch(`${API_URL}/api/admin/agencias`, { // ← CAMBIO
         headers: { "Authorization": `Bearer ${token}` }
       });
       if (!res.ok) throw new Error("Error al obtener cuentas");
@@ -56,7 +55,6 @@ export default function AdminDashboard() {
     router.push("/admin/login");
   };
 
-  // --- LOGICA CAMBIO DE PLAN ---
   const abrirModalPlan = (agencia: any) => {
     setAgenciaSeleccionada(agencia);
     setPlanSeleccionado(agencia.plan || "GRATUITO");
@@ -68,7 +66,7 @@ export default function AdminDashboard() {
     setIsUpdating(true);
     try {
       const token = localStorage.getItem("asegurasimple_admin_token");
-      const res = await fetch(`http://localhost:3001/api/admin/agencias/${agenciaSeleccionada.id}/plan`, {
+      const res = await fetch(`${API_URL}/api/admin/agencias/${agenciaSeleccionada.id}/plan`, { // ← CAMBIO
         method: "PUT",
         headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
         body: JSON.stringify({ nuevoPlan: planSeleccionado })
@@ -84,7 +82,6 @@ export default function AdminDashboard() {
     }
   };
 
-  // --- 🔥 LOGICA ELIMINAR CUENTA ---
   const abrirModalEliminar = (agencia: any) => {
     setAgenciaAEliminar(agencia);
     setDeleteModalOpen(true);
@@ -95,7 +92,7 @@ export default function AdminDashboard() {
     setIsDeleting(true);
     try {
       const token = localStorage.getItem("asegurasimple_admin_token");
-      const res = await fetch(`http://localhost:3001/api/admin/agencias/${agenciaAEliminar.id}`, {
+      const res = await fetch(`${API_URL}/api/admin/agencias/${agenciaAEliminar.id}`, { // ← CAMBIO
         method: "DELETE",
         headers: { "Authorization": `Bearer ${token}` }
       });
@@ -103,7 +100,6 @@ export default function AdminDashboard() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Error al eliminar la cuenta");
       
-      // Removemos la cuenta de la vista sin recargar la página
       setAgencias(prev => prev.filter(a => a.id !== agenciaAEliminar.id));
       setToast({ show: true, msg: "Cuenta eliminada permanentemente del sistema" });
       setDeleteModalOpen(false);
@@ -242,8 +238,6 @@ export default function AdminDashboard() {
                                 Modificar Plan
                               </button>
                             )}
-                            
-                            {/* 🔥 NUEVO BOTÓN DE ELIMINAR */}
                             <button 
                               onClick={() => abrirModalEliminar(agencia)}
                               title="Eliminar Cuenta Permanentemente"
@@ -263,7 +257,6 @@ export default function AdminDashboard() {
         </div>
       </main>
 
-      {/* --- MODAL DE GESTIÓN DE PLAN --- */}
       {modalOpen && agenciaSeleccionada && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-950/80 backdrop-blur-sm animate-in fade-in duration-200">
           <div className="bg-gray-900 border border-gray-800 w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
@@ -273,29 +266,19 @@ export default function AdminDashboard() {
                 <X size={18} />
               </button>
             </div>
-
             <div className="p-6">
               <div className="mb-6">
                 <p className="text-sm text-gray-400">Seleccioná el nuevo nivel de acceso para:</p>
                 <p className="text-lg font-black text-white mt-1">{agenciaSeleccionada.nombre}</p>
                 <p className="text-xs text-gray-500">{agenciaSeleccionada.email}</p>
               </div>
-
               <div className="flex flex-col gap-3">
                 {planesOptions.map((plan) => (
-                  <button
-                    key={plan.id}
-                    onClick={() => setPlanSeleccionado(plan.id)}
-                    className={`relative w-full flex items-center justify-between p-4 rounded-2xl border-2 text-left transition-all ${
-                      planSeleccionado === plan.id 
-                        ? "bg-gray-800 border-green-600 shadow-[0_0_15px_rgba(22,163,74,0.15)]" 
-                        : "bg-gray-950 border-gray-800 hover:border-gray-700 hover:bg-gray-900/50"
-                    }`}
+                  <button key={plan.id} onClick={() => setPlanSeleccionado(plan.id)}
+                    className={`relative w-full flex items-center justify-between p-4 rounded-2xl border-2 text-left transition-all ${planSeleccionado === plan.id ? "bg-gray-800 border-green-600 shadow-[0_0_15px_rgba(22,163,74,0.15)]" : "bg-gray-950 border-gray-800 hover:border-gray-700 hover:bg-gray-900/50"}`}
                   >
                     <div className="flex items-center gap-4">
-                      <div className={`${plan.bg} ${plan.color} p-3 rounded-xl border ${plan.border}`}>
-                        {plan.icon}
-                      </div>
+                      <div className={`${plan.bg} ${plan.color} p-3 rounded-xl border ${plan.border}`}>{plan.icon}</div>
                       <div>
                         <span className="block font-bold text-white text-base">{plan.nombre}</span>
                         <span className="block text-xs text-gray-500 mt-0.5">Nivel de acceso al sistema</span>
@@ -310,7 +293,6 @@ export default function AdminDashboard() {
                 ))}
               </div>
             </div>
-
             <div className="px-6 py-4 border-t border-gray-800 bg-gray-950/50 flex justify-end gap-3">
               <button onClick={() => setModalOpen(false)} className="px-5 py-2.5 text-sm font-bold text-gray-400 hover:text-white transition-colors" disabled={isUpdating}>Cancelar</button>
               <button onClick={confirmarCambioPlan} disabled={isUpdating} className="px-6 py-2.5 bg-green-700 hover:bg-green-600 text-white text-sm font-bold rounded-xl shadow-lg shadow-green-900/20 transition-all flex items-center gap-2 disabled:opacity-50">
@@ -321,7 +303,6 @@ export default function AdminDashboard() {
         </div>
       )}
 
-      {/* --- 🔥 MODAL DE PELIGRO: ELIMINAR CUENTA --- */}
       {deleteModalOpen && agenciaAEliminar && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-950/90 backdrop-blur-md animate-in fade-in duration-200">
           <div className="bg-gray-900 border border-red-900/50 w-full max-w-md rounded-3xl shadow-[0_0_50px_rgba(220,38,38,0.1)] overflow-hidden animate-in zoom-in-95 duration-200">
@@ -329,27 +310,16 @@ export default function AdminDashboard() {
               <div className="w-16 h-16 bg-red-500/10 text-red-500 rounded-full flex items-center justify-center mb-6 border border-red-500/20 shadow-inner">
                 <AlertTriangle size={32} />
               </div>
-              
               <h3 className="text-xl font-black text-white mb-2">¿Eliminar esta cuenta?</h3>
               <p className="text-gray-400 text-sm leading-relaxed mb-6">
-                Estás a punto de eliminar permanentemente el acceso al sistema para <strong className="text-white">{agenciaAEliminar.nombre}</strong> ({agenciaAEliminar.email}). Esta acción es irreversible y podría borrar todos los datos asociados si no se manejan desde la base de datos central.
+                Estás a punto de eliminar permanentemente el acceso al sistema para <strong className="text-white">{agenciaAEliminar.nombre}</strong> ({agenciaAEliminar.email}). Esta acción es irreversible.
               </p>
-
               <div className="flex w-full gap-3 mt-2">
-                <button 
-                  onClick={() => setDeleteModalOpen(false)}
-                  disabled={isDeleting}
-                  className="flex-1 py-3 bg-gray-800 hover:bg-gray-700 text-white font-bold rounded-xl transition-colors disabled:opacity-50"
-                >
+                <button onClick={() => setDeleteModalOpen(false)} disabled={isDeleting} className="flex-1 py-3 bg-gray-800 hover:bg-gray-700 text-white font-bold rounded-xl transition-colors disabled:opacity-50">
                   Cancelar
                 </button>
-                <button 
-                  onClick={confirmarEliminacion}
-                  disabled={isDeleting}
-                  className="flex-1 py-3 bg-red-600 hover:bg-red-500 text-white font-bold rounded-xl shadow-lg shadow-red-900/20 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
-                >
-                  {isDeleting ? <Loader2 size={18} className="animate-spin" /> : <Trash2 size={18} />} 
-                  Eliminar
+                <button onClick={confirmarEliminacion} disabled={isDeleting} className="flex-1 py-3 bg-red-600 hover:bg-red-500 text-white font-bold rounded-xl shadow-lg shadow-red-900/20 transition-all flex items-center justify-center gap-2 disabled:opacity-50">
+                  {isDeleting ? <Loader2 size={18} className="animate-spin" /> : <Trash2 size={18} />} Eliminar
                 </button>
               </div>
             </div>

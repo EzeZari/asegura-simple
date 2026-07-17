@@ -9,7 +9,7 @@ import { useAuthStore } from '@/store/authStore';
 import { PERMISOS, tienePermiso } from '@/utils/roles';
 
 const menuItems = [
-  { name: 'Inicio', icon: Home, path: '/' },
+  { name: 'Inicio', icon: Home, path: '/inicio' },
   { name: 'Asegurados', icon: Users, path: '/asegurados' },
   { name: 'Pólizas', icon: FileText, path: '/polizas' },
   { name: 'Siniestros', icon: CarFront, path: '/siniestros' }, 
