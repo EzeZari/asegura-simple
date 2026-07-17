@@ -28,19 +28,17 @@ export default function EstadisticasPage() {
       setIsRefreshing(true);
       setError("");
       
-      // 🔥 REEMPLAZO 1: Usamos ruta relativa porque apiFetch ya sabe a dónde apuntar
-      let url = `/api/dashboard/graficos?periodo=${periodo}`;
+      // 🔥 REEMPLAZO CLAVE: Ahora apunta a la nueva ruta separada
+      let url = `/api/estadisticas/graficos?periodo=${periodo}`;
       if (periodo === "personalizado") {
         url += `&inicio=${fechaInicio}&fin=${fechaFin}`;
       }
 
-      // 🔥 REEMPLAZO 2: Usamos apiFetch para que envíe el token de sesión
       const res = await apiFetch(url);
       if (!res.ok) throw new Error("Error al cargar los datos");
       
       const json = await res.json();
       
-      // 🔥 PROTECCIÓN ANTI-CRASH: Asegurarnos de que json sea un objeto válido
       if (json && typeof json === 'object') {
         setData(json);
       } else {
