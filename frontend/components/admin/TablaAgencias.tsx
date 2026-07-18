@@ -51,7 +51,6 @@ export default function TablaAgencias({ agenciasFiltradas, planesOptions, onModi
                   return <span className="bg-gray-500/20 text-gray-400 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border border-gray-500/20">{rol}</span>;
                 };
 
-                // 🔥 CAPTURAMOS LAS DOS MÉTRICAS
                 const cantidadPolizas = agencia.productor?._count?.polizas || 0;
                 const cantidadAsegurados = agencia.productor?._count?.asegurados || 0;
 
@@ -84,12 +83,9 @@ export default function TablaAgencias({ agenciasFiltradas, planesOptions, onModi
                       </div>
                     </td>
 
-                    {/* 🔥 CELDA DE USO (PÓLIZAS Y ASEGURADOS) */}
                     <td className="block md:table-cell p-2 md:p-5 border-b border-gray-800/50 md:border-0 pt-3 md:pt-5">
                       <span className="lg:hidden text-xs text-gray-500 font-bold uppercase block mb-2">Uso del Sistema</span>
                       <div className="flex flex-col gap-2.5">
-                        
-                        {/* Fila Pólizas */}
                         <div className="flex items-center gap-2">
                           <div className={`p-1.5 rounded-lg border ${cantidadPolizas > 0 ? 'bg-blue-500/10 border-blue-500/20 text-blue-400' : 'bg-gray-800/50 border-gray-700 text-gray-600'}`}>
                             <FileText size={14} />
@@ -102,7 +98,6 @@ export default function TablaAgencias({ agenciasFiltradas, planesOptions, onModi
                           </div>
                         </div>
 
-                        {/* Fila Asegurados */}
                         <div className="flex items-center gap-2">
                           <div className={`p-1.5 rounded-lg border ${cantidadAsegurados > 0 ? 'bg-indigo-500/10 border-indigo-500/20 text-indigo-400' : 'bg-gray-800/50 border-gray-700 text-gray-600'}`}>
                             <Users size={14} />
@@ -114,7 +109,6 @@ export default function TablaAgencias({ agenciasFiltradas, planesOptions, onModi
                             <span className="text-[9px] text-gray-500 uppercase tracking-wide mt-0.5">Clientes</span>
                           </div>
                         </div>
-
                       </div>
                     </td>
                     

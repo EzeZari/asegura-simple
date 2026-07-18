@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ShieldCheck, Users, CreditCard, Crown, Star, X, Check, Loader2, Trash2, AlertTriangle } from "lucide-react";
+import { ShieldCheck, Users, CreditCard, Crown, Star, Zap, X, Check, Loader2, Trash2, AlertTriangle } from "lucide-react";
 import Toast from "@/components/ui/Toast";
 import FiltrosAgencias from "@/components/admin/FiltrosAgencias";
 import AdminHeader from "@/components/admin/AdminHeader";
@@ -119,6 +119,7 @@ export default function AdminDashboard() {
 
   const planesOptions = [
     { id: "GRATUITO", nombre: "Gratuito", icon: <CreditCard size={20} />, color: "text-gray-400", bg: "bg-gray-400/10", border: "border-gray-400/20" },
+    { id: "BASICO", nombre: "Básico", icon: <Zap size={20} />, color: "text-cyan-400", bg: "bg-cyan-400/10", border: "border-cyan-400/20" },
     { id: "PROFESIONAL", nombre: "Profesional", icon: <Star size={20} />, color: "text-blue-400", bg: "bg-blue-400/10", border: "border-blue-400/20" },
     { id: "AGENCIA", nombre: "Agencia Elite", icon: <Crown size={20} />, color: "text-amber-400", bg: "bg-amber-400/10", border: "border-amber-400/20" }
   ];
