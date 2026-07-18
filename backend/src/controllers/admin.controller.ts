@@ -41,9 +41,18 @@ export const getAgencias = async (req: Request, res: Response): Promise<void> =>
     const agencias = await prisma.user.findMany({
       include: {
         suscripcion: true,
-        // 🔥 Solo pedimos nombre y email
         jefe: {
           select: { nombre: true, email: true } 
+        },
+        productor: {
+          select: {
+            _count: {
+              select: { 
+                polizas: true,
+                asegurados: true // 🔥 LE SUMAMOS ESTA LÍNEA EXACTAMENTE ACÁ
+              }
+            }
+          }
         }
       },
       orderBy: { id: 'desc' }

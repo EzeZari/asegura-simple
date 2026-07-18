@@ -1,4 +1,4 @@
-import { Mail, Phone, Trash2 } from "lucide-react";
+import { Mail, Phone, Trash2, FileText, Users } from "lucide-react";
 
 interface TablaAgenciasProps {
   agenciasFiltradas: any[];
@@ -17,6 +17,7 @@ export default function TablaAgencias({ agenciasFiltradas, planesOptions, onModi
               <th className="p-5 font-bold border-b border-gray-800">ID</th>
               <th className="p-5 font-bold border-b border-gray-800">Usuario y Jerarquía</th>
               <th className="p-5 font-bold border-b border-gray-800">Contacto</th>
+              <th className="p-5 font-bold border-b border-gray-800">Uso del Sistema</th>
               <th className="p-5 font-bold border-b border-gray-800">Plan Actual</th>
               <th className="p-5 font-bold border-b border-gray-800 text-right">Acciones</th>
             </tr>
@@ -25,7 +26,7 @@ export default function TablaAgencias({ agenciasFiltradas, planesOptions, onModi
           <tbody className="block md:table-row-group space-y-4 md:space-y-0 md:divide-y md:divide-gray-800/50">
             {agenciasFiltradas.length === 0 ? (
               <tr className="block md:table-row bg-gray-900 rounded-2xl border border-gray-800">
-                <td colSpan={5} className="block md:table-cell p-10 text-center text-gray-500 font-medium">
+                <td colSpan={6} className="block md:table-cell p-10 text-center text-gray-500 font-medium">
                   No se encontraron usuarios con esos filtros.
                 </td>
               </tr>
@@ -49,6 +50,10 @@ export default function TablaAgencias({ agenciasFiltradas, planesOptions, onModi
                   }
                   return <span className="bg-gray-500/20 text-gray-400 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border border-gray-500/20">{rol}</span>;
                 };
+
+                // 🔥 CAPTURAMOS LAS DOS MÉTRICAS
+                const cantidadPolizas = agencia.productor?._count?.polizas || 0;
+                const cantidadAsegurados = agencia.productor?._count?.asegurados || 0;
 
                 return (
                   <tr key={agencia.id} className="block md:table-row bg-gray-900 md:bg-transparent rounded-2xl md:rounded-none border border-gray-800 md:border-0 hover:bg-gray-800/20 transition-colors p-4 md:p-0">
@@ -76,6 +81,40 @@ export default function TablaAgencias({ agenciasFiltradas, planesOptions, onModi
                       <div className="flex flex-col gap-2 md:gap-1.5">
                         <span className="flex items-center gap-2 text-sm text-gray-300"><Mail size={14} className="text-gray-500 shrink-0"/> <span className="break-all">{agencia.email}</span></span>
                         {agencia.telefono && <span className="flex items-center gap-2 text-xs text-gray-500"><Phone size={12} className="shrink-0"/> {agencia.telefono}</span>}
+                      </div>
+                    </td>
+
+                    {/* 🔥 CELDA DE USO (PÓLIZAS Y ASEGURADOS) */}
+                    <td className="block md:table-cell p-2 md:p-5 border-b border-gray-800/50 md:border-0 pt-3 md:pt-5">
+                      <span className="lg:hidden text-xs text-gray-500 font-bold uppercase block mb-2">Uso del Sistema</span>
+                      <div className="flex flex-col gap-2.5">
+                        
+                        {/* Fila Pólizas */}
+                        <div className="flex items-center gap-2">
+                          <div className={`p-1.5 rounded-lg border ${cantidadPolizas > 0 ? 'bg-blue-500/10 border-blue-500/20 text-blue-400' : 'bg-gray-800/50 border-gray-700 text-gray-600'}`}>
+                            <FileText size={14} />
+                          </div>
+                          <div className="flex flex-col">
+                            <span className={`text-sm font-black leading-none ${cantidadPolizas > 0 ? 'text-white' : 'text-gray-500'}`}>
+                              {cantidadPolizas}
+                            </span>
+                            <span className="text-[9px] text-gray-500 uppercase tracking-wide mt-0.5">Pólizas</span>
+                          </div>
+                        </div>
+
+                        {/* Fila Asegurados */}
+                        <div className="flex items-center gap-2">
+                          <div className={`p-1.5 rounded-lg border ${cantidadAsegurados > 0 ? 'bg-indigo-500/10 border-indigo-500/20 text-indigo-400' : 'bg-gray-800/50 border-gray-700 text-gray-600'}`}>
+                            <Users size={14} />
+                          </div>
+                          <div className="flex flex-col">
+                            <span className={`text-sm font-black leading-none ${cantidadAsegurados > 0 ? 'text-white' : 'text-gray-500'}`}>
+                              {cantidadAsegurados}
+                            </span>
+                            <span className="text-[9px] text-gray-500 uppercase tracking-wide mt-0.5">Clientes</span>
+                          </div>
+                        </div>
+
                       </div>
                     </td>
                     
