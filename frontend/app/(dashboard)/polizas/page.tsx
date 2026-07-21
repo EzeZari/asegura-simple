@@ -187,12 +187,11 @@ export default function PolizasPage() {
       "Empleados": p.cantidadEmpleados?.toString() || "",
       "Vigencia Desde": p.fechaInicio ? new Date(p.fechaInicio).toLocaleDateString("es-AR") : "",
       "Vigencia Hasta": p.fechaVencimiento ? new Date(p.fechaVencimiento).toLocaleDateString("es-AR") : "",
-      "Forma de Pago": p.formaPago || "No especificada", // 🔥 AGREGADO AL EXCEL
+      "Forma de Pago": p.formaPago || "No especificada", 
       "Estado": getEstadoInteligente(p),
     }));
   };
 
-  // 🔥 COLUMNAS DINÁMICAS (Se agregó "Forma de Pago")
   const columnasBase: TableColumn[] = [
     { label: <SortableHeader label="Nro Póliza" sortKey="nroPoliza" currentSort={sortConfig} requestSort={(key) => requestSort(key as any)} /> },
     { label: "Titular" },
@@ -200,7 +199,7 @@ export default function PolizasPage() {
     { label: <SortableHeader label="Rama / Cobertura" sortKey="tipoPoliza" currentSort={sortConfig} requestSort={(key) => requestSort(key as any)} /> },
     { label: "Patente / Detalle" },
     { label: <SortableHeader label="Vigencia" sortKey="fechaVencimiento" currentSort={sortConfig} requestSort={(key) => requestSort(key as any)} /> },
-    { label: "Forma de Pago" }, // 🔥 NUEVA COLUMNA
+    { label: "Forma de Pago" }, 
     { label: <SortableHeader label="Estado" sortKey="estado" currentSort={sortConfig} requestSort={(key) => requestSort(key as any)} /> },
   ];
 
@@ -209,7 +208,8 @@ export default function PolizasPage() {
     : columnasBase;
 
   return (
-    <div className="flex flex-col p-4 lg:p-8 w-full gap-5 lg:gap-8 bg-white min-h-screen overflow-x-hidden">
+    // 🔥 AJUSTE VITAL: min-w-0 max-w-full ancla la página a la pantalla y mata el scrollbar de abajo.
+    <div className="flex flex-col p-4 lg:p-8 w-full min-w-0 max-w-full gap-5 lg:gap-8 bg-white min-h-screen">
       
       <PageHeader 
         titulo="Pólizas" 

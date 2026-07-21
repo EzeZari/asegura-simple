@@ -8,10 +8,9 @@ import { apiFetch } from "@/services/api";
 import UpgradeModal from "@/components/ui/UpgradeModal";
 import GracePeriodBanner from "@/components/layout/GracePeriodBanner"; 
 import SessionExpiredModal from "@/components/ui/SessionExpiredModal";
-import Script from "next/script"; // 🔥 IMPORTAMOS EL COMPONENTE SCRIPT
+import Script from "next/script";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
-  // 🔥 AHORA TAMBIÉN TRAEMOS LOS DATOS DEL USUARIO (user)
   const setUser = useAuthStore((state: any) => state.setUser); 
   const user = useAuthStore((state: any) => state.user); 
   
@@ -26,7 +25,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           const data = await res.json();
           setUser(data.user || data); 
           
-          // 🔥 CLAVE: Guardamos el token fresco en las cookies por si el usuario recarga la página con F5
           if (data.accessToken) {
             document.cookie = `next_auth_token=${data.accessToken}; path=/; max-age=86400; secure; samesite=strict`;
           }
@@ -39,10 +37,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     rehidratarSesion();
   }, [setUser]);
 
-  // 🔥 NUEVO EFECTO: Le pasamos los datos del usuario a Crisp automáticamente
   useEffect(() => {
     if (user && typeof window !== "undefined") {
-      // Usamos (window as any) para que TypeScript no tire errores
       const crisp = (window as any).$crisp;
       if (crisp) {
         crisp.push(["set", "user:email", [user.email]]);
@@ -52,11 +48,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   }, [user]);
 
   return (
-    <div className="flex min-h-screen bg-gray-50 relative">
+    // 🔥 1. overflow-x-hidden en el contenedor principal mata cualquier scroll global que intente aparecer.
+    <div className="min-h-screen bg-gray-50 relative overflow-x-hidden">
       
       <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
       
-      <div className="flex-1 flex flex-col min-h-screen w-full lg:ml-64 transition-all duration-300">
+      {/* 🔥 2. lg:pl-64 le hace el "hueco" a la barra usando padding, y w-full asegura que llegue al borde derecho */}
+      <div className="lg:pl-64 flex flex-col min-h-screen w-full transition-all duration-300">
         
         <div className="lg:hidden flex items-center justify-between bg-green-700 text-white p-4 shadow-md sticky top-0 z-30">
           <span className="font-bold text-xl tracking-wide">AseguraSimple</span>
@@ -68,19 +66,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </button>
         </div>
 
-        {/* 🔥 Bánner de período de gracia */}
         <GracePeriodBanner />
 
-        <main className="flex-1 flex flex-col w-full overflow-x-hidden">
+        {/* 🔥 3. max-w-full y overflow-x-hidden encapsulan a todas las páginas para que no puedan desbordarse nunca */}
+        <main className="flex-1 w-full max-w-full min-w-0 overflow-x-hidden">
           {children}
         </main>
       </div>
 
-      {/* MODALES GLOBALES DE LA APLICACIÓN */}
       <UpgradeModal />
       <SessionExpiredModal />
 
-      {/* 🔥 WIDGET DE SOPORTE (CRISP CHAT) */}
       <Script id="crisp-widget" strategy="afterInteractive">
         {`
           window.$crisp=[];
