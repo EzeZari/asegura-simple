@@ -19,7 +19,7 @@ const ESTADO_INICIAL = {
   fechaInicio: "",
   fechaVencimiento: "",
   estado: "Vigente",
-  formaPago: "", // 🔥 AGREGADO: Nuevo campo
+  formaPago: "", 
   cobertura: "",
   aseguradoId: "", 
   companiaId: "", 
@@ -64,10 +64,17 @@ export default function NuevaPolizaModal({ isOpen, onClose, onSuccess, polizaAEd
 
       if (polizaAEditar) {
         if (isRenovacion) {
+          // 🔥 CORRECCIÓN ZONA HORARIA: Aislamos la fecha exacta sin UTC
           const fechaInicioNueva = polizaAEditar.fechaVencimiento.split('T')[0];
-          const vDate = new Date(polizaAEditar.fechaVencimiento);
+          const [año, mes, dia] = fechaInicioNueva.split('-');
+          
+          const vDate = new Date(Number(año), Number(mes) - 1, Number(dia));
           vDate.setMonth(vDate.getMonth() + 6);
-          const fechaVencimientoNueva = vDate.toISOString().split('T')[0];
+          
+          const yyyy = vDate.getFullYear();
+          const mm = String(vDate.getMonth() + 1).padStart(2, '0');
+          const dd = String(vDate.getDate()).padStart(2, '0');
+          const fechaVencimientoNueva = `${yyyy}-${mm}-${dd}`;
 
           setFormData({
             ...polizaAEditar,
@@ -77,7 +84,7 @@ export default function NuevaPolizaModal({ isOpen, onClose, onSuccess, polizaAEd
             estado: "Vigente", 
             aseguradoId: polizaAEditar.aseguradoId.toString(),
             companiaId: polizaAEditar.companiaId?.toString() || "",
-            formaPago: polizaAEditar.formaPago || "", // 🔥 Cargamos la forma de pago si existe
+            formaPago: polizaAEditar.formaPago || "",
           });
         } else {
           setFormData({
@@ -86,7 +93,7 @@ export default function NuevaPolizaModal({ isOpen, onClose, onSuccess, polizaAEd
             fechaVencimiento: polizaAEditar.fechaVencimiento.split('T')[0],
             aseguradoId: polizaAEditar.aseguradoId.toString(),
             companiaId: polizaAEditar.companiaId?.toString() || "",
-            formaPago: polizaAEditar.formaPago || "", // 🔥 Cargamos la forma de pago si existe
+            formaPago: polizaAEditar.formaPago || "",
           });
         }
       } else {
@@ -287,7 +294,6 @@ export default function NuevaPolizaModal({ isOpen, onClose, onSuccess, polizaAEd
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Rama / Tipo</label>
                 <select name="tipoPoliza" value={formData.tipoPoliza} onChange={handleChange} className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-600 outline-none bg-white">
-                  {/* 🔥 LISTA DE RAMAS COMPLETA Y ACTUALIZADA */}
                   <option value="Accidentes personales">Accidentes personales</option>
                   <option value="ART">ART</option>
                   <option value="Automotor">Automotor</option>
@@ -334,7 +340,6 @@ export default function NuevaPolizaModal({ isOpen, onClose, onSuccess, polizaAEd
               </div>
             </div>
 
-            {/* 🔥 SECCIÓN DE ESTADO, PAGO Y COBERTURA (3 Columnas) */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Estado</label>
@@ -362,7 +367,6 @@ export default function NuevaPolizaModal({ isOpen, onClose, onSuccess, polizaAEd
               </div>
             </div>
 
-            {/* CAMPOS CONDICIONALES ACTUALIZADOS */}
             {(formData.tipoPoliza === "Automotor" || formData.tipoPoliza === "Motovehículo") && (
               <div className="space-y-4 pt-4 border-t border-gray-100 mt-4 animate-in fade-in slide-in-from-top-2 duration-300">
                 <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider flex items-center gap-2">

@@ -1,9 +1,16 @@
 import { Request, Response } from 'express';
 import { prisma } from '../config/db';
 import { enviarAvisoVencimiento } from '../services/email.service';
-import { supabase } from '../config/supabase'; // 🔥 IMPORTAMOS SUPABASE PARA LOS PDF
+import { supabase } from '../config/supabase';
 
-// 🔥 FUNCIÓN HELPER ACTUALIZADA: Sincroniza y detecta si es Dueño o Vendedor
+// 🔥 NUEVA FUNCIÓN: Evita el problema del desfasaje horario al guardar
+const parsearFechaSegura = (fechaStr: string) => {
+  if (!fechaStr) return null;
+  const partes = fechaStr.split('T')[0].split('-');
+  // Guardamos a las 12:00 del mediodía UTC. Esto evita que al restar 3hs en Argentina salte al día anterior.
+  return new Date(Date.UTC(Number(partes[0]), Number(partes[1]) - 1, Number(partes[2]), 12, 0, 0));
+};
+
 const obtenerProductorId = async (userId: number): Promise<number> => {
   const usuarioActual = await prisma.user.findUnique({ where: { id: userId } });
   const idAgencia = usuarioActual?.jefeId ? usuarioActual.jefeId : userId;
@@ -43,7 +50,7 @@ export const obtenerTodas = async (req: Request, res: Response): Promise<any> =>
     const productorId = await obtenerProductorId(req.userId);
 
     const polizas = await prisma.poliza.findMany({
-      where: { productorId: productorId }, // 🔥 CONSULTA OPTIMIZADA DIRECTA
+      where: { productorId: productorId }, 
       include: { asegurado: true, compania: true },
       orderBy: { fechaVencimiento: 'asc' }
     });
@@ -61,7 +68,7 @@ export const obtenerPorId = async (req: Request, res: Response): Promise<any> =>
     const poliza = await prisma.poliza.findFirst({
       where: { 
         id: parseInt(id),
-        productorId: productorId // 🔥 CONSULTA OPTIMIZADA DIRECTA
+        productorId: productorId 
       },
       include: { asegurado: true, compania: true }
     });
@@ -91,18 +98,18 @@ export const crearPoliza = async (req: Request, res: Response): Promise<any> => 
     const nuevaPoliza = await prisma.poliza.create({
       data: {
         nroPoliza, tipoPoliza, 
-        fechaInicio: new Date(fechaInicio), 
-        fechaVencimiento: new Date(fechaVencimiento), 
+        fechaInicio: parsearFechaSegura(fechaInicio)!, // 🔥 CORRECCIÓN APLICADA AQUÍ
+        fechaVencimiento: parsearFechaSegura(fechaVencimiento)!, // 🔥 CORRECCIÓN APLICADA AQUÍ
         estado, cobertura, 
         aseguradoId: parseInt(aseguradoId), 
         companiaId: parseInt(companiaId),
-        productorId, // 🔥 SE INYECTA EL DUEÑO DE LA PÓLIZA
+        productorId, 
         patente: patente || null,
         marca: marca || null,
         modelo: modelo || null,
         ubicacionRiesgo: ubicacionRiesgo || null,
         cantidadEmpleados: cantidadEmpleados || null,
-        formaPago: formaPago || null, // 🔥 AGREGADO PARA QUE SE GUARDE
+        formaPago: formaPago || null, 
       },
       include: { asegurado: true }
     });
@@ -132,7 +139,7 @@ export const actualizarPoliza = async (req: Request, res: Response): Promise<any
     const vieja = await prisma.poliza.findFirst({ 
       where: { 
         id: parseInt(id),
-        productorId: productorId // 🔥 CONSULTA OPTIMIZADA DIRECTA
+        productorId: productorId 
       },
       include: { asegurado: true, compania: true }
     });
@@ -144,8 +151,8 @@ export const actualizarPoliza = async (req: Request, res: Response): Promise<any
       data: {
         nroPoliza: data.nroPoliza,
         tipoPoliza: data.tipoPoliza,
-        fechaInicio: data.fechaInicio ? new Date(data.fechaInicio) : undefined,
-        fechaVencimiento: data.fechaVencimiento ? new Date(data.fechaVencimiento) : undefined,
+        fechaInicio: data.fechaInicio ? parsearFechaSegura(data.fechaInicio)! : undefined, // 🔥 CORRECCIÓN AQUÍ
+        fechaVencimiento: data.fechaVencimiento ? parsearFechaSegura(data.fechaVencimiento)! : undefined, // 🔥 CORRECCIÓN AQUÍ
         estado: data.estado,
         cobertura: data.cobertura,
         aseguradoId: data.aseguradoId ? parseInt(data.aseguradoId) : undefined,
@@ -155,7 +162,7 @@ export const actualizarPoliza = async (req: Request, res: Response): Promise<any
         modelo: data.modelo || null,
         ubicacionRiesgo: data.ubicacionRiesgo || null,
         cantidadEmpleados: data.cantidadEmpleados || null,
-        formaPago: data.formaPago || null, // 🔥 AGREGADO PARA QUE SE ACTUALICE
+        formaPago: data.formaPago || null, 
       },
       include: { asegurado: true, compania: true }
     });
@@ -191,7 +198,7 @@ export const eliminarPoliza = async (req: Request, res: Response): Promise<any> 
     const polizaABorrar = await prisma.poliza.findFirst({ 
       where: { 
         id: parseInt(id),
-        productorId: productorId // 🔥 CONSULTA OPTIMIZADA DIRECTA
+        productorId: productorId 
       },
       include: { asegurado: true } 
     });
@@ -200,7 +207,6 @@ export const eliminarPoliza = async (req: Request, res: Response): Promise<any> 
     
     await prisma.poliza.delete({ where: { id: parseInt(id) } });
 
-    // 🔥 SI TENÍA UN PDF EN SUPABASE, LO BORRAMOS TAMBIÉN DE LA NUBE
     if (polizaABorrar.pdfUrl && polizaABorrar.pdfUrl.includes('supabase.co')) {
       const partesUrl = polizaABorrar.pdfUrl.split('/');
       const nombreArchivoViejo = partesUrl[partesUrl.length - 1];
@@ -231,7 +237,7 @@ export const avisarVencimiento = async (req: Request, res: Response): Promise<an
     const poliza = await prisma.poliza.findFirst({
       where: { 
         id: parseInt(id),
-        productorId: productorId // 🔥 CONSULTA OPTIMIZADA DIRECTA
+        productorId: productorId 
       },
       include: { asegurado: true, compania: true }
     });
@@ -296,7 +302,6 @@ export const subirPdf = async (req: Request, res: Response): Promise<any> => {
     const id = req.params.id as string; 
     const productorId = await obtenerProductorId(req.userId!);
 
-    // 🔥 VERIFICACIÓN DEL BUFFER (viene de memoryStorage)
     if (!req.file || !req.file.buffer) {
       return res.status(400).json({ error: 'No se seleccionó ningún archivo o el formato no es PDF.' });
     }
@@ -312,14 +317,12 @@ export const subirPdf = async (req: Request, res: Response): Promise<any> => {
       return res.status(404).json({ error: 'Póliza no encontrada o no autorizada.' });
     }
 
-    // 1. 🔥 SI YA HABÍA UN PDF VIEJO EN SUPABASE, LO BORRAMOS PARA NO ACUMULAR BASURA
     if (polizaExistente.pdfUrl && polizaExistente.pdfUrl.includes('supabase.co')) {
       const partesUrl = polizaExistente.pdfUrl.split('/');
       const nombreArchivoViejo = partesUrl[partesUrl.length - 1];
       await supabase.storage.from('polizas').remove([nombreArchivoViejo]);
     }
 
-    // 2. 🔥 ARMAMOS UN NOMBRE ÚNICO Y LO SUBIMOS A SUPABASE STORAGE
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
     const fileName = `poliza-${id}-${uniqueSuffix}.pdf`;
 
@@ -334,13 +337,12 @@ export const subirPdf = async (req: Request, res: Response): Promise<any> => {
       throw new Error(`Error de Supabase: ${uploadError.message}`);
     }
 
-    // 3. 🔥 OBTENEMOS LA URL PÚBLICA PARA GUARDARLA EN LA BASE DE DATOS
     const { data: publicUrlData } = supabase.storage.from('polizas').getPublicUrl(fileName);
     const publicUrl = publicUrlData.publicUrl;
 
     const polizaActualizada = await prisma.poliza.update({
       where: { id: parseInt(id) },
-      data: { pdfUrl: publicUrl }, // Guardamos el link directo de Supabase
+      data: { pdfUrl: publicUrl }, 
       include: { asegurado: true }
     });
 
@@ -380,7 +382,6 @@ export const importarPolizas = async (req: Request, res: Response): Promise<any>
       select: { id: true, nombre: true } 
     });
 
-    // 🔥 EL NUEVO ESCUDO CON MENSAJE AMIGABLE
     if (companias.length === 0) {
       return res.status(400).json({ 
         error: ' Por favor, asegúrate de tener al menos una Compañía cargada en el sistema antes de importar las pólizas.' 
@@ -422,7 +423,7 @@ export const importarPolizas = async (req: Request, res: Response): Promise<any>
         const dia = partes[0].padStart(2, '0');
         const mes = partes[1].padStart(2, '0');
         const anio = partes[2];
-        fechaResultante = new Date(`${anio}-${mes}-${dia}T12:00:00Z`);
+        fechaResultante = new Date(`${anio}-${mes}-${dia}T12:00:00Z`); // Acá ya tenías el mediodía, un crack
       } else {
         fechaResultante = new Date(str);
       }

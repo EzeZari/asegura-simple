@@ -21,11 +21,23 @@ export default function PolizaTableRow({
   onEdit, onAvisarVencimiento, onCambiarEstado, onEliminar
 }: Props) {
 
+  // 🔥 CORRECCIÓN ZONA HORARIA: Función auxiliar para parsear y renderizar la fecha localmente
+  const getFechaLocal = (fechaStr: string) => {
+    if (!fechaStr) return "-";
+    const [año, mes, dia] = fechaStr.split('T')[0].split('-');
+    const fecha = new Date(Number(año), Number(mes) - 1, Number(dia));
+    return fecha.toLocaleDateString("es-AR");
+  };
+
   const getEstadoInteligente = (p: any) => {
     if (p.estado === "Anulada" || p.estado === "Renovada") return p.estado;
     const hoy = new Date();
     hoy.setHours(0, 0, 0, 0); 
-    const vencimiento = new Date(p.fechaVencimiento);
+    
+    // 🔥 CORRECCIÓN ZONA HORARIA: Calculamos la diferencia exacta de días ignorando UTC
+    const [año, mes, dia] = p.fechaVencimiento.split('T')[0].split('-');
+    const vencimiento = new Date(Number(año), Number(mes) - 1, Number(dia), 0, 0, 0, 0);
+    
     const diffTime = vencimiento.getTime() - hoy.getTime();
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
@@ -74,7 +86,6 @@ export default function PolizaTableRow({
           }
           
           if (rama === "art") {
-            // 🔥 CORREGIDO: Ahora dice "empleados" en vez de "cápitas"
             return <div className="text-sm text-gray-900">{poliza.cantidadEmpleados ? `${poliza.cantidadEmpleados} empleados` : "-"}</div>;
           }
 
@@ -83,8 +94,9 @@ export default function PolizaTableRow({
       </td>
 
       <td className="px-4 lg:px-6 py-4 whitespace-nowrap">
-        <div className="text-gray-900 text-xs">{new Date(poliza.fechaInicio).toLocaleDateString("es-AR")}</div>
-        <div className="text-xs font-bold text-gray-700">al {new Date(poliza.fechaVencimiento).toLocaleDateString("es-AR")}</div>
+        {/* 🔥 CORRECCIÓN ZONA HORARIA APLICADA ACÁ */}
+        <div className="text-gray-900 text-xs">{getFechaLocal(poliza.fechaInicio)}</div>
+        <div className="text-xs font-bold text-gray-700">al {getFechaLocal(poliza.fechaVencimiento)}</div>
       </td>
       
       <td className="px-4 lg:px-6 py-4 whitespace-nowrap">
