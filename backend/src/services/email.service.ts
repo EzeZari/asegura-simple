@@ -1,14 +1,15 @@
 import { sendMail } from '../utils/mailer';
+import { prisma } from '../config/db'; // 🔥 IMPORTAMOS PRISMA PARA LEER TU AGENCIA
 import { 
   templateBienvenida, 
   templateVencimiento, 
   templateSiniestro,
   templateInvitacionEquipo,
   templateContacto,
-  templateAlertaError // 🔥 Importamos la nueva plantilla
+  templateAlertaError
 } from '../utils/emailTemplates';
 
-// 🔥 NUEVA FUNCIÓN: El botón de pánico que te avisa a vos
+// 🔥 Función interna: El botón de pánico que te avisa a vos
 export const enviarAlertaErrorSistema = async (funcion: string, detalleError: any, datosExtra: string) => {
   try {
     await sendMail({
@@ -21,14 +22,22 @@ export const enviarAlertaErrorSistema = async (funcion: string, detalleError: an
   }
 };
 
+// ============================================================================
+// CORREOS PARA CLIENTES (INCLUYEN FIRMA DINÁMICA DE LA AGENCIA)
+// ============================================================================
+
 export const enviarCorreoBienvenida = async (email: string, nombre: string, apellido: string, dni: string, telefono: string) => {
   if (!email || !email.includes('@')) return;
 
   try {
+    // 🔥 1. Buscamos la configuración de tu agencia en la BD
+    const agencia = await prisma.agencia.findUnique({ where: { id: 1 } });
+
     await sendMail({
       to: email,
       subject: `¡Bienvenido a nuestra Agencia, ${nombre}!`,
-      html: templateBienvenida(nombre, apellido, dni, telefono)
+      // 🔥 2. Le pasamos los datos de la agencia a la plantilla
+      html: templateBienvenida(nombre, apellido, dni, telefono, agencia) 
     });
   } catch (error: any) {
     console.error("Error al enviar mail de bienvenida:", error);
@@ -45,17 +54,21 @@ export const enviarAvisoVencimiento = async (
   if (!email || !email.includes('@')) return;
 
   try {
+    // 🔥 1. Buscamos la configuración de tu agencia en la BD
+    const agencia = await prisma.agencia.findUnique({ where: { id: 1 } });
+
     await sendMail({
       to: email,
       subject: `Aviso Importante: Vencimiento de cobertura - Póliza #${nroPoliza}`,
+      // 🔥 2. Le pasamos los datos de la agencia a la plantilla
       html: templateVencimiento(
         nombre, nroPoliza, compania, tipoPoliza, cobertura, fechaVencimiento, 
-        patente, marca, modelo, ubicacionRiesgo, cantidadEmpleados
+        patente, marca, modelo, ubicacionRiesgo, cantidadEmpleados, 
+        agencia // <-- ¡Acá viaja tu firma!
       )
     });
   } catch (error: any) {
     console.error("Error en el email service:", error);
-    // 🔥 SI FALLA EL AVISO AL CLIENTE, TE LLEGA EL MAIL A VOS
     await enviarAlertaErrorSistema(
       'enviarAvisoVencimiento', 
       error.message || error, 
@@ -72,12 +85,17 @@ export const enviarNotificacionSiniestro = async (
   if (!email || !email.includes('@')) return;
 
   try {
+    // 🔥 1. Buscamos la configuración de tu agencia en la BD
+    const agencia = await prisma.agencia.findUnique({ where: { id: 1 } });
+
     await sendMail({
       to: email,
       subject: `${asuntoPersonalizado} - Trámite #${nroSiniestro}`,
+      // 🔥 2. Le pasamos los datos de la agencia a la plantilla
       html: templateSiniestro(
         nombre, nroSiniestro, nroPoliza, compania, tipoPoliza, 
-        patente, descripcionNovedad, urlSeguimiento
+        patente, descripcionNovedad, urlSeguimiento, 
+        agencia // <-- ¡Acá viaja tu firma!
       )
     });
   } catch (error: any) {
@@ -85,6 +103,10 @@ export const enviarNotificacionSiniestro = async (
     await enviarAlertaErrorSistema('enviarNotificacionSiniestro', error.message || error, `Siniestro: #${nroSiniestro} | Cliente: ${nombre} | Email: ${email}`);
   }
 };
+
+// ============================================================================
+// CORREOS INTERNOS DEL SISTEMA (NO LLEVAN LA FIRMA DE TU AGENCIA)
+// ============================================================================
 
 export const enviarCorreoInvitacion = async (email: string, nombre: string, contrasena: string, jefeNombre: string) => {
   if (!email || !email.includes('@')) return;
@@ -115,6 +137,5 @@ export const enviarCorreoContacto = async (nombre: string, email: string, mensaj
     console.log(`📧 Mail de contacto recibido de ${email}`);
   } catch (error: any) {
     console.error("Error al enviar el correo de contacto:", error);
-    // Acá no mandamos alerta de error porque el destino final ya era asegurasimple@gmail.com
   }
 };

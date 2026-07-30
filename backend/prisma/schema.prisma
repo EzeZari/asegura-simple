@@ -272,6 +272,7 @@ model Agencia {
   enviarMailBienvenida  Boolean  @default(true)
 
   updatedAt             DateTime @updatedAt
+  usarFirma             Boolean  @default(false)
 }
 
 // 🔥 NUEVO: ENUM PARA CONTROL DE TRÁFICO Y LÍMITES EN EL SAAS

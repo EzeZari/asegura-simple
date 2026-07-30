@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { Save, UploadCloud } from "lucide-react";
 import Toast from "@/components/ui/Toast";
+import { apiFetch } from "@/services/api"; 
 
 export default function PerfilSettings() {
   const [showToast, setShowToast] = useState(false);
@@ -15,20 +16,25 @@ export default function PerfilSettings() {
     email: "",
     telefono: "",
     firma: "",
+    usarFirma: false, // 🔥 NUEVO: Estado para el botón switch
   });
 
   useEffect(() => {
     const fetchAgencia = async () => {
       try {
-        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/agencia`);
-        const data = await res.json();
-        setAgencia({
-          nombre: data.nombre || "",
-          cuit: data.cuit || "",
-          email: data.email || "",
-          telefono: data.telefono || "",
-          firma: data.firma || "",
-        });
+        const res = await apiFetch("/api/agencia"); 
+        
+        if (res.ok) {
+          const data = await res.json();
+          setAgencia({
+            nombre: data.nombre || "",
+            cuit: data.cuit || "",
+            email: data.email || "",
+            telefono: data.telefono || "",
+            firma: data.firma || "",
+            usarFirma: data.usarFirma || false, // 🔥 Leemos el dato de la base de datos
+          });
+        }
       } catch (error) {
         console.error("Error al cargar datos de la agencia", error);
       } finally {
@@ -41,16 +47,15 @@ export default function PerfilSettings() {
   const guardarCambios = async () => {
     setIsSaving(true);
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/agencia`, {
+      const res = await apiFetch("/api/agencia", {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(agencia),
       });
 
       if (res.ok) {
         setShowToast(true);
       } else {
-        alert("Hubo un error al guardar");
+        alert("Hubo un error al guardar. El servidor denegó la petición.");
       }
     } catch (error) {
       console.error(error);
@@ -74,7 +79,6 @@ export default function PerfilSettings() {
       {/* SECCIÓN: Logo de la Agencia */}
       <div className="bg-white p-4 md:p-6 rounded-2xl border border-gray-100 shadow-sm flex flex-col gap-4">
         <h3 className="text-lg font-bold text-gray-900 border-b border-gray-50 pb-2">Identidad Visual</h3>
-        {/* 🔥 AJUSTE: flex-col en móvil, flex-row a partir de sm */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-6 mt-2">
           <div className="h-20 w-20 shrink-0 bg-gray-50 border border-gray-200 rounded-full flex items-center justify-center text-xl font-bold text-green-700">
             {agencia.nombre ? agencia.nombre.substring(0, 2).toUpperCase() : "AS"}
@@ -123,16 +127,34 @@ export default function PerfilSettings() {
           </div>
         </div>
 
-        <div className="mt-2">
-          <label className="block text-sm font-medium text-gray-700 mb-1">Firma para correos y mensajes (Opcional)</label>
-          <textarea 
-            rows={3} name="firma" value={agencia.firma} onChange={handleChange} placeholder="Saludos cordiales, Equipo de AseguraSimple..." 
-            className="w-full p-3 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-green-600 resize-none text-sm"
-          ></textarea>
+        <div className="mt-4 pt-4 border-t border-gray-100">
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <label className="block text-sm font-bold text-gray-900">Incluir firma en correos</label>
+              <p className="text-xs text-gray-500">Añade tu firma y datos de contacto al pie de los correos automáticos.</p>
+            </div>
+            {/* 🔥 NUEVO: El Botón Switch */}
+            <button
+              type="button"
+              onClick={() => setAgencia({ ...agencia, usarFirma: !agencia.usarFirma })}
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${agencia.usarFirma ? 'bg-green-600' : 'bg-gray-200'}`}
+            >
+              <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${agencia.usarFirma ? 'translate-x-6' : 'translate-x-1'}`} />
+            </button>
+          </div>
+
+          {/* 🔥 NUEVO: Ocultamos o mostramos el cuadro de texto según el botón */}
+          {agencia.usarFirma && (
+            <div className="animate-in fade-in slide-in-from-top-2 duration-300">
+              <textarea 
+                rows={3} name="firma" value={agencia.firma} onChange={handleChange} placeholder="Saludos cordiales, Equipo de AseguraSimple..." 
+                className="w-full p-3 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-green-600 resize-none text-sm"
+              ></textarea>
+            </div>
+          )}
         </div>
 
         <div className="flex justify-end mt-4">
-          {/* 🔥 AJUSTE: Botón w-full en móvil */}
           <button 
             onClick={guardarCambios} 
             disabled={isSaving}

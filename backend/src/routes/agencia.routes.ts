@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { prisma } from '../config/db';
-import { verificarToken } from '../middlewares/auth.middleware'; // 🔥 FIX 1: Nombre correcto de tu middleware
+import { verificarToken } from '../middlewares/auth.middleware';
 
 const router = Router();
 
@@ -26,18 +26,17 @@ router.get('/', verificarToken, async (req: any, res) => {
 router.put('/', verificarToken, async (req: any, res) => {
   try {
     const { 
-      nombre, cuit, email, telefono, firma, 
+      nombre, cuit, email, telefono, firma, usarFirma, // 🔥 EXTRAEMOS EL NUEVO DATO
       mensajeVencimiento, mensajeBienvenida,
       diasAlertaVencimiento, diasAlertaCritica,
       envioAutomaticoActivo, horaEnvioAutomatico,
       diasAvisoAutomatico, enviarMailBienvenida 
     } = req.body;
     
-    // 🔥 FIX 2 y 3: Guardamos todo lo visual en la tabla Agencia (como pide tu schema.prisma)
     const agenciaActualizada = await prisma.agencia.update({
       where: { id: 1 },
       data: { 
-        nombre, cuit, email, telefono, firma,
+        nombre, cuit, email, telefono, firma, usarFirma, // 🔥 LO GUARDAMOS
         mensajeVencimiento, mensajeBienvenida,
         diasAlertaVencimiento, diasAlertaCritica,
         envioAutomaticoActivo, horaEnvioAutomatico,
@@ -45,14 +44,12 @@ router.put('/', verificarToken, async (req: any, res) => {
       }
     });
 
-    // 🔥 EXTRA: Actualizamos silenciosamente los datos del robot en el Productor actual para que funcione el Cron Job
     const idBruto = req.user?.userId || req.user?.id || req.userId;
     if (idBruto) {
       const user = await prisma.user.findUnique({ where: { id: Number(idBruto) } });
       if (user) {
         const idAgencia = user.jefeId ? user.jefeId : user.id;
         
-        // Usamos updateMany para que no explote si el perfil de Productor aún no se completó del todo
         await prisma.productor.updateMany({
           where: { userId: idAgencia },
           data: {

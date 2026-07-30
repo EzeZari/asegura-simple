@@ -1,8 +1,50 @@
+// 🔥 NUEVA FUNCIÓN: Generador inteligente del pie de página (Firma Corporativa)
+const generarFooter = (agencia?: any) => {
+  // Si no hay datos de agencia o el botón "usarFirma" está APAGADO, mostramos el footer genérico
+  if (!agencia || !agencia.usarFirma) {
+    return `
+      <hr style="border: 0; border-top: 1px solid #f3f4f6; margin: 30px 0;" />
+      <p style="color: #9ca3af; font-size: 11px; text-align: center; margin: 0;">Este es un aviso informativo automatizado enviado por el asesor de seguros a través de AseguraSimple.</p>
+    `;
+  }
+
+  // Si el botón está PRENDIDO, armamos una firma formal, sobria y profesional
+  return `
+    <div style="margin-top: 40px; padding-top: 25px; border-top: 1px solid #e5e7eb;">
+      <table cellpadding="0" cellspacing="0" border="0" style="width: 100%; font-family: Arial, sans-serif;">
+        <tr>
+          <td style="padding-left: 18px; border-left: 3px solid #15803d;">
+            <p style="color: #111827; font-size: 16px; font-weight: bold; margin: 0 0 6px 0; letter-spacing: -0.2px;">
+              ${agencia.nombre || 'Tu Agencia de Seguros'}
+            </p>
+            
+            ${agencia.firma ? `<p style="color: #4b5563; font-size: 13px; margin: 0 0 14px 0; line-height: 1.6;">${agencia.firma.replace(/\n/g, '<br>')}</p>` : ''}
+            
+            <table cellpadding="0" cellspacing="0" border="0" style="font-size: 12px; color: #6b7280; line-height: 1.5;">
+              ${agencia.telefono ? `<tr><td style="padding-right: 8px; font-weight: bold; color: #15803d;">T.</td><td>${agencia.telefono}</td></tr>` : ''}
+              ${agencia.email ? `<tr><td style="padding-right: 8px; font-weight: bold; color: #15803d;">E.</td><td><a href="mailto:${agencia.email}" style="color: #6b7280; text-decoration: none;">${agencia.email}</a></td></tr>` : ''}
+              ${agencia.cuit ? `<tr><td style="padding-right: 8px; font-weight: bold; color: #15803d;">MAT.</td><td>${agencia.cuit}</td></tr>` : ''}
+            </table>
+          </td>
+        </tr>
+      </table>
+      
+      <p style="color: #9ca3af; font-size: 10px; margin-top: 35px; text-align: center; text-transform: uppercase; letter-spacing: 1px;">
+        Gestionado a través de AseguraSimple
+      </p>
+    </div>
+  `;
+};
+
+// ============================================================================
+// PLANTILLAS PARA CLIENTES (ACÁ SÍ INYECTAMOS LA FIRMA)
+// ============================================================================
+
 // Plantilla para Correo de Bienvenida
-export const templateBienvenida = (nombre: string, apellido: string, dni: string, telefono: string) => `
+export const templateBienvenida = (nombre: string, apellido: string, dni: string, telefono: string, agencia?: any) => `
   <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e5e7eb; border-radius: 12px;">
     <div style="text-align: center; margin-bottom: 20px;">
-      <h1 style="color: #15803d; margin: 0;">AseguraSimple</h1>
+      <h1 style="color: #15803d; margin: 0;">${agencia && agencia.usarFirma ? agencia.nombre : 'AseguraSimple'}</h1>
       <p style="color: #6b7280; font-size: 14px; margin-top: 5px;">Tu tranquilidad, en buenas manos</p>
     </div>
     <hr style="border: 0; border-top: 1px solid #f3f4f6; margin-bottom: 20px;" />
@@ -17,7 +59,8 @@ export const templateBienvenida = (nombre: string, apellido: string, dni: string
 
     <p style="color: #374151; font-size: 16px;">Próximamente vas a recibir las copias digitales de tus pólizas vigentes y avisos de vencimiento directamente en esta casilla.</p>
     <p style="color: #374151; font-size: 16px; margin-top: 30px;">Ante cualquier consulta, no dudes en responder a este correo.</p>
-    <p style="color: #9ca3af; font-size: 12px; margin-top: 40px; text-align: center;">Este es un correo automático enviado por el sistema de gestión de AseguraSimple.</p>
+    
+    ${generarFooter(agencia)}
   </div>
 `;
 
@@ -26,7 +69,7 @@ export const templateVencimiento = (
   nombre: string, nroPoliza: string, compania: string, tipoPoliza: string, 
   cobertura: string, fechaVencimiento: string, patente?: string | null, 
   marca?: string | null, modelo?: string | null, ubicacionRiesgo?: string | null, 
-  cantidadEmpleados?: string | null
+  cantidadEmpleados?: string | null, agencia?: any
 ) => {
   let filaDetalleExtra = '';
   
@@ -93,8 +136,7 @@ export const templateVencimiento = (
 
       <p style="color: #374151; font-size: 16px; line-height: 1.6;"><strong>¿Cómo proceder?</strong><br>Para coordinar la renovación del riesgo o evaluar mejoras en los costos y planes vigentes, simplemente podés responder a este correo electrónico o comunicarte directamente a nuestras vías de contacto habituales.</p>
       
-      <hr style="border: 0; border-top: 1px solid #f3f4f6; margin: 30px 0;" />
-      <p style="color: #9ca3af; font-size: 11px; text-align: center; margin: 0;">Este es un aviso informativo automatizado enviado por el asesor de seguros a través de AseguraSimple.</p>
+      ${generarFooter(agencia)}
     </div>
   `;
 };
@@ -102,7 +144,7 @@ export const templateVencimiento = (
 // Plantilla para Notificación de Siniestro
 export const templateSiniestro = (
   nombre: string, nroSiniestro: string, nroPoliza: string, compania: string, 
-  tipoPoliza: string, patente: string | null, descripcionNovedad: string, urlSeguimiento: string
+  tipoPoliza: string, patente: string | null, descripcionNovedad: string, urlSeguimiento: string, agencia?: any
 ) => `
   <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 25px; border: 1px solid #e5e7eb; border-radius: 16px; border-top: 6px solid #ea580c;">
     <div style="text-align: center; margin-bottom: 25px;">
@@ -145,10 +187,15 @@ export const templateSiniestro = (
       <a href="${urlSeguimiento}" target="_blank" style="background-color: #ea580c; color: white; padding: 12px 24px; border-radius: 10px; text-decoration: none; font-weight: bold; display: inline-block; font-size: 15px;">Ver el Estado de mi Trámite</a>
     </div>
     
-    <hr style="border: 0; border-top: 1px solid #f3f4f6; margin: 30px 0;" />
-    <p style="color: #9ca3af; font-size: 11px; text-align: center; margin: 0;">Este es un aviso automático de cortesía enviado a través de AseguraSimple.</p>
+    ${generarFooter(agencia)}
   </div>
 `;
+
+
+// ============================================================================
+// PLANTILLAS DEL SISTEMA INTERNO (ESTAS QUEDAN EXACTAMENTE IGUAL)
+// ============================================================================
+
 // Plantilla para Confirmación de Cuenta (Registro)
 export const templateConfirmacionCuenta = (nombre: string, verifyUrl: string) => `
   <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 25px; border: 1px solid #e5e7eb; border-radius: 16px; border-top: 6px solid #15803d; background-color: #ffffff;">
@@ -200,6 +247,7 @@ export const templateRecuperarPassword = (nombre: string, resetUrl: string) => `
     <p style="font-size: 12px; color: #666;">Si no solicitaste este cambio, podés ignorar este correo tranquilamente.</p>
   </div>
 `;
+
 // Plantilla para Invitación de Equipo
 export const templateInvitacionEquipo = (nombre: string, jefeNombre: string, emailInvitado: string, contrasena: string, loginUrl: string) => `
   <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 25px; border: 1px solid #e5e7eb; border-radius: 16px; border-top: 6px solid #15803d; background-color: #ffffff;">
@@ -230,6 +278,7 @@ export const templateInvitacionEquipo = (nombre: string, jefeNombre: string, ema
     </div>
   </div>
 `;
+
 export const templateContacto = (nombre: string, email: string, mensaje: string) => `
   <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 25px; border: 1px solid #e5e7eb; border-radius: 16px; border-top: 6px solid #15803d; background-color: #ffffff;">
     <div style="text-align: center; margin-bottom: 25px;">
@@ -263,7 +312,7 @@ export const templateContacto = (nombre: string, email: string, mensaje: string)
     </div>
   </div>
 `;
-// Plantilla para Alerta de Error del Sistema
+
 export const templateAlertaError = (funcion: string, detalleError: any, datosExtra: string) => `
   <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 25px; border: 1px solid #e5e7eb; border-radius: 16px; border-top: 6px solid #dc2626; background-color: #ffffff;">
     <div style="text-align: center; margin-bottom: 25px;">
