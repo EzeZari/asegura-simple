@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { User, Save, Camera } from "lucide-react";
 import { useAuthStore } from "@/store/authStore";
 import Toast from "@/components/ui/Toast";
+import { apiFetch } from "@/services/api"; // 🔥 IMPORTAMOS TU FUNCIÓN MÁGICA
 
 export default function InformacionBasica() {
   const { user, setUser } = useAuthStore();
@@ -18,9 +19,9 @@ export default function InformacionBasica() {
   const guardarDatosBasicos = async () => {
     setIsSaving(true);
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/update-profile`, {
+      // 🔥 REEMPLAZAMOS EL FETCH CRUDO POR APIFETCH
+      const res = await apiFetch(`/api/auth/update-profile`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id: user?.id, nombre, email: user?.email }),
       });
 

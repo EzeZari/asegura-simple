@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Mail, CheckCircle2, ShieldAlert, ArrowRight, KeyRound } from "lucide-react";
 import { useAuthStore } from "@/store/authStore";
 import Toast from "@/components/ui/Toast";
+import { apiFetch } from "@/services/api"; // 🔥 IMPORTAMOS TU FUNCIÓN AUTORIZADA
 
 export default function CredencialesAcceso() {
   const { user, setUser } = useAuthStore();
@@ -32,9 +33,9 @@ export default function CredencialesAcceso() {
     setIsProcessingEmail(true);
     
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/request-email-change`, {
+      // 🔥 USAMOS APIFETCH PARA ENVIAR EL TOKEN DE FORMA SEGURA
+      const res = await apiFetch(`/api/auth/request-email-change`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id: user?.id, newEmail }),
       });
 
@@ -61,9 +62,9 @@ export default function CredencialesAcceso() {
     setIsProcessingEmail(true);
 
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/verify-email-change`, {
+      // 🔥 USAMOS APIFETCH AQUÍ TAMBIÉN
+      const res = await apiFetch(`/api/auth/verify-email-change`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id: user?.id, codigo: verificationCode }),
       });
 
@@ -93,7 +94,6 @@ export default function CredencialesAcceso() {
   };
 
   return (
-    // 🔥 AJUSTE: p-4 en móvil, p-8 en PC. gap-5 en móvil, gap-6 en PC.
     <div className="bg-white p-4 md:p-8 rounded-2xl border border-gray-100 shadow-sm flex flex-col gap-5 md:gap-6">
       <div>
         <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
@@ -114,7 +114,6 @@ export default function CredencialesAcceso() {
           </div>
         </div>
         
-        {/* 🔥 AJUSTE: Botón w-full en móvil, w-auto en PC */}
         <button 
           onClick={() => setShowEmailModal(true)}
           className="w-full md:w-auto flex justify-center bg-white border border-gray-300 hover:border-gray-400 hover:bg-gray-50 text-gray-700 px-4 py-2.5 md:py-2 rounded-lg font-medium transition-colors text-sm"
@@ -126,7 +125,6 @@ export default function CredencialesAcceso() {
       {showEmailModal && (
         <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in duration-200">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden flex flex-col max-h-[90vh] overflow-y-auto">
-            {/* 🔥 AJUSTE: p-4 en móvil, p-6 en PC */}
             <div className="p-4 md:p-6 border-b border-gray-100 flex items-start gap-3 md:gap-4 bg-gray-50/50">
               <div className="bg-blue-100 p-2.5 md:p-3 rounded-full text-blue-600 shrink-0">
                 <ShieldAlert size={24} />
@@ -187,7 +185,6 @@ export default function CredencialesAcceso() {
               )}
             </div>
 
-            {/* 🔥 AJUSTE: Botones apilados en móvil (flex-col-reverse) y en fila en PC (sm:flex-row) */}
             <div className="p-4 border-t border-gray-100 flex flex-col-reverse sm:flex-row justify-end gap-3 bg-gray-50/50">
               <button onClick={cerrarModalEmail} className="w-full sm:w-auto px-4 py-2.5 sm:py-2 text-sm font-semibold text-gray-600 hover:bg-gray-200 rounded-lg transition-colors">
                 Cancelar
