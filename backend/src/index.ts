@@ -12,7 +12,7 @@ import aseguradosRoutes from './routes/asegurados.routes';
 import polizasRoutes from './routes/polizas.routes';
 import companiasRoutes from './routes/companias.routes';
 import dashboardRoutes from './routes/dashboard.routes';
-import estadisticasRoutes from './routes/estadisticas.routes'; // 🔥 1. IMPORTAMOS LA NUEVA RUTA
+import estadisticasRoutes from './routes/estadisticas.routes';
 import alertasRoutes from './routes/alertas.routes';
 import agenciaRoutes from './routes/agencia.routes';
 import siniestrosRoutes from './routes/siniestros.routes';
@@ -20,6 +20,7 @@ import mpRoutes from './routes/mp.routes';
 import equipoRoutes from './routes/equipo.routes';
 import adminRoutes from './routes/admin.routes';
 import contactoRoutes from './routes/contacto.routes';
+import healthRoutes from './routes/health.routes'; // 🔥 NUEVO: Importamos la ruta de Health Check
 
 dotenv.config();
 
@@ -63,7 +64,7 @@ app.use('/api/asegurados', aseguradosRoutes);
 app.use('/api/polizas', polizasRoutes);
 app.use('/api/companias', companiasRoutes);
 app.use('/api/dashboard', dashboardRoutes);
-app.use('/api/estadisticas', estadisticasRoutes); // 🔥 2. LE DECIMOS A EXPRESS QUE ESCUCHE ESTA RUTA
+app.use('/api/estadisticas', estadisticasRoutes);
 app.use('/api/alertas', alertasRoutes);
 app.use('/api/agencia', agenciaRoutes);
 app.use('/api/siniestros', siniestrosRoutes);
@@ -71,6 +72,7 @@ app.use('/api/pagos', mpRoutes);
 app.use('/api/equipo', equipoRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/contacto', contactoRoutes);
+app.use('/api/health', healthRoutes); // 🔥 NUEVO: Conectamos la ruta de Health Check a Express
 
 const PORT = process.env.PORT || 3001;
 
