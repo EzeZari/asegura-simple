@@ -1,5 +1,9 @@
 import express from 'express';
 import dotenv from 'dotenv';
+// 🔥 SENTRY 1: Importamos los paquetes arriba de todo
+import * as Sentry from '@sentry/node';
+import { nodeProfilingIntegration } from '@sentry/profiling-node';
+
 import cookieParser from 'cookie-parser';
 import cors from 'cors';
 import helmet from 'helmet';
@@ -20,19 +24,27 @@ import mpRoutes from './routes/mp.routes';
 import equipoRoutes from './routes/equipo.routes';
 import adminRoutes from './routes/admin.routes';
 import contactoRoutes from './routes/contacto.routes';
-import healthRoutes from './routes/health.routes'; // 🔥 NUEVO: Importamos la ruta de Health Check
+import healthRoutes from './routes/health.routes';
 
 dotenv.config();
 
+// 🔥 SENTRY 2: Inicializamos la configuración (Debe ir ANTES de armar la app)
+Sentry.init({
+  dsn: process.env.SENTRY_DSN,
+  integrations: [
+    nodeProfilingIntegration(),
+  ],
+  // 1.0 significa que captura el 100% de los errores
+  tracesSampleRate: 1.0,
+  profilesSampleRate: 1.0,
+});
+
 const app = express();
 
-// 🔥 LÍNEA MÁGICA PARA RAILWAY: Le avisa a Express que está detrás de un proxy confiable
 app.set('trust proxy', 1);
 
-// 1. HELMET: Oculta información sensible del servidor y bloquea ataques comunes en las cabeceras HTTP.
 app.use(helmet());
 
-// 2. CORS: El "patovica" de dominios. Solo deja que tu frontend le hable al backend.
 app.use(cors({
   origin: [
     'http://localhost:3000',
@@ -43,7 +55,6 @@ app.use(cors({
   credentials: true 
 }));
 
-// 3. RATE LIMIT: Evita ataques de fuerza bruta.
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, 
   max: 100, 
@@ -53,7 +64,6 @@ app.use('/api', limiter);
 
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
-// --- MIDDLEWARES CLÁSICOS ---
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 app.use(cookieParser());
@@ -72,14 +82,16 @@ app.use('/api/pagos', mpRoutes);
 app.use('/api/equipo', equipoRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/contacto', contactoRoutes);
-app.use('/api/health', healthRoutes); // 🔥 NUEVO: Conectamos la ruta de Health Check a Express
+app.use('/api/health', healthRoutes); // 🟢 El Health Check de UptimeRobot
+
+// 🔥 SENTRY 3: Atrapamos los errores (Debe ir SIEMPRE después de las rutas y antes del listen)
+Sentry.setupExpressErrorHandler(app);
 
 const PORT = process.env.PORT || 3001;
 
-// 🔥 Arrancamos el robot automático (Cron Job)
+// 🤖 Arrancamos los mails automáticos (Preventivos + Críticos)
 iniciarTareasProgramadas();
 
-// 🔥 Levantamos el servidor una sola vez
 app.listen(PORT, () => {
   console.log(`Servidor Backend corriendo y blindado en puerto ${PORT}`);
 });
