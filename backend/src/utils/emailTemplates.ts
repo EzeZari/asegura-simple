@@ -263,3 +263,24 @@ export const templateContacto = (nombre: string, email: string, mensaje: string)
     </div>
   </div>
 `;
+// Plantilla para Alerta de Error del Sistema
+export const templateAlertaError = (funcion: string, detalleError: any, datosExtra: string) => `
+  <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 25px; border: 1px solid #e5e7eb; border-radius: 16px; border-top: 6px solid #dc2626; background-color: #ffffff;">
+    <div style="text-align: center; margin-bottom: 25px;">
+      <h2 style="color: #dc2626; margin: 0; font-size: 24px; letter-spacing: -0.5px;">⚠️ Fallo en el Sistema</h2>
+      <p style="color: #6b7280; font-size: 14px; margin-top: 5px;">Alerta automática de AseguraSimple</p>
+    </div>
+    
+    <p style="color: #374151; font-size: 16px; line-height: 1.6;">Se intentó ejecutar una acción en el servidor pero falló. Acá tenés los detalles para revisarlo:</p>
+    
+    <div style="background-color: #f9fafb; border: 1px solid #f3f4f6; padding: 20px; border-radius: 12px; margin: 24px 0;">
+      <p style="margin: 5px 0; color: #1f2937; font-size: 15px;"><strong>⚙️ Proceso:</strong> ${funcion}</p>
+      <p style="margin: 5px 0; color: #1f2937; font-size: 15px;"><strong>📄 Datos involucrados:</strong> ${datosExtra}</p>
+      
+      <div style="margin-top: 15px; padding-top: 15px; border-top: 1px dashed #e5e7eb;">
+        <p style="margin: 0 0 8px 0; color: #dc2626; font-size: 14px; font-weight: bold;">Detalle técnico del error:</p>
+        <pre style="margin: 0; color: #991b1b; background-color: #fef2f2; padding: 15px; border-radius: 8px; border: 1px solid #fecaca; font-size: 12px; white-space: pre-wrap; overflow-x: auto;">${JSON.stringify(detalleError, null, 2)}</pre>
+      </div>
+    </div>
+  </div>
+`;

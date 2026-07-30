@@ -1,6 +1,6 @@
 import cron from 'node-cron';
 import { prisma } from '../config/db';
-import { enviarAvisoVencimiento } from './email.service';
+import { enviarAvisoVencimiento, enviarAlertaErrorSistema } from './email.service'; // 🔥 Importamos la alerta
 
 export const iniciarTareasProgramadas = () => {
   // Ejecutar al inicio de cada hora (En producción usar '0 * * * *')
@@ -113,8 +113,15 @@ export const iniciarTareasProgramadas = () => {
           console.log(`[ROBOT] Trabajo terminado para ${productor.nombre}: ${enviados} correos enviados.`);
         }
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("[ROBOT] Error crítico en la ejecución automática:", error);
+      
+      // 🔥 SI EL ROBOT EXPLOTA (Ej: falla la conexión a BD), TE MANDA MAIL.
+      await enviarAlertaErrorSistema(
+        'CRON JOB - iniciarTareasProgramadas',
+        error.message || error,
+        'El escaneo general de pólizas falló. Revisar conexión a la base de datos o lógica del cron.'
+      );
     }
   }, {
     timezone: "America/Argentina/Buenos_Aires"
