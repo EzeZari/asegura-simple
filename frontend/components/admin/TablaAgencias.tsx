@@ -1,4 +1,4 @@
-import { Mail, Phone, Trash2, FileText, Users } from "lucide-react";
+import { Mail, Phone, Trash2, FileText, Users, CalendarDays } from "lucide-react";
 
 interface TablaAgenciasProps {
   agenciasFiltradas: any[];
@@ -8,6 +8,18 @@ interface TablaAgenciasProps {
 }
 
 export default function TablaAgencias({ agenciasFiltradas, planesOptions, onModificarPlan, onEliminarCuenta }: TablaAgenciasProps) {
+  
+  // 🔥 NUEVA FUNCIÓN: Para formatear las fechas de la base de datos
+  const formatearFecha = (fechaString?: string) => {
+    if (!fechaString) return "-";
+    const fecha = new Date(fechaString);
+    return fecha.toLocaleDateString("es-AR", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric"
+    });
+  };
+
   return (
     <div className="bg-transparent md:bg-gray-900 md:border border-gray-800 rounded-3xl md:shadow-2xl md:overflow-hidden">
       <div className="w-full">
@@ -18,7 +30,7 @@ export default function TablaAgencias({ agenciasFiltradas, planesOptions, onModi
               <th className="p-5 font-bold border-b border-gray-800">Usuario y Jerarquía</th>
               <th className="p-5 font-bold border-b border-gray-800">Contacto</th>
               <th className="p-5 font-bold border-b border-gray-800">Uso del Sistema</th>
-              <th className="p-5 font-bold border-b border-gray-800">Plan Actual</th>
+              <th className="p-5 font-bold border-b border-gray-800">Plan y Suscripción</th>
               <th className="p-5 font-bold border-b border-gray-800 text-right">Acciones</th>
             </tr>
           </thead>
@@ -112,13 +124,37 @@ export default function TablaAgencias({ agenciasFiltradas, planesOptions, onModi
                       </div>
                     </td>
                     
-                    <td className="block md:table-cell p-2 md:p-5 border-b border-gray-800/50 md:border-0 pt-3 md:pt-5 flex justify-between items-center md:items-start md:justify-start">
-                      <span className="lg:hidden text-xs text-gray-500 font-bold uppercase">Plan Actual</span>
+                    {/* 🔥 MODIFICADO: Agregamos las fechas de suscripción */}
+                    <td className="block md:table-cell p-2 md:p-5 border-b border-gray-800/50 md:border-0 pt-3 md:pt-5">
+                      <span className="lg:hidden text-xs text-gray-500 font-bold uppercase block mb-2">Plan y Suscripción</span>
                       {agencia.jefeId ? (
                          <span className="text-xs font-medium text-gray-500 italic">Heredado del Dueño</span>
                       ) : (
-                        <div className={`inline-flex items-center gap-1.5 ${planInfo?.bg} ${planInfo?.color} border ${planInfo?.border} px-3 py-1 rounded-full text-[10px] md:text-xs font-bold uppercase tracking-wide`}>
-                          {planInfo?.icon} {planInfo?.nombre}
+                        <div className="flex flex-col gap-3">
+                          <div className={`inline-flex w-fit items-center gap-1.5 ${planInfo?.bg} ${planInfo?.color} border ${planInfo?.border} px-3 py-1 rounded-full text-[10px] md:text-xs font-bold uppercase tracking-wide`}>
+                            {planInfo?.icon} {planInfo?.nombre}
+                          </div>
+                          
+                          {agencia.suscripcion && (
+                            <div className="flex flex-col gap-1.5 text-[11px] text-gray-400 bg-gray-950/50 p-2.5 rounded-lg border border-gray-800">
+                              <div className="flex items-center justify-between gap-3">
+                                <span className="font-semibold text-gray-500">Estado MP:</span>
+                                <span className={`${agencia.suscripcion.estado === 'autorizado' ? 'text-green-400' : 'text-red-400'} font-bold uppercase text-[10px]`}>
+                                  {agencia.suscripcion.estado}
+                                </span>
+                              </div>
+                              <div className="flex items-center justify-between gap-3">
+                                <span className="font-semibold text-gray-500">Alta:</span>
+                                <span className="text-gray-300 font-mono">{formatearFecha(agencia.suscripcion.fechaInicio)}</span>
+                              </div>
+                              <div className="flex items-center justify-between gap-3 pt-1 border-t border-gray-800">
+                                <span className="font-semibold text-gray-500">Próx. Cobro:</span>
+                                <span className="text-blue-400 font-mono font-bold flex items-center gap-1">
+                                  <CalendarDays size={12}/> {formatearFecha(agencia.suscripcion.fechaVencimiento)}
+                                </span>
+                              </div>
+                            </div>
+                          )}
                         </div>
                       )}
                     </td>

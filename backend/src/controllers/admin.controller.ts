@@ -1,6 +1,5 @@
 import { Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
-// 🔥 1. IMPORTAMOS EL PRISMA QUE YA TENÉS CONFIGURADO EN TU PROYECTO
 import { prisma } from '../config/db'; 
 
 // 1. LOGIN DEL ADMIN
@@ -40,7 +39,7 @@ export const getAgencias = async (req: Request, res: Response): Promise<void> =>
   try {
     const agencias = await prisma.user.findMany({
       include: {
-        suscripcion: true,
+        suscripcion: true, // 🔥 ESTO YA ESTABA, ENVÍA LAS FECHAS AL FRONTEND
         jefe: {
           select: { nombre: true, email: true } 
         },
@@ -49,7 +48,7 @@ export const getAgencias = async (req: Request, res: Response): Promise<void> =>
             _count: {
               select: { 
                 polizas: true,
-                asegurados: true // 🔥 LE SUMAMOS ESTA LÍNEA EXACTAMENTE ACÁ
+                asegurados: true 
               }
             }
           }
@@ -64,13 +63,13 @@ export const getAgencias = async (req: Request, res: Response): Promise<void> =>
     res.status(500).json({ error: 'Error al obtener la lista de cuentas' });
   }
 };
+
 // 3. ACTUALIZAR EL PLAN DE UN USUARIO
 export const updatePlan = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
     const { nuevoPlan } = req.body;
 
-    // 🔥 FIX: Alinear con los valores exactos del ENUM en schema.prisma
     const planesPermitidos = ['GRATUITO', 'BASICO', 'PROFESIONAL', 'AGENCIA'];
     if (!planesPermitidos.includes(nuevoPlan)) {
       res.status(400).json({ error: 'El plan especificado no es válido.' });
@@ -79,7 +78,7 @@ export const updatePlan = async (req: Request, res: Response): Promise<void> => 
 
     const usuarioActualizado = await prisma.user.update({
       where: { id: Number(id) },
-      data: { plan: nuevoPlan },
+      data: { plan: nuevoPlan as any },
     });
 
     res.json({ 
@@ -91,12 +90,12 @@ export const updatePlan = async (req: Request, res: Response): Promise<void> => 
     res.status(500).json({ error: 'Ocurrió un error al intentar actualizar el plan de la cuenta.' });
   }
 };
+
 // 4. ELIMINAR UNA CUENTA
 export const deleteAgencia = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
 
-    // Buscamos si el usuario existe
     const usuario = await prisma.user.findUnique({
       where: { id: Number(id) }
     });
@@ -106,7 +105,6 @@ export const deleteAgencia = async (req: Request, res: Response): Promise<void> 
       return;
     }
 
-    // Eliminamos la cuenta (Prisma se encargará de eliminar en cascada lo asociado si está configurado)
     await prisma.user.delete({
       where: { id: Number(id) }
     });
