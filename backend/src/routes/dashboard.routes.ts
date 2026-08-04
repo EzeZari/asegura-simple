@@ -98,4 +98,17 @@ router.get('/stats', verificarToken, async (req, res) => {
   }
 });
 
+// =======================================================
+// RUTA 2: OBTENER COMUNICADO GLOBAL (BANNER PARA USUARIOS)
+// =======================================================
+router.get('/comunicado', verificarToken, async (req, res) => {
+  try {
+    const comunicado = await prisma.comunicadoAdmin.findUnique({ where: { id: 1 } });
+    res.json(comunicado || { activo: false, mensaje: "" });
+  } catch (error) {
+    console.error("Error al obtener comunicado:", error);
+    res.status(500).json({ error: 'Error al obtener comunicado' });
+  }
+});
+
 export default router;

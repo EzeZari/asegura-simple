@@ -115,3 +115,34 @@ export const deleteAgencia = async (req: Request, res: Response): Promise<void> 
     res.status(500).json({ error: 'Ocurrió un error al intentar eliminar la cuenta. Verifica que no tenga registros dependientes bloqueando la acción.' });
   }
 };
+// 5. OBTENER COMUNICADO GLOBAL (PANEL ADMIN)
+export const getComunicadoGlobal = async (req: Request, res: Response): Promise<void> => {
+  try {
+    let comunicado = await prisma.comunicadoAdmin.findUnique({ where: { id: 1 } });
+    if (!comunicado) {
+      comunicado = await prisma.comunicadoAdmin.create({
+        data: { id: 1, mensaje: "Escribe tu anuncio aquí...", activo: false, tipo: "blue" }
+      });
+    }
+    res.json(comunicado);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Error al obtener el comunicado.' });
+  }
+};
+
+// 6. ACTUALIZAR COMUNICADO GLOBAL (PANEL ADMIN)
+export const updateComunicadoGlobal = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { mensaje, activo, tipo } = req.body;
+    const comunicado = await prisma.comunicadoAdmin.upsert({
+      where: { id: 1 },
+      update: { mensaje, activo, tipo },
+      create: { id: 1, mensaje, activo, tipo }
+    });
+    res.json({ message: 'Comunicado actualizado exitosamente', comunicado });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Error al actualizar el comunicado.' });
+  }
+};

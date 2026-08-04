@@ -312,3 +312,11 @@ model Pago {
   
   user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
+// 🔥 NUEVO: MODELO PARA COMUNICADOS GLOBALES DEL ADMIN
+model ComunicadoAdmin {
+  id        Int      @id @default(1)
+  mensaje   String   @db.Text
+  activo    Boolean  @default(false)
+  tipo      String   @default("blue") // Colores del banner: blue, red, green, yellow
+  updatedAt DateTime @updatedAt
+}

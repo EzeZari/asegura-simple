@@ -15,6 +15,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const user = useAuthStore((state: any) => state.user); 
   
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [comunicado, setComunicado] = useState<any>(null); // 🔥 ESTADO DEL BANNER
 
   useEffect(() => {
     const rehidratarSesion = async () => {
@@ -34,7 +35,23 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       }
     };
 
+    // 🔥 Agregamos la consulta del comunicado acá mismo al cargar la página
+    const buscarComunicado = async () => {
+      try {
+        const res = await apiFetch(`/api/dashboard/comunicado`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data?.activo && data?.mensaje) {
+            setComunicado(data);
+          }
+        }
+      } catch (error) {
+        console.error(error);
+      }
+    };
+
     rehidratarSesion();
+    buscarComunicado();
   }, [setUser]);
 
   useEffect(() => {
@@ -47,13 +64,18 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     }
   }, [user]);
 
+  // 🔥 Calculador de color del banner
+  const bgBannerClass = 
+    comunicado?.tipo === 'red' ? 'bg-red-600' :
+    comunicado?.tipo === 'green' ? 'bg-green-600' :
+    comunicado?.tipo === 'yellow' ? 'bg-amber-600' : 
+    'bg-blue-600';
+
   return (
-    // 🔥 1. overflow-x-hidden en el contenedor principal mata cualquier scroll global que intente aparecer.
     <div className="min-h-screen bg-gray-50 relative overflow-x-hidden">
       
       <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
       
-      {/* 🔥 2. lg:pl-64 le hace el "hueco" a la barra usando padding, y w-full asegura que llegue al borde derecho */}
       <div className="lg:pl-64 flex flex-col min-h-screen w-full transition-all duration-300">
         
         <div className="lg:hidden flex items-center justify-between bg-green-700 text-white p-4 shadow-md sticky top-0 z-30">
@@ -66,9 +88,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </button>
         </div>
 
+        {/* 🔥 BANNER GLOBAL (Si está activo) */}
+        {comunicado && (
+          <div className={`${bgBannerClass} text-white px-4 py-3 text-center text-sm font-semibold shadow-sm animate-in fade-in slide-in-from-top-2`}>
+            {comunicado.mensaje}
+          </div>
+        )}
+
         <GracePeriodBanner />
 
-        {/* 🔥 3. max-w-full y overflow-x-hidden encapsulan a todas las páginas para que no puedan desbordarse nunca */}
         <main className="flex-1 w-full max-w-full min-w-0 overflow-x-hidden">
           {children}
         </main>
