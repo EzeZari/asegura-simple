@@ -126,7 +126,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       {/* 🔥 MODAL BLOQUEANTE (Pop-up de lectura obligatoria) */}
       {showModalAnnouncement && comunicado?.activoModal && comunicado?.mensajeModal && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white border border-gray-100 w-full max-w-md rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+          {/* 🔥 ACÁ APLICAMOS EL CAMBIO: max-w-xl en lugar de max-w-md */}
+          <div className="bg-white border border-gray-100 w-full max-w-xl rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
             <div className={`h-2 w-full ${getBannerColor(comunicado.tipoModal)}`}></div>
             <div className="p-6 md:p-8 flex flex-col items-center text-center">
               <div className={`w-14 h-14 rounded-full mb-5 flex items-center justify-center ${getBannerColor(comunicado.tipoModal)} text-white shadow-lg`}>
