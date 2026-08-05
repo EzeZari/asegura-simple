@@ -13,6 +13,7 @@ interface Props {
   isRenovacion?: boolean; 
 }
 
+// 🔥 MODIFICADO: Agregamos enviarCuponera al estado inicial
 const ESTADO_INICIAL = {
   nroPoliza: "",
   tipoPoliza: "Automotor",
@@ -28,6 +29,7 @@ const ESTADO_INICIAL = {
   modelo: "",  
   ubicacionRiesgo: "",
   cantidadEmpleados: "",
+  enviarCuponera: false, 
 };
 
 export default function NuevaPolizaModal({ isOpen, onClose, onSuccess, polizaAEditar, isRenovacion = false }: Props) {
@@ -41,6 +43,10 @@ export default function NuevaPolizaModal({ isOpen, onClose, onSuccess, polizaAEd
   
   const [pdfFile, setPdfFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // 🔥 NUEVO: Estado y Ref para la cuponera
+  const [cuponeraFile, setCuponeraFile] = useState<File | null>(null);
+  const cuponeraInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (isOpen) {
@@ -64,7 +70,6 @@ export default function NuevaPolizaModal({ isOpen, onClose, onSuccess, polizaAEd
 
       if (polizaAEditar) {
         if (isRenovacion) {
-          // 🔥 CORRECCIÓN ZONA HORARIA: Aislamos la fecha exacta sin UTC
           const fechaInicioNueva = polizaAEditar.fechaVencimiento.split('T')[0];
           const [año, mes, dia] = fechaInicioNueva.split('-');
           
@@ -85,6 +90,7 @@ export default function NuevaPolizaModal({ isOpen, onClose, onSuccess, polizaAEd
             aseguradoId: polizaAEditar.aseguradoId.toString(),
             companiaId: polizaAEditar.companiaId?.toString() || "",
             formaPago: polizaAEditar.formaPago || "",
+            enviarCuponera: polizaAEditar.enviarCuponera || false, // 🔥 NUEVO
           });
         } else {
           setFormData({
@@ -94,6 +100,7 @@ export default function NuevaPolizaModal({ isOpen, onClose, onSuccess, polizaAEd
             aseguradoId: polizaAEditar.aseguradoId.toString(),
             companiaId: polizaAEditar.companiaId?.toString() || "",
             formaPago: polizaAEditar.formaPago || "",
+            enviarCuponera: polizaAEditar.enviarCuponera || false, // 🔥 NUEVO
           });
         }
       } else {
@@ -102,18 +109,27 @@ export default function NuevaPolizaModal({ isOpen, onClose, onSuccess, polizaAEd
       
       setErrorGlobal("");
       setErrores({});
+      
       setPdfFile(null);
       if (fileInputRef.current) fileInputRef.current.value = '';
+
+      // 🔥 Limpieza de la cuponera
+      setCuponeraFile(null);
+      if (cuponeraInputRef.current) cuponeraInputRef.current.value = '';
     }
   }, [isOpen, polizaAEditar, isRenovacion]);
 
   if (!isOpen) return null;
 
+  // 🔥 MODIFICADO: Ahora soporta checkboxes además de inputs de texto
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    const target = e.target as HTMLInputElement;
+    const value = target.type === 'checkbox' ? target.checked : target.value;
     
-    if (errores[e.target.name]) {
-      setErrores({ ...errores, [e.target.name]: "" });
+    setFormData({ ...formData, [target.name]: value });
+    
+    if (errores[target.name]) {
+      setErrores({ ...errores, [target.name]: "" });
     }
   };
 
@@ -125,6 +141,19 @@ export default function NuevaPolizaModal({ isOpen, onClose, onSuccess, polizaAEd
         return;
       }
       setPdfFile(file);
+      setErrorGlobal(""); 
+    }
+  };
+
+  // 🔥 NUEVO: Manejador para el archivo de la cuponera
+  const handleCuponeraChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      if (file.type !== "application/pdf") {
+        setErrorGlobal("Solo se permiten archivos en formato PDF para la cuponera.");
+        return;
+      }
+      setCuponeraFile(file);
       setErrorGlobal(""); 
     }
   };
@@ -176,6 +205,7 @@ export default function NuevaPolizaModal({ isOpen, onClose, onSuccess, polizaAEd
       if (!isEditMode) {
         delete payloadToSave.id; 
         delete payloadToSave.pdfUrl; 
+        delete payloadToSave.cuponeraUrl; // Limpiamos por las dudas
       }
 
       payloadToSave.aseguradoId = parseInt(payloadToSave.aseguradoId);
@@ -192,9 +222,11 @@ export default function NuevaPolizaModal({ isOpen, onClose, onSuccess, polizaAEd
 
       const polizaGuardadaId = isEditMode ? polizaAEditar.id : data.id;
 
-      if (pdfFile) {
+      // 🔥 MODIFICADO: Subimos cualquiera de los dos archivos si existen
+      if (pdfFile || cuponeraFile) {
         const fileData = new FormData();
-        fileData.append("pdf", pdfFile);
+        if (pdfFile) fileData.append("pdf", pdfFile);
+        if (cuponeraFile) fileData.append("cuponera", cuponeraFile);
         
         const uploadRes = await apiFetch(`/api/polizas/${polizaGuardadaId}/subir-pdf`, {
           method: "POST",
@@ -202,7 +234,7 @@ export default function NuevaPolizaModal({ isOpen, onClose, onSuccess, polizaAEd
         });
 
         if (!uploadRes.ok) {
-          throw new Error("La póliza se guardó bien, pero hubo un error al subir el PDF.");
+          throw new Error("La póliza se guardó bien, pero hubo un error al subir los archivos PDF.");
         }
       }
 
@@ -461,6 +493,64 @@ export default function NuevaPolizaModal({ isOpen, onClose, onSuccess, polizaAEd
                 {!pdfFile && polizaAEditar?.pdfUrl && (
                   <span className="text-sm text-gray-500 italic">Ya tiene un PDF guardado.</span>
                 )}
+              </div>
+            </div>
+
+            {/* 🔥 NUEVA SECCIÓN: Cuponera de Pago y Checkbox */}
+            <div className="space-y-4 pt-4 border-t border-gray-100 mt-4">
+              <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider flex items-center gap-2">
+                Cuponera de Pago <span className="text-[10px] bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full normal-case">Opcional</span>
+              </h3>
+              
+              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                <input 
+                  type="file" 
+                  ref={cuponeraInputRef} 
+                  onChange={handleCuponeraChange} 
+                  accept="application/pdf" 
+                  className="hidden" 
+                />
+                
+                <button 
+                  type="button"
+                  onClick={() => cuponeraInputRef.current?.click()}
+                  className="flex items-center gap-2 px-4 py-2 bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-700 rounded-lg font-medium transition-colors"
+                >
+                  <UploadCloud size={18} />
+                  {cuponeraFile ? "Cambiar Cuponera" : "Adjuntar Cuponera"}
+                </button>
+
+                {cuponeraFile && (
+                  <div className="flex items-center gap-2 text-sm text-blue-700 bg-blue-50 px-3 py-1.5 rounded-lg border border-blue-200">
+                    <FileText size={16} />
+                    <span className="font-medium truncate max-w-[200px]">{cuponeraFile.name}</span>
+                    <button 
+                      type="button" 
+                      onClick={() => { setCuponeraFile(null); if (cuponeraInputRef.current) cuponeraInputRef.current.value = ''; }}
+                      className="ml-2 text-blue-600 hover:text-red-500"
+                    >
+                      <X size={16} />
+                    </button>
+                  </div>
+                )}
+                
+                {!cuponeraFile && polizaAEditar?.cuponeraUrl && (
+                  <span className="text-sm text-gray-500 italic">Ya tiene una cuponera guardada.</span>
+                )}
+              </div>
+
+              <div className="flex items-center gap-3 mt-3 p-3 bg-gray-50 border border-gray-200 rounded-lg">
+                <input
+                  type="checkbox"
+                  id="enviarCuponera"
+                  name="enviarCuponera"
+                  checked={formData.enviarCuponera}
+                  onChange={handleChange}
+                  className="w-4 h-4 text-green-600 border-gray-300 rounded focus:ring-green-600"
+                />
+                <label htmlFor="enviarCuponera" className="text-sm text-gray-700 font-medium cursor-pointer leading-tight">
+                  Adjuntar automáticamente esta cuponera en el correo de aviso de vencimiento.
+                </label>
               </div>
             </div>
 

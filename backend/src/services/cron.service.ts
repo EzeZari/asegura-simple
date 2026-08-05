@@ -1,6 +1,6 @@
 import cron from 'node-cron';
 import { prisma } from '../config/db';
-import { enviarAvisoVencimiento, enviarAlertaErrorSistema } from './email.service'; // 🔥 Importamos la alerta
+import { enviarAvisoVencimiento, enviarAlertaErrorSistema } from './email.service';
 
 export const iniciarTareasProgramadas = () => {
   // Ejecutar al inicio de cada hora (En producción usar '0 * * * *')
@@ -75,6 +75,12 @@ export const iniciarTareasProgramadas = () => {
         let enviados = 0;
         for (const poliza of polizasAVencer) {
           if (poliza.asegurado?.email) {
+            
+            // 🔥 LÓGICA INTELIGENTE: ¿Le mandamos el PDF o no?
+            const cuponeraParaEnviar = (poliza.enviarCuponera && poliza.cuponeraUrl) 
+              ? poliza.cuponeraUrl 
+              : null;
+
             await enviarAvisoVencimiento(
               poliza.asegurado.email,
               `${poliza.asegurado.nombre} ${poliza.asegurado.apellido || ''}`.trim(),
@@ -87,7 +93,8 @@ export const iniciarTareasProgramadas = () => {
               poliza.marca,
               poliza.modelo,
               poliza.ubicacionRiesgo,
-              poliza.cantidadEmpleados
+              poliza.cantidadEmpleados,
+              cuponeraParaEnviar // 🔥 Pasamos la cuponera acá al final
             );
 
             // Actualizamos la marca de "último aviso"

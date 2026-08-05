@@ -49,23 +49,32 @@ export const enviarAvisoVencimiento = async (
   email: string, nombre: string, nroPoliza: string, compania: string, 
   tipoPoliza: string, cobertura: string, fechaVencimiento: string,
   patente?: string | null, marca?: string | null, modelo?: string | null,
-  ubicacionRiesgo?: string | null, cantidadEmpleados?: string | null
+  ubicacionRiesgo?: string | null, cantidadEmpleados?: string | null,
+  cuponeraUrl?: string | null // 🔥 NUEVO: Recibimos la URL del PDF
 ) => {
   if (!email || !email.includes('@')) return;
 
   try {
-    // 🔥 1. Buscamos la configuración de tu agencia en la BD
     const agencia = await prisma.agencia.findUnique({ where: { id: 1 } });
+
+    // 🔥 Preparamos el adjunto si existe
+    let attachments = [];
+    if (cuponeraUrl) {
+      attachments.push({
+        filename: `Cupon_de_Pago_Poliza_${nroPoliza}.pdf`,
+        path: cuponeraUrl // Resend usa esta URL para descargar el PDF y adjuntarlo
+      });
+    }
 
     await sendMail({
       to: email,
       subject: `Aviso Importante: Vencimiento de cobertura - Póliza #${nroPoliza}`,
-      // 🔥 2. Le pasamos los datos de la agencia a la plantilla
       html: templateVencimiento(
         nombre, nroPoliza, compania, tipoPoliza, cobertura, fechaVencimiento, 
         patente, marca, modelo, ubicacionRiesgo, cantidadEmpleados, 
-        agencia // <-- ¡Acá viaja tu firma!
-      )
+        agencia 
+      ),
+      attachments: attachments.length > 0 ? attachments : undefined // 🔥 Pasamos el archivo
     });
   } catch (error: any) {
     console.error("Error en el email service:", error);

@@ -19,7 +19,10 @@ router.post('/', verificarToken, verificarRol(['DUENO', 'PRODUCTOR']), crearPoli
 router.put('/:id', verificarToken, verificarRol(['DUENO', 'PRODUCTOR']), actualizarPoliza);
 router.delete('/:id', verificarToken, verificarRol(['DUENO', 'PRODUCTOR']), eliminarPoliza);
 router.post('/:id/aviso', verificarToken, verificarRol(['DUENO', 'PRODUCTOR']), avisarVencimiento);
-router.post('/:id/subir-pdf', verificarToken, verificarRol(['DUENO', 'PRODUCTOR']), upload.single('pdf'), subirPdf);
+
+// 🔥 MODIFICADO: Ahora aceptamos tanto "pdf" como "cuponera"
+router.post('/:id/subir-pdf', verificarToken, verificarRol(['DUENO', 'PRODUCTOR']), upload.fields([{ name: 'pdf', maxCount: 1 }, { name: 'cuponera', maxCount: 1 }]), subirPdf);
+
 router.post('/importar', verificarToken, verificarRol(['DUENO', 'PRODUCTOR']), importarPolizas);
 
 export default router;

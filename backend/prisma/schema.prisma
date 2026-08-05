@@ -109,6 +109,9 @@ model Poliza {
 
   pdfUrl        String?
 
+  cuponeraUrl    String?
+  enviarCuponera Boolean  @default(false)
+
   @@unique([productorId, nroPoliza]) // 🔥 3. LA REGLA MAESTRA MULTI-TENANT
 }
 

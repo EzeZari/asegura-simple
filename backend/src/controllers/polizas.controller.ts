@@ -3,11 +3,10 @@ import { prisma } from '../config/db';
 import { enviarAvisoVencimiento } from '../services/email.service';
 import { supabase } from '../config/supabase';
 
-// 🔥 NUEVA FUNCIÓN: Evita el problema del desfasaje horario al guardar
+// 🔥 Función: Evita el problema del desfasaje horario al guardar
 const parsearFechaSegura = (fechaStr: string) => {
   if (!fechaStr) return null;
   const partes = fechaStr.split('T')[0].split('-');
-  // Guardamos a las 12:00 del mediodía UTC. Esto evita que al restar 3hs en Argentina salte al día anterior.
   return new Date(Date.UTC(Number(partes[0]), Number(partes[1]) - 1, Number(partes[2]), 12, 0, 0));
 };
 
@@ -86,7 +85,7 @@ export const crearPoliza = async (req: Request, res: Response): Promise<any> => 
     const { 
       nroPoliza, tipoPoliza, fechaInicio, fechaVencimiento, estado, 
       cobertura, aseguradoId, companiaId,
-      patente, marca, modelo, ubicacionRiesgo, cantidadEmpleados, formaPago 
+      patente, marca, modelo, ubicacionRiesgo, cantidadEmpleados, formaPago, enviarCuponera 
     } = req.body;
 
     const asegurado = await prisma.asegurado.findFirst({
@@ -98,8 +97,8 @@ export const crearPoliza = async (req: Request, res: Response): Promise<any> => 
     const nuevaPoliza = await prisma.poliza.create({
       data: {
         nroPoliza, tipoPoliza, 
-        fechaInicio: parsearFechaSegura(fechaInicio)!, // 🔥 CORRECCIÓN APLICADA AQUÍ
-        fechaVencimiento: parsearFechaSegura(fechaVencimiento)!, // 🔥 CORRECCIÓN APLICADA AQUÍ
+        fechaInicio: parsearFechaSegura(fechaInicio)!, 
+        fechaVencimiento: parsearFechaSegura(fechaVencimiento)!, 
         estado, cobertura, 
         aseguradoId: parseInt(aseguradoId), 
         companiaId: parseInt(companiaId),
@@ -109,7 +108,8 @@ export const crearPoliza = async (req: Request, res: Response): Promise<any> => 
         modelo: modelo || null,
         ubicacionRiesgo: ubicacionRiesgo || null,
         cantidadEmpleados: cantidadEmpleados || null,
-        formaPago: formaPago || null, 
+        formaPago: formaPago || null,
+        enviarCuponera: enviarCuponera === true || enviarCuponera === 'true', // 🔥 NUEVO CAMPO
       },
       include: { asegurado: true }
     });
@@ -151,8 +151,8 @@ export const actualizarPoliza = async (req: Request, res: Response): Promise<any
       data: {
         nroPoliza: data.nroPoliza,
         tipoPoliza: data.tipoPoliza,
-        fechaInicio: data.fechaInicio ? parsearFechaSegura(data.fechaInicio)! : undefined, // 🔥 CORRECCIÓN AQUÍ
-        fechaVencimiento: data.fechaVencimiento ? parsearFechaSegura(data.fechaVencimiento)! : undefined, // 🔥 CORRECCIÓN AQUÍ
+        fechaInicio: data.fechaInicio ? parsearFechaSegura(data.fechaInicio)! : undefined, 
+        fechaVencimiento: data.fechaVencimiento ? parsearFechaSegura(data.fechaVencimiento)! : undefined, 
         estado: data.estado,
         cobertura: data.cobertura,
         aseguradoId: data.aseguradoId ? parseInt(data.aseguradoId) : undefined,
@@ -163,6 +163,7 @@ export const actualizarPoliza = async (req: Request, res: Response): Promise<any
         ubicacionRiesgo: data.ubicacionRiesgo || null,
         cantidadEmpleados: data.cantidadEmpleados || null,
         formaPago: data.formaPago || null, 
+        enviarCuponera: data.enviarCuponera !== undefined ? (data.enviarCuponera === true || data.enviarCuponera === 'true') : undefined, // 🔥 NUEVO CAMPO
       },
       include: { asegurado: true, compania: true }
     });
@@ -207,8 +208,16 @@ export const eliminarPoliza = async (req: Request, res: Response): Promise<any> 
     
     await prisma.poliza.delete({ where: { id: parseInt(id) } });
 
+    // 🔥 Limpia PDF de Póliza
     if (polizaABorrar.pdfUrl && polizaABorrar.pdfUrl.includes('supabase.co')) {
       const partesUrl = polizaABorrar.pdfUrl.split('/');
+      const nombreArchivoViejo = partesUrl[partesUrl.length - 1];
+      await supabase.storage.from('polizas').remove([nombreArchivoViejo]);
+    }
+
+    // 🔥 Limpia PDF de Cuponera
+    if (polizaABorrar.cuponeraUrl && polizaABorrar.cuponeraUrl.includes('supabase.co')) {
+      const partesUrl = polizaABorrar.cuponeraUrl.split('/');
       const nombreArchivoViejo = partesUrl[partesUrl.length - 1];
       await supabase.storage.from('polizas').remove([nombreArchivoViejo]);
     }
@@ -229,6 +238,7 @@ export const eliminarPoliza = async (req: Request, res: Response): Promise<any> 
   }
 };
 
+// 🔥 MODIFICADO: También chequea si se debe adjuntar al forzar el correo a mano
 export const avisarVencimiento = async (req: Request, res: Response): Promise<any> => {
   try {
     const id = req.params.id as string;
@@ -260,6 +270,11 @@ export const avisarVencimiento = async (req: Request, res: Response): Promise<an
 
     const fechaVencimientoFormateada = new Date(poliza.fechaVencimiento).toLocaleDateString("es-AR");
 
+    // 🔥 LÓGICA INTELIGENTE: Para el envío manual también
+    const cuponeraParaEnviar = (poliza.enviarCuponera && poliza.cuponeraUrl) 
+      ? poliza.cuponeraUrl 
+      : null;
+
     await enviarAvisoVencimiento(
       poliza.asegurado.email, 
       `${poliza.asegurado.nombre} ${poliza.asegurado.apellido || ''}`.trim(), 
@@ -272,7 +287,8 @@ export const avisarVencimiento = async (req: Request, res: Response): Promise<an
       poliza.marca,
       poliza.modelo,
       poliza.ubicacionRiesgo,
-      poliza.cantidadEmpleados
+      poliza.cantidadEmpleados,
+      cuponeraParaEnviar // 🔥 Va el archivo
     );
 
     await prisma.poliza.update({
@@ -297,13 +313,19 @@ export const avisarVencimiento = async (req: Request, res: Response): Promise<an
   }
 };
 
+// 🔥 MODIFICADO: Ahora maneja dos archivos en una sola petición
 export const subirPdf = async (req: Request, res: Response): Promise<any> => {
   try {
     const id = req.params.id as string; 
     const productorId = await obtenerProductorId(req.userId!);
 
-    if (!req.file || !req.file.buffer) {
-      return res.status(400).json({ error: 'No se seleccionó ningún archivo o el formato no es PDF.' });
+    // Casting de los archivos recibidos
+    const files = req.files as { [fieldname: string]: Express.Multer.File[] };
+    const pdfFile = files?.pdf?.[0];
+    const cuponeraFile = files?.cuponera?.[0];
+
+    if (!pdfFile && !cuponeraFile) {
+      return res.status(400).json({ error: 'No se seleccionó ningún archivo para subir.' });
     }
 
     const polizaExistente = await prisma.poliza.findFirst({
@@ -317,32 +339,52 @@ export const subirPdf = async (req: Request, res: Response): Promise<any> => {
       return res.status(404).json({ error: 'Póliza no encontrada o no autorizada.' });
     }
 
-    if (polizaExistente.pdfUrl && polizaExistente.pdfUrl.includes('supabase.co')) {
-      const partesUrl = polizaExistente.pdfUrl.split('/');
-      const nombreArchivoViejo = partesUrl[partesUrl.length - 1];
-      await supabase.storage.from('polizas').remove([nombreArchivoViejo]);
+    let dataToUpdate: any = {};
+    let descActividad = [];
+
+    // --- 1. PROCESAR EL PDF DE LA PÓLIZA ---
+    if (pdfFile && pdfFile.buffer) {
+      if (polizaExistente.pdfUrl && polizaExistente.pdfUrl.includes('supabase.co')) {
+        const partesUrl = polizaExistente.pdfUrl.split('/');
+        const nombreArchivoViejo = partesUrl[partesUrl.length - 1];
+        await supabase.storage.from('polizas').remove([nombreArchivoViejo]);
+      }
+
+      const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+      const fileNamePdf = `poliza-${id}-${uniqueSuffix}.pdf`;
+
+      const { error: uploadError } = await supabase.storage.from('polizas').upload(fileNamePdf, pdfFile.buffer, { contentType: 'application/pdf', upsert: true });
+      if (uploadError) throw new Error(`Error de Supabase (Póliza): ${uploadError.message}`);
+
+      const { data: publicUrlData } = supabase.storage.from('polizas').getPublicUrl(fileNamePdf);
+      dataToUpdate.pdfUrl = publicUrlData.publicUrl;
+      descActividad.push("Póliza");
     }
 
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    const fileName = `poliza-${id}-${uniqueSuffix}.pdf`;
+    // --- 2. PROCESAR LA CUPONERA DE PAGO ---
+    if (cuponeraFile && cuponeraFile.buffer) {
+      if (polizaExistente.cuponeraUrl && polizaExistente.cuponeraUrl.includes('supabase.co')) {
+        const partesUrl = polizaExistente.cuponeraUrl.split('/');
+        const nombreArchivoViejo = partesUrl[partesUrl.length - 1];
+        await supabase.storage.from('polizas').remove([nombreArchivoViejo]);
+      }
 
-    const { data: uploadData, error: uploadError } = await supabase.storage
-      .from('polizas') 
-      .upload(fileName, req.file.buffer, {
-        contentType: 'application/pdf',
-        upsert: true
-      });
+      const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+      const extension = cuponeraFile.originalname.split('.').pop() || 'pdf';
+      const fileNameCuponera = `cuponera-${id}-${uniqueSuffix}.${extension}`;
 
-    if (uploadError) {
-      throw new Error(`Error de Supabase: ${uploadError.message}`);
+      const { error: uploadError } = await supabase.storage.from('polizas').upload(fileNameCuponera, cuponeraFile.buffer, { contentType: cuponeraFile.mimetype, upsert: true });
+      if (uploadError) throw new Error(`Error de Supabase (Cuponera): ${uploadError.message}`);
+
+      const { data: publicUrlData } = supabase.storage.from('polizas').getPublicUrl(fileNameCuponera);
+      dataToUpdate.cuponeraUrl = publicUrlData.publicUrl;
+      descActividad.push("Cuponera de pago");
     }
 
-    const { data: publicUrlData } = supabase.storage.from('polizas').getPublicUrl(fileName);
-    const publicUrl = publicUrlData.publicUrl;
-
+    // Actualizamos la base de datos
     const polizaActualizada = await prisma.poliza.update({
       where: { id: parseInt(id) },
-      data: { pdfUrl: publicUrl }, 
+      data: dataToUpdate, 
       include: { asegurado: true }
     });
 
@@ -350,16 +392,21 @@ export const subirPdf = async (req: Request, res: Response): Promise<any> => {
       data: {
         accion: "Edición",
         entidad: "Póliza",
-        descripcion: `Se adjuntó copia digital PDF a la Póliza #${polizaActualizada.nroPoliza}`,
+        descripcion: `Se adjuntó documento (${descActividad.join(' y ')}) a la Póliza #${polizaActualizada.nroPoliza}`,
         cliente: `${polizaActualizada.asegurado.nombre} ${polizaActualizada.asegurado.apellido || ''}`.trim(),
         productorId 
       }
     });
 
-    return res.json({ message: 'PDF subido correctamente a la nube', pdfUrl: publicUrl });
+    return res.json({ 
+      message: 'Archivos subidos correctamente', 
+      pdfUrl: dataToUpdate.pdfUrl || polizaActualizada.pdfUrl,
+      cuponeraUrl: dataToUpdate.cuponeraUrl || polizaActualizada.cuponeraUrl
+    });
+
   } catch (error: any) {
-    console.error("Error al subir PDF a Supabase:", error);
-    return res.status(500).json({ error: error.message || 'Error interno al procesar el archivo.' });
+    console.error("Error al subir Archivos a Supabase:", error);
+    return res.status(500).json({ error: error.message || 'Error interno al procesar los archivos.' });
   }
 };
 
@@ -423,7 +470,7 @@ export const importarPolizas = async (req: Request, res: Response): Promise<any>
         const dia = partes[0].padStart(2, '0');
         const mes = partes[1].padStart(2, '0');
         const anio = partes[2];
-        fechaResultante = new Date(`${anio}-${mes}-${dia}T12:00:00Z`); // Acá ya tenías el mediodía, un crack
+        fechaResultante = new Date(`${anio}-${mes}-${dia}T12:00:00Z`); 
       } else {
         fechaResultante = new Date(str);
       }
@@ -469,7 +516,7 @@ export const importarPolizas = async (req: Request, res: Response): Promise<any>
           nroPoliza, aseguradoId, companiaId, tipoPoliza, estado, fechaInicio, fechaVencimiento,
           cobertura: row.cobertura ? String(row.cobertura).trim() : null,
           patente: row.patente ? String(row.patente).trim().toUpperCase() : null,
-          productorId // 🔥 SE INYECTA EL DUEÑO A TODAS LAS PÓLIZAS DEL EXCEL
+          productorId 
         };
       })
       .filter((p: any) => {
