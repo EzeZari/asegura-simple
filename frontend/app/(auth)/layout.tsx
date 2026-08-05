@@ -9,8 +9,9 @@ export default function AuthLayout({
     <div className="w-full min-h-screen flex">
       {/* Mitad Izquierda - Imagen Compartida */}
       <div className="hidden lg:flex w-1/2 relative bg-black">
+        {/* 🔥 ACÁ REEMPLAZAMOS LA URL DE UNSPLASH POR TU IMAGEN */}
         <img
-          src="https://images.unsplash.com/photo-1541899481282-d53bffe3c35d?auto=format&fit=crop&q=80&w=1000"
+          src="/fondoAsegura.png"
           alt="AseguraSimple background"
           className="object-cover w-full h-full"
         />
