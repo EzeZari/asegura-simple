@@ -312,11 +312,19 @@ model Pago {
   
   user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
-// 🔥 NUEVO: MODELO PARA COMUNICADOS GLOBALES DEL ADMIN
+// 🔥 MODELO PARA COMUNICADOS GLOBALES DEL ADMIN (SEPARADOS)
 model ComunicadoAdmin {
-  id        Int      @id @default(1)
-  mensaje   String   @db.Text
-  activo    Boolean  @default(false)
-  tipo      String   @default("blue") // Colores del banner: blue, red, green, yellow
-  updatedAt DateTime @updatedAt
+  id             Int      @id @default(1)
+  
+  // Datos del Banner Superior
+  mensajeBanner  String?  @db.Text
+  activoBanner   Boolean  @default(false)
+  tipoBanner     String   @default("blue")
+  
+  // Datos del Modal Pop-up
+  mensajeModal   String?  @db.Text
+  activoModal    Boolean  @default(false)
+  tipoModal      String   @default("blue")
+  
+  updatedAt      DateTime @updatedAt
 }

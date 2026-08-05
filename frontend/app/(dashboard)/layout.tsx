@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Sidebar from "@/components/layout/Sidebar";
 import { useAuthStore } from "@/store/authStore";
-import { Menu } from "lucide-react"; 
+import { Menu, Megaphone } from "lucide-react"; 
 import { apiFetch } from "@/services/api"; 
 import UpgradeModal from "@/components/ui/UpgradeModal";
 import GracePeriodBanner from "@/components/layout/GracePeriodBanner"; 
@@ -15,43 +15,53 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const user = useAuthStore((state: any) => state.user); 
   
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [comunicado, setComunicado] = useState<any>(null); // 🔥 ESTADO DEL BANNER
+  
+  // 🔥 ESTADOS DE LOS ANUNCIOS
+  const [comunicado, setComunicado] = useState<any>(null); 
+  const [showModalAnnouncement, setShowModalAnnouncement] = useState(false);
 
   useEffect(() => {
-    const rehidratarSesion = async () => {
+    const initApp = async () => {
       try {
-        const res = await apiFetch(`/api/auth/refresh`, { method: "POST" });
-
-        if (res.ok) {
-          const data = await res.json();
-          setUser(data.user || data); 
+        let currentUser = user;
+        
+        // 1. Rehidratamos la sesión
+        const resSession = await apiFetch(`/api/auth/refresh`, { method: "POST" });
+        if (resSession.ok) {
+          const data = await resSession.json();
+          currentUser = data.user || data;
+          setUser(currentUser); 
           
           if (data.accessToken) {
             document.cookie = `next_auth_token=${data.accessToken}; path=/; max-age=86400; secure; samesite=strict`;
           }
         }
-      } catch (error) {
-        console.error("Error al rehidratar sesión:", error);
-      }
-    };
 
-    // 🔥 Agregamos la consulta del comunicado acá mismo al cargar la página
-    const buscarComunicado = async () => {
-      try {
-        const res = await apiFetch(`/api/dashboard/comunicado`);
-        if (res.ok) {
-          const data = await res.json();
-          if (data?.activo && data?.mensaje) {
-            setComunicado(data);
+        // 2. Buscamos si hay anuncios activos
+        const resCom = await apiFetch(`/api/dashboard/comunicado`);
+        if (resCom.ok) {
+          const dataCom = await resCom.json();
+          
+          if (dataCom) {
+            setComunicado(dataCom);
+            
+            // 🔥 LÓGICA INTELIGENTE: Si el Modal está activo y tiene texto
+            if (dataCom.activoModal && dataCom.mensajeModal && currentUser?.id) {
+              // Comparamos directamente contra el texto exacto del modal
+              const modalLeido = localStorage.getItem(`modal_leido_${currentUser.id}`);
+              
+              if (modalLeido !== dataCom.mensajeModal) {
+                setShowModalAnnouncement(true);
+              }
+            }
           }
         }
       } catch (error) {
-        console.error(error);
+        console.error("Error inicializando la app:", error);
       }
     };
 
-    rehidratarSesion();
-    buscarComunicado();
+    initApp();
   }, [setUser]);
 
   useEffect(() => {
@@ -64,12 +74,23 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     }
   }, [user]);
 
-  // 🔥 Calculador de color del banner
-  const bgBannerClass = 
-    comunicado?.tipo === 'red' ? 'bg-red-600' :
-    comunicado?.tipo === 'green' ? 'bg-green-600' :
-    comunicado?.tipo === 'yellow' ? 'bg-amber-600' : 
-    'bg-blue-600';
+  // Función para cerrar el modal y guardar el texto como constancia de lectura
+  const handleDismissModal = () => {
+    if (user?.id && comunicado?.mensajeModal) {
+      localStorage.setItem(`modal_leido_${user.id}`, comunicado.mensajeModal);
+    }
+    setShowModalAnnouncement(false);
+  };
+
+  // Colores dinámicos
+  const getBannerColor = (tipo: string) => {
+    switch(tipo) {
+      case 'red': return 'bg-red-600';
+      case 'green': return 'bg-green-600';
+      case 'yellow': return 'bg-amber-500';
+      default: return 'bg-blue-600';
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 relative overflow-x-hidden">
@@ -88,10 +109,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </button>
         </div>
 
-        {/* 🔥 BANNER GLOBAL (Si está activo) */}
-        {comunicado && (
-          <div className={`${bgBannerClass} text-white px-4 py-3 text-center text-sm font-semibold shadow-sm animate-in fade-in slide-in-from-top-2`}>
-            {comunicado.mensaje}
+        {/* 🔥 BANNER SUPERIOR (No bloqueante) */}
+        {comunicado?.activoBanner && comunicado?.mensajeBanner && (
+          <div className={`${getBannerColor(comunicado.tipoBanner)} text-white px-4 py-3 text-center text-sm font-semibold shadow-sm animate-in fade-in slide-in-from-top-2`}>
+            {comunicado.mensajeBanner}
           </div>
         )}
 
@@ -101,6 +122,30 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           {children}
         </main>
       </div>
+
+      {/* 🔥 MODAL BLOQUEANTE (Pop-up de lectura obligatoria) */}
+      {showModalAnnouncement && comunicado?.activoModal && comunicado?.mensajeModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white border border-gray-100 w-full max-w-md rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className={`h-2 w-full ${getBannerColor(comunicado.tipoModal)}`}></div>
+            <div className="p-6 md:p-8 flex flex-col items-center text-center">
+              <div className={`w-14 h-14 rounded-full mb-5 flex items-center justify-center ${getBannerColor(comunicado.tipoModal)} text-white shadow-lg`}>
+                <Megaphone size={24} />
+              </div>
+              <h3 className="text-xl md:text-2xl font-black text-gray-900 mb-3">Nuevo Anuncio</h3>
+              <p className="text-gray-600 text-sm md:text-base leading-relaxed mb-8 whitespace-pre-wrap">
+                {comunicado.mensajeModal}
+              </p>
+              <button 
+                onClick={handleDismissModal}
+                className={`w-full py-3.5 rounded-xl text-white font-bold shadow-lg transition-all ${getBannerColor(comunicado.tipoModal)} hover:opacity-90 active:scale-[0.98]`}
+              >
+                ¡Entendido!
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <UpgradeModal />
       <SessionExpiredModal />

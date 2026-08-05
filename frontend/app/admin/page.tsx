@@ -2,8 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ShieldCheck, Users, CreditCard, Crown, Star, Zap, X, Check, Loader2, Trash2, AlertTriangle, Megaphone, Save } from "lucide-react";
-import Toast from "@/components/ui/Toast";
+import { ShieldCheck, Users, CreditCard, Crown, Star, Zap, X, Check, Loader2, Trash2, AlertTriangle, Megaphone, Save, Layout, AppWindow } from "lucide-react";import Toast from "@/components/ui/Toast";
 import FiltrosAgencias from "@/components/admin/FiltrosAgencias";
 import AdminHeader from "@/components/admin/AdminHeader";
 import TablaAgencias from "@/components/admin/TablaAgencias";
@@ -27,8 +26,11 @@ export default function AdminDashboard() {
   const [agenciaAEliminar, setAgenciaAEliminar] = useState<any>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   
-  // 🔥 NUEVO ESTADO: Comunicado Global
-  const [comunicado, setComunicado] = useState({ mensaje: "", activo: false, tipo: "blue" });
+  // 🔥 ESTADO DE LOS DOS COMUNICADOS
+  const [comunicado, setComunicado] = useState({ 
+    mensajeBanner: "", activoBanner: false, tipoBanner: "blue",
+    mensajeModal: "", activoModal: false, tipoModal: "blue"
+  });
   const [isSavingComunicado, setIsSavingComunicado] = useState(false);
 
   const [toast, setToast] = useState({ show: false, msg: "" });
@@ -37,20 +39,25 @@ export default function AdminDashboard() {
     try {
       const token = localStorage.getItem("asegurasimple_admin_token");
       
-      // Obtenemos agencias y comunicado al mismo tiempo
       const [resAgencias, resComunicado] = await Promise.all([
         fetch(`${API_URL}/api/admin/agencias`, { headers: { "Authorization": `Bearer ${token}` } }),
         fetch(`${API_URL}/api/admin/comunicado`, { headers: { "Authorization": `Bearer ${token}` } })
       ]);
 
       if (!resAgencias.ok) throw new Error("Error al obtener cuentas");
-      
       const dataAgencias = await resAgencias.json();
       setAgencias(dataAgencias);
 
       if (resComunicado.ok) {
         const dataComunicado = await resComunicado.json();
-        if (dataComunicado) setComunicado(dataComunicado);
+        if (dataComunicado) setComunicado({
+          mensajeBanner: dataComunicado.mensajeBanner || "",
+          activoBanner: dataComunicado.activoBanner || false,
+          tipoBanner: dataComunicado.tipoBanner || "blue",
+          mensajeModal: dataComunicado.mensajeModal || "",
+          activoModal: dataComunicado.activoModal || false,
+          tipoModal: dataComunicado.tipoModal || "blue"
+        });
       }
     } catch (error) {
       console.error(error);
@@ -75,7 +82,6 @@ export default function AdminDashboard() {
     router.push("/admin/login");
   };
 
-  // 🔥 NUEVA FUNCIÓN: Guardar Comunicado
   const guardarComunicado = async () => {
     setIsSavingComunicado(true);
     try {
@@ -86,9 +92,9 @@ export default function AdminDashboard() {
         body: JSON.stringify(comunicado)
       });
       if (!res.ok) throw new Error("Error al guardar comunicado");
-      setToast({ show: true, msg: "¡Anuncio global actualizado!" });
+      setToast({ show: true, msg: "¡Anuncios globales actualizados!" });
     } catch (error) {
-      setToast({ show: true, msg: "Error al actualizar el anuncio." });
+      setToast({ show: true, msg: "Error al actualizar los anuncios." });
     } finally {
       setIsSavingComunicado(false);
     }
@@ -175,55 +181,94 @@ export default function AdminDashboard() {
 
       <main className="max-w-7xl mx-auto px-4 md:px-6 py-6 md:py-10 flex flex-col gap-10">
         
-        {/* 🔥 NUEVA SECCIÓN: Editor del Comunicado Global */}
-        <div className="bg-gray-900 border border-gray-800 rounded-3xl p-6 md:p-8 shadow-2xl flex flex-col md:flex-row gap-8">
-          <div className="md:w-1/3">
+        {/* 🔥 EDITOR DOBLE DE COMUNICADOS */}
+        <div className="bg-gray-900 border border-gray-800 rounded-3xl p-6 md:p-8 shadow-2xl flex flex-col gap-8">
+          <div>
             <h2 className="text-xl font-bold text-white flex items-center gap-2 mb-2">
-              <Megaphone className="text-blue-500 w-6 h-6" /> Anuncio Global
+              <Megaphone className="text-blue-500 w-6 h-6" /> Centro de Comunicados
             </h2>
-            <p className="text-sm text-gray-400 mb-6">Mostrá un banner en la parte superior de la plataforma a todos los usuarios. Ideal para avisos de mantenimiento, ofertas o novedades.</p>
-            
-            <div className="flex items-center justify-between bg-gray-950 p-4 rounded-xl border border-gray-800 mb-4">
-              <span className="font-semibold text-gray-300 text-sm">Estado del Banner</span>
-              <button
-                type="button"
-                onClick={() => setComunicado({ ...comunicado, activo: !comunicado.activo })}
-                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${comunicado.activo ? 'bg-green-600' : 'bg-gray-700'}`}
-              >
-                <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${comunicado.activo ? 'translate-x-6' : 'translate-x-1'}`} />
-              </button>
-            </div>
+            <p className="text-sm text-gray-400">Gestioná los mensajes globales. Podés tener un Banner superior (para avisos rápidos) y un Modal (para noticias de lectura obligatoria) activos al mismo tiempo.</p>
           </div>
 
-          <div className="md:w-2/3 flex flex-col gap-4">
-            <textarea 
-              rows={3}
-              value={comunicado.mensaje}
-              onChange={(e) => setComunicado({...comunicado, mensaje: e.target.value})}
-              placeholder="Escribí el anuncio acá..."
-              className="w-full bg-gray-950 border border-gray-800 rounded-xl p-4 text-white outline-none focus:border-blue-500 transition-colors resize-none"
-            />
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-              <div className="flex gap-2">
-                <button onClick={() => setComunicado({...comunicado, tipo: 'blue'})} className={`w-8 h-8 rounded-full bg-blue-600 border-2 ${comunicado.tipo === 'blue' ? 'border-white' : 'border-transparent opacity-50'}`} title="Azul" />
-                <button onClick={() => setComunicado({...comunicado, tipo: 'red'})} className={`w-8 h-8 rounded-full bg-red-600 border-2 ${comunicado.tipo === 'red' ? 'border-white' : 'border-transparent opacity-50'}`} title="Rojo" />
-                <button onClick={() => setComunicado({...comunicado, tipo: 'green'})} className={`w-8 h-8 rounded-full bg-green-600 border-2 ${comunicado.tipo === 'green' ? 'border-white' : 'border-transparent opacity-50'}`} title="Verde" />
-                <button onClick={() => setComunicado({...comunicado, tipo: 'yellow'})} className={`w-8 h-8 rounded-full bg-amber-500 border-2 ${comunicado.tipo === 'yellow' ? 'border-white' : 'border-transparent opacity-50'}`} title="Amarillo" />
+            {/* --- CAJA 1: BANNER SUPERIOR --- */}
+            <div className="bg-gray-950 border border-gray-800 rounded-2xl p-5 flex flex-col gap-4">
+              <div className="flex items-center justify-between border-b border-gray-800 pb-4">
+                <div className="flex items-center gap-2 text-white font-bold">
+                <Layout size={18} className="text-gray-400"/> Banner Superior
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setComunicado({ ...comunicado, activoBanner: !comunicado.activoBanner })}
+                  className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors focus:outline-none ${comunicado.activoBanner ? 'bg-green-600' : 'bg-gray-700'}`}
+                >
+                  <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${comunicado.activoBanner ? 'translate-x-6' : 'translate-x-1'}`} />
+                </button>
               </div>
-              <button 
-                onClick={guardarComunicado}
-                disabled={isSavingComunicado}
-                className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-6 py-2.5 rounded-xl font-bold transition-all disabled:opacity-50"
-              >
-                {isSavingComunicado ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
-                Guardar Banner
-              </button>
+
+              <textarea 
+                rows={3}
+                value={comunicado.mensajeBanner}
+                onChange={(e) => setComunicado({...comunicado, mensajeBanner: e.target.value})}
+                placeholder="Escribí el texto del banner acá..."
+                className="w-full bg-gray-900 border border-gray-800 rounded-xl p-4 text-white outline-none focus:border-blue-500 transition-colors resize-none text-sm"
+              />
+              
+              <div className="flex gap-2">
+                <button onClick={() => setComunicado({...comunicado, tipoBanner: 'blue'})} className={`w-6 h-6 rounded-full bg-blue-600 border-2 ${comunicado.tipoBanner === 'blue' ? 'border-white' : 'border-transparent opacity-50'}`} />
+                <button onClick={() => setComunicado({...comunicado, tipoBanner: 'red'})} className={`w-6 h-6 rounded-full bg-red-600 border-2 ${comunicado.tipoBanner === 'red' ? 'border-white' : 'border-transparent opacity-50'}`} />
+                <button onClick={() => setComunicado({...comunicado, tipoBanner: 'green'})} className={`w-6 h-6 rounded-full bg-green-600 border-2 ${comunicado.tipoBanner === 'green' ? 'border-white' : 'border-transparent opacity-50'}`} />
+                <button onClick={() => setComunicado({...comunicado, tipoBanner: 'yellow'})} className={`w-6 h-6 rounded-full bg-amber-500 border-2 ${comunicado.tipoBanner === 'yellow' ? 'border-white' : 'border-transparent opacity-50'}`} />
+              </div>
             </div>
+
+            {/* --- CAJA 2: MODAL POP-UP --- */}
+            <div className="bg-gray-950 border border-gray-800 rounded-2xl p-5 flex flex-col gap-4">
+              <div className="flex items-center justify-between border-b border-gray-800 pb-4">
+                <div className="flex items-center gap-2 text-white font-bold">
+                  <AppWindow size={18} className="text-gray-400"/> Modal Pop-up <span className="text-[10px] bg-gray-800 text-gray-400 px-2 py-0.5 rounded uppercase font-semibold ml-2">Lectura obligatoria</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setComunicado({ ...comunicado, activoModal: !comunicado.activoModal })}
+                  className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors focus:outline-none ${comunicado.activoModal ? 'bg-purple-600' : 'bg-gray-700'}`}
+                >
+                  <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${comunicado.activoModal ? 'translate-x-6' : 'translate-x-1'}`} />
+                </button>
+              </div>
+
+              <textarea 
+                rows={3}
+                value={comunicado.mensajeModal}
+                onChange={(e) => setComunicado({...comunicado, mensajeModal: e.target.value})}
+                placeholder="Escribí la noticia del modal acá..."
+                className="w-full bg-gray-900 border border-gray-800 rounded-xl p-4 text-white outline-none focus:border-purple-500 transition-colors resize-none text-sm"
+              />
+              
+              <div className="flex gap-2">
+                <button onClick={() => setComunicado({...comunicado, tipoModal: 'blue'})} className={`w-6 h-6 rounded-full bg-blue-600 border-2 ${comunicado.tipoModal === 'blue' ? 'border-white' : 'border-transparent opacity-50'}`} />
+                <button onClick={() => setComunicado({...comunicado, tipoModal: 'red'})} className={`w-6 h-6 rounded-full bg-red-600 border-2 ${comunicado.tipoModal === 'red' ? 'border-white' : 'border-transparent opacity-50'}`} />
+                <button onClick={() => setComunicado({...comunicado, tipoModal: 'green'})} className={`w-6 h-6 rounded-full bg-green-600 border-2 ${comunicado.tipoModal === 'green' ? 'border-white' : 'border-transparent opacity-50'}`} />
+                <button onClick={() => setComunicado({...comunicado, tipoModal: 'yellow'})} className={`w-6 h-6 rounded-full bg-amber-500 border-2 ${comunicado.tipoModal === 'yellow' ? 'border-white' : 'border-transparent opacity-50'}`} />
+              </div>
+            </div>
+
+          </div>
+
+          <div className="flex justify-end mt-2 pt-6 border-t border-gray-800">
+            <button 
+              onClick={guardarComunicado}
+              disabled={isSavingComunicado}
+              className="flex items-center w-full sm:w-auto justify-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-8 py-3 rounded-xl font-bold transition-all disabled:opacity-50"
+            >
+              {isSavingComunicado ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
+              Guardar Todos los Anuncios
+            </button>
           </div>
         </div>
 
-        {/* SECCIÓN ORIGINAL: Tabla de Cuentas */}
+        {/* TABLA DE CUENTAS */}
         <div className="flex flex-col gap-4">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-2">
             <div>

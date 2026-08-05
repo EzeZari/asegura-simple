@@ -121,28 +121,32 @@ export const getComunicadoGlobal = async (req: Request, res: Response): Promise<
     let comunicado = await prisma.comunicadoAdmin.findUnique({ where: { id: 1 } });
     if (!comunicado) {
       comunicado = await prisma.comunicadoAdmin.create({
-        data: { id: 1, mensaje: "Escribe tu anuncio aquí...", activo: false, tipo: "blue" }
+        data: { 
+          id: 1, 
+          mensajeBanner: "", activoBanner: false, tipoBanner: "blue",
+          mensajeModal: "", activoModal: false, tipoModal: "blue"
+        }
       });
     }
     res.json(comunicado);
   } catch (error) {
     console.error(error);
-    res.status(500).json({ error: 'Error al obtener el comunicado.' });
+    res.status(500).json({ error: 'Error al obtener los comunicados.' });
   }
 };
 
 // 6. ACTUALIZAR COMUNICADO GLOBAL (PANEL ADMIN)
 export const updateComunicadoGlobal = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { mensaje, activo, tipo } = req.body;
+    const { mensajeBanner, activoBanner, tipoBanner, mensajeModal, activoModal, tipoModal } = req.body;
     const comunicado = await prisma.comunicadoAdmin.upsert({
       where: { id: 1 },
-      update: { mensaje, activo, tipo },
-      create: { id: 1, mensaje, activo, tipo }
+      update: { mensajeBanner, activoBanner, tipoBanner, mensajeModal, activoModal, tipoModal },
+      create: { id: 1, mensajeBanner, activoBanner, tipoBanner, mensajeModal, activoModal, tipoModal }
     });
-    res.json({ message: 'Comunicado actualizado exitosamente', comunicado });
+    res.json({ message: 'Comunicados actualizados exitosamente', comunicado });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ error: 'Error al actualizar el comunicado.' });
+    res.status(500).json({ error: 'Error al actualizar los comunicados.' });
   }
 };
