@@ -38,15 +38,18 @@ export default function AlertasPage() {
       });
   }, []);
 
-  if (isLoading) return <div className="p-8 text-gray-500 animate-pulse">Buscando vencimientos...</div>;
+  if (isLoading) return <div className="p-8 text-gray-500 dark:text-gray-400 animate-pulse transition-colors">Buscando vencimientos...</div>;
 
   const { diasCritica, diasMax } = data.config;
 
   return (
-    <div className="flex flex-col p-8 w-full gap-8 bg-gray-50/50 min-h-screen">
+    // 🔥 ELIMINAMOS bg-gray-50/50 y min-h-screen. Dejamos que el Layout Padre se encargue del fondo.
+    <div className="flex flex-col p-4 sm:p-8 w-full gap-8 transition-colors">
       <div>
-        <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Centro de Alertas</h1>
-        <p className="text-gray-500 mt-1">Monitoreá los vencimientos para no perder ninguna renovación.</p>
+        {/* 🔥 Adaptamos títulos a dark:text-white */}
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white tracking-tight transition-colors">Centro de Alertas</h1>
+        {/* 🔥 Adaptamos subtítulos a dark:text-gray-400 */}
+        <p className="text-sm sm:text-base text-gray-500 dark:text-gray-400 mt-1 transition-colors">Monitoreá los vencimientos para no perder ninguna renovación.</p>
       </div>
       <AlertaSection titulo="Vencidas (Sin cobertura)" Icono={XOctagon} nivel="vencida" alertas={data.vencidas} mensajeVacio="Excelente, no tenés pólizas vencidas sin gestionar." />
       <AlertaSection titulo={`Críticas (0 a ${diasCritica} días)`} Icono={AlertTriangle} nivel="critica" alertas={data.criticas} mensajeVacio="No hay vencimientos críticos." />

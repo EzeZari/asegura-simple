@@ -17,8 +17,6 @@ interface Props {
 export default function AlertaCard({ poliza, nivel }: Props) {
   const router = useRouter();
   
-  // 🔥 EVALUAMOS LOS PERMISOS ACÁ ADENTRO
-  // Esto da TRUE para el Dueño y el Admin Secundario. Da FALSE para el Lector.
   const { user } = useAuthStore();
   const puedeModificar = tienePermiso(user, PERMISOS.PUEDE_MODIFICAR_DATOS);
 
@@ -47,7 +45,7 @@ export default function AlertaCard({ poliza, nivel }: Props) {
   };
 
   const ejecutarBaja = async () => {
-    if (!puedeModificar) return; // 🔥 El Lector no pasa de acá
+    if (!puedeModificar) return; 
 
     setIsBajaLoading(true);
     try {
@@ -71,13 +69,11 @@ export default function AlertaCard({ poliza, nivel }: Props) {
     return hoy === ultimoAviso;
   };
 
-  // 🔥 ESTA FUNCIÓN QUEDA LIBRE PARA TODOS (Incluso el Lector)
   const enviarAvisoEmail = async () => {
     if (!poliza.asegurado?.email || yaAvisadoHoy()) return;
     
     setEstadoEmail("loading");
     try {
-      // 🔥 FIX: Cambiamos /avisar-vencimiento por /aviso
       const res = await apiFetch(`/api/polizas/${poliza.id}/aviso`, { 
         method: "POST" 
       });
@@ -95,76 +91,76 @@ export default function AlertaCard({ poliza, nivel }: Props) {
     }
   };
 
+  // 🔥 Adaptación de estilos para el recuadro principal y sus badges en modo oscuro
   const estilos = {
-    vencida: { borde: "border-rose-200", fondo: "bg-rose-50", texto: "text-rose-700", linea: "bg-rose-500" },
-    critica: { borde: "border-orange-200", fondo: "bg-orange-50", texto: "text-orange-700", linea: "bg-orange-500" },
-    proxima: { borde: "border-amber-200", fondo: "bg-amber-50", texto: "text-amber-700", linea: "bg-amber-400" }
+    vencida: { borde: "border-rose-200 dark:border-rose-900/50", fondo: "bg-rose-50 dark:bg-rose-900/30", texto: "text-rose-700 dark:text-rose-400", linea: "bg-rose-500" },
+    critica: { borde: "border-orange-200 dark:border-orange-900/50", fondo: "bg-orange-50 dark:bg-orange-900/30", texto: "text-orange-700 dark:text-orange-400", linea: "bg-orange-500" },
+    proxima: { borde: "border-amber-200 dark:border-amber-900/50", fondo: "bg-amber-50 dark:bg-amber-900/30", texto: "text-amber-700 dark:text-amber-400", linea: "bg-amber-400" }
   }[nivel];
 
   const fechaFormat = new Date(poliza.fechaVencimiento).toLocaleDateString("es-AR");
 
   return (
     <>
-      <div className={`flex flex-col p-5 bg-white rounded-2xl border ${estilos.borde} shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group ${isBajaLoading ? 'opacity-50 pointer-events-none' : ''}`}>
+      <div className={`flex flex-col p-5 bg-white dark:bg-gray-800 rounded-2xl border ${estilos.borde} shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group ${isBajaLoading ? 'opacity-50 pointer-events-none' : ''}`}>
         <div className={`absolute top-0 left-0 w-1.5 h-full ${estilos.linea}`}></div>
         
         <div className="flex justify-between items-start mb-3 ml-2">
-          <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-black uppercase tracking-wider ${estilos.fondo} ${estilos.texto}`}>
+          <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-black uppercase tracking-wider ${estilos.fondo} ${estilos.texto} transition-colors`}>
             {calcularDias(poliza.fechaVencimiento)}
           </span>
-          <span className="text-xs font-mono text-gray-400">#{poliza.nroPoliza}</span>
+          <span className="text-xs font-mono text-gray-400 dark:text-gray-500 transition-colors">#{poliza.nroPoliza}</span>
         </div>
 
         <div className="ml-2 mb-4">
-          <h3 className="text-lg font-bold text-gray-900 leading-tight">
+          <h3 className="text-lg font-bold text-gray-900 dark:text-white leading-tight transition-colors">
             {poliza.asegurado?.nombre} {poliza.asegurado?.apellido}
           </h3>
           
-          <div className="flex items-center gap-1.5 text-sm mt-2">
-            <Shield size={14} className="text-gray-400" />
-            <span className="font-semibold text-gray-800">{poliza.tipoPoliza}</span>
-            <span className="text-gray-300">•</span>
-            <span className="text-gray-600 truncate">{poliza.compania?.nombre || "Sin Compañía"}</span>
+          <div className="flex items-center gap-1.5 text-sm mt-2 transition-colors">
+            <Shield size={14} className="text-gray-400 dark:text-gray-500" />
+            <span className="font-semibold text-gray-800 dark:text-gray-200">{poliza.tipoPoliza}</span>
+            <span className="text-gray-300 dark:text-gray-600">•</span>
+            <span className="text-gray-600 dark:text-gray-400 truncate">{poliza.compania?.nombre || "Sin Compañía"}</span>
           </div>
 
           <div className="ml-5 mt-1.5 mb-1 min-h-[24px]">
             {(poliza.tipoPoliza === "Automotor" || poliza.tipoPoliza === "Motovehículo") && (poliza.patente || poliza.marca || poliza.modelo) && (
               <div className="flex items-center gap-2">
                 {poliza.patente && (
-                  <span className="bg-gray-100 border border-gray-300 px-2 py-0.5 rounded font-mono font-bold uppercase text-gray-800 text-[10px] tracking-wider">
+                  <span className="bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 px-2 py-0.5 rounded font-mono font-bold uppercase text-gray-800 dark:text-gray-200 text-[10px] tracking-wider transition-colors">
                     {poliza.patente}
                   </span>
                 )}
-                <span className="text-xs text-gray-600 font-medium truncate">{poliza.marca} {poliza.modelo}</span>
+                <span className="text-xs text-gray-600 dark:text-gray-400 font-medium truncate transition-colors">{poliza.marca} {poliza.modelo}</span>
               </div>
             )}
 
             {(poliza.tipoPoliza === "Combinado Familiar" || poliza.tipoPoliza === "Integral de Comercio") && poliza.ubicacionRiesgo && (
-              <div className="text-xs text-gray-600 flex items-center gap-1.5">
-                <MapPin size={14} className="text-gray-400" /> 
+              <div className="text-xs text-gray-600 dark:text-gray-400 flex items-center gap-1.5 transition-colors">
+                <MapPin size={14} className="text-gray-400 dark:text-gray-500" /> 
                 <span className="truncate">{poliza.ubicacionRiesgo}</span>
               </div>
             )}
 
             {poliza.tipoPoliza === "ART" && poliza.cantidadEmpleados && (
-              <div className="text-xs text-gray-600 flex items-center gap-1.5">
-                <Users size={14} className="text-gray-400" /> 
+              <div className="text-xs text-gray-600 dark:text-gray-400 flex items-center gap-1.5 transition-colors">
+                <Users size={14} className="text-gray-400 dark:text-gray-500" /> 
                 <span>{poliza.cantidadEmpleados} Empleados</span>
               </div>
             )}
           </div>
 
-          <p className="text-xs text-gray-500 mt-2 ml-5 font-medium">Vence el {fechaFormat}</p>
+          <p className="text-xs text-gray-500 dark:text-gray-500 mt-2 ml-5 font-medium transition-colors">Vence el {fechaFormat}</p>
         </div>
 
-        <div className="mt-auto ml-2 flex gap-2 pt-4 border-t border-gray-50">
+        <div className="mt-auto ml-2 flex gap-2 pt-4 border-t border-gray-50 dark:border-gray-700/50 transition-colors">
           
-          {/* 🔥 DUEÑO Y ADMIN SECUNDARIO VEN ESTO. EL LECTOR NO. */}
           {puedeModificar && (
             nivel === "vencida" ? (
               <button 
                 onClick={() => setShowConfirmModal(true)}
-                className="flex-1 flex justify-center items-center gap-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 py-2 rounded-xl text-sm font-bold transition-colors"
+                className="flex-1 flex justify-center items-center gap-1.5 bg-rose-50 dark:bg-rose-900/30 hover:bg-rose-100 dark:hover:bg-rose-900/50 text-rose-700 dark:text-rose-400 py-2 rounded-xl text-sm font-bold transition-colors"
                 title="Anular póliza"
               >
                 <Trash2 size={16} /> <span className="hidden sm:inline">Anular</span>
@@ -172,7 +168,7 @@ export default function AlertaCard({ poliza, nivel }: Props) {
             ) : (
               <button 
                 onClick={() => setShowRenovarModal(true)}
-                className="flex-1 flex justify-center items-center gap-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 py-2 rounded-xl text-sm font-bold transition-colors"
+                className="flex-1 flex justify-center items-center gap-1.5 bg-emerald-50 dark:bg-emerald-900/30 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 text-emerald-700 dark:text-emerald-400 py-2 rounded-xl text-sm font-bold transition-colors"
                 title="Renovar póliza"
               >
                 <RefreshCcw size={16} /> <span className="hidden sm:inline">Renovar</span>
@@ -183,7 +179,7 @@ export default function AlertaCard({ poliza, nivel }: Props) {
           <a 
             href={generarLinkWhatsApp(poliza.asegurado.telefono, poliza.asegurado.nombre, poliza.compania.nombre, fechaFormat)} 
             target="_blank" rel="noopener noreferrer"
-            className={`flex-1 flex justify-center items-center gap-1.5 bg-green-50 hover:bg-green-100 text-green-700 py-2 rounded-xl text-sm font-bold transition-colors ${!poliza.asegurado.telefono ? 'opacity-50 pointer-events-none' : ''}`}
+            className={`flex-1 flex justify-center items-center gap-1.5 bg-green-50 dark:bg-green-900/30 hover:bg-green-100 dark:hover:bg-green-900/50 text-green-700 dark:text-green-400 py-2 rounded-xl text-sm font-bold transition-colors ${!poliza.asegurado.telefono ? 'opacity-50 pointer-events-none' : ''}`}
             title={poliza.asegurado.telefono ? "Avisar por WhatsApp" : "Cliente sin teléfono"}
           >
             <MessageCircle size={16} /> <span className="hidden sm:inline">Wsp</span>
@@ -193,11 +189,11 @@ export default function AlertaCard({ poliza, nivel }: Props) {
             onClick={enviarAvisoEmail}
             disabled={estadoEmail !== "idle" || !poliza.asegurado.email || yaAvisadoHoy()}
             className={`flex-1 flex justify-center items-center gap-1.5 py-2 rounded-xl text-sm font-bold transition-colors ${
-              yaAvisadoHoy() ? "bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200" :
-              estadoEmail === "success" ? "bg-emerald-500 text-white" :
-              estadoEmail === "error" ? "bg-red-500 text-white" :
-              !poliza.asegurado.email ? "bg-gray-50 text-gray-400 cursor-not-allowed" :
-              "bg-blue-50 hover:bg-blue-100 text-blue-700"
+              yaAvisadoHoy() ? "bg-gray-100 dark:bg-gray-700 text-gray-400 dark:text-gray-500 cursor-not-allowed border border-gray-200 dark:border-gray-600" :
+              estadoEmail === "success" ? "bg-emerald-500 dark:bg-emerald-600 text-white" :
+              estadoEmail === "error" ? "bg-red-500 dark:bg-red-600 text-white" :
+              !poliza.asegurado.email ? "bg-gray-50 dark:bg-gray-800 text-gray-400 dark:text-gray-600 cursor-not-allowed" :
+              "bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-900/50 text-blue-700 dark:text-blue-400"
             }`}
             title={yaAvisadoHoy() ? "Ya se envió un recordatorio hoy" : !poliza.asegurado.email ? "Cliente sin email" : "Enviar correo formal"}
           >
@@ -211,7 +207,6 @@ export default function AlertaCard({ poliza, nivel }: Props) {
         </div>
       </div>
 
-      {/* 🔥 DUEÑO Y ADMIN SECUNDARIO VEN ESTO. EL LECTOR NO. */}
       {puedeModificar && (
         <>
           <ConfirmModal 

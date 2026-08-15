@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { UploadCloud, X, FileText, CheckCircle2, AlertTriangle, Loader2 } from "lucide-react";
 import * as XLSX from "xlsx";
-import { apiFetch } from "@/services/api"; // 🔥 IMPORTAMOS NUESTRO FETCH SEGURO
+import { apiFetch } from "@/services/api"; 
 
 interface ImportarCompaniasModalProps {
   isOpen: boolean;
@@ -84,7 +84,6 @@ export default function ImportarCompaniasModal({ isOpen, onClose, onSuccess }: I
     setErrorTexto("");
 
     try {
-      // 🔥 REEMPLAZO: Usamos apiFetch para que viaje con el Token de Seguridad
       const response = await apiFetch(`/api/companias/importar`, {
         method: "POST",
         body: JSON.stringify({ companias: datosPreview }),
@@ -107,14 +106,15 @@ export default function ImportarCompaniasModal({ isOpen, onClose, onSuccess }: I
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[200] flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-200">
+      {/* 🔥 Adaptado: bg-white -> dark:bg-gray-800 */}
+      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-200 border border-transparent dark:border-gray-700 transition-colors">
         
-        <div className="px-6 py-5 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
-          <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-            <UploadCloud size={22} className="text-emerald-600" />
+        <div className="px-6 py-5 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center bg-gray-50/50 dark:bg-gray-900/50 transition-colors">
+          <h2 className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2 transition-colors">
+            <UploadCloud size={22} className="text-emerald-600 dark:text-emerald-500" />
             Importar Compañías
           </h2>
-          <button onClick={resetearModal} className="text-gray-400 hover:text-gray-700 transition-colors">
+          <button onClick={resetearModal} className="text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors">
             <X size={20} />
           </button>
         </div>
@@ -122,7 +122,7 @@ export default function ImportarCompaniasModal({ isOpen, onClose, onSuccess }: I
         <div className="p-6">
           {paso === 1 && (
             <div className="flex flex-col gap-4">
-              <div className="bg-emerald-50 text-emerald-800 p-4 rounded-xl text-sm border border-emerald-100 mb-2">
+              <div className="bg-emerald-50 dark:bg-emerald-900/20 text-emerald-800 dark:text-emerald-400 p-4 rounded-xl text-sm border border-emerald-100 dark:border-emerald-800/30 mb-2 transition-colors">
                 <p className="font-bold mb-1">Estructura requerida del Excel:</p>
                 <ul className="list-disc pl-5 opacity-90 space-y-1">
                   <li><strong>Columna A:</strong> Nombre / Razón Social (Obligatorio)</li>
@@ -133,17 +133,18 @@ export default function ImportarCompaniasModal({ isOpen, onClose, onSuccess }: I
               </div>
 
               {errorTexto && (
-                <div className="bg-red-50 text-red-600 p-3 rounded-lg text-sm flex items-center gap-2 font-medium">
+                <div className="bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 p-3 rounded-lg text-sm flex items-center gap-2 font-medium transition-colors">
                   <AlertTriangle size={18} /> {errorTexto}
                 </div>
               )}
 
-              <label className="border-2 border-dashed border-gray-300 rounded-2xl p-10 flex flex-col items-center justify-center cursor-pointer hover:border-emerald-500 hover:bg-emerald-50/50 transition-all group">
-                <div className="bg-emerald-100 text-emerald-600 p-3 rounded-full mb-3 group-hover:scale-110 transition-transform">
+              {/* 🔥 Adaptado: Caja para subir el archivo */}
+              <label className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-2xl p-10 flex flex-col items-center justify-center cursor-pointer hover:border-emerald-500 dark:hover:border-emerald-500 hover:bg-emerald-50/50 dark:hover:bg-emerald-900/20 transition-all group">
+                <div className="bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-500 p-3 rounded-full mb-3 group-hover:scale-110 transition-transform">
                   <FileText size={28} />
                 </div>
-                <p className="text-gray-700 font-bold mb-1">Click para subir tu Excel</p>
-                <p className="text-gray-400 text-xs">Formato soportado: .xlsx o .xls</p>
+                <p className="text-gray-700 dark:text-gray-300 font-bold mb-1 transition-colors">Click para subir tu Excel</p>
+                <p className="text-gray-400 dark:text-gray-500 text-xs transition-colors">Formato soportado: .xlsx o .xls</p>
                 <input type="file" accept=".xlsx, .xls" className="hidden" onChange={handleSubirArchivo} />
               </label>
             </div>
@@ -152,26 +153,26 @@ export default function ImportarCompaniasModal({ isOpen, onClose, onSuccess }: I
           {paso === 2 && (
             <div className="flex flex-col gap-6">
               <div className="text-center">
-                <div className="mx-auto bg-green-100 text-green-600 w-16 h-16 rounded-full flex items-center justify-center mb-4">
+                <div className="mx-auto bg-green-100 dark:bg-green-900/40 text-green-600 dark:text-green-500 w-16 h-16 rounded-full flex items-center justify-center mb-4 transition-colors">
                   <CheckCircle2 size={32} />
                 </div>
-                <h3 className="text-xl font-bold text-gray-900 mb-1">Archivo procesado</h3>
-                <p className="text-gray-500">
-                  Detectamos <strong className="text-emerald-600 font-black">{datosPreview.length}</strong> compañías válidas listas para importar.
+                <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-1 transition-colors">Archivo procesado</h3>
+                <p className="text-gray-500 dark:text-gray-400 transition-colors">
+                  Detectamos <strong className="text-emerald-600 dark:text-emerald-500 font-black">{datosPreview.length}</strong> compañías válidas listas para importar.
                 </p>
               </div>
 
               {errorTexto && (
-                <div className="bg-red-50 text-red-600 p-3 rounded-lg text-sm flex items-center gap-2 font-medium">
+                <div className="bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 p-3 rounded-lg text-sm flex items-center gap-2 font-medium transition-colors">
                   <AlertTriangle size={18} /> {errorTexto}
                 </div>
               )}
 
-              <div className="flex gap-3">
+              <div className="flex gap-3 mt-2">
                 <button 
                   onClick={() => { setPaso(1); setArchivo(null); setDatosPreview([]); }}
                   disabled={isLoading}
-                  className="flex-1 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl font-bold transition-colors"
+                  className="flex-1 py-3 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-xl font-bold transition-colors"
                 >
                   Cambiar archivo
                 </button>

@@ -42,8 +42,6 @@ export default function NuevaCompaniaModal({ isOpen, onClose, onSuccess, compani
     if (errores[e.target.name]) {
       setErrores({ ...errores, [e.target.name]: "" });
       
-      // 🔥 TRUCO DE UX: Si estaba marcando error en los dos porque faltaba contacto,
-      // al escribir en uno, borramos el error del otro también.
       if (e.target.name === "email") setErrores(prev => ({ ...prev, telefonoSiniestros: "" }));
       if (e.target.name === "telefonoSiniestros") setErrores(prev => ({ ...prev, email: "" }));
     }
@@ -61,7 +59,6 @@ export default function NuevaCompaniaModal({ isOpen, onClose, onSuccess, compani
       nuevosErrores.cuit = validarDniCuit(formData.cuit);
     }
 
-    // 🔥 VALIDACIÓN CRUZADA: ¿Están los dos vacíos?
     const emailVacio = !formData.email || formData.email.trim() === "";
     const telVacio = !formData.telefonoSiniestros || formData.telefonoSiniestros.trim() === "";
 
@@ -69,7 +66,6 @@ export default function NuevaCompaniaModal({ isOpen, onClose, onSuccess, compani
       nuevosErrores.email = "Completá al menos el Email o el Teléfono.";
       nuevosErrores.telefonoSiniestros = "Completá al menos el Teléfono o el Email.";
     } else {
-      // Si completaron al menos uno, validamos el formato del que hayan completado
       if (!emailVacio) nuevosErrores.email = validarEmail(formData.email, false);
       if (!telVacio) nuevosErrores.telefonoSiniestros = validarTelefono(formData.telefonoSiniestros, false);
     }
@@ -110,53 +106,55 @@ export default function NuevaCompaniaModal({ isOpen, onClose, onSuccess, compani
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl p-6 w-full max-w-md shadow-xl relative animate-in fade-in zoom-in duration-200">
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      {/* 🔥 Adaptado: bg-white -> dark:bg-gray-800 */}
+      <div className="bg-white dark:bg-gray-800 rounded-xl p-6 w-full max-w-md shadow-xl relative animate-in fade-in zoom-in duration-200 border border-transparent dark:border-gray-700 transition-colors">
         
-        <button onClick={onClose} className="absolute top-4 right-4 text-gray-400 hover:text-gray-700 transition-colors p-1">
+        <button onClick={onClose} className="absolute top-4 right-4 text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors p-1">
           <X size={24} />
         </button>
 
-        <h2 className="text-xl font-bold text-gray-900 mb-6 border-b pb-4">
+        <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-6 border-b border-gray-100 dark:border-gray-700 pb-4 transition-colors">
           {companiaAEditar ? "Editar Compañía" : "Nueva Compañía"}
         </h2>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-          {errorGlobal && <div className="bg-red-50 text-red-600 p-3 rounded-lg text-sm font-medium">{errorGlobal}</div>}
+          {errorGlobal && <div className="bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 p-3 rounded-lg text-sm font-medium transition-colors">{errorGlobal}</div>}
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Nombre de la Aseguradora *</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 transition-colors">Nombre de la Aseguradora *</label>
             <input 
               type="text" 
               name="nombre" 
               value={formData.nombre} 
               onChange={handleChange} 
               placeholder="Ej: San Cristóbal" 
-              className={`w-full px-3 py-2 border ${errores.nombre ? 'border-red-500 bg-red-50' : 'border-gray-200'} rounded-lg focus:ring-2 focus:ring-green-600 outline-none`} 
+              // 🔥 Adaptado a inputs transparentes oscuros
+              className={`w-full px-3 py-2 border bg-transparent text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 ${errores.nombre ? 'border-red-500 bg-red-50 dark:bg-red-900/20' : 'border-gray-200 dark:border-gray-700'} rounded-lg focus:ring-2 focus:ring-green-600 dark:focus:ring-green-500 outline-none transition-colors`} 
             />
             {errores.nombre && <p className="text-red-500 text-xs mt-1 font-medium">{errores.nombre}</p>}
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">CUIT</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 transition-colors">CUIT</label>
             <input 
               type="text" 
               name="cuit" 
               value={formData.cuit || ""} 
               onChange={handleChange} 
               placeholder="Ej: 30-12345678-9" 
-              className={`w-full px-3 py-2 border ${errores.cuit ? 'border-red-500 bg-red-50' : 'border-gray-200'} rounded-lg focus:ring-2 focus:ring-green-600 outline-none`} 
+              className={`w-full px-3 py-2 border bg-transparent text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 ${errores.cuit ? 'border-red-500 bg-red-50 dark:bg-red-900/20' : 'border-gray-200 dark:border-gray-700'} rounded-lg focus:ring-2 focus:ring-green-600 dark:focus:ring-green-500 outline-none transition-colors`} 
             />
             {errores.cuit && <p className="text-red-500 text-xs mt-1 font-medium">{errores.cuit}</p>}
           </div>
 
           <div className="pt-2">
-            <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Medios de Contacto</p>
+            <p className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-3 transition-colors">Medios de Contacto</p>
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1 flex justify-between">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 flex justify-between transition-colors">
                   Teléfono Siniestros / Grúa
-                  <span className="text-xs text-gray-400 font-normal">Requerido si no hay email</span>
+                  <span className="text-xs text-gray-400 dark:text-gray-500 font-normal">Requerido si no hay email</span>
                 </label>
                 <input 
                   type="text" 
@@ -164,15 +162,15 @@ export default function NuevaCompaniaModal({ isOpen, onClose, onSuccess, compani
                   value={formData.telefonoSiniestros || ""} 
                   onChange={handleChange} 
                   placeholder="Ej: 0800-..." 
-                  className={`w-full px-3 py-2 border ${errores.telefonoSiniestros ? 'border-red-500 bg-red-50' : 'border-gray-200'} rounded-lg focus:ring-2 focus:ring-green-600 outline-none`} 
+                  className={`w-full px-3 py-2 border bg-transparent text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 ${errores.telefonoSiniestros ? 'border-red-500 bg-red-50 dark:bg-red-900/20' : 'border-gray-200 dark:border-gray-700'} rounded-lg focus:ring-2 focus:ring-green-600 dark:focus:ring-green-500 outline-none transition-colors`} 
                 />
                 {errores.telefonoSiniestros && <p className="text-red-500 text-xs mt-1 font-medium">{errores.telefonoSiniestros}</p>}
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1 flex justify-between">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 flex justify-between transition-colors">
                   Email de Contacto
-                  <span className="text-xs text-gray-400 font-normal">Requerido si no hay teléfono</span>
+                  <span className="text-xs text-gray-400 dark:text-gray-500 font-normal">Requerido si no hay teléfono</span>
                 </label>
                 <input 
                   type="email" 
@@ -180,15 +178,15 @@ export default function NuevaCompaniaModal({ isOpen, onClose, onSuccess, compani
                   value={formData.email || ""} 
                   onChange={handleChange} 
                   placeholder="contacto@compania.com" 
-                  className={`w-full px-3 py-2 border ${errores.email ? 'border-red-500 bg-red-50' : 'border-gray-200'} rounded-lg focus:ring-2 focus:ring-green-600 outline-none`} 
+                  className={`w-full px-3 py-2 border bg-transparent text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 ${errores.email ? 'border-red-500 bg-red-50 dark:bg-red-900/20' : 'border-gray-200 dark:border-gray-700'} rounded-lg focus:ring-2 focus:ring-green-600 dark:focus:ring-green-500 outline-none transition-colors`} 
                 />
                 {errores.email && <p className="text-red-500 text-xs mt-1 font-medium">{errores.email}</p>}
               </div>
             </div>
           </div>
 
-          <div className="mt-4 flex justify-end gap-3 pt-4 border-t border-gray-100">
-            <button type="button" onClick={onClose} disabled={isLoading} className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg font-medium transition-colors">
+          <div className="mt-4 flex justify-end gap-3 pt-4 border-t border-gray-100 dark:border-gray-700 transition-colors">
+            <button type="button" onClick={onClose} disabled={isLoading} className="px-4 py-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg font-medium transition-colors">
               Cancelar
             </button>
             <button type="submit" disabled={isLoading} className="px-4 py-2 bg-green-700 hover:bg-green-800 text-white rounded-lg font-medium transition-colors disabled:opacity-50">

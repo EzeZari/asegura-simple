@@ -14,9 +14,8 @@ import { ActionMenu, ActionMenuItem } from "@/components/ui/ActionMenu";
 import SelectOrdenamiento from "@/components/ui/SelectOrdenamiento"; 
 import { apiFetch } from "@/services/api"; 
 import { useAuthStore } from "@/store/authStore"; 
-import { PERMISOS, tienePermiso } from "@/utils/roles"; // 🔥 IMPORTAMOS NUESTRO DICCIONARIO
+import { PERMISOS, tienePermiso } from "@/utils/roles"; 
 
-// Los modales pesados los cargamos de forma diferida (dinámica) para no trabar la pantalla
 const NuevaCompaniaModal = dynamic(() => import("@/components/companias/NuevaCompaniaModal"), { ssr: false });
 const ImportarCompaniasModal = dynamic(() => import("@/components/companias/ImportarCompaniasModal"), { ssr: false });
 const ExportarExcelModal = dynamic(() => import("@/components/ui/ExportarExcelModal"), { ssr: false });
@@ -29,8 +28,6 @@ const OPCIONES_ORDEN = [
 
 export default function CompaniasPage() {
   const { user } = useAuthStore();
-  
-  // 🔥 EVALUAMOS LOS PERMISOS CON NUESTRA HERRAMIENTA SENIOR
   const puedeModificar = tienePermiso(user, PERMISOS.PUEDE_MODIFICAR_DATOS);
 
   const [searchTerm, setSearchTerm] = useState("");
@@ -140,18 +137,18 @@ export default function CompaniasPage() {
     { label: <SortableHeader label="Email Contacto" sortKey="email" currentSort={sortConfig} requestSort={(key) => requestSort(key as any)} /> },
   ];
 
-  // Si tiene permisos sumamos la columna Acciones, si no, queda limpia
   const columnas = puedeModificar 
     ? [...columnasBase, { label: "Acciones", align: "right" as const }]
     : columnasBase;
 
   return (
-    <div className="flex flex-col p-8 w-full gap-8 bg-white min-h-screen overflow-x-hidden">
+    // 🔥 Adaptado: Eliminado bg-white para heredar del layout
+    <div className="flex flex-col p-4 sm:p-8 w-full gap-8 min-h-screen overflow-x-hidden transition-colors duration-300">
       
       <PageHeader 
         titulo="Compañías" 
         descripcion="Gestioná las aseguradoras con las que operás." 
-        textoBoton={puedeModificar ? "Nueva Compañía" : ""} // 🔥 OCULTO PARA LECTOR
+        textoBoton={puedeModificar ? "Nueva Compañía" : ""} 
         onNuevo={puedeModificar ? () => { setCompaniaAEditar(null); setIsModalOpen(true); } : undefined} 
       />
 
@@ -163,30 +160,29 @@ export default function CompaniasPage() {
         <div className="w-full md:w-auto">
           <SelectOrdenamiento opciones={OPCIONES_ORDEN} valorActual={ordenActual} onChange={setOrdenActual} />
         </div>
-        <div className="flex items-center gap-3 w-full md:w-auto">
-          
-          {/* 🔥 IMPORTAR OCULTO PARA LECTOR */}
+        <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
           {puedeModificar && (
-            <button onClick={() => setIsImportModalOpen(true)} className="flex items-center gap-2 px-4 py-2 bg-white hover:bg-gray-50 border border-gray-200 text-gray-700 rounded-xl text-sm font-bold transition-all active:scale-95 shadow-sm">
+            // 🔥 Adaptado boton a modo oscuro
+            <button onClick={() => setIsImportModalOpen(true)} className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 rounded-xl text-sm font-bold transition-all active:scale-95 shadow-sm">
               <UploadCloud size={16} /> Importar Excel
             </button>
           )}
 
-          <button onClick={() => { if(companiasOrdenadas.length === 0) return alert("No hay datos para exportar."); setIsExportModalOpen(true); }} className="flex items-center gap-2 px-4 py-2 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-700 rounded-xl text-sm font-bold transition-all active:scale-95 shadow-sm">
+          <button onClick={() => { if(companiasOrdenadas.length === 0) return alert("No hay datos para exportar."); setIsExportModalOpen(true); }} className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 bg-emerald-50 dark:bg-emerald-900/30 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 border border-emerald-200 dark:border-emerald-800/30 text-emerald-700 dark:text-emerald-400 rounded-xl text-sm font-bold transition-all active:scale-95 shadow-sm">
             <Download size={16} /> Exportar a Excel
           </button>
         </div>
       </div>
 
-      <Table columns={columnas} isLoading={isLoading} isEmpty={companiasOrdenadas.length === 0} emptyContent={<div className="text-gray-500 py-6"><p>No hay compañías registradas</p></div>}>
+      <Table columns={columnas} isLoading={isLoading} isEmpty={companiasOrdenadas.length === 0} emptyContent={<div className="text-gray-500 dark:text-gray-400 py-6"><p>No hay compañías registradas</p></div>}>
         {companiasOrdenadas.map((compania) => (
-          <tr key={compania.id} className="hover:bg-gray-50 transition-colors border-b border-gray-50">
-            <td className="px-6 py-4 font-medium text-gray-900">{compania.nombre}</td>
-            <td className="px-6 py-4 text-gray-600 font-mono text-sm">{compania.cuit || "-"}</td>
-            <td className="px-6 py-4 text-gray-900">{compania.telefonoSiniestros || "-"}</td>
-            <td className="px-6 py-4 text-gray-600">{compania.email || "-"}</td>
+          // 🔥 Adaptado fila de la tabla a modo oscuro
+          <tr key={compania.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors border-b border-gray-50 dark:border-gray-800">
+            <td className="px-6 py-4 font-medium text-gray-900 dark:text-gray-100">{compania.nombre}</td>
+            <td className="px-6 py-4 text-gray-600 dark:text-gray-400 font-mono text-sm">{compania.cuit || "-"}</td>
+            <td className="px-6 py-4 text-gray-900 dark:text-gray-300">{compania.telefonoSiniestros || "-"}</td>
+            <td className="px-6 py-4 text-gray-600 dark:text-gray-400">{compania.email || "-"}</td>
             
-            {/* 🔥 OCULTAMOS LA CELDA DE ACCIONES AL LECTOR */}
             {puedeModificar && (
               <td className="px-6 py-4 text-right">
                 <ActionMenu isOpen={menuAbiertoId === compania.id} onToggle={() => setMenuAbiertoId(menuAbiertoId === compania.id ? null : compania.id)}>
@@ -199,7 +195,6 @@ export default function CompaniasPage() {
         ))}
       </Table>
 
-      {/* 🔥 MODALES BLOQUEADOS PARA EL LECTOR */}
       {puedeModificar && (
         <>
           <NuevaCompaniaModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSuccess={handleSuccess} companiaAEditar={companiaAEditar} />
@@ -208,7 +203,6 @@ export default function CompaniasPage() {
         </>
       )}
 
-      {/* Este modal de descarga sí lo puede ver el lector */}
       <ExportarExcelModal isOpen={isExportModalOpen} onClose={() => setIsExportModalOpen(false)} datos={prepararDatosParaExcel()} nombreArchivo={`Reporte_Companias_${new Date().toISOString().split("T")[0]}`} />
       
       <Toast message={mensajeToast} isVisible={showToast} onClose={() => setShowToast(false)} />
