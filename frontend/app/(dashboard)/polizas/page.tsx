@@ -31,10 +31,9 @@ const OPCIONES_ORDEN = [
 
 export default function PolizasPage() {
   const { user } = useAuthStore();
-  
   const puedeModificar = tienePermiso(user, PERMISOS.PUEDE_MODIFICAR_DATOS);
-
   const router = useRouter();
+
   const [searchTerm, setSearchTerm] = useState("");
   const [filtroRama, setFiltroRama] = useState("Todas");
   const [filtroEstado, setFiltroEstado] = useState("Todos");
@@ -208,8 +207,8 @@ export default function PolizasPage() {
     : columnasBase;
 
   return (
-    // 🔥 AJUSTE VITAL: min-w-0 max-w-full ancla la página a la pantalla y mata el scrollbar de abajo.
-    <div className="flex flex-col p-4 lg:p-8 w-full min-w-0 max-w-full gap-5 lg:gap-8 bg-white min-h-screen">
+    // 🔥 Adaptado: Eliminado bg-white para heredar el fondo oscuro del layout
+    <div className="flex flex-col p-4 lg:p-8 w-full min-w-0 max-w-full gap-5 lg:gap-8 min-h-screen transition-colors duration-300">
       
       <PageHeader 
         titulo="Pólizas" 
@@ -227,18 +226,18 @@ export default function PolizasPage() {
         <div className="flex flex-col sm:flex-row items-center gap-3 w-full xl:w-auto">
           
           {puedeModificar && (
-            <button onClick={() => setIsImportModalOpen(true)} className="flex justify-center items-center gap-2 w-full sm:w-auto px-4 py-2.5 lg:py-2 bg-gray-50 hover:bg-gray-100 border border-gray-200 text-gray-700 rounded-xl text-sm font-bold transition-all active:scale-95 shadow-sm">
+            <button onClick={() => setIsImportModalOpen(true)} className="flex justify-center items-center gap-2 w-full sm:w-auto px-4 py-2.5 lg:py-2 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 rounded-xl text-sm font-bold transition-all active:scale-95 shadow-sm">
               <UploadCloud size={16} /> Importar Excel
             </button>
           )}
 
-          <button onClick={() => { if(polizasOrdenadas.length === 0) return alert("No hay datos para exportar."); setIsExportModalOpen(true); }} className="flex justify-center items-center gap-2 w-full sm:w-auto px-4 py-2.5 lg:py-2 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-700 rounded-xl text-sm font-bold transition-all active:scale-95 shadow-sm">
+          <button onClick={() => { if(polizasOrdenadas.length === 0) return alert("No hay datos para exportar."); setIsExportModalOpen(true); }} className="flex justify-center items-center gap-2 w-full sm:w-auto px-4 py-2.5 lg:py-2 bg-emerald-50 dark:bg-emerald-900/30 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 border border-emerald-200 dark:border-emerald-800/30 text-emerald-700 dark:text-emerald-400 rounded-xl text-sm font-bold transition-all active:scale-95 shadow-sm">
             <Download size={16} /> Exportar a Excel
           </button>
         </div>
       </div>
 
-      <Table columns={columnas} isLoading={isLoading} isEmpty={polizasOrdenadas.length === 0} emptyContent={<div className="flex flex-col items-center justify-center text-gray-500 py-6"><FileText size={32} className="text-gray-300 mb-3" /><p className="font-medium text-gray-900">No se encontraron pólizas</p></div>}>
+      <Table columns={columnas} isLoading={isLoading} isEmpty={polizasOrdenadas.length === 0} emptyContent={<div className="flex flex-col items-center justify-center text-gray-500 dark:text-gray-400 py-6 transition-colors"><FileText size={32} className="text-gray-300 dark:text-gray-600 mb-3" /><p className="font-medium text-gray-900 dark:text-white">No se encontraron pólizas</p></div>}>
         {polizasOrdenadas.map((poliza) => (
           <PolizaTableRow 
             key={poliza.id} 

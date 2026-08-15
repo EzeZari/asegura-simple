@@ -13,23 +13,10 @@ interface Props {
   isRenovacion?: boolean; 
 }
 
-// 🔥 MODIFICADO: Agregamos enviarCuponera al estado inicial
 const ESTADO_INICIAL = {
-  nroPoliza: "",
-  tipoPoliza: "Automotor",
-  fechaInicio: "",
-  fechaVencimiento: "",
-  estado: "Vigente",
-  formaPago: "", 
-  cobertura: "",
-  aseguradoId: "", 
-  companiaId: "", 
-  patente: "", 
-  marca: "",   
-  modelo: "",  
-  ubicacionRiesgo: "",
-  cantidadEmpleados: "",
-  enviarCuponera: false, 
+  nroPoliza: "", tipoPoliza: "Automotor", fechaInicio: "", fechaVencimiento: "",
+  estado: "Vigente", formaPago: "", cobertura: "", aseguradoId: "", companiaId: "", 
+  patente: "", marca: "", modelo: "", ubicacionRiesgo: "", cantidadEmpleados: "", enviarCuponera: false, 
 };
 
 export default function NuevaPolizaModal({ isOpen, onClose, onSuccess, polizaAEditar, isRenovacion = false }: Props) {
@@ -38,13 +25,11 @@ export default function NuevaPolizaModal({ isOpen, onClose, onSuccess, polizaAEd
   const [companias, setCompanias] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [errorGlobal, setErrorGlobal] = useState("");
-  
   const [errores, setErrores] = useState<Record<string, string>>({});
   
   const [pdfFile, setPdfFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // 🔥 NUEVO: Estado y Ref para la cuponera
   const [cuponeraFile, setCuponeraFile] = useState<File | null>(null);
   const cuponeraInputRef = useRef<HTMLInputElement>(null);
 
@@ -53,18 +38,14 @@ export default function NuevaPolizaModal({ isOpen, onClose, onSuccess, polizaAEd
       apiFetch('/api/asegurados')
         .then((res) => res.json())
         .then((data) => {
-          if (Array.isArray(data)) {
-            setClientes(data.filter((c: any) => c.activo));
-          }
+          if (Array.isArray(data)) setClientes(data.filter((c: any) => c.activo));
         })
         .catch((err) => console.error("Error al cargar clientes:", err));
       
       apiFetch('/api/companias')
         .then((res) => res.json())
         .then((data) => {
-          if (Array.isArray(data)) {
-            setCompanias(data);
-          }
+          if (Array.isArray(data)) setCompanias(data);
         })
         .catch((err) => console.error("Error al cargar compañías:", err));
 
@@ -90,7 +71,7 @@ export default function NuevaPolizaModal({ isOpen, onClose, onSuccess, polizaAEd
             aseguradoId: polizaAEditar.aseguradoId.toString(),
             companiaId: polizaAEditar.companiaId?.toString() || "",
             formaPago: polizaAEditar.formaPago || "",
-            enviarCuponera: polizaAEditar.enviarCuponera || false, // 🔥 NUEVO
+            enviarCuponera: polizaAEditar.enviarCuponera || false, 
           });
         } else {
           setFormData({
@@ -100,7 +81,7 @@ export default function NuevaPolizaModal({ isOpen, onClose, onSuccess, polizaAEd
             aseguradoId: polizaAEditar.aseguradoId.toString(),
             companiaId: polizaAEditar.companiaId?.toString() || "",
             formaPago: polizaAEditar.formaPago || "",
-            enviarCuponera: polizaAEditar.enviarCuponera || false, // 🔥 NUEVO
+            enviarCuponera: polizaAEditar.enviarCuponera || false, 
           });
         }
       } else {
@@ -113,7 +94,6 @@ export default function NuevaPolizaModal({ isOpen, onClose, onSuccess, polizaAEd
       setPdfFile(null);
       if (fileInputRef.current) fileInputRef.current.value = '';
 
-      // 🔥 Limpieza de la cuponera
       setCuponeraFile(null);
       if (cuponeraInputRef.current) cuponeraInputRef.current.value = '';
     }
@@ -121,7 +101,6 @@ export default function NuevaPolizaModal({ isOpen, onClose, onSuccess, polizaAEd
 
   if (!isOpen) return null;
 
-  // 🔥 MODIFICADO: Ahora soporta checkboxes además de inputs de texto
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const target = e.target as HTMLInputElement;
     const value = target.type === 'checkbox' ? target.checked : target.value;
@@ -145,7 +124,6 @@ export default function NuevaPolizaModal({ isOpen, onClose, onSuccess, polizaAEd
     }
   };
 
-  // 🔥 NUEVO: Manejador para el archivo de la cuponera
   const handleCuponeraChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
@@ -205,7 +183,7 @@ export default function NuevaPolizaModal({ isOpen, onClose, onSuccess, polizaAEd
       if (!isEditMode) {
         delete payloadToSave.id; 
         delete payloadToSave.pdfUrl; 
-        delete payloadToSave.cuponeraUrl; // Limpiamos por las dudas
+        delete payloadToSave.cuponeraUrl; 
       }
 
       payloadToSave.aseguradoId = parseInt(payloadToSave.aseguradoId);
@@ -222,7 +200,6 @@ export default function NuevaPolizaModal({ isOpen, onClose, onSuccess, polizaAEd
 
       const polizaGuardadaId = isEditMode ? polizaAEditar.id : data.id;
 
-      // 🔥 MODIFICADO: Subimos cualquiera de los dos archivos si existen
       if (pdfFile || cuponeraFile) {
         const fileData = new FormData();
         if (pdfFile) fileData.append("pdf", pdfFile);
@@ -255,52 +232,54 @@ export default function NuevaPolizaModal({ isOpen, onClose, onSuccess, polizaAEd
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[150] p-4">
-      <div className="bg-white rounded-xl p-6 w-full max-w-2xl shadow-xl relative animate-in fade-in zoom-in duration-200 max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[150] p-4">
+      {/* 🔥 Contenedor adaptado */}
+      <div className="bg-white dark:bg-gray-800 rounded-xl p-6 w-full max-w-2xl shadow-xl relative animate-in fade-in zoom-in duration-200 max-h-[90vh] overflow-y-auto border border-transparent dark:border-gray-700 transition-colors custom-scrollbar">
         
-        <button onClick={onClose} className="absolute top-4 right-4 text-gray-400 hover:text-gray-700 transition-colors p-1">
+        <button onClick={onClose} className="absolute top-4 right-4 text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors p-1">
           <X size={24} />
         </button>
 
-        <h2 className="text-xl font-bold text-gray-900 mb-6 border-b pb-4 flex items-center gap-2">
+        <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-6 border-b border-gray-100 dark:border-gray-700 pb-4 flex items-center gap-2 transition-colors">
           {isRenovacion ? (
-            <span className="bg-green-100 text-green-700 px-3 py-1 rounded-full text-sm">Proceso de Renovación</span>
+            <span className="bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-400 px-3 py-1 rounded-full text-sm">Proceso de Renovación</span>
           ) : polizaAEditar ? "Editar Póliza" : "Nueva Póliza"}
         </h2>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-6">
-          {errorGlobal && <div className="bg-red-50 text-red-600 p-3 rounded-lg text-sm font-medium">{errorGlobal}</div>}
+          {errorGlobal && <div className="bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 p-3 rounded-lg text-sm font-medium transition-colors">{errorGlobal}</div>}
 
           <div className="space-y-4">
-            <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider">Asignación</h3>
+            <h3 className="text-sm font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider transition-colors">Asignación</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Asegurado Titular *</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 transition-colors">Asegurado Titular *</label>
+                {/* 🔥 Selectores y campos de texto transparentes */}
                 <select 
                   name="aseguradoId" 
                   value={formData.aseguradoId} 
                   onChange={handleChange} 
-                  className={`w-full px-3 py-2 border ${errores.aseguradoId ? 'border-red-500 bg-red-50' : 'border-gray-200'} rounded-lg focus:ring-2 focus:ring-green-600 outline-none bg-white`}
+                  className={`w-full px-3 py-2 border bg-transparent text-gray-900 dark:text-white ${errores.aseguradoId ? 'border-red-500 bg-red-50 dark:bg-red-900/20' : 'border-gray-200 dark:border-gray-700'} rounded-lg focus:ring-2 focus:ring-green-600 dark:focus:ring-green-500 outline-none transition-colors`}
                   disabled={isRenovacion} 
                 >
-                  <option value="" disabled>-- Seleccioná un cliente --</option>
+                  <option value="" disabled className="dark:bg-gray-800">-- Seleccioná un cliente --</option>
                   {clientes.map((cliente) => (
-                    <option key={cliente.id} value={cliente.id}>{cliente.nombre} {cliente.apellido || ""} - {cliente.dni}</option>
+                    <option key={cliente.id} value={cliente.id} className="dark:bg-gray-800">{cliente.nombre} {cliente.apellido || ""} - {cliente.dni}</option>
                   ))}
                 </select>
                 {errores.aseguradoId && <p className="text-red-500 text-xs mt-1 font-medium">{errores.aseguradoId}</p>}
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Compañía Aseguradora *</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 transition-colors">Compañía Aseguradora *</label>
                 <select 
                   name="companiaId" 
                   value={formData.companiaId} 
                   onChange={handleChange} 
-                  className={`w-full px-3 py-2 border ${errores.companiaId ? 'border-red-500 bg-red-50' : 'border-gray-200'} rounded-lg focus:ring-2 focus:ring-green-600 outline-none bg-white`}
+                  className={`w-full px-3 py-2 border bg-transparent text-gray-900 dark:text-white ${errores.companiaId ? 'border-red-500 bg-red-50 dark:bg-red-900/20' : 'border-gray-200 dark:border-gray-700'} rounded-lg focus:ring-2 focus:ring-green-600 dark:focus:ring-green-500 outline-none transition-colors`}
                 >
-                  <option value="" disabled>-- Seleccioná una compañía --</option>
+                  <option value="" disabled className="dark:bg-gray-800">-- Seleccioná una compañía --</option>
                   {companias.map((compania) => (
-                    <option key={compania.id} value={compania.id}>{compania.nombre}</option>
+                    <option key={compania.id} value={compania.id} className="dark:bg-gray-800">{compania.nombre}</option>
                   ))}
                 </select>
                 {errores.companiaId && <p className="text-red-500 text-xs mt-1 font-medium">{errores.companiaId}</p>}
@@ -309,64 +288,64 @@ export default function NuevaPolizaModal({ isOpen, onClose, onSuccess, polizaAEd
           </div>
 
           <div className="space-y-4">
-            <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider">Datos de la Póliza</h3>
+            <h3 className="text-sm font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider transition-colors">Datos de la Póliza</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Número de Póliza *</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 transition-colors">Número de Póliza *</label>
                 <input 
                   type="text" 
                   name="nroPoliza" 
                   value={formData.nroPoliza} 
                   onChange={handleChange} 
                   placeholder="Ej: 12345678" 
-                  className={`w-full px-3 py-2 border ${errores.nroPoliza ? 'border-red-500 bg-red-50' : 'border-gray-200'} rounded-lg focus:ring-2 focus:ring-green-600 outline-none`} 
+                  className={`w-full px-3 py-2 border bg-transparent text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 ${errores.nroPoliza ? 'border-red-500 bg-red-50 dark:bg-red-900/20' : 'border-gray-200 dark:border-gray-700'} rounded-lg focus:ring-2 focus:ring-green-600 dark:focus:ring-green-500 outline-none transition-colors`} 
                 />
                 {errores.nroPoliza && <p className="text-red-500 text-xs mt-1 font-medium">{errores.nroPoliza}</p>}
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Rama / Tipo</label>
-                <select name="tipoPoliza" value={formData.tipoPoliza} onChange={handleChange} className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-600 outline-none bg-white">
-                  <option value="Accidentes personales">Accidentes personales</option>
-                  <option value="ART">ART</option>
-                  <option value="Automotor">Automotor</option>
-                  <option value="Cascos">Cascos</option>
-                  <option value="Caución">Caución</option>
-                  <option value="Combinado familiar">Combinado familiar</option>
-                  <option value="Ecomovilidad">Ecomovilidad</option>
-                  <option value="Incendio">Incendio</option>
-                  <option value="Integral para comercio">Integral para comercio</option>
-                  <option value="Motovehículo">Motovehículo</option>
-                  <option value="Responsabilidad civil">Responsabilidad civil</option>
-                  <option value="Robo">Robo</option>
-                  <option value="Seguro técnico">Seguro técnico</option>
-                  <option value="Transporte">Transporte</option>
-                  <option value="Vida colectivo">Vida colectivo</option>
-                  <option value="Vida individual">Vida individual</option>
-                  <option value="Vida simple">Vida simple</option>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 transition-colors">Rama / Tipo</label>
+                <select name="tipoPoliza" value={formData.tipoPoliza} onChange={handleChange} className="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-green-600 dark:focus:ring-green-500 outline-none bg-transparent text-gray-900 dark:text-white transition-colors">
+                  <option value="Accidentes personales" className="dark:bg-gray-800">Accidentes personales</option>
+                  <option value="ART" className="dark:bg-gray-800">ART</option>
+                  <option value="Automotor" className="dark:bg-gray-800">Automotor</option>
+                  <option value="Cascos" className="dark:bg-gray-800">Cascos</option>
+                  <option value="Caución" className="dark:bg-gray-800">Caución</option>
+                  <option value="Combinado familiar" className="dark:bg-gray-800">Combinado familiar</option>
+                  <option value="Ecomovilidad" className="dark:bg-gray-800">Ecomovilidad</option>
+                  <option value="Incendio" className="dark:bg-gray-800">Incendio</option>
+                  <option value="Integral para comercio" className="dark:bg-gray-800">Integral para comercio</option>
+                  <option value="Motovehículo" className="dark:bg-gray-800">Motovehículo</option>
+                  <option value="Responsabilidad civil" className="dark:bg-gray-800">Responsabilidad civil</option>
+                  <option value="Robo" className="dark:bg-gray-800">Robo</option>
+                  <option value="Seguro técnico" className="dark:bg-gray-800">Seguro técnico</option>
+                  <option value="Transporte" className="dark:bg-gray-800">Transporte</option>
+                  <option value="Vida colectivo" className="dark:bg-gray-800">Vida colectivo</option>
+                  <option value="Vida individual" className="dark:bg-gray-800">Vida individual</option>
+                  <option value="Vida simple" className="dark:bg-gray-800">Vida simple</option>
                 </select>
               </div>
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Vigencia Desde *</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 transition-colors">Vigencia Desde *</label>
                 <input 
                   type="date" 
                   name="fechaInicio" 
                   value={formData.fechaInicio} 
                   onChange={handleChange} 
-                  className={`w-full px-3 py-2 border ${errores.fechaInicio ? 'border-red-500 bg-red-50' : 'border-gray-200'} rounded-lg focus:ring-2 focus:ring-green-600 outline-none text-gray-600`} 
+                  className={`w-full px-3 py-2 border bg-transparent text-gray-900 dark:text-white ${errores.fechaInicio ? 'border-red-500 bg-red-50 dark:bg-red-900/20' : 'border-gray-200 dark:border-gray-700'} rounded-lg focus:ring-2 focus:ring-green-600 dark:focus:ring-green-500 outline-none transition-colors ${!errores.fechaInicio && 'dark:text-gray-300'}`} 
                 />
                 {errores.fechaInicio && <p className="text-red-500 text-xs mt-1 font-medium">{errores.fechaInicio}</p>}
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Vigencia Hasta *</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 transition-colors">Vigencia Hasta *</label>
                 <input 
                   type="date" 
                   name="fechaVencimiento" 
                   value={formData.fechaVencimiento} 
                   onChange={handleChange} 
-                  className={`w-full px-3 py-2 border ${errores.fechaVencimiento ? 'border-red-500 bg-red-50' : 'border-gray-200'} rounded-lg focus:ring-2 focus:ring-green-600 outline-none text-gray-600`} 
+                  className={`w-full px-3 py-2 border bg-transparent text-gray-900 dark:text-white ${errores.fechaVencimiento ? 'border-red-500 bg-red-50 dark:bg-red-900/20' : 'border-gray-200 dark:border-gray-700'} rounded-lg focus:ring-2 focus:ring-green-600 dark:focus:ring-green-500 outline-none transition-colors ${!errores.fechaVencimiento && 'dark:text-gray-300'}`} 
                 />
                 {errores.fechaVencimiento && <p className="text-red-500 text-xs mt-1 font-medium">{errores.fechaVencimiento}</p>}
               </div>
@@ -374,88 +353,88 @@ export default function NuevaPolizaModal({ isOpen, onClose, onSuccess, polizaAEd
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Estado</label>
-                <select name="estado" value={formData.estado} onChange={handleChange} className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-600 outline-none bg-white">
-                  <option value="Vigente">Vigente</option>
-                  <option value="Pendiente de Pago">Pendiente de Pago</option>
-                  <option value="Anulada">Anulada</option>
-                  <option value="Renovada">Renovada</option>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 transition-colors">Estado</label>
+                <select name="estado" value={formData.estado} onChange={handleChange} className="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-green-600 dark:focus:ring-green-500 outline-none bg-transparent text-gray-900 dark:text-white transition-colors">
+                  <option value="Vigente" className="dark:bg-gray-800">Vigente</option>
+                  <option value="Pendiente de Pago" className="dark:bg-gray-800">Pendiente de Pago</option>
+                  <option value="Anulada" className="dark:bg-gray-800">Anulada</option>
+                  <option value="Renovada" className="dark:bg-gray-800">Renovada</option>
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Forma de Pago</label>
-                <select name="formaPago" value={formData.formaPago} onChange={handleChange} className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-600 outline-none bg-white">
-                  <option value="">-- Seleccionar --</option>
-                  <option value="Tarjeta de Crédito">Tarjeta de Crédito</option>
-                  <option value="Tarjeta de Débito">Tarjeta de Débito</option>
-                  <option value="CBU / Débito Automático">CBU / Débito Automático</option>
-                  <option value="Efectivo / Cupón">Efectivo / Pago Fácil</option>
-                  <option value="Transferencia">Transferencia Bancaria</option>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 transition-colors">Forma de Pago</label>
+                <select name="formaPago" value={formData.formaPago} onChange={handleChange} className="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-green-600 dark:focus:ring-green-500 outline-none bg-transparent text-gray-900 dark:text-white transition-colors">
+                  <option value="" className="dark:bg-gray-800">-- Seleccionar --</option>
+                  <option value="Tarjeta de Crédito" className="dark:bg-gray-800">Tarjeta de Crédito</option>
+                  <option value="Tarjeta de Débito" className="dark:bg-gray-800">Tarjeta de Débito</option>
+                  <option value="CBU / Débito Automático" className="dark:bg-gray-800">CBU / Débito Automático</option>
+                  <option value="Efectivo / Cupón" className="dark:bg-gray-800">Efectivo / Pago Fácil</option>
+                  <option value="Transferencia" className="dark:bg-gray-800">Transferencia Bancaria</option>
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Cobertura</label>
-                <input type="text" name="cobertura" value={formData.cobertura} onChange={handleChange} placeholder="Ej: Terceros" className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-600 outline-none" />
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 transition-colors">Cobertura</label>
+                <input type="text" name="cobertura" value={formData.cobertura} onChange={handleChange} placeholder="Ej: Terceros" className="w-full px-3 py-2 border bg-transparent text-gray-900 dark:text-white border-gray-200 dark:border-gray-700 placeholder-gray-400 dark:placeholder-gray-500 rounded-lg focus:ring-2 focus:ring-green-600 dark:focus:ring-green-500 outline-none transition-colors" />
               </div>
             </div>
 
             {(formData.tipoPoliza === "Automotor" || formData.tipoPoliza === "Motovehículo") && (
-              <div className="space-y-4 pt-4 border-t border-gray-100 mt-4 animate-in fade-in slide-in-from-top-2 duration-300">
-                <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider flex items-center gap-2">
-                  Datos del Vehículo <span className="text-[10px] bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full normal-case">Opcional</span>
+              <div className="space-y-4 pt-4 border-t border-gray-100 dark:border-gray-700 mt-4 animate-in fade-in slide-in-from-top-2 duration-300 transition-colors">
+                <h3 className="text-sm font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider flex items-center gap-2 transition-colors">
+                  Datos del Vehículo <span className="text-[10px] bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 px-2 py-0.5 rounded-full normal-case transition-colors">Opcional</span>
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Patente</label>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 transition-colors">Patente</label>
                     <input 
                       type="text" 
                       name="patente" 
                       value={formData.patente || ""} 
                       onChange={handleChange} 
                       placeholder="Ej: AB123CD" 
-                      className={`w-full px-3 py-2 border ${errores.patente ? 'border-red-500 bg-red-50' : 'border-gray-200'} rounded-lg focus:ring-2 focus:ring-green-600 outline-none uppercase`} 
+                      className={`w-full px-3 py-2 border bg-transparent text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 ${errores.patente ? 'border-red-500 bg-red-50 dark:bg-red-900/20' : 'border-gray-200 dark:border-gray-700'} rounded-lg focus:ring-2 focus:ring-green-600 dark:focus:ring-green-500 outline-none uppercase transition-colors`} 
                     />
                     {errores.patente && <p className="text-red-500 text-xs mt-1 font-medium">{errores.patente}</p>}
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Marca</label>
-                    <input type="text" name="marca" value={formData.marca || ""} onChange={handleChange} placeholder="Ej: Toyota" className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-600 outline-none" />
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 transition-colors">Marca</label>
+                    <input type="text" name="marca" value={formData.marca || ""} onChange={handleChange} placeholder="Ej: Toyota" className="w-full px-3 py-2 border bg-transparent text-gray-900 dark:text-white border-gray-200 dark:border-gray-700 placeholder-gray-400 dark:placeholder-gray-500 rounded-lg focus:ring-2 focus:ring-green-600 dark:focus:ring-green-500 outline-none transition-colors" />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Modelo</label>
-                    <input type="text" name="modelo" value={formData.modelo || ""} onChange={handleChange} placeholder="Ej: Corolla 2023" className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-600 outline-none" />
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 transition-colors">Modelo</label>
+                    <input type="text" name="modelo" value={formData.modelo || ""} onChange={handleChange} placeholder="Ej: Corolla 2023" className="w-full px-3 py-2 border bg-transparent text-gray-900 dark:text-white border-gray-200 dark:border-gray-700 placeholder-gray-400 dark:placeholder-gray-500 rounded-lg focus:ring-2 focus:ring-green-600 dark:focus:ring-green-500 outline-none transition-colors" />
                   </div>
                 </div>
               </div>
             )}
 
             {(formData.tipoPoliza === "Combinado familiar" || formData.tipoPoliza === "Integral para comercio") && (
-              <div className="space-y-4 pt-4 border-t border-gray-100 mt-4 animate-in fade-in slide-in-from-top-2 duration-300">
-                 <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider flex items-center gap-2">
-                  Ubicación del Riesgo <span className="text-[10px] bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full normal-case">Opcional</span>
+              <div className="space-y-4 pt-4 border-t border-gray-100 dark:border-gray-700 mt-4 animate-in fade-in slide-in-from-top-2 duration-300 transition-colors">
+                 <h3 className="text-sm font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider flex items-center gap-2 transition-colors">
+                  Ubicación del Riesgo <span className="text-[10px] bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 px-2 py-0.5 rounded-full normal-case transition-colors">Opcional</span>
                 </h3>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Dirección Asegurada</label>
-                  <input type="text" name="ubicacionRiesgo" value={formData.ubicacionRiesgo || ""} onChange={handleChange} placeholder="Ej: Av. San Martín 1234" className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-600 outline-none" />
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 transition-colors">Dirección Asegurada</label>
+                  <input type="text" name="ubicacionRiesgo" value={formData.ubicacionRiesgo || ""} onChange={handleChange} placeholder="Ej: Av. San Martín 1234" className="w-full px-3 py-2 border bg-transparent text-gray-900 dark:text-white border-gray-200 dark:border-gray-700 placeholder-gray-400 dark:placeholder-gray-500 rounded-lg focus:ring-2 focus:ring-green-600 dark:focus:ring-green-500 outline-none transition-colors" />
                 </div>
               </div>
             )}
 
             {formData.tipoPoliza === "ART" && (
-              <div className="space-y-4 pt-4 border-t border-gray-100 mt-4 animate-in fade-in slide-in-from-top-2 duration-300">
-                 <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider flex items-center gap-2">
-                  Datos Laborales <span className="text-[10px] bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full normal-case">Opcional</span>
+              <div className="space-y-4 pt-4 border-t border-gray-100 dark:border-gray-700 mt-4 animate-in fade-in slide-in-from-top-2 duration-300 transition-colors">
+                 <h3 className="text-sm font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider flex items-center gap-2 transition-colors">
+                  Datos Laborales <span className="text-[10px] bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 px-2 py-0.5 rounded-full normal-case transition-colors">Opcional</span>
                 </h3>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Cantidad de Empleados</label>
-                  <input type="number" name="cantidadEmpleados" value={formData.cantidadEmpleados || ""} onChange={handleChange} placeholder="Ej: 15" className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-600 outline-none" />
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 transition-colors">Cantidad de Empleados</label>
+                  <input type="number" name="cantidadEmpleados" value={formData.cantidadEmpleados || ""} onChange={handleChange} placeholder="Ej: 15" className="w-full px-3 py-2 border bg-transparent text-gray-900 dark:text-white border-gray-200 dark:border-gray-700 placeholder-gray-400 dark:placeholder-gray-500 rounded-lg focus:ring-2 focus:ring-green-600 dark:focus:ring-green-500 outline-none transition-colors" />
                 </div>
               </div>
             )}
 
-            <div className="space-y-4 pt-4 border-t border-gray-100 mt-4">
-              <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider flex items-center gap-2">
-                Póliza Digital <span className="text-[10px] bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full normal-case">Opcional</span>
+            <div className="space-y-4 pt-4 border-t border-gray-100 dark:border-gray-700 mt-4 transition-colors">
+              <h3 className="text-sm font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider flex items-center gap-2 transition-colors">
+                Póliza Digital <span className="text-[10px] bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 px-2 py-0.5 rounded-full normal-case transition-colors">Opcional</span>
               </h3>
               
               <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
@@ -467,23 +446,24 @@ export default function NuevaPolizaModal({ isOpen, onClose, onSuccess, polizaAEd
                   className="hidden" 
                 />
                 
+                {/* 🔥 Botón archivos */}
                 <button 
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
-                  className="flex items-center gap-2 px-4 py-2 bg-gray-50 hover:bg-gray-100 border border-gray-200 text-gray-700 rounded-lg font-medium transition-colors"
+                  className="flex items-center gap-2 px-4 py-2 bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg font-medium transition-colors"
                 >
                   <UploadCloud size={18} />
                   {pdfFile ? "Cambiar archivo" : "Adjuntar PDF"}
                 </button>
 
                 {pdfFile && (
-                  <div className="flex items-center gap-2 text-sm text-green-700 bg-green-50 px-3 py-1.5 rounded-lg border border-green-200">
+                  <div className="flex items-center gap-2 text-sm text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-900/30 px-3 py-1.5 rounded-lg border border-green-200 dark:border-green-800/30 transition-colors">
                     <FileText size={16} />
                     <span className="font-medium truncate max-w-[200px]">{pdfFile.name}</span>
                     <button 
                       type="button" 
                       onClick={() => { setPdfFile(null); if (fileInputRef.current) fileInputRef.current.value = ''; }}
-                      className="ml-2 text-green-600 hover:text-red-500"
+                      className="ml-2 text-green-600 dark:text-green-500 hover:text-red-500 dark:hover:text-red-400 transition-colors"
                     >
                       <X size={16} />
                     </button>
@@ -491,15 +471,14 @@ export default function NuevaPolizaModal({ isOpen, onClose, onSuccess, polizaAEd
                 )}
                 
                 {!pdfFile && polizaAEditar?.pdfUrl && (
-                  <span className="text-sm text-gray-500 italic">Ya tiene un PDF guardado.</span>
+                  <span className="text-sm text-gray-500 dark:text-gray-400 italic transition-colors">Ya tiene un PDF guardado.</span>
                 )}
               </div>
             </div>
 
-            {/* 🔥 NUEVA SECCIÓN: Cuponera de Pago y Checkbox */}
-            <div className="space-y-4 pt-4 border-t border-gray-100 mt-4">
-              <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider flex items-center gap-2">
-                Cuponera de Pago <span className="text-[10px] bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full normal-case">Opcional</span>
+            <div className="space-y-4 pt-4 border-t border-gray-100 dark:border-gray-700 mt-4 transition-colors">
+              <h3 className="text-sm font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider flex items-center gap-2 transition-colors">
+                Cuponera de Pago <span className="text-[10px] bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 px-2 py-0.5 rounded-full normal-case transition-colors">Opcional</span>
               </h3>
               
               <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
@@ -514,20 +493,20 @@ export default function NuevaPolizaModal({ isOpen, onClose, onSuccess, polizaAEd
                 <button 
                   type="button"
                   onClick={() => cuponeraInputRef.current?.click()}
-                  className="flex items-center gap-2 px-4 py-2 bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-700 rounded-lg font-medium transition-colors"
+                  className="flex items-center gap-2 px-4 py-2 bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-900/50 border border-blue-200 dark:border-blue-800/30 text-blue-700 dark:text-blue-400 rounded-lg font-medium transition-colors"
                 >
                   <UploadCloud size={18} />
                   {cuponeraFile ? "Cambiar Cuponera" : "Adjuntar Cuponera"}
                 </button>
 
                 {cuponeraFile && (
-                  <div className="flex items-center gap-2 text-sm text-blue-700 bg-blue-50 px-3 py-1.5 rounded-lg border border-blue-200">
+                  <div className="flex items-center gap-2 text-sm text-blue-700 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 px-3 py-1.5 rounded-lg border border-blue-200 dark:border-blue-800/30 transition-colors">
                     <FileText size={16} />
                     <span className="font-medium truncate max-w-[200px]">{cuponeraFile.name}</span>
                     <button 
                       type="button" 
                       onClick={() => { setCuponeraFile(null); if (cuponeraInputRef.current) cuponeraInputRef.current.value = ''; }}
-                      className="ml-2 text-blue-600 hover:text-red-500"
+                      className="ml-2 text-blue-600 dark:text-blue-500 hover:text-red-500 dark:hover:text-red-400 transition-colors"
                     >
                       <X size={16} />
                     </button>
@@ -535,20 +514,21 @@ export default function NuevaPolizaModal({ isOpen, onClose, onSuccess, polizaAEd
                 )}
                 
                 {!cuponeraFile && polizaAEditar?.cuponeraUrl && (
-                  <span className="text-sm text-gray-500 italic">Ya tiene una cuponera guardada.</span>
+                  <span className="text-sm text-gray-500 dark:text-gray-400 italic transition-colors">Ya tiene una cuponera guardada.</span>
                 )}
               </div>
 
-              <div className="flex items-center gap-3 mt-3 p-3 bg-gray-50 border border-gray-200 rounded-lg">
+              {/* 🔥 Checkbox adaptado */}
+              <div className="flex items-center gap-3 mt-3 p-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-700 rounded-lg transition-colors">
                 <input
                   type="checkbox"
                   id="enviarCuponera"
                   name="enviarCuponera"
                   checked={formData.enviarCuponera}
                   onChange={handleChange}
-                  className="w-4 h-4 text-green-600 border-gray-300 rounded focus:ring-green-600"
+                  className="w-4 h-4 text-green-600 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 rounded focus:ring-green-600 dark:focus:ring-green-500 transition-colors"
                 />
-                <label htmlFor="enviarCuponera" className="text-sm text-gray-700 font-medium cursor-pointer leading-tight">
+                <label htmlFor="enviarCuponera" className="text-sm text-gray-700 dark:text-gray-300 font-medium cursor-pointer leading-tight transition-colors">
                   Adjuntar automáticamente esta cuponera en el correo de aviso de vencimiento.
                 </label>
               </div>
@@ -556,8 +536,8 @@ export default function NuevaPolizaModal({ isOpen, onClose, onSuccess, polizaAEd
 
           </div>
 
-          <div className="mt-4 flex justify-end gap-3 pt-6 border-t border-gray-100">
-            <button type="button" onClick={onClose} disabled={isLoading} className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg font-medium transition-colors">
+          <div className="mt-4 flex justify-end gap-3 pt-6 border-t border-gray-100 dark:border-gray-700 transition-colors">
+            <button type="button" onClick={onClose} disabled={isLoading} className="px-4 py-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg font-medium transition-colors">
               Cancelar
             </button>
             <button type="submit" disabled={isLoading} className="px-4 py-2 bg-green-700 hover:bg-green-800 text-white rounded-lg font-medium transition-colors disabled:opacity-50 flex items-center gap-2">
