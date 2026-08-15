@@ -150,21 +150,6 @@ export const webhookMercadoPago = async (req: Request, res: Response) => {
               data: { estado: infoPago.status || pagoExistente.estado }
             });
           }
-
-          // 🔥 LA SOLUCIÓN AL "BUG DEL MES 2": Renovamos por 30 días si el pago es aprobado
-          if (infoPago.status === 'approved') {
-            const nuevaFechaVencimiento = new Date();
-            nuevaFechaVencimiento.setDate(nuevaFechaVencimiento.getDate() + 30);
-
-            await prisma.suscripcion.updateMany({
-              where: { userId: user.id },
-              data: { 
-                estado: 'autorizado',
-                fechaVencimiento: nuevaFechaVencimiento 
-              }
-            });
-            console.log(`🔄 Suscripción de ${email} extendida por 30 días exitosamente.`);
-          }
         }
       }
     }
