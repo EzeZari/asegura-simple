@@ -93,7 +93,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 relative overflow-x-hidden">
+    // 🔥 ACÁ ESTABA EL PROBLEMA DEL FONDO: Agregamos dark:bg-gray-900 y transition-colors
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 relative overflow-x-hidden transition-colors duration-300">
       
       <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
       
@@ -126,15 +127,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       {/* 🔥 MODAL BLOQUEANTE (Pop-up de lectura obligatoria) */}
       {showModalAnnouncement && comunicado?.activoModal && comunicado?.mensajeModal && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm animate-in fade-in duration-200">
-          {/* 🔥 ACÁ APLICAMOS EL CAMBIO: max-w-xl en lugar de max-w-md */}
-          <div className="bg-white border border-gray-100 w-full max-w-xl rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+          {/* 🔥 Agregamos colores oscuros a la tarjeta del modal */}
+          <div className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 w-full max-w-xl rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 transition-colors">
             <div className={`h-2 w-full ${getBannerColor(comunicado.tipoModal)}`}></div>
             <div className="p-6 md:p-8 flex flex-col items-center text-center">
               <div className={`w-14 h-14 rounded-full mb-5 flex items-center justify-center ${getBannerColor(comunicado.tipoModal)} text-white shadow-lg`}>
                 <Megaphone size={24} />
               </div>
-              <h3 className="text-xl md:text-2xl font-black text-gray-900 mb-3">Nuevo Anuncio</h3>
-              <p className="text-gray-600 text-sm md:text-base leading-relaxed mb-8 whitespace-pre-wrap">
+              {/* 🔥 Color de texto adaptable */}
+              <h3 className="text-xl md:text-2xl font-black text-gray-900 dark:text-white mb-3">Nuevo Anuncio</h3>
+              <p className="text-gray-600 dark:text-gray-300 text-sm md:text-base leading-relaxed mb-8 whitespace-pre-wrap">
                 {comunicado.mensajeModal}
               </p>
               <button 

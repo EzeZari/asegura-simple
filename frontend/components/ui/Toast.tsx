@@ -22,12 +22,13 @@ export default function Toast({ message, isVisible, onClose }: ToastProps) {
   if (!isVisible) return null;
 
   return (
-    <div className="fixed bottom-6 right-6 bg-green-800 text-white px-6 py-3 rounded-lg shadow-2xl flex items-center gap-3 animate-in slide-in-from-bottom-5 fade-in duration-300 z-50">
-      <Shield size={20} className="text-green-300" />
+    // 🔥 Aseguramos que el Toast siempre se lea bien y resalte sobre los grises oscuros
+    <div className="fixed bottom-6 right-6 bg-green-800 dark:bg-green-900 border border-transparent dark:border-green-700 text-white px-6 py-3 rounded-lg shadow-2xl flex items-center gap-3 animate-in slide-in-from-bottom-5 fade-in duration-300 z-50 transition-colors">
+      <Shield size={20} className="text-green-300 dark:text-green-400" />
       <span className="font-medium">{message}</span>
       <button 
         onClick={onClose}
-        className="ml-2 p-1 hover:bg-green-700 rounded-full transition-colors"
+        className="ml-2 p-1 hover:bg-green-700 dark:hover:bg-green-800 rounded-full transition-colors"
       >
         <X size={16} />
       </button>

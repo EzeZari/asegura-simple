@@ -1,10 +1,18 @@
 @import "tailwindcss";
+@variant dark (&:where(.dark, .dark *));
 
+/* MODO CLARO (Por defecto) */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-  /* EL ESCUDO: Obliga al navegador a renderizar siempre en modo claro */
+  --background: #f9fafb;
+  --foreground: #111827;
   color-scheme: light;
+}
+
+/* MODO OSCURO */
+.dark {
+  --background: #111827;
+  --foreground: #f3f4f6;
+  color-scheme: dark;
 }
 
 @theme inline {
@@ -18,4 +26,5 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+  transition: background-color 0.3s ease, color 0.3s ease;
 }

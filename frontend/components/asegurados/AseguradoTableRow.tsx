@@ -8,58 +8,49 @@ interface Props {
   onClickPolizas: (cliente: any) => void;
   menuAbiertoId: number | null;
   onToggleMenu: (id: number | null) => void;
-  
-  // 🔥 NUEVA PROP PARA EL ESCUDO VISUAL
   puedeModificar: boolean; 
-  
-  // 🔥 AHORA SON OPCIONALES (porque si es Vendedor, el padre no le pasa nada)
   onEdit?: (cliente: any) => void;
   onToggleEstado?: (cliente: any) => void;
   onEliminar?: (cliente: any) => void;
 }
 
 export default function AseguradoTableRow({ 
-  cliente, 
-  onClickPolizas, 
-  menuAbiertoId, 
-  onToggleMenu, 
-  puedeModificar, // Lo recibimos
-  onEdit, 
-  onToggleEstado, 
-  onEliminar 
+  cliente, onClickPolizas, menuAbiertoId, onToggleMenu, puedeModificar, onEdit, onToggleEstado, onEliminar 
 }: Props) {
   return (
-    <tr className="hover:bg-gray-50/50 transition-colors group">
-      <td className="px-4 lg:px-6 py-4 font-medium text-gray-900 whitespace-nowrap">{cliente.nombre} {cliente.apellido}</td>
-      <td className="px-4 lg:px-6 py-4 text-gray-600 font-mono text-xs whitespace-nowrap">{cliente.dni}</td>
+    // 🔥 Adaptado hover
+    <tr className="hover:bg-gray-50/50 dark:hover:bg-gray-800/50 transition-colors group">
+      <td className="px-4 lg:px-6 py-4 font-medium text-gray-900 dark:text-gray-100 whitespace-nowrap">{cliente.nombre} {cliente.apellido}</td>
+      <td className="px-4 lg:px-6 py-4 text-gray-600 dark:text-gray-400 font-mono text-xs whitespace-nowrap">{cliente.dni}</td>
       <td className="px-4 lg:px-6 py-4 whitespace-nowrap">
         <div className="flex flex-col">
-          <span className="text-gray-900">{cliente.telefono || "-"}</span>
-          <span className="text-gray-400 text-xs">{cliente.email || "-"}</span>
+          <span className="text-gray-900 dark:text-gray-200">{cliente.telefono || "-"}</span>
+          <span className="text-gray-400 dark:text-gray-500 text-xs">{cliente.email || "-"}</span>
         </div>
       </td>
       <td className="px-4 lg:px-6 py-4 whitespace-nowrap">
-        <div className="flex items-center gap-1.5 text-gray-600">
-          {cliente.tipo === "Empresa" ? <Building2 size={16} className="text-blue-500" /> : <User size={16} className="text-gray-400" />}
+        <div className="flex items-center gap-1.5 text-gray-600 dark:text-gray-400">
+          {cliente.tipo === "Empresa" ? <Building2 size={16} className="text-blue-500" /> : <User size={16} className="text-gray-400 dark:text-gray-500" />}
           <span>{cliente.tipo}</span>
         </div>
       </td>
-      <td className="px-4 lg:px-6 py-4 text-gray-500 italic whitespace-nowrap">{new Date(cliente.fechaRegistro).toLocaleDateString("es-AR")}</td>
+      <td className="px-4 lg:px-6 py-4 text-gray-500 dark:text-gray-500 italic whitespace-nowrap">{new Date(cliente.fechaRegistro).toLocaleDateString("es-AR")}</td>
       <td className="px-4 lg:px-6 py-4 text-center whitespace-nowrap">
+        {/* 🔥 Botón pólizas */}
         <button
           onClick={() => onClickPolizas(cliente)}
-          className="inline-flex items-center justify-center bg-green-50 hover:bg-green-100 text-green-700 px-3 py-1 rounded-full font-bold gap-1.5 border border-green-100 hover:border-green-200 text-xs transition-colors cursor-pointer"
+          className="inline-flex items-center justify-center bg-green-50 dark:bg-green-900/30 hover:bg-green-100 dark:hover:bg-green-900/50 text-green-700 dark:text-green-400 px-3 py-1 rounded-full font-bold gap-1.5 border border-green-100 dark:border-green-800/30 hover:border-green-200 dark:hover:border-green-700/50 text-xs transition-colors cursor-pointer"
         >
           <Shield size={14} /> {cliente._count?.polizas || 0}
         </button>
       </td>
       <td className="px-4 lg:px-6 py-4 whitespace-nowrap">
-        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${cliente.activo ? "bg-emerald-100 text-emerald-800" : "bg-red-100 text-red-800"}`}>
+        {/* 🔥 Badges estado */}
+        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${cliente.activo ? "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-400" : "bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-400"}`}>
           {cliente.activo ? "Activo" : "Inactivo"}
         </span>
       </td>
 
-      {/* 🔥 ACÁ APLICAMOS LA MAGIA: Solo renderizamos el <td> de opciones si tiene permisos */}
       {puedeModificar && (
         <td className="px-4 lg:px-6 py-4 text-right relative whitespace-nowrap">
           <ActionMenu isOpen={menuAbiertoId === cliente.id} onToggle={() => onToggleMenu(menuAbiertoId === cliente.id ? null : cliente.id)}>

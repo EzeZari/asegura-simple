@@ -17,13 +17,13 @@ interface TableProps {
 
 export default function Table({ columns, children, isLoading, isEmpty, emptyContent }: TableProps) {
   return (
-    // 🔥 AJUSTE VITAL: min-w-0 evita que este contenedor rompa el ancho del layout padre
-    <div className="bg-white rounded-xl border border-gray-100 shadow-sm w-full min-w-0">
+    // 🔥 Fondo, borde y transición adaptados al modo oscuro
+    <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 shadow-sm w-full min-w-0 transition-colors duration-300">
       
-      {/* El overflow-x-auto ahora sí va a funcionar perfecto al estar limitado por el padre */}
       <div className="overflow-x-auto w-full min-h-[300px] pb-10">
         <table className="w-full text-left text-sm border-collapse relative">
-          <thead className="bg-gray-50 text-gray-500 border-b border-gray-100">
+          {/* 🔥 Cabecera adaptada */}
+          <thead className="bg-gray-50 dark:bg-gray-900/50 text-gray-500 dark:text-gray-400 border-b border-gray-100 dark:border-gray-700 transition-colors duration-300">
             <tr>
               {columns.map((col, index) => (
                 <th 
@@ -38,16 +38,18 @@ export default function Table({ columns, children, isLoading, isEmpty, emptyCont
               ))}
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-100">
+          
+          {/* 🔥 Divisores de filas adaptados */}
+          <tbody className="divide-y divide-gray-100 dark:divide-gray-700 text-gray-900 dark:text-gray-100 transition-colors duration-300">
             {isLoading ? (
               <tr>
-                <td colSpan={columns.length} className="px-6 py-8 text-center text-gray-500">
+                <td colSpan={columns.length} className="px-6 py-8 text-center text-gray-500 dark:text-gray-400">
                   Cargando datos...
                 </td>
               </tr>
             ) : isEmpty ? (
               <tr>
-                <td colSpan={columns.length} className="px-6 py-12 text-center">
+                <td colSpan={columns.length} className="px-6 py-12 text-center text-gray-500 dark:text-gray-400">
                   {emptyContent}
                 </td>
               </tr>

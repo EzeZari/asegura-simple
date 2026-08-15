@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 import { PERMISOS, tienePermiso } from '@/utils/roles';
+import ThemeToggle from '@/components/ui/ThemeToggle';
 
 const menuItems = [
   { name: 'Inicio', icon: Home, path: '/inicio' },
@@ -68,7 +69,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
         />
       )}
 
-      {/* 🔥 AGREGAMOS tour-sidebar AL ASIDE PRINCIPAL */}
+      {/* 🔥 ASIDE PRINCIPAL */}
       <aside className={`
         tour-sidebar
         w-64 h-screen bg-green-700 text-white flex flex-col fixed left-0 top-0 z-50 
@@ -112,7 +113,6 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
             const Icon = item.icon;
             const isActive = pathname === item.path || (item.path !== '/' && pathname.startsWith(item.path));
             
-            // 🔥 DETECTAMOS SI ES EL BOTÓN DE CONFIGURACIÓN PARA PONERLE LA ETIQUETA
             const isConfig = item.path === '/configuracion';
 
             return (
@@ -133,7 +133,14 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
           })}
         </nav>
 
-        <div className="p-4 border-t border-green-600/50 mt-auto">
+        {/* PIE DEL SIDEBAR */}
+        <div className="p-4 border-t border-green-600/50 mt-auto flex flex-col gap-2">
+          {/* 🔥 2. Botón de Modo Oscuro integrado arriba de cerrar sesión */}
+          <div className="flex items-center justify-between px-4 py-2 rounded-lg bg-green-800/40 text-green-50">
+            <span className="text-sm font-medium">Modo Oscuro</span>
+            <ThemeToggle />
+          </div>
+
           <button 
             onClick={handleLogout}
             className="w-full flex items-center gap-4 px-4 py-3 rounded-lg hover:bg-green-800 transition-colors text-left text-green-50"
