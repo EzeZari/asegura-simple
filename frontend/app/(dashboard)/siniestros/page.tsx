@@ -16,7 +16,6 @@ import { useAuthStore } from "@/store/authStore";
 import { apiFetch } from "@/services/api"; 
 import { PERMISOS, tienePermiso } from "@/utils/roles"; 
 
-// 🔥 IMPORTAMOS EL TOUR DESDE SU NUEVA CARPETA
 import TutorialTourSiniestros from "@/components/ui/tours/TutorialTourSiniestros";
 
 const OPCIONES_ORDEN = [
@@ -133,12 +132,11 @@ export default function SiniestrosPage() {
     : columnasBase;
 
   return (
-    <div className="flex flex-col p-4 lg:p-8 w-full gap-5 lg:gap-8 bg-white min-h-screen overflow-x-hidden">
+    // 🔥 Sacamos el bg-white para heredar el oscuro del layout
+    <div className="flex flex-col p-4 lg:p-8 w-full gap-5 lg:gap-8 min-h-screen overflow-x-hidden transition-colors duration-300">
       
-      {/* 🔥 INYECTAMOS EL TOUR INVISIBLE */}
       <TutorialTourSiniestros />
 
-      {/* 🔥 CLASE HEADER */}
       <div className="tour-siniestros-header">
         <PageHeader 
           titulo="Gestión de Siniestros" 
@@ -148,26 +146,26 @@ export default function SiniestrosPage() {
         />
       </div>
 
-      {/* 🔥 CLASE FILTROS */}
-      <div className="flex flex-col md:flex-row gap-4 bg-gray-50/50 p-4 rounded-2xl border border-gray-100 tour-siniestros-filtros">
+      {/* 🔥 Filtros oscurecidos */}
+      <div className="flex flex-col md:flex-row gap-4 bg-gray-50/50 dark:bg-gray-800 p-4 rounded-2xl border border-gray-100 dark:border-gray-700 tour-siniestros-filtros transition-colors">
         <div className="flex-1 relative w-full">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500" size={18} />
           <input 
             type="text" placeholder="Buscar por patente, cliente o nro reclamo..." 
             value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-2.5 lg:py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 outline-none bg-white font-medium text-sm lg:text-base"
+            className="w-full pl-10 pr-4 py-2.5 lg:py-2 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-orange-500 outline-none bg-transparent text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 font-medium text-sm lg:text-base transition-colors"
           />
         </div>
         <select 
           value={filtroEstado} onChange={(e) => setFiltroEstado(e.target.value)}
-          className="w-full md:w-64 px-4 py-2.5 lg:py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 outline-none bg-white font-bold text-gray-700 text-sm lg:text-base cursor-pointer"
+          className="w-full md:w-64 px-4 py-2.5 lg:py-2 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-orange-500 outline-none bg-transparent font-bold text-gray-700 dark:text-gray-200 text-sm lg:text-base cursor-pointer transition-colors"
         >
-          <option value="Todos">Todos los estados</option>
-          <option value="Denuncia Pendiente">Pendientes</option>
-          <option value="En Análisis">En Análisis</option>
-          <option value="Aprobado">Aprobados</option>
-          <option value="Pagado">Pagados</option>
-          <option value="Rechazado">Rechazados</option>
+          <option value="Todos" className="dark:bg-gray-800">Todos los estados</option>
+          <option value="Denuncia Pendiente" className="dark:bg-gray-800">Pendientes</option>
+          <option value="En Análisis" className="dark:bg-gray-800">En Análisis</option>
+          <option value="Aprobado" className="dark:bg-gray-800">Aprobados</option>
+          <option value="Pagado" className="dark:bg-gray-800">Pagados</option>
+          <option value="Rechazado" className="dark:bg-gray-800">Rechazados</option>
         </select>
       </div>
 
@@ -177,12 +175,11 @@ export default function SiniestrosPage() {
         </div>
       </div>
 
-      {/* 🔥 CLASE TABLA */}
       <div className="tour-siniestros-tabla">
         <Table columns={columnas} isLoading={isLoading} isEmpty={siniestrosOrdenados.length === 0} emptyContent={
-          <div className="flex flex-col items-center justify-center text-gray-500 py-10">
-            <AlertTriangle size={40} className="text-gray-300 mb-4" />
-            <p className="font-medium text-gray-900 text-lg">No se encontraron siniestros</p>
+          <div className="flex flex-col items-center justify-center text-gray-500 dark:text-gray-400 py-10 transition-colors">
+            <AlertTriangle size={40} className="text-gray-300 dark:text-gray-600 mb-4" />
+            <p className="font-medium text-gray-900 dark:text-white text-lg">No se encontraron siniestros</p>
             <p className="text-sm">Tranquilidad pura. Tus clientes están a salvo.</p>
           </div>
         }>

@@ -38,7 +38,8 @@ interface GraficosGridProps {
 export default function GraficosGrid({ data, visibilidad }: GraficosGridProps) {
   if (!visibilidad.salud && !visibilidad.companias && !visibilidad.ramas) {
     return (
-      <div className="bg-white p-16 text-center rounded-2xl border border-gray-100 shadow-sm text-gray-400 font-medium">
+      // 🔥 Estado vacío oscurecido
+      <div className="bg-white dark:bg-gray-800 p-16 text-center rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm text-gray-400 dark:text-gray-500 font-medium transition-colors">
         No elegiste ningún gráfico para visualizar. Activá las opciones de arriba para armar tu reporte personalizado.
       </div>
     );
@@ -49,12 +50,13 @@ export default function GraficosGrid({ data, visibilidad }: GraficosGridProps) {
       
       {/* 1. Gráfico Salud */}
       {visibilidad.salud && (
-        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex flex-col h-[400px] animate-in fade-in zoom-in-95 duration-200">
-          <h3 className="text-lg font-bold text-gray-900 mb-1">Salud de la Cartera</h3>
-          <p className="text-sm text-gray-500 mb-4">Porcentaje de estados de pólizas en el período.</p>
+        // 🔥 Fondos oscuros para los contenedores de gráficos
+        <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm flex flex-col h-[400px] animate-in fade-in zoom-in-95 duration-200 transition-colors">
+          <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-1 transition-colors">Salud de la Cartera</h3>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mb-4 transition-colors">Porcentaje de estados de pólizas en el período.</p>
           <div className="flex-1 w-full">
             {data.porEstado.length === 0 ? (
-              <div className="h-full flex items-center justify-center text-sm text-gray-400">Sin datos en este período</div>
+              <div className="h-full flex items-center justify-center text-sm text-gray-400 dark:text-gray-500">Sin datos en este período</div>
             ) : (
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
@@ -84,12 +86,12 @@ export default function GraficosGrid({ data, visibilidad }: GraficosGridProps) {
 
       {/* 2. Gráfico Compañías */}
       {visibilidad.companias && (
-        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex flex-col h-[400px] animate-in fade-in zoom-in-95 duration-200">
-          <h3 className="text-lg font-bold text-gray-900 mb-1">Distribución por Compañía</h3>
-          <p className="text-sm text-gray-500 mb-4">Aseguradoras donde se radicó la producción.</p>
+        <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm flex flex-col h-[400px] animate-in fade-in zoom-in-95 duration-200 transition-colors">
+          <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-1 transition-colors">Distribución por Compañía</h3>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mb-4 transition-colors">Aseguradoras donde se radicó la producción.</p>
           <div className="flex-1 w-full">
             {data.porCompania.length === 0 ? (
-              <div className="h-full flex items-center justify-center text-sm text-gray-400">Sin datos en este período</div>
+              <div className="h-full flex items-center justify-center text-sm text-gray-400 dark:text-gray-500">Sin datos en este período</div>
             ) : (
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
@@ -119,21 +121,21 @@ export default function GraficosGrid({ data, visibilidad }: GraficosGridProps) {
 
       {/* 3. Gráfico Ramas (Barras) */}
       {visibilidad.ramas && (
-        <div className={`bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex flex-col h-[400px] animate-in fade-in zoom-in-95 duration-200 ${
+        <div className={`bg-white dark:bg-gray-800 p-6 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm flex flex-col h-[400px] animate-in fade-in zoom-in-95 duration-200 transition-colors ${
           visibilidad.salud && visibilidad.companias ? "lg:col-span-2" : "lg:col-span-1"
         }`}>
-          <h3 className="text-lg font-bold text-gray-900 mb-1">Ramas de Seguro (Tipos de Póliza)</h3>
-          <p className="text-sm text-gray-500 mb-6">Volumen según el tipo de riesgo comercializado.</p>
+          <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-1 transition-colors">Ramas de Seguro (Tipos de Póliza)</h3>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mb-6 transition-colors">Volumen según el tipo de riesgo comercializado.</p>
           <div className="flex-1 w-full">
             {data.porTipo.length === 0 ? (
-              <div className="h-full flex items-center justify-center text-sm text-gray-400">Sin producción en este período</div>
+              <div className="h-full flex items-center justify-center text-sm text-gray-400 dark:text-gray-500">Sin producción en este período</div>
             ) : (
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={data.porTipo} margin={{ top: 20, right: 30, left: 0, bottom: 20 }}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                   <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 13, fontWeight: 500 }} dy={15} />
                   <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748b' }} dx={-10} />
-                  <Tooltip cursor={{ fill: '#f8fafc' }} />
+                  <Tooltip cursor={{ fill: 'rgba(0,0,0,0.05)' }} />
                   <Bar dataKey="value" name="Cantidad" radius={[6, 6, 0, 0]} barSize={60}>
                     {data.porTipo.map((entry: any, index: number) => (
                       <Cell key={`cell-bar-${index}`} fill={COLORES_BARRAS[index % COLORES_BARRAS.length]} />

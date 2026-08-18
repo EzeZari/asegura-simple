@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { RefreshCw, TrendingUp, AlertTriangle, Eye, EyeOff, LayoutGrid, Calendar, FileText, ArrowUpRight, ArrowDownRight, Search } from "lucide-react";
 import GraficosGrid from "@/components/estadisticas/GraficosGrid";
-import { apiFetch } from "@/services/api"; // 🔥 IMPORTAMOS EL FETCH CON CREDENCIALES
+import { apiFetch } from "@/services/api"; 
 
 export default function EstadisticasPage() {
   const [data, setData] = useState<any>(null);
@@ -12,7 +12,6 @@ export default function EstadisticasPage() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isPrinting, setIsPrinting] = useState(false);
 
-  // FILTRO DE TIEMPO
   const [periodo, setPeriodo] = useState<"mes" | "trimestre" | "anio" | "historico" | "personalizado">("historico");
   const [fechaInicio, setFechaInicio] = useState("");
   const [fechaFin, setFechaFin] = useState("");
@@ -28,7 +27,6 @@ export default function EstadisticasPage() {
       setIsRefreshing(true);
       setError("");
       
-      // 🔥 REEMPLAZO CLAVE: Ahora apunta a la nueva ruta separada
       let url = `/api/estadisticas/graficos?periodo=${periodo}`;
       if (periodo === "personalizado") {
         url += `&inicio=${fechaInicio}&fin=${fechaFin}`;
@@ -60,7 +58,6 @@ export default function EstadisticasPage() {
     }
   }, [periodo]);
 
-  // LA MAGIA DEL PDF CON HTML-TO-IMAGE
   const descargarPDF = async () => {
     try {
       setIsPrinting(true);
@@ -70,6 +67,7 @@ export default function EstadisticasPage() {
       const { toPng } = await import("html-to-image");
       const jsPDF = (await import("jspdf")).default;
 
+      // El PDF lo seguimos forzando a un fondo claro para la exportación y que quede prolijo al imprimir
       const dataUrl = await toPng(element, { quality: 0.95, backgroundColor: '#f9fafb' });
       
       const imgWidth = 210; 
@@ -95,10 +93,8 @@ export default function EstadisticasPage() {
     );
   }
 
-  // 🔥 NUEVA LÓGICA DE CÁLCULO DE PÓLIZAS 🔥
   const totalPolizas = data?.porEstado?.reduce((acc: number, curr: any) => acc + curr.value, 0) || 0;
   
-  // Agregué 'VIGENTE' por las dudas, así te capta el estado sea como sea que esté en la base de datos
   const polizasActivas = data?.porEstado?.find(
     (estado: any) => estado.name.toUpperCase() === 'ACTIVA' || estado.name.toUpperCase() === 'VIGENTE'
   )?.value || 0;
@@ -106,12 +102,14 @@ export default function EstadisticasPage() {
   const polizasInactivas = totalPolizas - polizasActivas;
 
   return (
-    <div id="reporte-completo" className="p-4 md:p-8 flex flex-col gap-5 md:gap-6 bg-gray-50/50 min-h-screen">
+    // 🔥 Sacamos el bg-gray-50/50 y dejamos que fluya el layout
+    <div id="reporte-completo" className="p-4 md:p-8 flex flex-col gap-5 md:gap-6 min-h-screen transition-colors duration-300">
       
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-gray-900 tracking-tight">Estadísticas de Cartera</h1>
-          <p className="text-gray-500 text-sm mt-1">Métricas avanzadas, tendencias de crecimiento e informes exportables.</p>
+          {/* 🔥 Textos adaptados */}
+          <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white tracking-tight transition-colors">Estadísticas de Cartera</h1>
+          <p className="text-gray-500 dark:text-gray-400 text-sm mt-1 transition-colors">Métricas avanzadas, tendencias de crecimiento e informes exportables.</p>
         </div>
         
         <div className="flex flex-col sm:flex-row flex-wrap gap-2 w-full lg:w-auto">
@@ -123,32 +121,33 @@ export default function EstadisticasPage() {
             <FileText size={18} />
             {isPrinting ? "Generando PDF..." : "Exportar Reporte PDF"}
           </button>
+          {/* 🔥 Botón secundario oscuro */}
           <button 
             onClick={fetchEstadisticas}
             disabled={isRefreshing}
-            className="w-full sm:w-auto flex justify-center items-center gap-2 bg-white border border-gray-200 text-gray-700 px-4 py-3 md:py-2.5 rounded-lg font-medium hover:bg-gray-50 transition-all shadow-sm active:scale-95"
+            className="w-full sm:w-auto flex justify-center items-center gap-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 px-4 py-3 md:py-2.5 rounded-lg font-medium hover:bg-gray-50 dark:hover:bg-gray-700 transition-all shadow-sm active:scale-95"
           >
-            <RefreshCw size={18} className={isRefreshing ? "animate-spin text-green-600" : "text-gray-500"} />
+            <RefreshCw size={18} className={isRefreshing ? "animate-spin text-green-600" : "text-gray-500 dark:text-gray-400"} />
             Actualizar
           </button>
         </div>
       </div>
 
-      {/* FILTROS INTERACTIVOS */}
-      <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4">
-        <div className="flex items-center gap-2 text-sm font-bold text-gray-700 shrink-0">
+      <div className="bg-white dark:bg-gray-800 p-4 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 transition-colors">
+        <div className="flex items-center gap-2 text-sm font-bold text-gray-700 dark:text-gray-300 shrink-0 transition-colors">
           <Calendar size={18} className="text-green-600" />
           <span>Período bajo análisis:</span>
         </div>
         
         <div className="flex flex-col md:flex-row items-start md:items-center gap-4 w-full xl:w-auto">
-          <div className="flex flex-wrap bg-gray-100 p-1 rounded-xl gap-1 w-full md:w-auto">
+          {/* 🔥 Pestañas de periodo */}
+          <div className="flex flex-wrap bg-gray-100 dark:bg-gray-900/50 p-1 rounded-xl gap-1 w-full md:w-auto transition-colors">
             {(["mes", "trimestre", "anio", "historico", "personalizado"] as const).map((p) => (
               <button
                 key={p}
                 onClick={() => setPeriodo(p)}
                 className={`flex-1 sm:flex-none px-2 py-2 md:px-3 md:py-2 rounded-lg text-[10px] md:text-xs font-bold capitalize transition-all ${
-                  periodo === p ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-900"
+                  periodo === p ? "bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm" : "text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200"
                 }`}
               >
                 {p === "anio" ? "Este Año" : p === "historico" ? "Histórico" : p}
@@ -156,7 +155,6 @@ export default function EstadisticasPage() {
             ))}
           </div>
 
-          {/* RANGO DE FECHAS PERSONALIZADO */}
           {periodo === "personalizado" && (
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 animate-in fade-in slide-in-from-left-4 w-full md:w-auto">
               <div className="flex items-center gap-2 w-full sm:w-auto">
@@ -164,20 +162,20 @@ export default function EstadisticasPage() {
                   type="date"
                   value={fechaInicio}
                   onChange={(e) => setFechaInicio(e.target.value)}
-                  className="w-full sm:w-auto border border-gray-200 text-gray-600 rounded-lg px-2 py-2 md:py-1.5 text-xs outline-none focus:border-green-500 bg-white"
+                  className="w-full sm:w-auto border border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-200 rounded-lg px-2 py-2 md:py-1.5 text-xs outline-none focus:border-green-500 bg-white dark:bg-gray-700 transition-colors"
                 />
-                <span className="text-gray-400 font-bold hidden sm:block">-</span>
+                <span className="text-gray-400 dark:text-gray-500 font-bold hidden sm:block">-</span>
                 <input
                   type="date"
                   value={fechaFin}
                   onChange={(e) => setFechaFin(e.target.value)}
-                  className="w-full sm:w-auto border border-gray-200 text-gray-600 rounded-lg px-2 py-2 md:py-1.5 text-xs outline-none focus:border-green-500 bg-white"
+                  className="w-full sm:w-auto border border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-200 rounded-lg px-2 py-2 md:py-1.5 text-xs outline-none focus:border-green-500 bg-white dark:bg-gray-700 transition-colors"
                 />
               </div>
               <button
                 onClick={fetchEstadisticas}
                 disabled={!fechaInicio || !fechaFin}
-                className="w-full sm:w-auto justify-center bg-green-700 text-white px-3 py-2 md:py-1.5 rounded-lg text-xs font-bold disabled:bg-gray-300 hover:bg-green-800 transition-colors flex items-center gap-1"
+                className="w-full sm:w-auto justify-center bg-green-700 text-white px-3 py-2 md:py-1.5 rounded-lg text-xs font-bold disabled:bg-gray-300 dark:disabled:bg-gray-600 hover:bg-green-800 transition-colors flex items-center gap-1"
               >
                 <Search size={14} /> Aplicar
               </button>
@@ -186,9 +184,9 @@ export default function EstadisticasPage() {
         </div>
       </div>
 
-      <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-        <div className="flex items-center gap-2 text-sm font-bold text-gray-700 shrink-0">
-          <LayoutGrid size={18} className="text-gray-400" />
+      <div className="bg-white dark:bg-gray-800 p-4 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4 transition-colors">
+        <div className="flex items-center gap-2 text-sm font-bold text-gray-700 dark:text-gray-300 shrink-0 transition-colors">
+          <LayoutGrid size={18} className="text-gray-400 dark:text-gray-500" />
           <span>Configurar gráficos visibles:</span>
         </div>
         <div className="flex flex-wrap gap-2 w-full md:w-auto">
@@ -197,7 +195,7 @@ export default function EstadisticasPage() {
               key={key}
               onClick={() => setVisibilidad(prev => ({ ...prev, [key]: !prev[key] }))}
               className={`flex-1 sm:flex-none justify-center items-center gap-2 px-2 py-2 md:px-3 md:py-1.5 rounded-xl text-[10px] md:text-xs font-bold transition-all border ${
-                visibilidad[key as keyof typeof visibilidad] ? "bg-green-50 text-green-700 border-green-200" : "bg-gray-50 text-gray-400 border-gray-200 opacity-60"
+                visibilidad[key as keyof typeof visibilidad] ? "bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800/30" : "bg-gray-50 dark:bg-gray-900/50 text-gray-400 dark:text-gray-500 border-gray-200 dark:border-gray-700 opacity-60"
               }`}
             >
               {visibilidad[key as keyof typeof visibilidad] ? <Eye size={14} className="shrink-0" /> : <EyeOff size={14} className="shrink-0" />}
@@ -208,15 +206,14 @@ export default function EstadisticasPage() {
       </div>
 
       {error && (
-        <div className="bg-red-50 text-red-600 p-4 rounded-xl border border-red-100 text-sm font-medium">
+        <div className="bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 p-4 rounded-xl border border-red-100 dark:border-red-800/30 text-sm font-medium transition-colors">
           {error}
         </div>
       )}
 
-      {/* TARJETAS SUPERIORES CON INDICADOR DE TENDENCIA */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
         
-        {/* 🔥 TARJETA ACTUALIZADA PARA MOSTRAR ACTIVAS VS TOTAL 🔥 */}
+        {/* Estas tarjetas de gradiente ya son oscuras por definición, las dejamos con texto blanco natural */}
         <div className="bg-gradient-to-br from-green-600 to-green-800 rounded-2xl p-5 md:p-6 text-white shadow-md flex items-center justify-between gap-4">
           <div className="min-w-0">
             <p className="text-green-100 font-medium text-xs md:text-sm mb-1 uppercase tracking-wider truncate">
@@ -229,14 +226,12 @@ export default function EstadisticasPage() {
               </span>
             </h3>
             
-            {/* Si estamos viendo el histórico, mostramos el desglose real */}
             {periodo === "historico" && totalPolizas > 0 && (
               <div className="flex items-center mt-2 bg-white/10 px-2.5 py-1 rounded-lg text-xs md:text-sm w-fit font-medium text-green-50">
                 Total histórico: {totalPolizas} ({polizasInactivas} inactivas)
               </div>
             )}
 
-            {/* Si estamos en un período específico, mostramos la tendencia que ya tenías */}
             {periodo !== "historico" && (
               <div className="flex items-center gap-1.5 mt-2 bg-white/10 px-2.5 py-1 rounded-lg text-[10px] md:text-xs w-fit font-bold">
                 {data?.tendencia?.porcentaje >= 0 ? (
@@ -259,7 +254,7 @@ export default function EstadisticasPage() {
         </div>
 
         {data?.siniestrosAbiertos > 0 ? (
-          <div className="bg-gradient-to-br from-orange-500 to-red-500 border border-orange-200 rounded-2xl p-5 md:p-6 flex items-center justify-between shadow-md text-white gap-4">
+          <div className="bg-gradient-to-br from-orange-500 to-red-500 border border-orange-200 dark:border-orange-900/50 rounded-2xl p-5 md:p-6 flex items-center justify-between shadow-md text-white gap-4 transition-colors">
             <div className="min-w-0">
               <p className="text-orange-100 font-medium text-xs md:text-sm mb-1 uppercase tracking-wider truncate">Atención Requerida</p>
               <h3 className="text-2xl md:text-3xl font-black truncate">{data.siniestrosAbiertos} Siniestros abiertos</h3>
@@ -270,13 +265,13 @@ export default function EstadisticasPage() {
             </div>
           </div>
         ) : (
-          <div className="bg-white rounded-2xl p-5 md:p-6 flex items-center justify-between border border-gray-200 shadow-sm gap-4">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl p-5 md:p-6 flex items-center justify-between border border-gray-200 dark:border-gray-700 shadow-sm gap-4 transition-colors">
             <div className="min-w-0">
-              <p className="text-gray-400 font-medium text-xs md:text-sm mb-1 uppercase tracking-wider truncate">Estado de Siniestros</p>
-              <h3 className="text-xl md:text-2xl font-bold text-gray-800 truncate">Todo en orden</h3>
-              <p className="text-gray-500 text-xs md:text-sm mt-1 truncate">No hay reclamos pendientes.</p>
+              <p className="text-gray-400 dark:text-gray-500 font-medium text-xs md:text-sm mb-1 uppercase tracking-wider truncate transition-colors">Estado de Siniestros</p>
+              <h3 className="text-xl md:text-2xl font-bold text-gray-800 dark:text-white truncate transition-colors">Todo en orden</h3>
+              <p className="text-gray-500 dark:text-gray-400 text-xs md:text-sm mt-1 truncate transition-colors">No hay reclamos pendientes.</p>
             </div>
-            <div className="bg-gray-100 p-3 md:p-4 rounded-full text-gray-400 shrink-0">
+            <div className="bg-gray-100 dark:bg-gray-700 p-3 md:p-4 rounded-full text-gray-400 dark:text-gray-500 shrink-0 transition-colors">
               <AlertTriangle size={28} className="md:w-8 md:h-8" />
             </div>
           </div>
