@@ -12,7 +12,6 @@ import { apiFetch } from "@/services/api";
 import { useAuthStore } from "@/store/authStore"; 
 import { PERMISOS, tienePermiso } from "@/utils/roles";
 
-// 🔥 IMPORTAMOS EL TOUR DESDE SU NUEVA CARPETA
 import TutorialTourDetalleSiniestro from "@/components/ui/tours/TutorialTourDetalleSiniestro";
 
 export default function SiniestroDetallePage() {
@@ -124,22 +123,23 @@ export default function SiniestroDetallePage() {
     }
   };
 
-  if (isLoading) return <div className="p-8 text-gray-500 animate-pulse font-medium">Cargando expediente integral...</div>;
-  if (!siniestro) return <div className="p-8 text-red-500 font-bold">Error: El siniestro solicitado no existe o no tenés permiso para verlo.</div>;
+  if (isLoading) return <div className="p-8 text-gray-500 dark:text-gray-400 animate-pulse font-medium transition-colors">Cargando expediente integral...</div>;
+  if (!siniestro) return <div className="p-8 text-red-500 dark:text-red-400 font-bold transition-colors">Error: El siniestro solicitado no existe o no tenés permiso para verlo.</div>;
 
   const fechaHechoDate = new Date(siniestro.fechaHecho);
   const hoy = new Date();
   const diffTime = Math.abs(hoy.getTime() - fechaHechoDate.getTime());
   const diasTranscurridos = Math.floor(diffTime / (1000 * 60 * 60 * 24));
 
+  // 🔥 Adaptación de badges de estado al modo oscuro
   const getStatusStyle = (estado: string) => {
     switch (estado) {
-      case "Denuncia Pendiente": return "text-orange-700 bg-orange-50 border-orange-200";
-      case "En Análisis": return "text-blue-700 bg-blue-50 border-blue-200";
-      case "Aprobado": return "text-green-700 bg-green-50 border-green-200";
-      case "Pagado": return "text-emerald-700 bg-emerald-50 border-emerald-200";
-      case "Rechazado": return "text-red-700 bg-red-50 border-red-200";
-      default: return "text-gray-600 bg-gray-50 border-gray-200";
+      case "Denuncia Pendiente": return "text-orange-700 dark:text-orange-400 bg-orange-50 dark:bg-orange-900/30 border-orange-200 dark:border-orange-800/30";
+      case "En Análisis": return "text-blue-700 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 border-blue-200 dark:border-blue-800/30";
+      case "Aprobado": return "text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-900/30 border-green-200 dark:border-green-800/30";
+      case "Pagado": return "text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/30 border-emerald-200 dark:border-emerald-800/30";
+      case "Rechazado": return "text-red-700 dark:text-red-400 bg-red-50 dark:bg-red-900/30 border-red-200 dark:border-red-800/30";
+      default: return "text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700";
     }
   };
 
@@ -166,56 +166,56 @@ export default function SiniestroDetallePage() {
   };
 
   return (
-    <div className="flex flex-col p-4 md:p-8 w-full gap-6 md:gap-8 bg-white min-h-screen overflow-x-hidden">
+    // 🔥 Sacamos el bg-white para heredar del layout padre
+    <div className="flex flex-col p-4 md:p-8 w-full gap-6 md:gap-8 min-h-screen overflow-x-hidden transition-colors duration-300">
       
-      {/* 🔥 INYECTAMOS EL TOUR INVISIBLE */}
       <TutorialTourDetalleSiniestro />
 
       <div className="flex flex-col gap-6">
         <button 
           onClick={() => router.back()}
-          className="flex items-center gap-2 text-gray-400 hover:text-orange-600 transition-all w-fit font-medium group text-sm md:text-base"
+          className="flex items-center gap-2 text-gray-400 dark:text-gray-500 hover:text-orange-600 dark:hover:text-orange-500 transition-all w-fit font-medium group text-sm md:text-base"
         >
           <ArrowLeft size={18} className="group-hover:-translate-x-1 transition-transform" /> 
           Volver a Siniestros
         </button>
         
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-gray-50/40 p-4 md:p-6 rounded-2xl border border-gray-100">
+        {/* 🔥 Cabecera principal oscurecida */}
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-gray-50/40 dark:bg-gray-800/40 p-4 md:p-6 rounded-2xl border border-gray-100 dark:border-gray-700/50 transition-colors">
           
           <div className="flex items-center gap-3 md:gap-5 w-full md:w-auto">
-            <div className="p-3 md:p-4 bg-orange-600 text-white rounded-2xl shadow-md shadow-orange-100 shrink-0">
+            <div className="p-3 md:p-4 bg-orange-600 dark:bg-orange-500 text-white rounded-2xl shadow-md shadow-orange-100 dark:shadow-none shrink-0 transition-colors">
               <AlertTriangle size={28} className="md:w-8 md:h-8" />
             </div>
             <div className="min-w-0 flex-1">
               <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
-                <h1 className="text-2xl md:text-3xl font-black text-gray-950 truncate">Expediente {siniestro.nroSiniestro}</h1>
-                <span className={`w-fit px-3 py-1 rounded-full text-[10px] md:text-xs font-extrabold border ${getStatusStyle(siniestro.estadoSiniestro)}`}>
+                <h1 className="text-2xl md:text-3xl font-black text-gray-950 dark:text-white truncate transition-colors">Expediente {siniestro.nroSiniestro}</h1>
+                <span className={`w-fit px-3 py-1 rounded-full text-[10px] md:text-xs font-extrabold border transition-colors ${getStatusStyle(siniestro.estadoSiniestro)}`}>
                   {siniestro.estadoSiniestro.toUpperCase()}
                 </span>
               </div>
-              <p className="text-xs md:text-sm text-gray-400 mt-1 flex items-center gap-2 font-medium">
+              <p className="text-xs md:text-sm text-gray-400 dark:text-gray-500 mt-1 flex items-center gap-2 font-medium transition-colors">
                 <Calendar size={14} /> Sucedido el {new Date(siniestro.fechaHecho).toLocaleDateString("es-AR")}
-                <span className="text-gray-300">|</span>
-                <span className="text-orange-700 font-bold bg-orange-50 px-2 py-0.5 rounded text-[10px] md:text-xs">{diasTranscurridos} días transcurridos</span>
+                <span className="text-gray-300 dark:text-gray-600">|</span>
+                <span className="text-orange-700 dark:text-orange-400 font-bold bg-orange-50 dark:bg-orange-900/30 px-2 py-0.5 rounded text-[10px] md:text-xs transition-colors">{diasTranscurridos} días transcurridos</span>
               </p>
             </div>
           </div>
 
-          {/* 🔥 CLASE ESTADO */}
-          <div className="flex items-center gap-2 bg-white p-2 rounded-xl border border-gray-200 shadow-sm w-full md:w-auto tour-detalle-estado">
-            <span className="text-[10px] md:text-xs font-bold text-gray-400 uppercase pl-2">Estado:</span>
+          <div className="flex items-center gap-2 bg-white dark:bg-gray-800 p-2 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm w-full md:w-auto tour-detalle-estado transition-colors">
+            <span className="text-[10px] md:text-xs font-bold text-gray-400 dark:text-gray-500 uppercase pl-2 transition-colors">Estado:</span>
             <select
               value={siniestro.estadoSiniestro}
               disabled={isUpdatingEstado || !puedeModificar} 
               onChange={(e) => handleCambiarEstadoRapido(e.target.value)}
-              className="flex-1 md:flex-none text-sm font-bold text-gray-700 bg-transparent outline-none cursor-pointer pr-2 disabled:opacity-60 disabled:cursor-not-allowed"
+              className="flex-1 md:flex-none text-sm font-bold text-gray-700 dark:text-gray-200 bg-transparent outline-none cursor-pointer pr-2 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
             >
-              <option value="Denuncia Pendiente">Denuncia Pendiente</option>
-              <option value="En Análisis">En Análisis</option>
-              <option value="Aprobado">Aprobado</option>
-              <option value="Pagado">Pagado / Liquidado</option>
-              <option value="Rechazado">Rechazado</option>
-              <option value="Cerrado">Cerrado Administrativo</option>
+              <option value="Denuncia Pendiente" className="dark:bg-gray-800">Denuncia Pendiente</option>
+              <option value="En Análisis" className="dark:bg-gray-800">En Análisis</option>
+              <option value="Aprobado" className="dark:bg-gray-800">Aprobado</option>
+              <option value="Pagado" className="dark:bg-gray-800">Pagado / Liquidado</option>
+              <option value="Rechazado" className="dark:bg-gray-800">Rechazado</option>
+              <option value="Cerrado" className="dark:bg-gray-800">Cerrado Administrativo</option>
             </select>
           </div>
         </div>
@@ -225,36 +225,37 @@ export default function SiniestroDetallePage() {
         
         <div className="lg:col-span-2 flex flex-col gap-6 md:gap-8">
           
-          <div className="p-5 md:p-6 border border-gray-100 rounded-3xl bg-white shadow-sm flex flex-col gap-5">
-            <h3 className="text-sm md:text-base font-bold text-gray-900 flex items-center gap-2 border-b border-gray-50 pb-3">
-              <FileText size={18} className="text-orange-600 shrink-0" /> Declaración Inicial del Siniestro
+          {/* 🔥 Declaración inicial */}
+          <div className="p-5 md:p-6 border border-gray-100 dark:border-gray-700 rounded-3xl bg-white dark:bg-gray-800 shadow-sm flex flex-col gap-5 transition-colors">
+            <h3 className="text-sm md:text-base font-bold text-gray-900 dark:text-white flex items-center gap-2 border-b border-gray-50 dark:border-gray-700 pb-3 transition-colors">
+              <FileText size={18} className="text-orange-600 dark:text-orange-500 shrink-0 transition-colors" /> Declaración Inicial del Siniestro
             </h3>
-            <div className="bg-gray-50/60 p-4 md:p-5 rounded-2xl border border-gray-200/50">
-              <p className="text-gray-700 leading-relaxed text-xs md:text-sm whitespace-pre-wrap font-medium">
+            <div className="bg-gray-50/60 dark:bg-gray-900/50 p-4 md:p-5 rounded-2xl border border-gray-200/50 dark:border-gray-700/50 transition-colors">
+              <p className="text-gray-700 dark:text-gray-300 leading-relaxed text-xs md:text-sm whitespace-pre-wrap font-medium transition-colors">
                 {siniestro.descripcionInicial}
               </p>
             </div>
           </div>
 
-          {/* 🔥 CLASE NOTAS */}
           <div className="flex flex-col gap-4 tour-detalle-notas">
-            <h3 className="text-sm md:text-base font-bold text-gray-900 flex items-center gap-2">
-              <MessageSquare size={18} className="text-orange-600 shrink-0" /> Historial de Seguimiento / Notas
+            <h3 className="text-sm md:text-base font-bold text-gray-900 dark:text-white flex items-center gap-2 transition-colors">
+              <MessageSquare size={18} className="text-orange-600 dark:text-orange-500 shrink-0 transition-colors" /> Historial de Seguimiento / Notas
             </h3>
             
             {puedeModificar && (
               <form onSubmit={handleAgregarNota} className="flex gap-3">
                 <input 
                   type="text" 
-                  placeholder="Añadir una novedad interna (ej: 'Documentación enviada a la compañía')..." 
+                  placeholder="Añadir una novedad interna (ej: 'Documentación enviada')..." 
                   value={nuevaNota}
                   onChange={(e) => setNuevaNota(e.target.value)}
-                  className="flex-1 px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 outline-none text-xs md:text-sm font-medium"
+                  className="flex-1 px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-orange-500 dark:focus:ring-orange-500 outline-none text-xs md:text-sm font-medium text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 transition-colors"
                 />
                 <button 
                   type="submit" 
                   disabled={isSubmittingNota || !nuevaNota.trim()}
-                  className="bg-gray-900 hover:bg-gray-800 text-white px-4 md:px-5 py-3 rounded-xl font-bold transition-colors disabled:opacity-40 flex items-center gap-1.5 text-xs md:text-sm shrink-0"
+                  // 🔥 Invertimos el color del botón
+                  className="bg-gray-900 dark:bg-gray-100 hover:bg-gray-800 dark:hover:bg-white text-white dark:text-gray-900 px-4 md:px-5 py-3 rounded-xl font-bold transition-colors disabled:opacity-40 disabled:bg-gray-300 dark:disabled:bg-gray-700 flex items-center gap-1.5 text-xs md:text-sm shrink-0"
                 >
                   <Send size={14} /> Registrar
                 </button>
@@ -263,20 +264,21 @@ export default function SiniestroDetallePage() {
 
             <div className="flex flex-col gap-3 mt-2">
               {siniestro.notas?.length === 0 ? (
-                <div className="text-center py-10 text-gray-400 border-2 border-dashed border-gray-100 rounded-2xl text-xs md:text-sm italic">
+                <div className="text-center py-10 text-gray-400 dark:text-gray-500 border-2 border-dashed border-gray-100 dark:border-gray-700 rounded-2xl text-xs md:text-sm italic transition-colors">
                   No se registran novedades para este siniestro todavía.
                 </div>
               ) : (
                 siniestro.notas.map((nota: any) => (
-                  <div key={nota.id} className="bg-white p-4 md:p-5 rounded-2xl border border-gray-100 shadow-sm flex flex-col gap-2">
-                    <div className="flex justify-between items-center border-b border-gray-50 pb-1.5">
-                      <span className="text-[10px] md:text-[11px] font-bold text-gray-400 flex items-center gap-1">
+                  // 🔥 Notas oscurecidas
+                  <div key={nota.id} className="bg-white dark:bg-gray-800 p-4 md:p-5 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm flex flex-col gap-2 transition-colors">
+                    <div className="flex justify-between items-center border-b border-gray-50 dark:border-gray-700 pb-1.5 transition-colors">
+                      <span className="text-[10px] md:text-[11px] font-bold text-gray-400 dark:text-gray-500 flex items-center gap-1 transition-colors">
                         <Clock size={12} className="shrink-0" />
                         {new Date(nota.fecha).toLocaleString("es-AR", { dateStyle: 'long', timeStyle: 'short' })}
                       </span>
-                      <span className="text-[9px] md:text-[10px] bg-orange-50 text-orange-700 px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">Interno</span>
+                      <span className="text-[9px] md:text-[10px] bg-orange-50 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 px-2 py-0.5 rounded-full font-bold uppercase tracking-wider transition-colors">Interno</span>
                     </div>
-                    <p className="text-gray-800 text-xs md:text-sm font-medium leading-relaxed">{nota.texto}</p>
+                    <p className="text-gray-800 dark:text-gray-200 text-xs md:text-sm font-medium leading-relaxed transition-colors">{nota.texto}</p>
                   </div>
                 ))
               )}
@@ -284,80 +286,79 @@ export default function SiniestroDetallePage() {
           </div>
         </div>
 
-        {/* 🔥 CLASE INFORMACION (Engloba las 3 tarjetas de datos) */}
         <div className="flex flex-col gap-6 tour-detalle-informacion">
           
-          <div className="p-5 md:p-6 border border-gray-100 rounded-3xl bg-white shadow-sm flex flex-col gap-4">
-            <h3 className="font-bold text-gray-400 uppercase text-[10px] md:text-xs tracking-widest border-b border-gray-50 pb-2">Riesgo Cubierto</h3>
+          {/* 🔥 Tarjeta de Riesgo Cubierto */}
+          <div className="p-5 md:p-6 border border-gray-100 dark:border-gray-700 rounded-3xl bg-white dark:bg-gray-800 shadow-sm flex flex-col gap-4 transition-colors">
+            <h3 className="font-bold text-gray-400 dark:text-gray-500 uppercase text-[10px] md:text-xs tracking-widest border-b border-gray-50 dark:border-gray-700 pb-2 transition-colors">Riesgo Cubierto</h3>
             <div className="flex flex-col gap-3">
-              <div className="flex items-center gap-3 bg-gray-50 p-3 rounded-xl border border-gray-100">
-                <div className="p-2 bg-white text-gray-600 rounded-lg shadow-sm border border-gray-100 shrink-0">
+              <div className="flex items-center gap-3 bg-gray-50 dark:bg-gray-900/50 p-3 rounded-xl border border-gray-100 dark:border-gray-700 transition-colors">
+                <div className="p-2 bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 rounded-lg shadow-sm border border-gray-100 dark:border-gray-700 shrink-0 transition-colors">
                   <CarFront size={18} />
                 </div>
                 <div className="min-w-0">
-                  <p className="text-[10px] md:text-xs font-bold text-gray-400 uppercase">Rama</p>
-                  <p className="text-xs md:text-sm font-bold text-gray-800 break-words">{poliza.tipoPoliza}</p>
+                  <p className="text-[10px] md:text-xs font-bold text-gray-400 dark:text-gray-500 uppercase transition-colors">Rama</p>
+                  <p className="text-xs md:text-sm font-bold text-gray-800 dark:text-gray-100 break-words transition-colors">{poliza.tipoPoliza}</p>
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-2 text-xs">
-                <div className="bg-gray-50/50 p-3 rounded-xl border border-gray-100/70">
-                  <span className="block text-gray-400 font-medium mb-0.5 text-[10px] md:text-xs">Nro Póliza</span>
-                  <span className="font-bold text-gray-800 text-xs md:text-sm">#{poliza.nroPoliza}</span>
+                <div className="bg-gray-50/50 dark:bg-gray-900/40 p-3 rounded-xl border border-gray-100/70 dark:border-gray-700/70 transition-colors">
+                  <span className="block text-gray-400 dark:text-gray-500 font-medium mb-0.5 text-[10px] md:text-xs transition-colors">Nro Póliza</span>
+                  <span className="font-bold text-gray-800 dark:text-gray-200 text-xs md:text-sm transition-colors">#{poliza.nroPoliza}</span>
                 </div>
-                <div className="bg-gray-50/50 p-3 rounded-xl border border-gray-100/70">
-                  <span className="block text-gray-400 font-medium mb-0.5 text-[10px] md:text-xs">Patente</span>
-                  <span className="font-mono font-bold text-gray-900 uppercase bg-white px-1.5 py-0.5 rounded border border-gray-200 shadow-xs text-xs md:text-sm">{poliza.patente || "N/A"}</span>
+                <div className="bg-gray-50/50 dark:bg-gray-900/40 p-3 rounded-xl border border-gray-100/70 dark:border-gray-700/70 transition-colors">
+                  <span className="block text-gray-400 dark:text-gray-500 font-medium mb-0.5 text-[10px] md:text-xs transition-colors">Patente</span>
+                  <span className="font-mono font-bold text-gray-900 dark:text-white uppercase bg-white dark:bg-gray-800 px-1.5 py-0.5 rounded border border-gray-200 dark:border-gray-600 shadow-xs text-xs md:text-sm transition-colors">{poliza.patente || "N/A"}</span>
                 </div>
               </div>
 
               {(poliza.marca || poliza.modelo || poliza.cobertura) && (
-                <div className="bg-gray-50/30 p-3 md:p-4 rounded-xl border border-gray-100 flex flex-col gap-2 text-[10px] md:text-xs font-medium text-gray-600">
-                  {poliza.marca && <p><span className="text-gray-400">Vehículo:</span> {poliza.marca} {poliza.modelo}</p>}
-                  {poliza.cobertura && <p><span className="text-gray-400">Cobertura:</span> {poliza.cobertura}</p>}
+                <div className="bg-gray-50/30 dark:bg-gray-900/30 p-3 md:p-4 rounded-xl border border-gray-100 dark:border-gray-700 flex flex-col gap-2 text-[10px] md:text-xs font-medium text-gray-600 dark:text-gray-400 transition-colors">
+                  {poliza.marca && <p><span className="text-gray-400 dark:text-gray-500">Vehículo:</span> {poliza.marca} {poliza.modelo}</p>}
+                  {poliza.cobertura && <p><span className="text-gray-400 dark:text-gray-500">Cobertura:</span> {poliza.cobertura}</p>}
                 </div>
               )}
             </div>
           </div>
 
-          <div className="p-5 md:p-6 border border-gray-100 rounded-3xl bg-white shadow-sm flex flex-col gap-4">
-            <h3 className="font-bold text-gray-400 uppercase text-[10px] md:text-xs tracking-widest border-b border-gray-50 pb-2">Asegurado Titular</h3>
+          <div className="p-5 md:p-6 border border-gray-100 dark:border-gray-700 rounded-3xl bg-white dark:bg-gray-800 shadow-sm flex flex-col gap-4 transition-colors">
+            <h3 className="font-bold text-gray-400 dark:text-gray-500 uppercase text-[10px] md:text-xs tracking-widest border-b border-gray-50 dark:border-gray-700 pb-2 transition-colors">Asegurado Titular</h3>
             <div className="flex flex-col gap-3">
               <div className="min-w-0">
-                <p className="text-base md:text-lg font-black text-gray-900 flex items-center gap-1.5 break-words">
-                  <User size={16} className="text-gray-400 shrink-0" /> {asegurado.nombre} {asegurado.apellido}
+                <p className="text-base md:text-lg font-black text-gray-900 dark:text-white flex items-center gap-1.5 break-words transition-colors">
+                  <User size={16} className="text-gray-400 dark:text-gray-500 shrink-0 transition-colors" /> {asegurado.nombre} {asegurado.apellido}
                 </p>
-                <p className="text-[10px] md:text-xs text-gray-400 font-mono mt-0.5 ml-5">CUIT/DNI: {asegurado.dni}</p>
+                <p className="text-[10px] md:text-xs text-gray-400 dark:text-gray-500 font-mono mt-0.5 ml-5 transition-colors">CUIT/DNI: {asegurado.dni}</p>
               </div>
-              <div className="flex flex-col gap-1.5 text-xs md:text-sm font-medium text-gray-600 border-t border-gray-50 pt-2 ml-5">
-                {asegurado.telefono && <p><span className="text-gray-400">Tel:</span> {asegurado.telefono}</p>}
-                {asegurado.email && <p className="break-all"><span className="text-gray-400">Email:</span> {asegurado.email}</p>}
+              <div className="flex flex-col gap-1.5 text-xs md:text-sm font-medium text-gray-600 dark:text-gray-400 border-t border-gray-50 dark:border-gray-700 pt-2 ml-5 transition-colors">
+                {asegurado.telefono && <p><span className="text-gray-400 dark:text-gray-500">Tel:</span> {asegurado.telefono}</p>}
+                {asegurado.email && <p className="break-all"><span className="text-gray-400 dark:text-gray-500">Email:</span> {asegurado.email}</p>}
               </div>
             </div>
           </div>
 
-          <div className="p-5 md:p-6 border border-gray-100 rounded-3xl bg-white shadow-sm flex flex-col gap-4">
-            <h3 className="font-bold text-gray-400 uppercase text-[10px] md:text-xs tracking-widest border-b border-gray-50 pb-2">Compañía Emisora</h3>
+          <div className="p-5 md:p-6 border border-gray-100 dark:border-gray-700 rounded-3xl bg-white dark:bg-gray-800 shadow-sm flex flex-col gap-4 transition-colors">
+            <h3 className="font-bold text-gray-400 dark:text-gray-500 uppercase text-[10px] md:text-xs tracking-widest border-b border-gray-50 dark:border-gray-700 pb-2 transition-colors">Compañía Emisora</h3>
             <div className="flex items-center gap-3 md:gap-4">
-              <div className="p-2.5 bg-gray-50 text-gray-500 rounded-xl border border-gray-100 shrink-0">
+              <div className="p-2.5 bg-gray-50 dark:bg-gray-900/50 text-gray-500 dark:text-gray-400 rounded-xl border border-gray-100 dark:border-gray-700 shrink-0 transition-colors">
                 <Building size={18} />
               </div>
               <div className="min-w-0">
-                <p className="text-sm md:text-base font-bold text-gray-900 break-words">{compania.nombre}</p>
-                <p className="text-[10px] md:text-xs font-mono text-gray-400 mt-0.5">CUIT: {compania.cuit || "-"}</p>
+                <p className="text-sm md:text-base font-bold text-gray-800 dark:text-gray-100 break-words transition-colors">{compania.nombre}</p>
+                <p className="text-[10px] md:text-xs font-mono text-gray-400 dark:text-gray-500 mt-0.5 transition-colors">CUIT: {compania.cuit || "-"}</p>
               </div>
             </div>
           </div>
 
-          {/* 🔥 CLASE LINK */}
-          <div className="p-5 md:p-6 border border-gray-100 rounded-3xl bg-gray-900 text-white shadow-lg flex flex-col gap-4 relative overflow-hidden tour-detalle-link">
+          <div className="p-5 md:p-6 border border-gray-100 dark:border-gray-700 rounded-3xl bg-gray-900 dark:bg-gray-800 text-white shadow-lg flex flex-col gap-4 relative overflow-hidden tour-detalle-link transition-colors">
             <div className="absolute top-0 right-0 p-4 opacity-10 pointer-events-none">
               <ShieldCheck size={80} />
             </div>
             
-            <h3 className="font-bold text-gray-400 uppercase text-[10px] md:text-xs tracking-widest border-b border-gray-700 pb-2">Acceso Cliente</h3>
+            <h3 className="font-bold text-gray-400 dark:text-gray-400 uppercase text-[10px] md:text-xs tracking-widest border-b border-gray-700 dark:border-gray-600 pb-2 transition-colors">Acceso Cliente</h3>
             
-            <p className="text-[10px] md:text-xs text-gray-300 font-medium leading-relaxed">
+            <p className="text-[10px] md:text-xs text-gray-300 dark:text-gray-400 font-medium leading-relaxed transition-colors">
               Generá un link público y seguro para que el cliente siga el estado de su siniestro sin necesidad de usuario y contraseña.
             </p>
 
@@ -365,7 +366,7 @@ export default function SiniestroDetallePage() {
               <button 
                 onClick={handleGenerarLink}
                 disabled={isGenerandoLink || !puedeModificar} 
-                className="mt-2 w-full bg-white text-gray-900 hover:bg-gray-100 px-4 py-2.5 rounded-xl font-bold text-xs md:text-sm transition-colors disabled:opacity-50 active:scale-95"
+                className="mt-2 w-full bg-white dark:bg-gray-700 text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-600 px-4 py-2.5 rounded-xl font-bold text-xs md:text-sm transition-colors disabled:opacity-50 active:scale-95"
               >
                 {isGenerandoLink ? "Generando..." : "Crear Link de Seguimiento"}
               </button>
@@ -375,7 +376,7 @@ export default function SiniestroDetallePage() {
                   type="text" 
                   readOnly 
                   value={linkGenerado} 
-                  className="w-full bg-gray-800 border border-gray-700 text-gray-300 text-[10px] md:text-xs p-3 rounded-xl outline-none truncate font-mono"
+                  className="w-full bg-gray-800 dark:bg-gray-900 border border-gray-700 dark:border-gray-600 text-gray-300 text-[10px] md:text-xs p-3 rounded-xl outline-none truncate font-mono transition-colors"
                 />
                 <div className="flex gap-2">
                   <button 
@@ -395,13 +396,13 @@ export default function SiniestroDetallePage() {
             )}
           </div>
 
-          <div className="p-4 bg-gray-50/50 rounded-2xl border border-gray-100 flex flex-col gap-1.5 text-[10px] md:text-xs text-gray-400 font-bold uppercase tracking-wider">
+          <div className="p-4 bg-gray-50/50 dark:bg-gray-900/40 rounded-2xl border border-gray-100 dark:border-gray-700 flex flex-col gap-1.5 text-[10px] md:text-xs text-gray-400 dark:text-gray-500 font-bold uppercase tracking-wider transition-colors">
             <div className="flex justify-between">
               <span>Fecha de Reporte:</span>
-              <span className="text-gray-600">{new Date(siniestro.fechaCreacion).toLocaleDateString("es-AR")}</span>
+              <span className="text-gray-600 dark:text-gray-300 transition-colors">{new Date(siniestro.fechaCreacion).toLocaleDateString("es-AR")}</span>
             </div>
             {siniestro.fechaCierre && (
-              <div className="flex justify-between text-emerald-600">
+              <div className="flex justify-between text-emerald-600 dark:text-emerald-500 transition-colors">
                 <span>Fecha de Resolución:</span>
                 <span>{new Date(siniestro.fechaCierre).toLocaleDateString("es-AR")}</span>
               </div>
