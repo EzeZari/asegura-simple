@@ -20,7 +20,6 @@ import { apiFetch } from "@/services/api";
 import { useAuthStore } from "@/store/authStore"; 
 import { PERMISOS, tienePermiso } from "@/utils/roles";
 
-// 🔥 IMPORTAMOS EL TOUR CONTEXTUAL
 import TutorialTourAsegurados from "@/components/ui/tours/TutorialTourAsegurados";
 
 const ExportarExcelModal = dynamic(() => import("@/components/ui/ExportarExcelModal"), { ssr: false });
@@ -196,12 +195,11 @@ export default function AseguradosPage() {
     : columnasBase;
 
   return (
-    <div className="flex flex-col p-4 lg:p-8 w-full gap-5 lg:gap-8 bg-white min-h-screen overflow-x-hidden">
+    // 🔥 Sacamos el bg-white para que reaccione al dark mode del dashboard
+    <div className="flex flex-col p-4 lg:p-8 w-full gap-5 lg:gap-8 min-h-screen overflow-x-hidden transition-colors duration-300">
       
-      {/* 🔥 MONTAJE DEL TOUR CONTEXTUAL */}
       <TutorialTourAsegurados />
 
-      {/* 🔥 ETIQUETA HEADER */}
       <div className="tour-asegurados-header">
         <PageHeader 
           titulo="Asegurados" 
@@ -211,7 +209,6 @@ export default function AseguradosPage() {
         />
       </div>
 
-      {/* 🔥 ETIQUETA FILTROS */}
       <div className="tour-asegurados-filtros">
         <AseguradosFiltros 
           searchTerm={searchTerm} setSearchTerm={setSearchTerm}
@@ -220,7 +217,6 @@ export default function AseguradosPage() {
         />
       </div>
 
-      {/* 🔥 ETIQUETA HERRAMIENTAS */}
       <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 w-full -mb-2 lg:-mb-4 tour-asegurados-herramientas">
         <div className="w-full xl:w-auto">
           <SelectOrdenamiento opciones={OPCIONES_ORDEN} valorActual={ordenActual} onChange={setOrdenActual} />
@@ -228,20 +224,21 @@ export default function AseguradosPage() {
         
         <div className="flex flex-col sm:flex-row items-center gap-3 w-full xl:w-auto">
           {puedeModificar && (
-            <button onClick={() => setIsImportModalOpen(true)} className="flex justify-center items-center gap-2 w-full sm:w-auto px-4 py-2.5 lg:py-2 bg-gray-50 hover:bg-gray-100 border border-gray-200 text-gray-700 rounded-xl text-sm font-bold transition-all active:scale-95 shadow-sm">
+            // 🔥 Botón oscuro
+            <button onClick={() => setIsImportModalOpen(true)} className="flex justify-center items-center gap-2 w-full sm:w-auto px-4 py-2.5 lg:py-2 bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 rounded-xl text-sm font-bold transition-all active:scale-95 shadow-sm">
               <UploadCloud size={16} /> Importar Excel
             </button>
           )}
           
-          <button onClick={() => { if(aseguradosOrdenados.length === 0) return alert("No hay datos para exportar."); setIsExportModalOpen(true); }} className="flex justify-center items-center gap-2 w-full sm:w-auto px-4 py-2.5 lg:py-2 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-700 rounded-xl text-sm font-bold transition-all active:scale-95 shadow-sm">
+          <button onClick={() => { if(aseguradosOrdenados.length === 0) return alert("No hay datos para exportar."); setIsExportModalOpen(true); }} className="flex justify-center items-center gap-2 w-full sm:w-auto px-4 py-2.5 lg:py-2 bg-emerald-50 dark:bg-emerald-900/30 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 border border-emerald-200 dark:border-emerald-800/30 text-emerald-700 dark:text-emerald-400 rounded-xl text-sm font-bold transition-all active:scale-95 shadow-sm">
             <Download size={16} /> Exportar a Excel
           </button>
         </div>
       </div>
 
-      {/* 🔥 ETIQUETA TABLA */}
       <div className="tour-asegurados-tabla">
-        <Table columns={columnas} isLoading={isLoading} isEmpty={aseguradosOrdenados.length === 0} emptyContent={<div className="flex flex-col items-center justify-center text-gray-500 py-6"><Search size={32} className="text-gray-300 mb-3" /><p className="font-medium text-gray-900">No se encontraron clientes</p></div>}>
+        {/* 🔥 Adaptamos los textos del estado empty a modo oscuro */}
+        <Table columns={columnas} isLoading={isLoading} isEmpty={aseguradosOrdenados.length === 0} emptyContent={<div className="flex flex-col items-center justify-center text-gray-500 dark:text-gray-400 py-6 transition-colors"><Search size={32} className="text-gray-300 dark:text-gray-600 mb-3" /><p className="font-medium text-gray-900 dark:text-white transition-colors">No se encontraron clientes</p></div>}>
           {aseguradosOrdenados.map((cliente) => (
             <AseguradoTableRow 
               key={cliente.id}

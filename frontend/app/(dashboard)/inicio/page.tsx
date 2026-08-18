@@ -17,7 +17,6 @@ export default function DashboardPage() {
   useEffect(() => {
     setMounted(true);
     
-    // apiFetch automáticamente le pasa tu token al backend para que sepa de qué usuario buscar los datos
     apiFetch('/api/dashboard/stats')
       .then((res) => {
         if (!res.ok) throw new Error("Fallo en la petición");
@@ -47,32 +46,31 @@ export default function DashboardPage() {
   })) || [];
 
   return (
-    <div className="flex-1 flex flex-col p-4 lg:p-8 w-full gap-5 lg:gap-8 bg-white min-h-screen">
+    // 🔥 Quitamos bg-white para que el fondo gris oscuro del layout se aplique solo
+    <div className="flex-1 flex flex-col p-4 lg:p-8 w-full gap-5 lg:gap-8 min-h-screen transition-colors duration-300">
       
-      {/* 🔥 ACÁ SE MONTA EL TUTORIAL INVISIBLE (se activa solo si es la 1ra vez) */}
       <TutorialTour />
 
       <div className="pb-2 lg:pb-4">
-        <h1 className="text-2xl lg:text-3xl font-bold text-gray-900 tracking-tight">
+        {/* 🔥 Adaptamos textos al modo oscuro */}
+        <h1 className="text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white tracking-tight transition-colors">
           Bienvenido de nuevo, {mounted ? user?.nombre : "Productor"}
         </h1>
-        <p className="text-sm lg:text-base text-gray-500 mt-1">
+        <p className="text-sm lg:text-base text-gray-500 dark:text-gray-400 mt-1 transition-colors">
           Acá tenés el resumen en tiempo real de tu cartera de negocios.
         </p>
       </div>
 
-      {/* 🔥 CLASE tour-estadisticas APLICADA AL CONTENEDOR */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-6 tour-estadisticas">
         {statsReales.map((stat, index) => (
           <StatCard key={index} {...stat} trend={stat.trend as any} />
         ))}
       </div>
 
-      {/* 🔥 CLASE tour-alertas APLICADA AL CONTENEDOR */}
       <div className="mt-2 lg:mt-4 pb-10 tour-actividad">
         <RecentActivity data={isLoading ? [] : actividadSegura} />
         {isLoading && (
-          <div className="text-center text-gray-400 mt-4 animate-pulse text-sm">
+          <div className="text-center text-gray-400 dark:text-gray-500 mt-4 animate-pulse text-sm transition-colors">
             Cargando actividad reciente...
           </div>
         )}
