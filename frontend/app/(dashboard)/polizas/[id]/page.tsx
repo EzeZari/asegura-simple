@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { 
   ArrowLeft, FileText, User, Building, 
-  Shield, Mail, Phone, Edit, UploadCloud, Loader2
+  Shield, Mail, Phone, Edit, UploadCloud, Loader2, MessageCircle, CheckCircle2
 } from "lucide-react";
 import NuevaPolizaModal from "@/components/polizas/NuevaPolizaModal";
 import Toast from "@/components/ui/Toast";
@@ -27,6 +27,9 @@ export default function PolizaDetallePage() {
   
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // 🔥 Estados para el botón de email
+  const [estadoEmail, setEstadoEmail] = useState<"idle" | "loading" | "success" | "error">("idle");
 
   const fetchPoliza = async () => {
     try {
@@ -88,6 +91,50 @@ export default function PolizaDetallePage() {
     }
   };
 
+  // 🔥 LÓGICA DE COMUNICACIÓN (Traída de AlertaCard)
+  const generarLinkWhatsApp = () => {
+    if (!poliza?.asegurado?.telefono) return "#";
+    const numeroLimpio = poliza.asegurado.telefono.replace(/\D/g, '');
+    
+    // Adaptamos el mensaje para que sea general (no necesariamente está vencida o por vencer)
+    const fechaFormat = new Date(poliza.fechaVencimiento).toLocaleDateString("es-AR");
+    const mensaje = `Hola ${poliza.asegurado.nombre}, te escribo por tu póliza de ${poliza.compania?.nombre || "seguro"} (vto: ${fechaFormat}). Avisame cualquier consulta.`;
+    
+    return `https://wa.me/${numeroLimpio}?text=${encodeURIComponent(mensaje)}`;
+  };
+
+  const yaAvisadoHoy = () => {
+    if (!poliza?.ultimoAviso) return false;
+    const hoy = new Date().toLocaleDateString("es-AR");
+    const ultimoAviso = new Date(poliza.ultimoAviso).toLocaleDateString("es-AR");
+    return hoy === ultimoAviso;
+  };
+
+  const enviarAvisoEmail = async () => {
+    if (!poliza?.asegurado?.email || yaAvisadoHoy()) return;
+    
+    setEstadoEmail("loading");
+    try {
+      const res = await apiFetch(`/api/polizas/${poliza.id}/aviso`, { 
+        method: "POST" 
+      });
+      
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Error al enviar");
+      
+      setEstadoEmail("success");
+      
+      // Actualizamos el estado local para reflejar que ya se avisó hoy
+      setPoliza(prev => ({ ...prev, ultimoAviso: new Date().toISOString() }));
+      
+      setTimeout(() => setEstadoEmail("idle"), 3000);
+    } catch (error: any) {
+      console.error(error.message);
+      setEstadoEmail("error");
+      setTimeout(() => setEstadoEmail("idle"), 3000);
+    }
+  };
+
   if (isLoading) return <div className="p-8 text-gray-500 dark:text-gray-400 animate-pulse transition-colors">Cargando ficha técnica...</div>;
   if (!poliza) return <div className="p-8 text-red-500 dark:text-red-400 font-bold transition-colors">Error: Póliza no encontrada o no autorizada.</div>;
 
@@ -102,7 +149,6 @@ export default function PolizaDetallePage() {
   };
 
   return (
-    // 🔥 Sacamos el bg-white para que reaccione al dark mode del layout
     <div className="flex flex-col p-4 md:p-8 w-full gap-6 md:gap-8 min-h-screen overflow-x-hidden transition-colors duration-300">
       
       {/* Header Principal */}
@@ -133,15 +179,50 @@ export default function PolizaDetallePage() {
             </div>
           </div>
           
-          {puedeModificar && (
-            <button 
-              onClick={() => setIsModalOpen(true)}
-              // 🔥 Invertimos los colores en modo oscuro
-              className="w-full md:w-auto flex justify-center items-center gap-2 bg-gray-900 dark:bg-gray-100 hover:bg-gray-800 dark:hover:bg-white text-white dark:text-gray-900 px-6 py-3 rounded-xl font-bold transition-all shadow-md active:scale-95 text-sm md:text-base"
+          {/* 🔥 Agregamos la botonera de acciones (Mail, Wsp y Editar) */}
+          <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
+            
+            {/* Botón WhatsApp */}
+            <a 
+              href={generarLinkWhatsApp()} 
+              target="_blank" rel="noopener noreferrer"
+              className={`flex-1 md:flex-none flex justify-center items-center gap-2 bg-green-50 dark:bg-green-900/30 hover:bg-green-100 dark:hover:bg-green-900/50 text-green-700 dark:text-green-400 px-4 py-3 md:py-2.5 rounded-xl font-bold transition-colors text-sm border border-transparent shadow-sm ${!poliza.asegurado?.telefono ? 'opacity-50 pointer-events-none' : ''}`}
+              title={poliza.asegurado?.telefono ? "Avisar por WhatsApp" : "Cliente sin teléfono"}
             >
-              <Edit size={18} /> Editar Póliza
+              <MessageCircle size={18} /> <span className="hidden sm:inline">WhatsApp</span>
+            </a>
+
+            {/* Botón Mail */}
+            <button 
+              onClick={enviarAvisoEmail}
+              disabled={estadoEmail !== "idle" || !poliza.asegurado?.email || yaAvisadoHoy()}
+              className={`flex-1 md:flex-none flex justify-center items-center gap-2 px-4 py-3 md:py-2.5 rounded-xl text-sm font-bold transition-colors shadow-sm ${
+                yaAvisadoHoy() ? "bg-gray-100 dark:bg-gray-700 text-gray-400 dark:text-gray-500 cursor-not-allowed border border-gray-200 dark:border-gray-600" :
+                estadoEmail === "success" ? "bg-emerald-500 dark:bg-emerald-600 text-white" :
+                estadoEmail === "error" ? "bg-red-500 dark:bg-red-600 text-white" :
+                !poliza.asegurado?.email ? "bg-gray-50 dark:bg-gray-800 text-gray-400 dark:text-gray-600 cursor-not-allowed border border-transparent" :
+                "bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-900/50 text-blue-700 dark:text-blue-400 border border-transparent"
+              }`}
+              title={yaAvisadoHoy() ? "Ya se envió un recordatorio hoy" : !poliza.asegurado?.email ? "Cliente sin email" : "Enviar correo formal"}
+            >
+              {estadoEmail === "loading" ? <Loader2 size={18} className="animate-spin" /> :
+               estadoEmail === "success" ? <CheckCircle2 size={18} /> :
+               <Mail size={18} />}
+               <span className="hidden sm:inline">
+                 {yaAvisadoHoy() ? "Avisado" : estadoEmail === "success" ? "Enviado" : "Enviar Mail"}
+               </span>
             </button>
-          )}
+
+            {/* Botón Editar Póliza original */}
+            {puedeModificar && (
+              <button 
+                onClick={() => setIsModalOpen(true)}
+                className="w-full sm:w-auto flex justify-center items-center gap-2 bg-gray-900 dark:bg-gray-100 hover:bg-gray-800 dark:hover:bg-white text-white dark:text-gray-900 px-5 py-3 md:py-2.5 rounded-xl font-bold transition-all shadow-md active:scale-95 text-sm"
+              >
+                <Edit size={18} /> Editar Póliza
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
