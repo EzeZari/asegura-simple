@@ -11,38 +11,37 @@ import EquipoSettings from "@/components/configuracion/EquipoSettings";
 import SeguridadSettings from "@/components/configuracion/SeguridadSettings";
 import SuscripcionSettings from "@/components/configuracion/SuscripcionSettings"; 
 import { useAuthStore } from "@/store/authStore"; 
-import { PERMISOS, tienePermiso } from "@/utils/roles"; // 🔥 IMPORTAMOS EL DICCIONARIO
+import { PERMISOS, tienePermiso } from "@/utils/roles"; 
 
 export default function ConfiguracionPage() {
   const { user } = useAuthStore();
   
-  // 🔥 EVALUAMOS PERMISOS (Solo Dueño o Productor pueden ver opciones sensibles)
   const esAdmin = tienePermiso(user, PERMISOS.PUEDE_MODIFICAR_DATOS);
-  const esDueno = tienePermiso(user, PERMISOS.PUEDE_EDITAR_PLAN); // El plan y el equipo son cosas exclusivas
+  const esDueno = tienePermiso(user, PERMISOS.PUEDE_EDITAR_PLAN); 
 
   const [activeTab, setActiveTab] = useState("mi-perfil"); 
 
-  // 🔥 Filtramos las pestañas basándonos en roles y permisos
   const todasLasPestanas = [
-    { id: "mi-perfil", label: "Mi Perfil", icon: UserCircle, show: true }, // Todos
+    { id: "mi-perfil", label: "Mi Perfil", icon: UserCircle, show: true }, 
     { id: "perfil", label: "Perfil de Agencia", icon: Building2, show: esAdmin }, 
     { id: "plantillas", label: "Plantillas", icon: MessageSquare, show: esAdmin },
     { id: "notificaciones", label: "Notificaciones", icon: Bell, show: esAdmin },
-    { id: "equipo", label: "Equipo", icon: Users, show: esDueno }, // Solo dueño administra a la gente
-    { id: "suscripcion", label: "Suscripción", icon: CreditCard, show: esDueno }, // Solo dueño paga
-    { id: "seguridad", label: "Seguridad y Datos", icon: Shield, show: true }, // Todos pueden cambiar su contraseña
+    { id: "equipo", label: "Equipo", icon: Users, show: esDueno }, 
+    { id: "suscripcion", label: "Suscripción", icon: CreditCard, show: esDueno }, 
+    { id: "seguridad", label: "Seguridad y Datos", icon: Shield, show: true }, 
   ];
 
   const tabs = todasLasPestanas.filter(tab => tab.show);
 
   return (
-    <div className="flex flex-col p-4 lg:p-8 w-full gap-4 lg:gap-6 bg-white min-h-screen overflow-x-hidden">
+    // 🔥 Quitamos bg-white para que herede del layout
+    <div className="flex flex-col p-4 lg:p-8 w-full gap-4 lg:gap-6 min-h-screen overflow-x-hidden transition-colors duration-300">
       <div>
-        <h1 className="text-2xl md:text-3xl font-bold text-gray-900 tracking-tight">Configuración</h1>
-        <p className="text-sm md:text-base text-gray-500 mt-1">Administrá los ajustes de tu plataforma y automatizaciones.</p>
+        <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white tracking-tight transition-colors">Configuración</h1>
+        <p className="text-sm md:text-base text-gray-500 dark:text-gray-400 mt-1 transition-colors">Administrá los ajustes de tu plataforma y automatizaciones.</p>
       </div>
 
-      <div className="flex border-b border-gray-200 mt-2 overflow-x-auto overflow-y-hidden [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+      <div className="flex border-b border-gray-200 dark:border-gray-700 mt-2 overflow-x-auto overflow-y-hidden [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] transition-colors">
         {tabs.map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
@@ -50,8 +49,11 @@ export default function ConfiguracionPage() {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
+              // 🔥 Colores de pestañas adaptados al modo oscuro
               className={`flex items-center gap-2 py-3 px-4 md:px-6 font-medium text-sm transition-colors border-b-2 mb-[-1px] whitespace-nowrap ${
-                isActive ? "border-green-600 text-green-700" : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                isActive 
+                  ? "border-green-600 dark:border-green-500 text-green-700 dark:text-green-400" 
+                  : "border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:border-gray-300 dark:hover:border-gray-600"
               }`}
             >
               <Icon size={16} /> {tab.label}

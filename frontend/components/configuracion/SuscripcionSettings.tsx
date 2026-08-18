@@ -16,7 +16,6 @@ export default function SuscripcionSettings() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
   
-  // Estado para guardar los pagos
   const [pagos, setPagos] = useState<any[]>([]);
 
   const [showConfirm, setShowConfirm] = useState(false);
@@ -25,14 +24,12 @@ export default function SuscripcionSettings() {
   const fetchLatestData = async () => {
     setIsRefreshing(true);
     try {
-        // 1. Refrescar datos del usuario
         const resUser = await apiFetch(`/api/auth/refresh`, { method: "POST" });
         if (resUser.ok) {
             const data = await resUser.json();
             useAuthStore.getState().setUser(data.user); 
         }
 
-        // 🔥 2. AGREGADO: Hacer fetch al backend para traer el historial de pagos
         const resPagos = await apiFetch(`/api/pagos/historial`);
         if (resPagos.ok) {
             const dataPagos = await resPagos.json();
@@ -96,14 +93,16 @@ export default function SuscripcionSettings() {
       
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-xl font-bold text-gray-900">Mi Suscripción</h2>
-          <p className="text-sm text-gray-500 mt-1">Gestioná tu plan actual y tus métodos de pago.</p>
+          {/* 🔥 Textos adaptados */}
+          <h2 className="text-xl font-bold text-gray-900 dark:text-white transition-colors">Mi Suscripción</h2>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 transition-colors">Gestioná tu plan actual y tus métodos de pago.</p>
         </div>
         
         <button 
           onClick={fetchLatestData} 
           disabled={isRefreshing || isCancelling}
-          className="px-3 py-2 bg-white text-gray-600 hover:bg-gray-50 rounded-xl transition-colors flex items-center justify-center gap-2 text-sm font-semibold border border-gray-200 shadow-sm disabled:opacity-50"
+          // 🔥 Botón de refresco oscurecido
+          className="px-3 py-2 bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-xl transition-colors flex items-center justify-center gap-2 text-sm font-semibold border border-gray-200 dark:border-gray-700 shadow-sm disabled:opacity-50"
         >
           <RefreshCw size={16} className={isRefreshing ? "animate-spin text-green-600" : ""} />
           {isRefreshing ? "Sincronizando..." : "Sincronizar estado"}
@@ -112,41 +111,40 @@ export default function SuscripcionSettings() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Tarjeta de Plan Actual */}
-        <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm flex flex-col justify-between">
+        <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl p-6 shadow-sm flex flex-col justify-between transition-colors">
           <div>
             <div className="flex items-center justify-between mb-4">
-              <div className="p-2.5 bg-green-50 text-green-700 rounded-xl">
+              <div className="p-2.5 bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-500 rounded-xl transition-colors">
                 <Zap size={24} />
               </div>
-              {/* 🔥 CORREGIDO: Ahora el gratis dice "Prueba", no "Básico" */}
+              
               {esGratis ? (
-                <span className="px-3 py-1 bg-blue-100 text-blue-700 text-xs font-bold rounded-full">
+                <span className="px-3 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 text-xs font-bold rounded-full transition-colors">
                   Prueba 14 Días
                 </span>
               ) : estaActivo ? (
-                <span className="px-3 py-1 bg-green-100 text-green-700 text-xs font-bold rounded-full flex items-center gap-1">
+                <span className="px-3 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-xs font-bold rounded-full flex items-center gap-1 transition-colors">
                   <CheckCircle2 size={14} /> Al día
                 </span>
               ) : estaCancelado ? (
-                <span className="px-3 py-1 bg-red-100 text-red-700 text-xs font-bold rounded-full">
+                <span className="px-3 py-1 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 text-xs font-bold rounded-full transition-colors">
                   Cancelada
                 </span>
               ) : (
-                <span className="px-3 py-1 bg-amber-100 text-amber-700 text-xs font-bold rounded-full flex items-center gap-1">
+                <span className="px-3 py-1 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 text-xs font-bold rounded-full flex items-center gap-1 transition-colors">
                   <AlertTriangle size={14} /> Pago pendiente
                 </span>
               )}
             </div>
             
-            <h3 className="text-gray-500 text-sm font-medium mb-1">Plan Actual</h3>
-            <p className="text-2xl font-black text-gray-900 capitalize">{plan.toLowerCase()}</p>
+            <h3 className="text-gray-500 dark:text-gray-400 text-sm font-medium mb-1 transition-colors">Plan Actual</h3>
+            <p className="text-2xl font-black text-gray-900 dark:text-white capitalize transition-colors">{plan.toLowerCase()}</p>
             
-            {/* 🔥 CORREGIDO: Ahora muestra la fecha de fin de prueba a los gratuitos */}
             {fechaVencimiento && (
-              <div className="flex items-center gap-2 mt-4 text-sm text-gray-600 bg-gray-50 p-3 rounded-lg border border-gray-100">
-                <Calendar size={16} className="text-gray-400" />
+              <div className="flex items-center gap-2 mt-4 text-sm text-gray-600 dark:text-gray-300 bg-gray-50 dark:bg-gray-900/50 p-3 rounded-lg border border-gray-100 dark:border-gray-700/50 transition-colors">
+                <Calendar size={16} className="text-gray-400 dark:text-gray-500" />
                 <span>
-                  {esGratis ? "Fin de la prueba:" : estaCancelado ? "Tu acceso termina el:" : "Próximo cobro:"} <strong className="text-gray-900">{fechaVencimiento}</strong>
+                  {esGratis ? "Fin de la prueba:" : estaCancelado ? "Tu acceso termina el:" : "Próximo cobro:"} <strong className="text-gray-900 dark:text-white">{fechaVencimiento}</strong>
                 </span>
               </div>
             )}
@@ -155,7 +153,8 @@ export default function SuscripcionSettings() {
           <div className="mt-8 flex gap-3">
             <Link 
               href={`/planes?email=${user.email}`}
-              className="flex-1 bg-gray-900 hover:bg-gray-800 text-white text-center text-sm font-bold py-2.5 rounded-xl transition-colors"
+              // 🔥 Botón de acción invertido en oscuro
+              className="flex-1 bg-gray-900 dark:bg-gray-100 hover:bg-gray-800 dark:hover:bg-white text-white dark:text-gray-900 text-center text-sm font-bold py-2.5 rounded-xl transition-colors"
             >
               {esGratis ? "Elegir un Plan Pago" : estaCancelado ? "Reactivar Plan" : "Cambiar Plan"}
             </Link>
@@ -163,24 +162,24 @@ export default function SuscripcionSettings() {
         </div>
 
         {/* Tarjeta de Gestión de Pago */}
-        <div className="bg-gray-50 border border-gray-200 rounded-2xl p-6 shadow-sm flex flex-col justify-between">
+        <div className="bg-gray-50 dark:bg-gray-900/30 border border-gray-200 dark:border-gray-700 rounded-2xl p-6 shadow-sm flex flex-col justify-between transition-colors">
           <div>
             <div className="flex items-center gap-3 mb-4">
-              <CreditCard className="text-gray-400" size={24} />
-              <h3 className="font-bold text-gray-900">Método de Pago</h3>
+              <CreditCard className="text-gray-400 dark:text-gray-500" size={24} />
+              <h3 className="font-bold text-gray-900 dark:text-white transition-colors">Método de Pago</h3>
             </div>
             
-            <p className="text-sm text-gray-500 leading-relaxed mb-4">
+            <p className="text-sm text-gray-500 dark:text-gray-400 leading-relaxed mb-4 transition-colors">
               Tus pagos se procesan de forma segura a través de <strong>Mercado Pago</strong>. Las renovaciones se realizan automáticamente de forma mensual.
             </p>
           </div>
 
-          <div className="flex flex-col items-center gap-3 border-t border-gray-200 pt-5 mt-auto">
+          <div className="flex flex-col items-center gap-3 border-t border-gray-200 dark:border-gray-700 pt-5 mt-auto transition-colors">
             <a 
               href="https://www.mercadopago.com.ar/subscriptions" 
               target="_blank" 
               rel="noopener noreferrer"
-              className="flex items-center justify-center gap-2 w-full bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 text-sm font-semibold py-2.5 rounded-xl transition-colors shadow-sm"
+              className="flex items-center justify-center gap-2 w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 text-sm font-semibold py-2.5 rounded-xl transition-colors shadow-sm"
             >
               Gestionar en Mercado Pago <ExternalLink size={14} />
             </a>
@@ -189,7 +188,7 @@ export default function SuscripcionSettings() {
               <button 
                 onClick={() => setShowConfirm(true)}
                 disabled={estaCancelado || isCancelling}
-                className="text-gray-400 hover:text-red-600 text-xs font-medium underline transition-colors disabled:opacity-50 disabled:no-underline mt-2"
+                className="text-gray-400 dark:text-gray-500 hover:text-red-600 dark:hover:text-red-400 text-xs font-medium underline transition-colors disabled:opacity-50 disabled:no-underline mt-2"
               >
                 {estaCancelado ? "Suscripción cancelada" : "Cancelar suscripción"}
               </button>
@@ -199,25 +198,25 @@ export default function SuscripcionSettings() {
       </div>
 
       {/* Historial de Pagos */}
-      <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm mt-8">
-        <div className="flex items-center gap-3 mb-6 border-b border-gray-100 pb-4">
-          <div className="p-2 bg-blue-50 text-blue-600 rounded-lg">
+      <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl p-6 shadow-sm mt-8 transition-colors">
+        <div className="flex items-center gap-3 mb-6 border-b border-gray-100 dark:border-gray-700 pb-4 transition-colors">
+          <div className="p-2 bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-500 rounded-lg transition-colors">
             <FileText size={20} />
           </div>
           <div>
-            <h3 className="font-bold text-gray-900">Historial de Pagos</h3>
-            <p className="text-xs text-gray-500">Últimos cobros procesados por Mercado Pago</p>
+            <h3 className="font-bold text-gray-900 dark:text-white transition-colors">Historial de Pagos</h3>
+            <p className="text-xs text-gray-500 dark:text-gray-400 transition-colors">Últimos cobros procesados por Mercado Pago</p>
           </div>
         </div>
 
         {pagos.length === 0 ? (
-          <div className="text-center py-8 bg-gray-50/50 rounded-xl border border-dashed border-gray-200">
-            <p className="text-sm text-gray-500 font-medium">Aún no tenés pagos registrados en el sistema.</p>
+          <div className="text-center py-8 bg-gray-50/50 dark:bg-gray-900/30 rounded-xl border border-dashed border-gray-200 dark:border-gray-700 transition-colors">
+            <p className="text-sm text-gray-500 dark:text-gray-400 font-medium transition-colors">Aún no tenés pagos registrados en el sistema.</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm text-left">
-              <thead className="text-xs text-gray-400 uppercase bg-gray-50 rounded-lg">
+              <thead className="text-xs text-gray-400 dark:text-gray-500 uppercase bg-gray-50 dark:bg-gray-900/50 rounded-lg transition-colors">
                 <tr>
                   <th className="px-4 py-3 font-bold rounded-tl-lg">Fecha</th>
                   <th className="px-4 py-3 font-bold">Monto</th>
@@ -227,27 +226,27 @@ export default function SuscripcionSettings() {
               </thead>
               <tbody>
                 {pagos.map((pago: any) => (
-                  <tr key={pago.id} className="border-b border-gray-50 hover:bg-gray-50/50 transition-colors">
-                    <td className="px-4 py-4 font-medium text-gray-900">
+                  <tr key={pago.id} className="border-b border-gray-50 dark:border-gray-700 hover:bg-gray-50/50 dark:hover:bg-gray-700/50 transition-colors">
+                    <td className="px-4 py-4 font-medium text-gray-900 dark:text-gray-100 transition-colors">
                       {new Date(pago.fechaPago).toLocaleDateString("es-AR", { day: '2-digit', month: 'short', year: 'numeric' })}
                     </td>
-                    <td className="px-4 py-4 text-gray-600 font-medium">
-                      ${pago.monto.toLocaleString("es-AR")} <span className="text-[10px] text-gray-400">{pago.moneda}</span>
+                    <td className="px-4 py-4 text-gray-600 dark:text-gray-300 font-medium transition-colors">
+                      ${pago.monto.toLocaleString("es-AR")} <span className="text-[10px] text-gray-400 dark:text-gray-500">{pago.moneda}</span>
                     </td>
-                    <td className="px-4 py-4 text-gray-500 capitalize">
+                    <td className="px-4 py-4 text-gray-500 dark:text-gray-400 capitalize transition-colors">
                       {pago.metodoPago.replace("_", " ")}
                     </td>
                     <td className="px-4 py-4 text-right">
                       {pago.estado === "approved" ? (
-                        <span className="bg-green-100 text-green-700 py-1 px-3 rounded-md text-xs font-bold uppercase tracking-wider">
+                        <span className="bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 py-1 px-3 rounded-md text-xs font-bold uppercase tracking-wider transition-colors">
                           Aprobado
                         </span>
                       ) : pago.estado === "rejected" ? (
-                        <span className="bg-red-100 text-red-700 py-1 px-3 rounded-md text-xs font-bold uppercase tracking-wider">
+                        <span className="bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 py-1 px-3 rounded-md text-xs font-bold uppercase tracking-wider transition-colors">
                           Rechazado
                         </span>
                       ) : (
-                        <span className="bg-gray-100 text-gray-700 py-1 px-3 rounded-md text-xs font-bold uppercase tracking-wider">
+                        <span className="bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 py-1 px-3 rounded-md text-xs font-bold uppercase tracking-wider transition-colors">
                           {pago.estado}
                         </span>
                       )}

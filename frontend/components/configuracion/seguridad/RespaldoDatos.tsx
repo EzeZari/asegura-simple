@@ -4,23 +4,20 @@ import { useState } from "react";
 import { Database, Download } from "lucide-react";
 import Toast from "@/components/ui/Toast";
 import ExportarExcelModal from "@/components/ui/ExportarExcelModal";
-import { apiFetch } from "@/services/api"; // 🔥 IMPORTAMOS NUESTRO FETCH SEGURO
+import { apiFetch } from "@/services/api";
 
 export default function RespaldoDatos() {
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState("");
   const [isExporting, setIsExporting] = useState(false);
 
-  // Estados para controlar el modal de Excel
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [datosExportar, setDatosExportar] = useState<any[]>([]);
   const [nombreArchivo, setNombreArchivo] = useState("");
 
-  // Función blindada anti "Invalid Date"
   const formatearFecha = (fechaStr: any) => {
     if (!fechaStr) return "-";
     const fecha = new Date(fechaStr);
-    // Si la fecha es inválida matemáticamente, devolvemos guion
     if (isNaN(fecha.getTime())) return "-";
     return fecha.toLocaleDateString("es-AR");
   };
@@ -28,14 +25,11 @@ export default function RespaldoDatos() {
   const exportarDatos = async (tipo: 'asegurados' | 'polizas') => {
     setIsExporting(true);
     try {
-      // 🔥 USAMOS APIFETCH EN LUGAR DE FETCH PARA ENVIAR EL TOKEN DE SEGURIDAD
       const res = await apiFetch(`/api/${tipo}`);
-      
       const data = await res.json();
       
       if (!res.ok) throw new Error(data.error || "Error al obtener los datos");
 
-      // Protección anti-crash si no devuelve un array
       if (!Array.isArray(data) || data.length === 0) {
         alert(`No hay registros de ${tipo} para exportar.`);
         setIsExporting(false);
@@ -88,11 +82,11 @@ export default function RespaldoDatos() {
   };
 
   return (
-    <div className="bg-white p-4 md:p-6 rounded-2xl border border-gray-100 shadow-sm flex flex-col gap-4">
-      <h3 className="text-lg font-bold text-gray-900 border-b border-gray-50 pb-2 flex items-center gap-2">
-        <Database size={18} className="text-gray-400" /> Respaldo Total del Sistema
+    <div className="bg-white dark:bg-gray-800 p-4 md:p-6 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm flex flex-col gap-4 transition-colors">
+      <h3 className="text-lg font-bold text-gray-900 dark:text-white border-b border-gray-50 dark:border-gray-700 pb-2 flex items-center gap-2 transition-colors">
+        <Database size={18} className="text-gray-400 dark:text-gray-500" /> Respaldo Total del Sistema
       </h3>
-      <p className="text-sm text-gray-600 leading-relaxed max-w-3xl">
+      <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed max-w-3xl transition-colors">
         Descargá toda la información histórica de tu cartera en formato Excel (.CSV). Es recomendable hacer un respaldo mensual para tener control total sobre tus datos de forma offline.
       </p>
       
@@ -100,14 +94,14 @@ export default function RespaldoDatos() {
         <button 
           onClick={() => exportarDatos('asegurados')} 
           disabled={isExporting} 
-          className="w-full sm:w-auto flex justify-center items-center gap-2 bg-green-50 text-green-700 border border-green-200 hover:bg-green-100 px-5 py-3 rounded-xl font-semibold transition-all disabled:opacity-50"
+          className="w-full sm:w-auto flex justify-center items-center gap-2 bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-500 border border-green-200 dark:border-green-800/50 hover:bg-green-100 dark:hover:bg-green-900/50 px-5 py-3 rounded-xl font-semibold transition-all disabled:opacity-50"
         >
           <Download size={18} /> Base Completa: Asegurados
         </button>
         <button 
           onClick={() => exportarDatos('polizas')} 
           disabled={isExporting} 
-          className="w-full sm:w-auto flex justify-center items-center gap-2 bg-green-50 text-green-700 border border-green-200 hover:bg-green-100 px-5 py-3 rounded-xl font-semibold transition-all disabled:opacity-50"
+          className="w-full sm:w-auto flex justify-center items-center gap-2 bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-500 border border-green-200 dark:border-green-800/50 hover:bg-green-100 dark:hover:bg-green-900/50 px-5 py-3 rounded-xl font-semibold transition-all disabled:opacity-50"
         >
           <Download size={18} /> Base Completa: Pólizas
         </button>

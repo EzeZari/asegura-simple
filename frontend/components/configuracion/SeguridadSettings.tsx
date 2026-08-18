@@ -13,7 +13,7 @@ export default function SeguridadSettings() {
   const puedeModificar = tienePermiso(user, PERMISOS.PUEDE_MODIFICAR_DATOS);
 
   return (
-    <div className="flex flex-col gap-8 animate-in fade-in duration-300 pb-10">
+    <div className="flex flex-col gap-8 animate-in fade-in duration-300 pb-10 transition-colors">
       
       {/* 🟢 Esto lo ven TODOS: El cambio de contraseña de su propia cuenta */}
       <CambioContrasena />
