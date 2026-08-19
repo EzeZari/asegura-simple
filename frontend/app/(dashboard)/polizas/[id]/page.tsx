@@ -1,12 +1,17 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { 
   ArrowLeft, FileText, User, Building, 
-  Shield, Mail, Phone, Edit, UploadCloud, Loader2, MessageCircle, CheckCircle2
+  Shield, Mail, Phone, Edit, Loader2, MessageCircle, CheckCircle2, RefreshCcw
 } from "lucide-react";
+
 import NuevaPolizaModal from "@/components/polizas/NuevaPolizaModal";
+// 🔥 IMPORTAMOS LOS DOS COMPONENTES NUEVOS
+import PolizaDocumentos from "@/components/polizas/PolizaDocumentos";
+import PolizaSiniestros from "@/components/polizas/PolizaSiniestros";
+
 import Toast from "@/components/ui/Toast";
 import { apiFetch } from "@/services/api";
 import { useAuthStore } from "@/store/authStore"; 
@@ -21,14 +26,13 @@ export default function PolizaDetallePage() {
 
   const [poliza, setPoliza] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
+  
   const [isModalOpen, setIsModalOpen] = useState(false);
+  // 🔥 NUEVO ESTADO PARA EL MODAL DE RENOVACIÓN
+  const [showRenovarModal, setShowRenovarModal] = useState(false);
+  
   const [showToast, setShowToast] = useState(false);
   const [mensajeToast, setMensajeToast] = useState("");
-  
-  const [isUploading, setIsUploading] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  // 🔥 Estados para el botón de email
   const [estadoEmail, setEstadoEmail] = useState<"idle" | "loading" | "success" | "error">("idle");
 
   const fetchPoliza = async () => {
@@ -49,57 +53,23 @@ export default function PolizaDetallePage() {
     if (id) fetchPoliza(); 
   }, [id]);
 
-  const handleEditSuccess = () => {
+  const handleActionSuccess = (mensaje: string = "Operación exitosa") => {
     setIsModalOpen(false);
+    setShowRenovarModal(false);
     fetchPoliza(); 
-    setMensajeToast("Póliza actualizada con éxito");
+    setMensajeToast(mensaje);
     setShowToast(true);
   };
 
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!puedeModificar) return; 
-    
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    if (file.type !== "application/pdf") {
-      alert("Solo se permiten archivos en formato PDF.");
-      return;
-    }
-
-    setIsUploading(true);
-    const formData = new FormData();
-    formData.append("pdf", file);
-
-    try {
-      const res = await apiFetch(`/api/polizas/${id}/subir-pdf`, {
-        method: "POST",
-        body: formData, 
-      });
-      
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Error al subir el archivo");
-
-      setMensajeToast("Póliza digital guardada con éxito");
-      setShowToast(true);
-      fetchPoliza(); 
-    } catch (error: any) {
-      alert(error.message);
-    } finally {
-      setIsUploading(false);
-      if (fileInputRef.current) fileInputRef.current.value = ''; 
-    }
+  const handleActionError = (mensaje: string) => {
+    alert(mensaje);
   };
 
-  // 🔥 LÓGICA DE COMUNICACIÓN (Traída de AlertaCard)
   const generarLinkWhatsApp = () => {
     if (!poliza?.asegurado?.telefono) return "#";
     const numeroLimpio = poliza.asegurado.telefono.replace(/\D/g, '');
-    
-    // Adaptamos el mensaje para que sea general (no necesariamente está vencida o por vencer)
     const fechaFormat = new Date(poliza.fechaVencimiento).toLocaleDateString("es-AR");
     const mensaje = `Hola ${poliza.asegurado.nombre}, te escribo por tu póliza de ${poliza.compania?.nombre || "seguro"} (vto: ${fechaFormat}). Avisame cualquier consulta.`;
-    
     return `https://wa.me/${numeroLimpio}?text=${encodeURIComponent(mensaje)}`;
   };
 
@@ -112,24 +82,16 @@ export default function PolizaDetallePage() {
 
   const enviarAvisoEmail = async () => {
     if (!poliza?.asegurado?.email || yaAvisadoHoy()) return;
-    
     setEstadoEmail("loading");
     try {
-      const res = await apiFetch(`/api/polizas/${poliza.id}/aviso`, { 
-        method: "POST" 
-      });
-      
+      const res = await apiFetch(`/api/polizas/${poliza.id}/aviso`, { method: "POST" });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Error al enviar");
       
       setEstadoEmail("success");
-      
-      // Actualizamos el estado local para reflejar que ya se avisó hoy
-      setPoliza(prev => ({ ...prev, ultimoAviso: new Date().toISOString() }));
-      
+      setPoliza((prev: any) => ({ ...prev, ultimoAviso: new Date().toISOString() }));
       setTimeout(() => setEstadoEmail("idle"), 3000);
     } catch (error: any) {
-      console.error(error.message);
       setEstadoEmail("error");
       setTimeout(() => setEstadoEmail("idle"), 3000);
     }
@@ -151,7 +113,6 @@ export default function PolizaDetallePage() {
   return (
     <div className="flex flex-col p-4 md:p-8 w-full gap-6 md:gap-8 min-h-screen overflow-x-hidden transition-colors duration-300">
       
-      {/* Header Principal */}
       <div className="flex flex-col gap-6">
         <button 
           onClick={() => router.back()}
@@ -179,20 +140,17 @@ export default function PolizaDetallePage() {
             </div>
           </div>
           
-          {/* 🔥 Agregamos la botonera de acciones (Mail, Wsp y Editar) */}
           <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
             
-            {/* Botón WhatsApp */}
+            {/* Botones de Comunicación */}
             <a 
               href={generarLinkWhatsApp()} 
               target="_blank" rel="noopener noreferrer"
               className={`flex-1 md:flex-none flex justify-center items-center gap-2 bg-green-50 dark:bg-green-900/30 hover:bg-green-100 dark:hover:bg-green-900/50 text-green-700 dark:text-green-400 px-4 py-3 md:py-2.5 rounded-xl font-bold transition-colors text-sm border border-transparent shadow-sm ${!poliza.asegurado?.telefono ? 'opacity-50 pointer-events-none' : ''}`}
-              title={poliza.asegurado?.telefono ? "Avisar por WhatsApp" : "Cliente sin teléfono"}
             >
               <MessageCircle size={18} /> <span className="hidden sm:inline">WhatsApp</span>
             </a>
 
-            {/* Botón Mail */}
             <button 
               onClick={enviarAvisoEmail}
               disabled={estadoEmail !== "idle" || !poliza.asegurado?.email || yaAvisadoHoy()}
@@ -203,7 +161,6 @@ export default function PolizaDetallePage() {
                 !poliza.asegurado?.email ? "bg-gray-50 dark:bg-gray-800 text-gray-400 dark:text-gray-600 cursor-not-allowed border border-transparent" :
                 "bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-900/50 text-blue-700 dark:text-blue-400 border border-transparent"
               }`}
-              title={yaAvisadoHoy() ? "Ya se envió un recordatorio hoy" : !poliza.asegurado?.email ? "Cliente sin email" : "Enviar correo formal"}
             >
               {estadoEmail === "loading" ? <Loader2 size={18} className="animate-spin" /> :
                estadoEmail === "success" ? <CheckCircle2 size={18} /> :
@@ -213,13 +170,22 @@ export default function PolizaDetallePage() {
                </span>
             </button>
 
-            {/* Botón Editar Póliza original */}
+            {/* 🔥 NUEVO: BOTÓN RENOVAR */}
+            {puedeModificar && poliza.estado !== "Renovada" && (
+              <button 
+                onClick={() => setShowRenovarModal(true)}
+                className="w-full sm:w-auto flex justify-center items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-3 md:py-2.5 rounded-xl font-bold transition-all shadow-md active:scale-95 text-sm"
+              >
+                <RefreshCcw size={18} /> Renovar
+              </button>
+            )}
+
             {puedeModificar && (
               <button 
                 onClick={() => setIsModalOpen(true)}
                 className="w-full sm:w-auto flex justify-center items-center gap-2 bg-gray-900 dark:bg-gray-100 hover:bg-gray-800 dark:hover:bg-white text-white dark:text-gray-900 px-5 py-3 md:py-2.5 rounded-xl font-bold transition-all shadow-md active:scale-95 text-sm"
               >
-                <Edit size={18} /> Editar Póliza
+                <Edit size={18} /> Editar
               </button>
             )}
           </div>
@@ -228,7 +194,7 @@ export default function PolizaDetallePage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8">
         
-        {/* Columna Principal: Cobertura */}
+        {/* Columna Principal */}
         <div className="lg:col-span-2 flex flex-col gap-6 md:gap-8">
           <div className="p-5 md:p-8 border border-gray-100 dark:border-gray-700 rounded-3xl bg-white dark:bg-gray-800 shadow-sm relative overflow-hidden transition-colors">
             <div className="absolute top-0 right-0 p-8 opacity-5 dark:opacity-10 text-gray-900 dark:text-white transition-opacity">
@@ -264,74 +230,21 @@ export default function PolizaDetallePage() {
             </div>
           </div>
 
-          <div className="p-5 md:p-8 border border-gray-100 dark:border-gray-700/50 rounded-3xl bg-gray-50/30 dark:bg-gray-900/30 border-dashed transition-colors">
-            <h3 className="text-xs md:text-sm font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-3 md:mb-4 transition-colors">Observaciones y Notas</h3>
-            <p className="text-gray-400 dark:text-gray-500 italic text-xs md:text-sm transition-colors">
-              No se han registrado siniestros ni modificaciones técnicas en este período de vigencia.
-            </p>
-          </div>
+          {/* 🔥 INYECTAMOS EL NUEVO COMPONENTE DE SINIESTROS VINCULADOS */}
+          <PolizaSiniestros polizaId={poliza.id} />
+
         </div>
 
         {/* Columna Lateral */}
         <div className="flex flex-col gap-6">
           
-          <div className="p-5 md:p-8 border border-gray-100 dark:border-gray-700 rounded-3xl bg-white dark:bg-gray-800 shadow-sm transition-colors">
-            <h3 className="font-bold text-gray-400 dark:text-gray-500 uppercase text-[10px] md:text-xs tracking-widest mb-5 md:mb-6 transition-colors">Documentación</h3>
-            
-            <input 
-              type="file" 
-              ref={fileInputRef} 
-              onChange={handleFileUpload} 
-              accept="application/pdf" 
-              className="hidden" 
-            />
-
-            {poliza.pdfUrl ? (
-              <div className="flex flex-col gap-3">
-                <a 
-                  href={poliza.pdfUrl.startsWith('http') ? poliza.pdfUrl : `${process.env.NEXT_PUBLIC_API_URL}/${poliza.pdfUrl}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex justify-center items-center gap-2 bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-900/50 text-blue-700 dark:text-blue-400 py-4 rounded-xl font-bold transition-colors text-sm md:text-base"
-                >
-                  <FileText size={20} /> Ver Póliza Digital
-                </a>
-                
-                {puedeModificar && (
-                  <button 
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={isUploading}
-                    className="text-[10px] md:text-xs text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 text-center font-medium transition-colors"
-                  >
-                    {isUploading ? "Subiendo..." : "¿Querés reemplazar el archivo?"}
-                  </button>
-                )}
-              </div>
-            ) : (
-              <div className="flex flex-col gap-3">
-                {puedeModificar ? (
-                  <button 
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={isUploading}
-                    className="flex flex-col justify-center items-center gap-2 border-2 border-dashed border-gray-200 dark:border-gray-600 hover:border-green-400 dark:hover:border-green-500 hover:bg-green-50 dark:hover:bg-green-900/20 text-gray-500 dark:text-gray-400 hover:text-green-700 dark:hover:text-green-400 py-6 md:py-8 rounded-xl font-medium transition-all text-sm md:text-base"
-                  >
-                    {isUploading ? (
-                      <Loader2 size={24} className="animate-spin text-green-600 dark:text-green-500 mb-1 transition-colors" />
-                    ) : (
-                      <UploadCloud size={24} className="mb-1" />
-                    )}
-                    {isUploading ? "Procesando archivo..." : "Cargar copia en PDF"}
-                  </button>
-                ) : (
-                   <div className="flex flex-col justify-center items-center gap-2 border-2 border-dashed border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50 text-gray-400 dark:text-gray-500 py-6 md:py-8 rounded-xl text-sm md:text-base italic transition-colors">
-                     <FileText size={24} className="mb-1 opacity-50" />
-                     No hay póliza digital cargada.
-                   </div>
-                )}
-                {puedeModificar && <p className="text-[10px] text-center text-gray-400 dark:text-gray-500 uppercase tracking-wider transition-colors">Solo formato PDF</p>}
-              </div>
-            )}
-          </div>
+          {/* 🔥 INYECTAMOS EL NUEVO COMPONENTE DE DOCUMENTACIÓN (PDF + CUPONERA) */}
+          <PolizaDocumentos 
+            poliza={poliza} 
+            puedeModificar={puedeModificar}
+            onSuccess={(msg) => handleActionSuccess(msg)}
+            onError={handleActionError}
+          />
 
           <div className="p-5 md:p-8 border border-gray-100 dark:border-gray-700 rounded-3xl bg-white dark:bg-gray-800 shadow-sm transition-colors">
             <h3 className="font-bold text-gray-400 dark:text-gray-500 uppercase text-[10px] md:text-xs tracking-widest mb-5 md:mb-6 transition-colors">Asegurado Titular</h3>
@@ -366,12 +279,24 @@ export default function PolizaDetallePage() {
         </div>
       </div>
 
-      {puedeModificar && (
+      {/* MODAL DE EDICIÓN */}
+      {puedeModificar && isModalOpen && (
         <NuevaPolizaModal 
           isOpen={isModalOpen} 
           onClose={() => setIsModalOpen(false)} 
-          onSuccess={handleEditSuccess} 
+          onSuccess={() => handleActionSuccess("Póliza actualizada con éxito")} 
           polizaAEditar={poliza} 
+        />
+      )}
+
+      {/* 🔥 MODAL DE RENOVACIÓN */}
+      {puedeModificar && showRenovarModal && (
+        <NuevaPolizaModal 
+          isOpen={showRenovarModal} 
+          onClose={() => setShowRenovarModal(false)} 
+          onSuccess={() => handleActionSuccess("La póliza fue renovada y se guardó como un nuevo registro")} 
+          polizaAEditar={poliza}
+          isRenovacion={true} // Le pasamos la prop que ya habías programado
         />
       )}
 
