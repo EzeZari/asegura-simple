@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ShieldCheck, Users, CreditCard, Crown, Star, Zap, X, Check, Loader2, Trash2, AlertTriangle, Megaphone, Save, Layout, AppWindow } from "lucide-react";import Toast from "@/components/ui/Toast";
+import { ShieldCheck, Users, CreditCard, Crown, Star, Zap, X, Check, Loader2, Trash2, AlertTriangle, Megaphone, Save, Layout, AppWindow } from "lucide-react";
+import Toast from "@/components/ui/Toast";
 import FiltrosAgencias from "@/components/admin/FiltrosAgencias";
 import AdminHeader from "@/components/admin/AdminHeader";
 import TablaAgencias from "@/components/admin/TablaAgencias";
@@ -26,7 +27,6 @@ export default function AdminDashboard() {
   const [agenciaAEliminar, setAgenciaAEliminar] = useState<any>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   
-  // 🔥 ESTADO DE LOS DOS COMUNICADOS
   const [comunicado, setComunicado] = useState({ 
     mensajeBanner: "", activoBanner: false, tipoBanner: "blue",
     mensajeModal: "", activoModal: false, tipoModal: "blue"
@@ -181,7 +181,6 @@ export default function AdminDashboard() {
 
       <main className="max-w-7xl mx-auto px-4 md:px-6 py-6 md:py-10 flex flex-col gap-10">
         
-        {/* 🔥 EDITOR DOBLE DE COMUNICADOS */}
         <div className="bg-gray-900 border border-gray-800 rounded-3xl p-6 md:p-8 shadow-2xl flex flex-col gap-8">
           <div>
             <h2 className="text-xl font-bold text-white flex items-center gap-2 mb-2">
@@ -207,12 +206,13 @@ export default function AdminDashboard() {
                 </button>
               </div>
 
+              {/* 🔥 Ajustado para mejor legibilidad */}
               <textarea 
                 rows={3}
                 value={comunicado.mensajeBanner}
                 onChange={(e) => setComunicado({...comunicado, mensajeBanner: e.target.value})}
                 placeholder="Escribí el texto del banner acá..."
-                className="w-full bg-gray-900 border border-gray-800 rounded-xl p-4 text-white outline-none focus:border-blue-500 transition-colors resize-none text-sm"
+                className="w-full bg-gray-900/80 border border-gray-800 rounded-xl p-5 text-gray-200 outline-none focus:border-blue-500 transition-colors resize-y min-h-[100px] text-base leading-relaxed custom-scrollbar"
               />
               
               <div className="flex gap-2">
@@ -238,13 +238,19 @@ export default function AdminDashboard() {
                 </button>
               </div>
 
-              <textarea 
-                rows={3}
-                value={comunicado.mensajeModal}
-                onChange={(e) => setComunicado({...comunicado, mensajeModal: e.target.value})}
-                placeholder="Escribí la noticia del modal acá..."
-                className="w-full bg-gray-900 border border-gray-800 rounded-xl p-4 text-white outline-none focus:border-purple-500 transition-colors resize-none text-sm"
-              />
+              <div className="flex flex-col gap-2">
+                {/* 🔥 Aumentamos drásticamente el alto y el texto */}
+                <textarea 
+                  rows={7}
+                  value={comunicado.mensajeModal}
+                  onChange={(e) => setComunicado({...comunicado, mensajeModal: e.target.value})}
+                  placeholder="Escribí la noticia del modal acá..."
+                  className="w-full bg-gray-900/80 border border-gray-800 rounded-xl p-5 text-gray-200 outline-none focus:border-purple-500 transition-colors resize-y min-h-[180px] text-base leading-relaxed custom-scrollbar"
+                />
+                <p className="text-[11px] text-gray-500 font-medium px-1">
+                  💡 <strong>Tip de formato:</strong> Usá <code className="text-gray-400"># </code> para títulos grandes, <code className="text-gray-400">## </code> para subtítulos, <code className="text-gray-400">- </code> para listas, y encerrá palabras en <code className="text-gray-400">**asteriscos**</code> para hacerlas <strong>negritas</strong>.
+                </p>
+              </div>
               
               <div className="flex gap-2">
                 <button onClick={() => setComunicado({...comunicado, tipoModal: 'blue'})} className={`w-6 h-6 rounded-full bg-blue-600 border-2 ${comunicado.tipoModal === 'blue' ? 'border-white' : 'border-transparent opacity-50'}`} />
