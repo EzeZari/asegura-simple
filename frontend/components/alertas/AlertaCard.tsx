@@ -12,9 +12,11 @@ import { PERMISOS, tienePermiso } from "@/utils/roles";
 interface Props {
   poliza: any;
   nivel: "vencida" | "critica" | "proxima";
+  isSelected?: boolean;
+  onSelect?: () => void;
 }
 
-export default function AlertaCard({ poliza, nivel }: Props) {
+export default function AlertaCard({ poliza, nivel, isSelected, onSelect }: Props) {
   const router = useRouter();
   
   const { user } = useAuthStore();
@@ -23,7 +25,6 @@ export default function AlertaCard({ poliza, nivel }: Props) {
   const [isBajaLoading, setIsBajaLoading] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [showRenovarModal, setShowRenovarModal] = useState(false);
-  
   const [estadoEmail, setEstadoEmail] = useState<"idle" | "loading" | "success" | "error">("idle");
 
   const calcularDias = (fechaVencimiento: string) => {
@@ -46,12 +47,10 @@ export default function AlertaCard({ poliza, nivel }: Props) {
 
   const ejecutarBaja = async () => {
     if (!puedeModificar) return; 
-
     setIsBajaLoading(true);
     try {
       await apiFetch(`/api/polizas/${poliza.id}`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ...poliza, estado: "Anulada" })
       });
       window.location.reload(); 
@@ -70,28 +69,20 @@ export default function AlertaCard({ poliza, nivel }: Props) {
   };
 
   const enviarAvisoEmail = async () => {
-    if (!poliza.asegurado?.email || yaAvisadoHoy()) return;
-    
+    if (!poliza.asegurado?.email || yaAvisadoHoy() || estadoEmail !== "idle") return;
     setEstadoEmail("loading");
     try {
-      const res = await apiFetch(`/api/polizas/${poliza.id}/aviso`, { 
-        method: "POST" 
-      });
-      
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Error al enviar");
-      
+      const res = await apiFetch(`/api/polizas/${poliza.id}/aviso`, { method: "POST" });
+      if (!res.ok) throw new Error("Error al enviar");
       setEstadoEmail("success");
       poliza.ultimoAviso = new Date().toISOString(); 
       setTimeout(() => setEstadoEmail("idle"), 3000);
     } catch (error: any) {
-      console.error(error.message);
       setEstadoEmail("error");
       setTimeout(() => setEstadoEmail("idle"), 3000);
     }
   };
 
-  // 🔥 Adaptación de estilos para el recuadro principal y sus badges en modo oscuro
   const estilos = {
     vencida: { borde: "border-rose-200 dark:border-rose-900/50", fondo: "bg-rose-50 dark:bg-rose-900/30", texto: "text-rose-700 dark:text-rose-400", linea: "bg-rose-500" },
     critica: { borde: "border-orange-200 dark:border-orange-900/50", fondo: "bg-orange-50 dark:bg-orange-900/30", texto: "text-orange-700 dark:text-orange-400", linea: "bg-orange-500" },
@@ -102,10 +93,22 @@ export default function AlertaCard({ poliza, nivel }: Props) {
 
   return (
     <>
-      <div className={`flex flex-col p-5 bg-white dark:bg-gray-800 rounded-2xl border ${estilos.borde} shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group ${isBajaLoading ? 'opacity-50 pointer-events-none' : ''}`}>
+      <div className={`flex flex-col p-5 rounded-2xl border shadow-sm hover:shadow-md transition-all relative overflow-hidden group ${isSelected ? 'bg-blue-50/30 dark:bg-blue-900/10 border-blue-300 dark:border-blue-700' : 'bg-white dark:bg-gray-800 ' + estilos.borde} ${isBajaLoading ? 'opacity-50 pointer-events-none' : ''}`}>
         <div className={`absolute top-0 left-0 w-1.5 h-full ${estilos.linea}`}></div>
         
-        <div className="flex justify-between items-start mb-3 ml-2">
+        {/* Checkbox Absoluto en la esquina */}
+        {onSelect && (
+          <div className="absolute top-4 right-4 z-10">
+             <input 
+              type="checkbox" 
+              checked={isSelected}
+              onChange={onSelect}
+              className="w-4 h-4 text-blue-600 bg-white border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 dark:bg-gray-700 dark:border-gray-600 cursor-pointer"
+            />
+          </div>
+        )}
+
+        <div className="flex justify-between items-start mb-3 ml-2 pr-6">
           <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-black uppercase tracking-wider ${estilos.fondo} ${estilos.texto} transition-colors`}>
             {calcularDias(poliza.fechaVencimiento)}
           </span>
@@ -155,77 +158,33 @@ export default function AlertaCard({ poliza, nivel }: Props) {
         </div>
 
         <div className="mt-auto ml-2 flex gap-2 pt-4 border-t border-gray-50 dark:border-gray-700/50 transition-colors">
-          
           {puedeModificar && (
             nivel === "vencida" ? (
-              <button 
-                onClick={() => setShowConfirmModal(true)}
-                className="flex-1 flex justify-center items-center gap-1.5 bg-rose-50 dark:bg-rose-900/30 hover:bg-rose-100 dark:hover:bg-rose-900/50 text-rose-700 dark:text-rose-400 py-2 rounded-xl text-sm font-bold transition-colors"
-                title="Anular póliza"
-              >
+              <button onClick={() => setShowConfirmModal(true)} className="flex-1 flex justify-center items-center gap-1.5 bg-rose-50 dark:bg-rose-900/30 hover:bg-rose-100 dark:hover:bg-rose-900/50 text-rose-700 dark:text-rose-400 py-2 rounded-xl text-sm font-bold transition-colors">
                 <Trash2 size={16} /> <span className="hidden sm:inline">Anular</span>
               </button>
             ) : (
-              <button 
-                onClick={() => setShowRenovarModal(true)}
-                className="flex-1 flex justify-center items-center gap-1.5 bg-emerald-50 dark:bg-emerald-900/30 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 text-emerald-700 dark:text-emerald-400 py-2 rounded-xl text-sm font-bold transition-colors"
-                title="Renovar póliza"
-              >
+              <button onClick={() => setShowRenovarModal(true)} className="flex-1 flex justify-center items-center gap-1.5 bg-emerald-50 dark:bg-emerald-900/30 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 text-emerald-700 dark:text-emerald-400 py-2 rounded-xl text-sm font-bold transition-colors">
                 <RefreshCcw size={16} /> <span className="hidden sm:inline">Renovar</span>
               </button>
             )
           )}
 
-          <a 
-            href={generarLinkWhatsApp(poliza.asegurado.telefono, poliza.asegurado.nombre, poliza.compania.nombre, fechaFormat)} 
-            target="_blank" rel="noopener noreferrer"
-            className={`flex-1 flex justify-center items-center gap-1.5 bg-green-50 dark:bg-green-900/30 hover:bg-green-100 dark:hover:bg-green-900/50 text-green-700 dark:text-green-400 py-2 rounded-xl text-sm font-bold transition-colors ${!poliza.asegurado.telefono ? 'opacity-50 pointer-events-none' : ''}`}
-            title={poliza.asegurado.telefono ? "Avisar por WhatsApp" : "Cliente sin teléfono"}
-          >
+          <a href={generarLinkWhatsApp(poliza.asegurado.telefono, poliza.asegurado.nombre, poliza.compania.nombre, fechaFormat)} target="_blank" rel="noopener noreferrer" className={`flex-1 flex justify-center items-center gap-1.5 bg-green-50 dark:bg-green-900/30 hover:bg-green-100 dark:hover:bg-green-900/50 text-green-700 dark:text-green-400 py-2 rounded-xl text-sm font-bold transition-colors ${!poliza.asegurado.telefono ? 'opacity-50 pointer-events-none' : ''}`}>
             <MessageCircle size={16} /> <span className="hidden sm:inline">Wsp</span>
           </a>
 
-          <button 
-            onClick={enviarAvisoEmail}
-            disabled={estadoEmail !== "idle" || !poliza.asegurado.email || yaAvisadoHoy()}
-            className={`flex-1 flex justify-center items-center gap-1.5 py-2 rounded-xl text-sm font-bold transition-colors ${
-              yaAvisadoHoy() ? "bg-gray-100 dark:bg-gray-700 text-gray-400 dark:text-gray-500 cursor-not-allowed border border-gray-200 dark:border-gray-600" :
-              estadoEmail === "success" ? "bg-emerald-500 dark:bg-emerald-600 text-white" :
-              estadoEmail === "error" ? "bg-red-500 dark:bg-red-600 text-white" :
-              !poliza.asegurado.email ? "bg-gray-50 dark:bg-gray-800 text-gray-400 dark:text-gray-600 cursor-not-allowed" :
-              "bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-900/50 text-blue-700 dark:text-blue-400"
-            }`}
-            title={yaAvisadoHoy() ? "Ya se envió un recordatorio hoy" : !poliza.asegurado.email ? "Cliente sin email" : "Enviar correo formal"}
-          >
-            {estadoEmail === "loading" ? <Loader2 size={16} className="animate-spin" /> :
-             estadoEmail === "success" ? <CheckCircle2 size={16} /> :
-             <Mail size={16} />}
-             <span className="hidden sm:inline">
-               {yaAvisadoHoy() ? "Avisado" : estadoEmail === "success" ? "Enviado" : "Mail"}
-             </span>
+          <button onClick={enviarAvisoEmail} disabled={estadoEmail !== "idle" || !poliza.asegurado.email || yaAvisadoHoy()} className={`flex-1 flex justify-center items-center gap-1.5 py-2 rounded-xl text-sm font-bold transition-colors ${yaAvisadoHoy() ? "bg-gray-100 dark:bg-gray-700 text-gray-400 cursor-not-allowed" : estadoEmail === "success" ? "bg-emerald-500 text-white" : estadoEmail === "error" ? "bg-red-500 text-white" : !poliza.asegurado.email ? "bg-gray-50 dark:bg-gray-800 text-gray-400 cursor-not-allowed" : "bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-100 text-blue-700 dark:text-blue-400"}`}>
+            {estadoEmail === "loading" ? <Loader2 size={16} className="animate-spin" /> : estadoEmail === "success" ? <CheckCircle2 size={16} /> : <Mail size={16} />}
+             <span className="hidden sm:inline">{yaAvisadoHoy() ? "Avisado" : estadoEmail === "success" ? "Enviado" : "Mail"}</span>
           </button>
         </div>
       </div>
 
       {puedeModificar && (
         <>
-          <ConfirmModal 
-            isOpen={showConfirmModal}
-            onClose={() => setShowConfirmModal(false)}
-            onConfirm={ejecutarBaja}
-            isLoading={isBajaLoading}
-            title="Anular Póliza"
-            message={`¿Estás seguro que querés anular la póliza de ${poliza.asegurado?.nombre}? Esta acción la sacará de tus alertas activas.`}
-            confirmText="Anular"
-          />
-
-          <NuevaPolizaModal 
-            isOpen={showRenovarModal}
-            onClose={() => setShowRenovarModal(false)}
-            onSuccess={() => window.location.reload()}
-            polizaAEditar={poliza}
-            isRenovacion={true}
-          />
+          <ConfirmModal isOpen={showConfirmModal} onClose={() => setShowConfirmModal(false)} onConfirm={ejecutarBaja} isLoading={isBajaLoading} title="Anular Póliza" message={`¿Estás seguro que querés anular la póliza de ${poliza.asegurado?.nombre}? Esta acción la sacará de tus alertas activas.`} confirmText="Anular" />
+          <NuevaPolizaModal isOpen={showRenovarModal} onClose={() => setShowRenovarModal(false)} onSuccess={() => window.location.reload()} polizaAEditar={poliza} isRenovacion={true} />
         </>
       )}
     </>
