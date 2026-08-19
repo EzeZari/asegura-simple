@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { 
   ArrowLeft, AlertTriangle, User, Building, 
-  CarFront, Clock, CheckCircle, MessageSquare, Send, 
+  Clock, CheckCircle, MessageSquare, Send, 
   FileText, Calendar, ShieldCheck, MessageCircle
 } from "lucide-react";
 import Toast from "@/components/ui/Toast";
@@ -12,6 +12,10 @@ import { apiFetch } from "@/services/api";
 import { useAuthStore } from "@/store/authStore"; 
 import { PERMISOS, tienePermiso } from "@/utils/roles";
 
+// 🔥 IMPORTAMOS LOS COMPONENTES NUEVOS
+import SiniestroBotonera from "@/components/siniestros/SiniestroBotonera";
+import SiniestroRiesgoCard from "@/components/siniestros/SiniestroRiesgoCard";
+import NuevoSiniestroModal from "@/components/siniestros/NuevoSiniestroModal";
 import TutorialTourDetalleSiniestro from "@/components/ui/tours/TutorialTourDetalleSiniestro";
 
 export default function SiniestroDetallePage() {
@@ -26,6 +30,7 @@ export default function SiniestroDetallePage() {
   const [nuevaNota, setNuevaNota] = useState("");
   const [isSubmittingNota, setIsSubmittingNota] = useState(false);
   const [isUpdatingEstado, setIsUpdatingEstado] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
   
   const [showToast, setShowToast] = useState(false);
   const [mensajeToast, setMensajeToast] = useState("");
@@ -131,7 +136,6 @@ export default function SiniestroDetallePage() {
   const diffTime = Math.abs(hoy.getTime() - fechaHechoDate.getTime());
   const diasTranscurridos = Math.floor(diffTime / (1000 * 60 * 60 * 24));
 
-  // 🔥 Adaptación de badges de estado al modo oscuro
   const getStatusStyle = (estado: string) => {
     switch (estado) {
       case "Denuncia Pendiente": return "text-orange-700 dark:text-orange-400 bg-orange-50 dark:bg-orange-900/30 border-orange-200 dark:border-orange-800/30";
@@ -166,7 +170,6 @@ export default function SiniestroDetallePage() {
   };
 
   return (
-    // 🔥 Sacamos el bg-white para heredar del layout padre
     <div className="flex flex-col p-4 md:p-8 w-full gap-6 md:gap-8 min-h-screen overflow-x-hidden transition-colors duration-300">
       
       <TutorialTourDetalleSiniestro />
@@ -180,10 +183,9 @@ export default function SiniestroDetallePage() {
           Volver a Siniestros
         </button>
         
-        {/* 🔥 Cabecera principal oscurecida */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-gray-50/40 dark:bg-gray-800/40 p-4 md:p-6 rounded-2xl border border-gray-100 dark:border-gray-700/50 transition-colors">
+        <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 bg-gray-50/40 dark:bg-gray-800/40 p-4 md:p-6 rounded-2xl border border-gray-100 dark:border-gray-700/50 transition-colors">
           
-          <div className="flex items-center gap-3 md:gap-5 w-full md:w-auto">
+          <div className="flex items-center gap-3 md:gap-5 w-full xl:w-auto">
             <div className="p-3 md:p-4 bg-orange-600 dark:bg-orange-500 text-white rounded-2xl shadow-md shadow-orange-100 dark:shadow-none shrink-0 transition-colors">
               <AlertTriangle size={28} className="md:w-8 md:h-8" />
             </div>
@@ -202,22 +204,32 @@ export default function SiniestroDetallePage() {
             </div>
           </div>
 
-          <div className="flex items-center gap-2 bg-white dark:bg-gray-800 p-2 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm w-full md:w-auto tour-detalle-estado transition-colors">
-            <span className="text-[10px] md:text-xs font-bold text-gray-400 dark:text-gray-500 uppercase pl-2 transition-colors">Estado:</span>
-            <select
-              value={siniestro.estadoSiniestro}
-              disabled={isUpdatingEstado || !puedeModificar} 
-              onChange={(e) => handleCambiarEstadoRapido(e.target.value)}
-              className="flex-1 md:flex-none text-sm font-bold text-gray-700 dark:text-gray-200 bg-transparent outline-none cursor-pointer pr-2 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
-            >
-              <option value="Denuncia Pendiente" className="dark:bg-gray-800">Denuncia Pendiente</option>
-              <option value="En Análisis" className="dark:bg-gray-800">En Análisis</option>
-              <option value="Aprobado" className="dark:bg-gray-800">Aprobado</option>
-              <option value="Pagado" className="dark:bg-gray-800">Pagado / Liquidado</option>
-              <option value="Rechazado" className="dark:bg-gray-800">Rechazado</option>
-              <option value="Cerrado" className="dark:bg-gray-800">Cerrado Administrativo</option>
-            </select>
+          <div className="flex flex-col sm:flex-row items-center gap-4 w-full xl:w-auto">
+            <div className="flex items-center gap-2 bg-white dark:bg-gray-800 p-2.5 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm w-full sm:w-auto tour-detalle-estado transition-colors">
+              <span className="text-[10px] md:text-xs font-bold text-gray-400 dark:text-gray-500 uppercase pl-2 transition-colors">Estado:</span>
+              <select
+                value={siniestro.estadoSiniestro}
+                disabled={isUpdatingEstado || !puedeModificar} 
+                onChange={(e) => handleCambiarEstadoRapido(e.target.value)}
+                className="flex-1 sm:flex-none text-sm font-bold text-gray-700 dark:text-gray-200 bg-transparent outline-none cursor-pointer pr-2 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+              >
+                <option value="Denuncia Pendiente" className="dark:bg-gray-800">Denuncia Pendiente</option>
+                <option value="En Análisis" className="dark:bg-gray-800">En Análisis</option>
+                <option value="Aprobado" className="dark:bg-gray-800">Aprobado</option>
+                <option value="Pagado" className="dark:bg-gray-800">Pagado / Liquidado</option>
+                <option value="Rechazado" className="dark:bg-gray-800">Rechazado</option>
+                <option value="Cerrado" className="dark:bg-gray-800">Cerrado Administrativo</option>
+              </select>
+            </div>
+
+            {/* 🔥 INYECTAMOS LA NUEVA BOTONERA (WSP, MAIL, EDITAR) */}
+            <SiniestroBotonera 
+              siniestro={siniestro} 
+              puedeModificar={puedeModificar} 
+              onEdit={() => setIsModalOpen(true)} 
+            />
           </div>
+
         </div>
       </div>
 
@@ -225,7 +237,6 @@ export default function SiniestroDetallePage() {
         
         <div className="lg:col-span-2 flex flex-col gap-6 md:gap-8">
           
-          {/* 🔥 Declaración inicial */}
           <div className="p-5 md:p-6 border border-gray-100 dark:border-gray-700 rounded-3xl bg-white dark:bg-gray-800 shadow-sm flex flex-col gap-5 transition-colors">
             <h3 className="text-sm md:text-base font-bold text-gray-900 dark:text-white flex items-center gap-2 border-b border-gray-50 dark:border-gray-700 pb-3 transition-colors">
               <FileText size={18} className="text-orange-600 dark:text-orange-500 shrink-0 transition-colors" /> Declaración Inicial del Siniestro
@@ -254,7 +265,6 @@ export default function SiniestroDetallePage() {
                 <button 
                   type="submit" 
                   disabled={isSubmittingNota || !nuevaNota.trim()}
-                  // 🔥 Invertimos el color del botón
                   className="bg-gray-900 dark:bg-gray-100 hover:bg-gray-800 dark:hover:bg-white text-white dark:text-gray-900 px-4 md:px-5 py-3 rounded-xl font-bold transition-colors disabled:opacity-40 disabled:bg-gray-300 dark:disabled:bg-gray-700 flex items-center gap-1.5 text-xs md:text-sm shrink-0"
                 >
                   <Send size={14} /> Registrar
@@ -269,7 +279,6 @@ export default function SiniestroDetallePage() {
                 </div>
               ) : (
                 siniestro.notas.map((nota: any) => (
-                  // 🔥 Notas oscurecidas
                   <div key={nota.id} className="bg-white dark:bg-gray-800 p-4 md:p-5 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm flex flex-col gap-2 transition-colors">
                     <div className="flex justify-between items-center border-b border-gray-50 dark:border-gray-700 pb-1.5 transition-colors">
                       <span className="text-[10px] md:text-[11px] font-bold text-gray-400 dark:text-gray-500 flex items-center gap-1 transition-colors">
@@ -288,39 +297,8 @@ export default function SiniestroDetallePage() {
 
         <div className="flex flex-col gap-6 tour-detalle-informacion">
           
-          {/* 🔥 Tarjeta de Riesgo Cubierto */}
-          <div className="p-5 md:p-6 border border-gray-100 dark:border-gray-700 rounded-3xl bg-white dark:bg-gray-800 shadow-sm flex flex-col gap-4 transition-colors">
-            <h3 className="font-bold text-gray-400 dark:text-gray-500 uppercase text-[10px] md:text-xs tracking-widest border-b border-gray-50 dark:border-gray-700 pb-2 transition-colors">Riesgo Cubierto</h3>
-            <div className="flex flex-col gap-3">
-              <div className="flex items-center gap-3 bg-gray-50 dark:bg-gray-900/50 p-3 rounded-xl border border-gray-100 dark:border-gray-700 transition-colors">
-                <div className="p-2 bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 rounded-lg shadow-sm border border-gray-100 dark:border-gray-700 shrink-0 transition-colors">
-                  <CarFront size={18} />
-                </div>
-                <div className="min-w-0">
-                  <p className="text-[10px] md:text-xs font-bold text-gray-400 dark:text-gray-500 uppercase transition-colors">Rama</p>
-                  <p className="text-xs md:text-sm font-bold text-gray-800 dark:text-gray-100 break-words transition-colors">{poliza.tipoPoliza}</p>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-2 text-xs">
-                <div className="bg-gray-50/50 dark:bg-gray-900/40 p-3 rounded-xl border border-gray-100/70 dark:border-gray-700/70 transition-colors">
-                  <span className="block text-gray-400 dark:text-gray-500 font-medium mb-0.5 text-[10px] md:text-xs transition-colors">Nro Póliza</span>
-                  <span className="font-bold text-gray-800 dark:text-gray-200 text-xs md:text-sm transition-colors">#{poliza.nroPoliza}</span>
-                </div>
-                <div className="bg-gray-50/50 dark:bg-gray-900/40 p-3 rounded-xl border border-gray-100/70 dark:border-gray-700/70 transition-colors">
-                  <span className="block text-gray-400 dark:text-gray-500 font-medium mb-0.5 text-[10px] md:text-xs transition-colors">Patente</span>
-                  <span className="font-mono font-bold text-gray-900 dark:text-white uppercase bg-white dark:bg-gray-800 px-1.5 py-0.5 rounded border border-gray-200 dark:border-gray-600 shadow-xs text-xs md:text-sm transition-colors">{poliza.patente || "N/A"}</span>
-                </div>
-              </div>
-
-              {(poliza.marca || poliza.modelo || poliza.cobertura) && (
-                <div className="bg-gray-50/30 dark:bg-gray-900/30 p-3 md:p-4 rounded-xl border border-gray-100 dark:border-gray-700 flex flex-col gap-2 text-[10px] md:text-xs font-medium text-gray-600 dark:text-gray-400 transition-colors">
-                  {poliza.marca && <p><span className="text-gray-400 dark:text-gray-500">Vehículo:</span> {poliza.marca} {poliza.modelo}</p>}
-                  {poliza.cobertura && <p><span className="text-gray-400 dark:text-gray-500">Cobertura:</span> {poliza.cobertura}</p>}
-                </div>
-              )}
-            </div>
-          </div>
+          {/* 🔥 INYECTAMOS EL NUEVO COMPONENTE DE RIESGO */}
+          <SiniestroRiesgoCard poliza={poliza} />
 
           <div className="p-5 md:p-6 border border-gray-100 dark:border-gray-700 rounded-3xl bg-white dark:bg-gray-800 shadow-sm flex flex-col gap-4 transition-colors">
             <h3 className="font-bold text-gray-400 dark:text-gray-500 uppercase text-[10px] md:text-xs tracking-widest border-b border-gray-50 dark:border-gray-700 pb-2 transition-colors">Asegurado Titular</h3>
@@ -411,6 +389,20 @@ export default function SiniestroDetallePage() {
 
         </div>
       </div>
+
+      {puedeModificar && isModalOpen && (
+        <NuevoSiniestroModal 
+          isOpen={isModalOpen} 
+          onClose={() => setIsModalOpen(false)} 
+          onSuccess={() => {
+            setIsModalOpen(false);
+            fetchSiniestro();
+            setMensajeToast("Siniestro actualizado con éxito");
+            setShowToast(true);
+          }} 
+          siniestroAEditar={siniestro} 
+        />
+      )}
 
       <Toast message={mensajeToast} isVisible={showToast} onClose={() => setShowToast(false)} />
     </div>
