@@ -96,7 +96,6 @@ export default function AlertaCard({ poliza, nivel, isSelected, onSelect }: Prop
       <div className={`flex flex-col p-5 rounded-2xl border shadow-sm hover:shadow-md transition-all relative overflow-hidden group ${isSelected ? 'bg-blue-50/30 dark:bg-blue-900/10 border-blue-300 dark:border-blue-700' : 'bg-white dark:bg-gray-800 ' + estilos.borde} ${isBajaLoading ? 'opacity-50 pointer-events-none' : ''}`}>
         <div className={`absolute top-0 left-0 w-1.5 h-full ${estilos.linea}`}></div>
         
-        {/* Checkbox Absoluto en la esquina */}
         {onSelect && (
           <div className="absolute top-4 right-4 z-10">
              <input 
@@ -112,11 +111,23 @@ export default function AlertaCard({ poliza, nivel, isSelected, onSelect }: Prop
           <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-black uppercase tracking-wider ${estilos.fondo} ${estilos.texto} transition-colors`}>
             {calcularDias(poliza.fechaVencimiento)}
           </span>
-          <span className="text-xs font-mono text-gray-400 dark:text-gray-500 transition-colors">#{poliza.nroPoliza}</span>
+          {/* 🔥 COLORES ORIGINALES CON HOVER SUTIL */}
+          <span 
+            onClick={() => router.push(`/polizas/${poliza.id}`)}
+            className="text-xs font-mono text-gray-400 dark:text-gray-500 cursor-pointer hover:underline hover:opacity-80 transition-all"
+            title="Ver detalle de póliza"
+          >
+            #{poliza.nroPoliza}
+          </span>
         </div>
 
         <div className="ml-2 mb-4">
-          <h3 className="text-lg font-bold text-gray-900 dark:text-white leading-tight transition-colors">
+          {/* 🔥 COLORES ORIGINALES CON HOVER SUTIL */}
+          <h3 
+            onClick={() => router.push(`/polizas/${poliza.id}`)}
+            className="text-lg inline-block font-bold text-gray-900 dark:text-white leading-tight cursor-pointer hover:underline hover:opacity-80 transition-all"
+            title="Ver detalle de póliza"
+          >
             {poliza.asegurado?.nombre} {poliza.asegurado?.apellido}
           </h3>
           

@@ -2,6 +2,7 @@
 
 import { MessageCircle, Shield, Trash2, RefreshCcw, Mail, MapPin, Users, CarFront } from "lucide-react";
 import { useState } from "react";
+import { useRouter } from "next/navigation"; 
 import ConfirmModal from "../ui/ConfirmModal"; 
 import NuevaPolizaModal from "../polizas/NuevaPolizaModal";
 import { apiFetch } from "@/services/api"; 
@@ -19,6 +20,7 @@ interface Props {
 }
 
 export default function AlertaListRow({ poliza, nivel, menuAbiertoId, onToggleMenu, isSelected, onSelect }: Props) {
+  const router = useRouter(); 
   const { user } = useAuthStore();
   const puedeModificar = tienePermiso(user, PERMISOS.PUEDE_MODIFICAR_DATOS);
 
@@ -84,7 +86,6 @@ export default function AlertaListRow({ poliza, nivel, menuAbiertoId, onToggleMe
     <>
       <tr className={`${isSelected ? 'bg-blue-50/50 dark:bg-blue-900/20' : 'hover:bg-gray-50/50 dark:hover:bg-gray-700/30'} transition-colors relative group ${isBajaLoading ? 'opacity-50 pointer-events-none' : ''}`}>
         
-        {/* Checkbox */}
         <td className="p-3 md:p-4 text-center border-l-2 border-transparent relative">
           <div className={`absolute left-0 top-0 bottom-0 w-1.5 ${estilos.linea}`}></div>
           <input 
@@ -101,7 +102,14 @@ export default function AlertaListRow({ poliza, nivel, menuAbiertoId, onToggleMe
               {poliza.tipoPoliza === 'Automotor' || poliza.tipoPoliza === 'Motovehículo' ? <CarFront size={18} /> : <Shield size={18} />}
             </div>
             <div className="flex flex-col">
-              <span className="font-bold text-gray-900 dark:text-white text-sm transition-colors">{poliza.asegurado?.nombre} {poliza.asegurado?.apellido}</span>
+              {/* 🔥 COLORES ORIGINALES CON HOVER SUTIL */}
+              <span 
+                onClick={() => router.push(`/polizas/${poliza.id}`)}
+                className="font-bold text-gray-900 dark:text-white text-sm cursor-pointer hover:underline hover:opacity-80 transition-all"
+                title="Ver detalle de póliza"
+              >
+                {poliza.asegurado?.nombre} {poliza.asegurado?.apellido}
+              </span>
               {poliza.cantidadEmpleados ? (
                 <span className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1 transition-colors"><Users size={12}/> {poliza.cantidadEmpleados} Empleados</span>
               ) : (
@@ -115,8 +123,15 @@ export default function AlertaListRow({ poliza, nivel, menuAbiertoId, onToggleMe
           {poliza.tipoPoliza} <span className="mx-1 text-gray-300 dark:text-gray-600">•</span> {poliza.compania?.nombre || "-"}
         </td>
         
-        <td className="p-3 md:p-4 whitespace-nowrap font-mono text-sm font-semibold text-gray-700 dark:text-gray-200 transition-colors">
-          #{poliza.nroPoliza}
+        {/* 🔥 COLORES ORIGINALES CON HOVER SUTIL */}
+        <td className="p-3 md:p-4 whitespace-nowrap font-mono text-sm font-semibold transition-colors">
+          <span 
+            onClick={() => router.push(`/polizas/${poliza.id}`)}
+            className="text-gray-700 dark:text-gray-200 cursor-pointer hover:underline hover:opacity-80 transition-all"
+            title="Ver detalle de póliza"
+          >
+            #{poliza.nroPoliza}
+          </span>
         </td>
         
         <td className="p-3 md:p-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-300 transition-colors">

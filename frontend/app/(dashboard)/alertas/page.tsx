@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { AlertTriangle, Clock, XOctagon, Search, List, LayoutGrid, Download, Mail, Loader2, Filter } from "lucide-react";
+import { AlertTriangle, Clock, XOctagon, Search, List, LayoutGrid, Download, Mail, Loader2, Filter, CalendarDays } from "lucide-react";
 import dynamic from "next/dynamic";
 import AlertaSection from "@/components/alertas/AlertaSection";
+import AlertaCalendar from "@/components/alertas/AlertaCalendar"; 
 import Toast from "@/components/ui/Toast";
 import { apiFetch } from "@/services/api"; 
 import { useAuthStore } from "@/store/authStore";
@@ -21,19 +22,32 @@ export default function AlertasPage() {
   
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
-  const [vista, setVista] = useState<"lista" | "tarjetas">("lista");
+  
+  // 🔥 INICIALIZAMOS LA VISTA EN LISTA POR DEFECTO
+  const [vista, setVista] = useState<"lista" | "tarjetas" | "calendario">("lista");
 
-  // 🔥 1. ESTADOS PARA FILTROS RÁPIDOS
   const [filtroRama, setFiltroRama] = useState("TODAS");
   const [filtroCompania, setFiltroCompania] = useState("TODAS");
 
-  // 🔥 2. ESTADOS PARA ACCIONES MASIVAS
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [isSendingBulk, setIsSendingBulk] = useState(false);
   
-  // 🔥 3. ESTADOS PARA EXPORTAR Y NOTIFICAR
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [toast, setToast] = useState({ show: false, msg: "" });
+
+  // 🔥 1. AL CARGAR LA PÁGINA, BUSCAMOS LA MEMORIA DEL NAVEGADOR
+  useEffect(() => {
+    const vistaGuardada = localStorage.getItem("asegurasimple_vista_alertas");
+    if (vistaGuardada === "lista" || vistaGuardada === "tarjetas" || vistaGuardada === "calendario") {
+      setVista(vistaGuardada);
+    }
+  }, []);
+
+  // 🔥 2. FUNCIÓN PARA CAMBIAR LA VISTA Y GUARDARLA EN LA MEMORIA AL MISMO TIEMPO
+  const cambiarVista = (nuevaVista: "lista" | "tarjetas" | "calendario") => {
+    setVista(nuevaVista);
+    localStorage.setItem("asegurasimple_vista_alertas", nuevaVista);
+  };
 
   const fetchAlertas = async () => {
     try {
@@ -49,12 +63,10 @@ export default function AlertasPage() {
 
   useEffect(() => { fetchAlertas(); }, []);
 
-  // Extraer valores únicos para los filtros (combinando todas las listas)
   const todasLasAlertas = [...data.vencidas, ...data.criticas, ...data.proximas];
   const ramasUnicas = Array.from(new Set(todasLasAlertas.map(p => p.tipoPoliza))).filter(Boolean);
   const companiasUnicas = Array.from(new Set(todasLasAlertas.map(p => p.compania?.nombre))).filter(Boolean);
 
-  // Lógica de Filtrado (Texto + Selectores)
   const filtrarAlertas = (lista: any[]) => {
     return lista.filter(p => {
       const term = searchTerm.toLowerCase();
@@ -66,7 +78,8 @@ export default function AlertasPage() {
     });
   };
 
-  // Función de Envío Masivo
+  const todasLasAlertasFiltradas = filtrarAlertas(todasLasAlertas);
+
   const enviarEmailsMasivos = async () => {
     if (selectedIds.length === 0 || !puedeModificar) return;
     setIsSendingBulk(true);
@@ -84,8 +97,8 @@ export default function AlertasPage() {
         paraEnviar.map(p => apiFetch(`/api/polizas/${p.id}/aviso`, { method: "POST" }))
       );
       setToast({ show: true, msg: `Se enviaron ${paraEnviar.length} recordatorios con éxito.` });
-      setSelectedIds([]); // Limpiamos selección
-      fetchAlertas(); // Recargamos para actualizar la fecha de "Último aviso"
+      setSelectedIds([]); 
+      fetchAlertas(); 
     } catch (error) {
       setToast({ show: true, msg: "Hubo un error al enviar algunos correos." });
     } finally {
@@ -93,7 +106,6 @@ export default function AlertasPage() {
     }
   };
 
-  // Preparar datos para Excel
   const prepararDatosExportacion = () => {
     const filtradas = [
       ...filtrarAlertas(data.vencidas).map(p => ({ ...p, Nivel: "Vencida" })),
@@ -145,9 +157,8 @@ export default function AlertasPage() {
         
         <div className="flex flex-col w-full xl:w-auto gap-3">
           
-          {/* Fila 1: Botones de Acción Global */}
           <div className="flex flex-col sm:flex-row justify-end items-center gap-3 w-full">
-            {puedeModificar && selectedIds.length > 0 && (
+            {puedeModificar && selectedIds.length > 0 && vista !== "calendario" && (
               <button 
                 onClick={enviarEmailsMasivos}
                 disabled={isSendingBulk}
@@ -169,7 +180,6 @@ export default function AlertasPage() {
             </button>
           </div>
 
-          {/* Fila 2: Buscador, Filtros y Toggle Vista */}
           <div className="flex flex-col md:flex-row items-center gap-3 w-full">
             <div className="relative w-full md:w-64">
               <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
@@ -180,7 +190,7 @@ export default function AlertasPage() {
             </div>
 
             <div className="flex items-center gap-2 w-full md:w-auto">
-              <div className="relative flex-1 md:w-40">
+              <div className="relative flex-1 md:w-36">
                 <Filter size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
                 <select value={filtroRama} onChange={(e) => setFiltroRama(e.target.value)} className="w-full pl-8 pr-3 py-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 rounded-xl outline-none text-sm cursor-pointer appearance-none shadow-sm transition-colors font-medium">
                   <option value="TODAS">Todas las Ramas</option>
@@ -188,7 +198,7 @@ export default function AlertasPage() {
                 </select>
               </div>
 
-              <div className="relative flex-1 md:w-40">
+              <div className="relative flex-1 md:w-36">
                 <Filter size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
                 <select value={filtroCompania} onChange={(e) => setFiltroCompania(e.target.value)} className="w-full pl-8 pr-3 py-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 rounded-xl outline-none text-sm cursor-pointer appearance-none shadow-sm transition-colors font-medium">
                   <option value="TODAS">Todas las Cías.</option>
@@ -197,30 +207,38 @@ export default function AlertasPage() {
               </div>
             </div>
 
+            {/* 🔥 USAMOS LA NUEVA FUNCIÓN cambiarVista EN LOS BOTONES */}
             <div className="flex items-center bg-gray-100 dark:bg-gray-900/50 p-1 rounded-xl border border-gray-200 dark:border-gray-800 w-full md:w-auto transition-colors shrink-0">
-              <button onClick={() => setVista("lista")} className={`flex-1 md:flex-none flex justify-center p-2 rounded-lg transition-all ${vista === "lista" ? "bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm" : "text-gray-500"}`} title="Vista de Lista"><List size={16} /></button>
-              <button onClick={() => setVista("tarjetas")} className={`flex-1 md:flex-none flex justify-center p-2 rounded-lg transition-all ${vista === "tarjetas" ? "bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm" : "text-gray-500"}`} title="Vista de Tarjetas"><LayoutGrid size={16} /></button>
+              <button onClick={() => cambiarVista("lista")} className={`flex-1 md:flex-none flex justify-center p-2 rounded-lg transition-all ${vista === "lista" ? "bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm" : "text-gray-500"}`} title="Vista de Lista"><List size={16} /></button>
+              <button onClick={() => cambiarVista("tarjetas")} className={`flex-1 md:flex-none flex justify-center p-2 rounded-lg transition-all ${vista === "tarjetas" ? "bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm" : "text-gray-500"}`} title="Vista de Tarjetas"><LayoutGrid size={16} /></button>
+              <button onClick={() => cambiarVista("calendario")} className={`flex-1 md:flex-none flex justify-center p-2 rounded-lg transition-all ${vista === "calendario" ? "bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm" : "text-gray-500"}`} title="Vista de Calendario"><CalendarDays size={16} /></button>
             </div>
           </div>
 
         </div>
       </div>
 
-      <AlertaSection 
-        titulo="Vencidas (Sin cobertura)" Icono={XOctagon} nivel="vencida" vista={vista}
-        alertas={filtrarAlertas(data.vencidas)} mensajeVacio="Excelente, no tenés pólizas vencidas sin gestionar." 
-        selectedIds={selectedIds} onToggleSelect={toggleSelect} onToggleSelectAll={toggleSelectAll}
-      />
-      <AlertaSection 
-        titulo={`Críticas (0 a ${data.config.diasCritica} días)`} Icono={AlertTriangle} nivel="critica" vista={vista}
-        alertas={filtrarAlertas(data.criticas)} mensajeVacio="No hay vencimientos críticos." 
-        selectedIds={selectedIds} onToggleSelect={toggleSelect} onToggleSelectAll={toggleSelectAll}
-      />
-      <AlertaSection 
-        titulo={`Próximas (${data.config.diasCritica + 1} a ${data.config.diasMax} días)`} Icono={Clock} nivel="proxima" vista={vista}
-        alertas={filtrarAlertas(data.proximas)} mensajeVacio="No hay vencimientos próximos." 
-        selectedIds={selectedIds} onToggleSelect={toggleSelect} onToggleSelectAll={toggleSelectAll}
-      />
+      {vista === "calendario" ? (
+        <AlertaCalendar alertas={todasLasAlertasFiltradas} />
+      ) : (
+        <>
+          <AlertaSection 
+            titulo="Vencidas (Sin cobertura)" Icono={XOctagon} nivel="vencida" vista={vista}
+            alertas={filtrarAlertas(data.vencidas)} mensajeVacio="Excelente, no tenés pólizas vencidas sin gestionar." 
+            selectedIds={selectedIds} onToggleSelect={toggleSelect} onToggleSelectAll={toggleSelectAll}
+          />
+          <AlertaSection 
+            titulo={`Críticas (0 a ${data.config.diasCritica} días)`} Icono={AlertTriangle} nivel="critica" vista={vista}
+            alertas={filtrarAlertas(data.criticas)} mensajeVacio="No hay vencimientos críticos." 
+            selectedIds={selectedIds} onToggleSelect={toggleSelect} onToggleSelectAll={toggleSelectAll}
+          />
+          <AlertaSection 
+            titulo={`Próximas (${data.config.diasCritica + 1} a ${data.config.diasMax} días)`} Icono={Clock} nivel="proxima" vista={vista}
+            alertas={filtrarAlertas(data.proximas)} mensajeVacio="No hay vencimientos próximos." 
+            selectedIds={selectedIds} onToggleSelect={toggleSelect} onToggleSelectAll={toggleSelectAll}
+          />
+        </>
+      )}
 
       <ExportarExcelModal isOpen={isExportModalOpen} onClose={() => setIsExportModalOpen(false)} datos={prepararDatosExportacion()} nombreArchivo={`Reporte_Vencimientos_${new Date().toISOString().split("T")[0]}`} />
       <Toast message={toast.msg} isVisible={toast.show} onClose={() => setToast({ ...toast, show: false })} />
