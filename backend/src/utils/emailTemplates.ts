@@ -333,3 +333,51 @@ export const templateAlertaError = (funcion: string, detalleError: any, datosExt
     </div>
   </div>
 `;
+// Plantilla para Aviso de Vencimiento de Suscripción (SaaS)
+export const templateAvisoSuscripcion = (nombre: string, fechaVencimiento: string, linkPago: string) => `
+  <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 25px; border: 1px solid #e5e7eb; border-radius: 16px; border-top: 6px solid #ea580c; background-color: #ffffff;">
+    <div style="text-align: center; margin-bottom: 25px;">
+      <h2 style="color: #ea580c; margin: 0; font-size: 24px; letter-spacing: -0.5px;">Aviso de Suscripción</h2>
+      <p style="color: #6b7280; font-size: 14px; margin-top: 5px;">AseguraSimple - Tu plataforma de gestión</p>
+    </div>
+    
+    <p style="color: #374151; font-size: 16px; line-height: 1.6;">Hola <strong>${nombre}</strong>,</p>
+    <p style="color: #374151; font-size: 16px; line-height: 1.6;">Te escribimos para avisarte que tu suscripción a AseguraSimple está próxima a vencer el <strong>${fechaVencimiento}</strong>.</p>
+    
+    <div style="background-color: #fff7ed; border: 1px solid #ffedd5; padding: 20px; border-radius: 12px; margin: 24px 0; text-align: center;">
+      <p style="margin: 0 0 15px 0; color: #9a3412; font-size: 15px; font-weight: 500;">Para evitar interrupciones en el servicio y asegurar que tus clientes sigan recibiendo sus avisos automáticos, te invitamos a renovar tu plan:</p>
+      <a href="${linkPago}" style="background-color: #ea580c; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px; display: inline-block; box-shadow: 0 4px 6px -1px rgba(234, 88, 12, 0.2);">
+        Renovar Suscripción
+      </a>
+    </div>
+    
+    <p style="color: #4b5563; font-size: 15px; line-height: 1.6;">Si ya realizaste el pago en las últimas horas, por favor desestimá este mensaje.</p>
+    
+    <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #f3f4f6;">
+      <p style="color: #9ca3af; font-size: 11px; text-align: center; margin-top: 10px;">Este es un mensaje automático del sistema de administración de AseguraSimple.</p>
+    </div>
+  </div>
+`;
+// Plantilla para Aviso de Suscripción Vencida (Día 0)
+export const templateSuscripcionVencida = (nombre: string, linkPago: string) => `
+  <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 25px; border: 1px solid #e5e7eb; border-radius: 16px; border-top: 6px solid #dc2626; background-color: #ffffff;">
+    <div style="text-align: center; margin-bottom: 25px;">
+      <h2 style="color: #dc2626; margin: 0; font-size: 24px; letter-spacing: -0.5px;">Suscripción Vencida</h2>
+      <p style="color: #6b7280; font-size: 14px; margin-top: 5px;">AseguraSimple - Aviso Importante</p>
+    </div>
+    
+    <p style="color: #374151; font-size: 16px; line-height: 1.6;">Hola <strong>${nombre}</strong>,</p>
+    <p style="color: #374151; font-size: 16px; line-height: 1.6;">Te informamos que tu suscripción mensual a AseguraSimple ha vencido en el día de la fecha.</p>
+    
+    <div style="background-color: #fef2f2; border: 1px solid #fecaca; padding: 20px; border-radius: 12px; margin: 24px 0; text-align: center;">
+      <p style="margin: 0 0 10px 0; color: #991b1b; font-size: 15px; font-weight: bold;">Tenés 3 días de gracia habilitados ⏳</p>
+      <p style="margin: 0 0 15px 0; color: #7f1d1d; font-size: 14px;">Para no interrumpir tu trabajo, el sistema te permite seguir operando por 72 horas más. Pasado ese plazo, tu cuenta pasará a <strong>Modo Solo Lectura</strong> y se detendrán los envíos automáticos a tus clientes.</p>
+      
+      <a href="${linkPago}" style="background-color: #dc2626; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px; display: inline-block; box-shadow: 0 4px 6px -1px rgba(220, 38, 38, 0.2);">
+        Regularizar Pago
+      </a>
+    </div>
+    
+    <p style="color: #4b5563; font-size: 14px; line-height: 1.6;">Si ya realizaste el pago a través de Mercado Pago, la plataforma se actualizará automáticamente a la brevedad.</p>
+  </div>
+`;

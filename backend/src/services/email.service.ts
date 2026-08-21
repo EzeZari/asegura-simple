@@ -1,12 +1,14 @@
 import { sendMail } from '../utils/mailer';
-import { prisma } from '../config/db'; // 🔥 IMPORTAMOS PRISMA PARA LEER TU AGENCIA
+import { prisma } from '../config/db'; 
 import { 
   templateBienvenida, 
   templateVencimiento, 
   templateSiniestro,
   templateInvitacionEquipo,
   templateContacto,
-  templateAlertaError
+  templateAlertaError,
+  templateAvisoSuscripcion,
+  templateSuscripcionVencida 
 } from '../utils/emailTemplates';
 
 // 🔥 Función interna: El botón de pánico que te avisa a vos
@@ -30,13 +32,11 @@ export const enviarCorreoBienvenida = async (email: string, nombre: string, apel
   if (!email || !email.includes('@')) return;
 
   try {
-    // 🔥 1. Buscamos la configuración de tu agencia en la BD
     const agencia = await prisma.agencia.findUnique({ where: { id: 1 } });
 
     await sendMail({
       to: email,
       subject: `¡Bienvenido a nuestra Agencia, ${nombre}!`,
-      // 🔥 2. Le pasamos los datos de la agencia a la plantilla
       html: templateBienvenida(nombre, apellido, dni, telefono, agencia) 
     });
   } catch (error: any) {
@@ -50,19 +50,18 @@ export const enviarAvisoVencimiento = async (
   tipoPoliza: string, cobertura: string, fechaVencimiento: string,
   patente?: string | null, marca?: string | null, modelo?: string | null,
   ubicacionRiesgo?: string | null, cantidadEmpleados?: string | null,
-  cuponeraUrl?: string | null // 🔥 NUEVO: Recibimos la URL del PDF
+  cuponeraUrl?: string | null 
 ) => {
   if (!email || !email.includes('@')) return;
 
   try {
     const agencia = await prisma.agencia.findUnique({ where: { id: 1 } });
 
-    // 🔥 Preparamos el adjunto si existe
     let attachments = [];
     if (cuponeraUrl) {
       attachments.push({
         filename: `Cupon_de_Pago_Poliza_${nroPoliza}.pdf`,
-        path: cuponeraUrl // Resend usa esta URL para descargar el PDF y adjuntarlo
+        path: cuponeraUrl 
       });
     }
 
@@ -74,7 +73,7 @@ export const enviarAvisoVencimiento = async (
         patente, marca, modelo, ubicacionRiesgo, cantidadEmpleados, 
         agencia 
       ),
-      attachments: attachments.length > 0 ? attachments : undefined // 🔥 Pasamos el archivo
+      attachments: attachments.length > 0 ? attachments : undefined 
     });
   } catch (error: any) {
     console.error("Error en el email service:", error);
@@ -94,17 +93,15 @@ export const enviarNotificacionSiniestro = async (
   if (!email || !email.includes('@')) return;
 
   try {
-    // 🔥 1. Buscamos la configuración de tu agencia en la BD
     const agencia = await prisma.agencia.findUnique({ where: { id: 1 } });
 
     await sendMail({
       to: email,
       subject: `${asuntoPersonalizado} - Trámite #${nroSiniestro}`,
-      // 🔥 2. Le pasamos los datos de la agencia a la plantilla
       html: templateSiniestro(
         nombre, nroSiniestro, nroPoliza, compania, tipoPoliza, 
         patente, descripcionNovedad, urlSeguimiento, 
-        agencia // <-- ¡Acá viaja tu firma!
+        agencia 
       )
     });
   } catch (error: any) {
@@ -146,5 +143,48 @@ export const enviarCorreoContacto = async (nombre: string, email: string, mensaj
     console.log(`📧 Mail de contacto recibido de ${email}`);
   } catch (error: any) {
     console.error("Error al enviar el correo de contacto:", error);
+  }
+};
+
+// ============================================================================
+// CORREOS DEL ROBOT COBRADOR (SaaS)
+// ============================================================================
+
+export const enviarRecordatorioSuscripcion = async (email: string, nombre: string, fechaVencimiento: Date) => {
+  if (!email || !email.includes('@')) return;
+
+  try {
+    const linkPago = `${process.env.FRONTEND_URL || 'https://asegurasimple.com'}/configuracion`;
+    const fechaFormat = fechaVencimiento.toLocaleDateString("es-AR");
+
+    await sendMail({
+      to: email,
+      subject: `⚠️ Tu suscripción a AseguraSimple vence en 3 días`,
+      html: templateAvisoSuscripcion(nombre, fechaFormat, linkPago)
+    });
+    
+    console.log(`📧 Recordatorio de pago enviado a ${email}`);
+  } catch (error: any) {
+    console.error("Error al enviar el correo de cobro preventivo:", error);
+    await enviarAlertaErrorSistema('enviarRecordatorioSuscripcion', error.message || error, `Cliente: ${nombre} | Email: ${email}`);
+  }
+};
+
+export const enviarAvisoCuentaSuspendida = async (email: string, nombre: string) => {
+  if (!email || !email.includes('@')) return;
+
+  try {
+    const linkPago = `${process.env.FRONTEND_URL || 'https://asegurasimple.com'}/configuracion`;
+
+    await sendMail({
+      to: email,
+      subject: `⛔ Tu suscripción a AseguraSimple ha vencido`,
+      html: templateSuscripcionVencida(nombre, linkPago)
+    });
+    
+    console.log(`📧 Aviso de vencimiento (Día 0) enviado a ${email}`);
+  } catch (error: any) {
+    console.error("Error al enviar el correo de vencimiento:", error);
+    await enviarAlertaErrorSistema('enviarAvisoCuentaSuspendida', error.message || error, `Cliente: ${nombre} | Email: ${email}`);
   }
 };
