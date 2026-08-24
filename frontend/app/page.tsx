@@ -14,10 +14,20 @@ export default function LandingPage() {
     <div className="min-h-screen bg-white font-sans text-gray-900 selection:bg-green-200">
       <Navbar />
       <Hero />
-      <Features />
+      
+      {/* 🔥 1. Primero tocamos el "dolor" del usuario */}
       <Problems />
-      <HowItWorks />
+      
+      {/* 🔥 2. Después mostramos nuestro tremendo sistema como solución */}
+      <Features />
+      
+      {/* 
+        🔥 Ocultamos "Cómo Funciona" para que la página sea más corta y directa.
+        <HowItWorks /> 
+      */}
+      
       {/* <SocialProof /> */}
+      
       <Pricing />
       <FAQ />
       <CtaFinal />
