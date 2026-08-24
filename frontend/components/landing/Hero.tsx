@@ -20,13 +20,13 @@ export default function Hero() {
   };
 
   const floatAnimation = {
-    y: [-5, 5, -5],
-    transition: {
-      duration: 4,
-      repeat: Infinity,
-      ease: "easeInOut"
-    }
-  };
+  y: [-5, 5, -5],
+  transition: {
+    duration: 4,
+    repeat: Infinity,
+    ease: "easeInOut" as const, // ← agregar "as const"
+  }
+};
 
   return (
     <section className="relative bg-gray-50 overflow-hidden pt-20 pb-24 lg:pt-28 lg:pb-32">
