@@ -1,17 +1,13 @@
-import { Request, Response } from 'express';
+import { Router } from 'express';
 import { prisma } from '../config/db';
+import { verificarToken } from '../middlewares/auth.middleware';
 
-// 🔥 HELPER: Función antibug para sacar el ID del token
-const obtenerIdSeguro = (req: any): number => {
-  const idBruto = req.user?.userId || req.user?.id || req.usuario?.id || req.userId;
-  if (!idBruto) throw new Error("No autorizado. Token inválido o sin ID.");
-  return Number(idBruto);
-};
+const router = Router();
 
-// 🔥 HELPER: Detecta la Agencia para que el Vendedor vea los mismos números que el Dueño
 const obtenerProductorId = async (userId: number): Promise<number> => {
   const usuarioActual = await prisma.user.findUnique({ where: { id: userId } });
   const idAgencia = usuarioActual?.jefeId ? usuarioActual.jefeId : userId;
+  
   let productor = await prisma.productor.findUnique({ where: { userId: idAgencia } });
   
   if (!productor) {
@@ -27,66 +23,99 @@ const obtenerProductorId = async (userId: number): Promise<number> => {
       });
     } else {
       productor = await prisma.productor.create({
-        data: { nombre: userDueño?.nombre || 'Productor', apellido: '', email: userEmail, usuario: userEmail, contrasenaHash: '', userId: idAgencia }
+        data: {
+          nombre: userDueño?.nombre || 'Productor',
+          apellido: '',
+          email: userEmail,
+          usuario: userEmail,
+          contrasenaHash: '',
+          userId: idAgencia
+        }
       });
     }
   }
   return productor.id;
 };
 
-export const getDashboardStats = async (req: Request, res: Response): Promise<any> => {
+// =======================================================
+// RUTA 1: ESTADÍSTICAS BÁSICAS DE INICIO (dashboard/KPIs)
+// =======================================================
+router.get('/stats', verificarToken, async (req, res) => {
   try {
-    const userId = obtenerIdSeguro(req);
-    const productorId = await obtenerProductorId(userId); // 🔥 Acá unificamos las vistas
+    const userId = req.userId;
+    if (!userId) return res.status(401).json({ error: 'Usuario no autenticado.' });
 
-    // 1. Total Asegurados
-    const totalAsegurados = await prisma.asegurado.count({
-      where: { productorId: productorId, activo: true }
-    });
+    const productorId = await obtenerProductorId(userId);
 
-    // 2. Pólizas Activas (Vigentes reales)
-    const polizasActivas = await prisma.poliza.count({
-      where: { 
-        asegurado: { productorId: productorId },
-        estado: 'Vigente' // 🔥 CORREGIDO: Ahora busca estrictamente "Vigente"
-      }
-    });
-
-    // 3. Vencimientos próximos (30 días)
     const hoy = new Date();
-    hoy.setHours(0, 0, 0, 0);
-    const en30Dias = new Date();
-    en30Dias.setDate(hoy.getDate() + 30);
+    hoy.setHours(0, 0, 0, 0); 
 
-    const vencimientos = await prisma.poliza.count({
-      where: {
-        asegurado: { productorId: productorId },
-        fechaVencimiento: { gte: hoy, lte: en30Dias },
-        estado: 'Vigente' // 🔥 CORREGIDO: Solo alerta sobre vencimientos de las que están vigentes
-      }
-    });
+    const agencia = await prisma.agencia.findUnique({ where: { id: 1 } });
+    const diasParaAviso = agencia?.diasAlertaVencimiento || 30;
 
-    // 4. Total Aseguradoras
-    const totalCompanias = await prisma.compania.count({
-      where: { productorId: productorId }
-    });
+    const fechaLimite = new Date();
+    fechaLimite.setDate(hoy.getDate() + diasParaAviso);
 
-    // 5. Actividad Reciente de TODA la agencia
-    const actividadReciente = await prisma.actividad.findMany({
-      where: { productorId: productorId },
-      orderBy: { fecha: 'desc' },
-      take: 10
-    });
+    const [
+      totalAsegurados, polizasActivas, vencimientos, totalCompanias, historial
+    ] = await Promise.all([
+      prisma.asegurado.count({ where: { activo: true, productorId: productorId } }),
+      prisma.poliza.count({ 
+        where: { 
+          fechaVencimiento: { gte: hoy },
+          estado: { notIn: ['Anulada', 'Renovada', 'Vencida'] },
+          asegurado: { productorId: productorId } 
+        } 
+      }),
+      prisma.poliza.count({
+        where: { 
+          fechaVencimiento: { gte: hoy, lte: fechaLimite },
+          estado: { notIn: ['Anulada', 'Renovada', 'Vencida'] },
+          asegurado: { productorId: productorId }
+        }
+      }),
+      prisma.compania.count({ where: { productorId: productorId } }),
+      prisma.actividad.findMany({
+        where: { productorId: productorId },
+        take: 6,
+        orderBy: { fecha: 'desc' }
+      })
+    ]);
 
-    res.json({
-      totalAsegurados,
-      polizasActivas,
-      vencimientos,
-      totalCompanias,
-      actividadReciente
-    });
-  } catch (error: any) {
-    console.error("Error al obtener estadísticas del dashboard:", error);
-    res.status(500).json({ error: "Error interno al cargar el dashboard." });
+    const actividadReciente = historial.map(h => ({
+      id: h.id.toString(),
+      type: `${h.accion} ${h.entidad}`, 
+      detail: h.descripcion,
+      client: h.cliente,
+      // 🔥 ACÁ ESTÁ LA MAGIA: Le forzamos la zona horaria de Argentina
+      date: h.fecha.toLocaleString('es-AR', { 
+        timeZone: 'America/Argentina/Buenos_Aires',
+        hour: '2-digit', 
+        minute:'2-digit', 
+        day: '2-digit', 
+        month: '2-digit' 
+      })
+    }));
+
+    res.json({ totalAsegurados, polizasActivas, vencimientos, totalCompanias, actividadReciente });
+
+  } catch (error) {
+    console.error("Error al cargar stats:", error);
+    res.status(500).json({ error: 'Error al cargar estadísticas del dashboard' });
   }
-};
+});
+
+// =======================================================
+// RUTA 2: OBTENER COMUNICADO GLOBAL (BANNER PARA USUARIOS)
+// =======================================================
+router.get('/comunicado', verificarToken, async (req, res) => {
+  try {
+    const comunicado = await prisma.comunicadoAdmin.findUnique({ where: { id: 1 } });
+    res.json(comunicado || { activo: false, mensaje: "" });
+  } catch (error) {
+    console.error("Error al obtener comunicado:", error);
+    res.status(500).json({ error: 'Error al obtener comunicado' });
+  }
+});
+
+export default router;
