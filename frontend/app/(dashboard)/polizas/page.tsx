@@ -14,6 +14,7 @@ import { useTableSort } from "@/hooks/useTableSort";
 import SortableHeader from "@/components/ui/SortableHeader";
 import PageHeader from "@/components/ui/PageHeader";
 import PolizaTableRow from "@/components/polizas/PolizaTableRow";
+import PolizaMobileCard from "@/components/polizas/PolizaMobileCard"; // 🔥 Importamos la tarjeta móvil
 import SelectOrdenamiento from "@/components/ui/SelectOrdenamiento";
 import { apiFetch } from "@/services/api";
 import { useAuthStore } from "@/store/authStore"; 
@@ -207,7 +208,6 @@ export default function PolizasPage() {
     : columnasBase;
 
   return (
-    // 🔥 Adaptado: Eliminado bg-white para heredar el fondo oscuro del layout
     <div className="flex flex-col p-4 lg:p-8 w-full min-w-0 max-w-full gap-5 lg:gap-8 min-h-screen transition-colors duration-300">
       
       <PageHeader 
@@ -237,22 +237,58 @@ export default function PolizasPage() {
         </div>
       </div>
 
-      <Table columns={columnas} isLoading={isLoading} isEmpty={polizasOrdenadas.length === 0} emptyContent={<div className="flex flex-col items-center justify-center text-gray-500 dark:text-gray-400 py-6 transition-colors"><FileText size={32} className="text-gray-300 dark:text-gray-600 mb-3" /><p className="font-medium text-gray-900 dark:text-white">No se encontraron pólizas</p></div>}>
-        {polizasOrdenadas.map((poliza) => (
-          <PolizaTableRow 
-            key={poliza.id} 
-            poliza={poliza} 
-            onClickDetalle={(id) => router.push(`/polizas/${id}`)} 
-            menuAbiertoId={menuAbiertoId} 
-            onToggleMenu={setMenuAbiertoId} 
-            puedeModificar={puedeModificar}
-            onEdit={puedeModificar ? (p) => { setPolizaAEditar(p); setIsModalOpen(true); } : undefined} 
-            onAvisarVencimiento={puedeModificar ? enviarAvisoVencimiento : undefined} 
-            onCambiarEstado={puedeModificar ? cambiarEstadoRapido : undefined} 
-            onEliminar={puedeModificar ? (p) => { setPolizaAEliminar(p); setIsConfirmOpen(true); } : undefined} 
-          />
-        ))}
-      </Table>
+      <div className="w-full">
+        
+        {/* 🔥 VISTA ESCRITORIO Y TABLET */}
+        <div className="hidden md:block">
+          <Table columns={columnas} isLoading={isLoading} isEmpty={polizasOrdenadas.length === 0} emptyContent={<div className="flex flex-col items-center justify-center text-gray-500 dark:text-gray-400 py-6 transition-colors"><FileText size={32} className="text-gray-300 dark:text-gray-600 mb-3" /><p className="font-medium text-gray-900 dark:text-white">No se encontraron pólizas</p></div>}>
+            {polizasOrdenadas.map((poliza) => (
+              <PolizaTableRow 
+                key={poliza.id} 
+                poliza={poliza} 
+                onClickDetalle={(id) => router.push(`/polizas/${id}`)} 
+                menuAbiertoId={menuAbiertoId} 
+                onToggleMenu={setMenuAbiertoId} 
+                puedeModificar={puedeModificar}
+                onEdit={puedeModificar ? (p) => { setPolizaAEditar(p); setIsModalOpen(true); } : undefined} 
+                onAvisarVencimiento={puedeModificar ? enviarAvisoVencimiento : undefined} 
+                onCambiarEstado={puedeModificar ? cambiarEstadoRapido : undefined} 
+                onEliminar={puedeModificar ? (p) => { setPolizaAEliminar(p); setIsConfirmOpen(true); } : undefined} 
+              />
+            ))}
+          </Table>
+        </div>
+
+        {/* 🔥 VISTA CELULAR: Tarjetas */}
+        <div className="block md:hidden">
+          {isLoading ? (
+             <div className="text-center py-8 text-gray-500 animate-pulse">Cargando pólizas...</div>
+          ) : polizasOrdenadas.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-12 text-gray-500 bg-gray-50 dark:bg-gray-800/50 rounded-2xl border border-gray-100 dark:border-gray-800">
+              <FileText size={32} className="text-gray-300 dark:text-gray-600 mb-3" />
+              <p className="font-medium text-gray-900 dark:text-white">No se encontraron pólizas</p>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-3 pb-12">
+              {polizasOrdenadas.map((poliza) => (
+                <PolizaMobileCard 
+                  key={poliza.id}
+                  poliza={poliza}
+                  onClickDetalle={(id) => router.push(`/polizas/${id}`)}
+                  menuAbiertoId={menuAbiertoId}
+                  onToggleMenu={setMenuAbiertoId}
+                  puedeModificar={puedeModificar}
+                  onEdit={puedeModificar ? (p) => { setPolizaAEditar(p); setIsModalOpen(true); } : undefined}
+                  onAvisarVencimiento={puedeModificar ? enviarAvisoVencimiento : undefined}
+                  onCambiarEstado={puedeModificar ? cambiarEstadoRapido : undefined}
+                  onEliminar={puedeModificar ? (p) => { setPolizaAEliminar(p); setIsConfirmOpen(true); } : undefined}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+
+      </div>
 
       {puedeModificar && (
         <>

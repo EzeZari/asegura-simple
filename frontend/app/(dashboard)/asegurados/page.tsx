@@ -15,6 +15,7 @@ import SortableHeader from "@/components/ui/SortableHeader";
 import PageHeader from "@/components/ui/PageHeader";
 import AlertModal from "@/components/ui/AlertModal";
 import AseguradoTableRow from "@/components/asegurados/AseguradoTableRow";
+import AseguradoMobileCard from "@/components/asegurados/AseguradoMobileCard"; // 🔥 Importamos la tarjeta móvil
 import SelectOrdenamiento from "@/components/ui/SelectOrdenamiento";
 import { apiFetch } from "@/services/api";
 import { useAuthStore } from "@/store/authStore"; 
@@ -195,7 +196,6 @@ export default function AseguradosPage() {
     : columnasBase;
 
   return (
-    // 🔥 Sacamos el bg-white para que reaccione al dark mode del dashboard
     <div className="flex flex-col p-4 lg:p-8 w-full gap-5 lg:gap-8 min-h-screen overflow-x-hidden transition-colors duration-300">
       
       <TutorialTourAsegurados />
@@ -224,7 +224,6 @@ export default function AseguradosPage() {
         
         <div className="flex flex-col sm:flex-row items-center gap-3 w-full xl:w-auto">
           {puedeModificar && (
-            // 🔥 Botón oscuro
             <button onClick={() => setIsImportModalOpen(true)} className="flex justify-center items-center gap-2 w-full sm:w-auto px-4 py-2.5 lg:py-2 bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 rounded-xl text-sm font-bold transition-all active:scale-95 shadow-sm">
               <UploadCloud size={16} /> Importar Excel
             </button>
@@ -236,23 +235,55 @@ export default function AseguradosPage() {
         </div>
       </div>
 
-      <div className="tour-asegurados-tabla">
-        {/* 🔥 Adaptamos los textos del estado empty a modo oscuro */}
-        <Table columns={columnas} isLoading={isLoading} isEmpty={aseguradosOrdenados.length === 0} emptyContent={<div className="flex flex-col items-center justify-center text-gray-500 dark:text-gray-400 py-6 transition-colors"><Search size={32} className="text-gray-300 dark:text-gray-600 mb-3" /><p className="font-medium text-gray-900 dark:text-white transition-colors">No se encontraron clientes</p></div>}>
-          {aseguradosOrdenados.map((cliente) => (
-            <AseguradoTableRow 
-              key={cliente.id}
-              cliente={cliente}
-              onClickPolizas={(c) => setAseguradoParaVerPolizas(c)}
-              menuAbiertoId={menuAbiertoId}
-              onToggleMenu={setMenuAbiertoId}
-              puedeModificar={puedeModificar}
-              onEdit={puedeModificar ? (c) => { setClienteAEditar(c); setMenuAbiertoId(null); setIsModalOpen(true); } : undefined}
-              onToggleEstado={puedeModificar ? toggleEstado : undefined}
-              onEliminar={puedeModificar ? (c) => { setAseguradoAEliminar(c); setMenuAbiertoId(null); setIsConfirmOpen(true); } : undefined}
-            />
-          ))}
-        </Table>
+      <div className="tour-asegurados-tabla w-full">
+        
+        {/* 🔥 1. VISTA ESCRITORIO: La tabla original (Se oculta en celulares con "hidden lg:block") */}
+        <div className="hidden lg:block">
+          <Table columns={columnas} isLoading={isLoading} isEmpty={aseguradosOrdenados.length === 0} emptyContent={<div className="flex flex-col items-center justify-center text-gray-500 dark:text-gray-400 py-6 transition-colors"><Search size={32} className="text-gray-300 dark:text-gray-600 mb-3" /><p className="font-medium text-gray-900 dark:text-white transition-colors">No se encontraron clientes</p></div>}>
+            {aseguradosOrdenados.map((cliente) => (
+              <AseguradoTableRow 
+                key={cliente.id}
+                cliente={cliente}
+                onClickPolizas={(c) => setAseguradoParaVerPolizas(c)}
+                menuAbiertoId={menuAbiertoId}
+                onToggleMenu={setMenuAbiertoId}
+                puedeModificar={puedeModificar}
+                onEdit={puedeModificar ? (c) => { setClienteAEditar(c); setMenuAbiertoId(null); setIsModalOpen(true); } : undefined}
+                onToggleEstado={puedeModificar ? toggleEstado : undefined}
+                onEliminar={puedeModificar ? (c) => { setAseguradoAEliminar(c); setMenuAbiertoId(null); setIsConfirmOpen(true); } : undefined}
+              />
+            ))}
+          </Table>
+        </div>
+
+        {/* 🔥 2. VISTA CELULAR: Tarjetas (Se oculta en PC con "block lg:hidden") */}
+        <div className="block lg:hidden">
+          {isLoading ? (
+             <div className="text-center py-8 text-gray-500 animate-pulse">Cargando clientes...</div>
+          ) : aseguradosOrdenados.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-12 text-gray-500 bg-gray-50 dark:bg-gray-800/50 rounded-2xl border border-gray-100 dark:border-gray-800">
+              <Search size={32} className="text-gray-300 dark:text-gray-600 mb-3" />
+              <p className="font-medium text-gray-900 dark:text-white">No se encontraron clientes</p>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-4 pb-12">
+              {aseguradosOrdenados.map((cliente) => (
+                <AseguradoMobileCard 
+                  key={cliente.id}
+                  cliente={cliente}
+                  onClickPolizas={(c) => setAseguradoParaVerPolizas(c)}
+                  menuAbiertoId={menuAbiertoId}
+                  onToggleMenu={setMenuAbiertoId}
+                  puedeModificar={puedeModificar}
+                  onEdit={puedeModificar ? (c) => { setClienteAEditar(c); setMenuAbiertoId(null); setIsModalOpen(true); } : undefined}
+                  onToggleEstado={puedeModificar ? toggleEstado : undefined}
+                  onEliminar={puedeModificar ? (c) => { setAseguradoAEliminar(c); setMenuAbiertoId(null); setIsConfirmOpen(true); } : undefined}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+
       </div>
 
       {puedeModificar && (

@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { AlertTriangle, Search } from "lucide-react";
 import NuevoSiniestroModal from "@/components/siniestros/NuevoSiniestroModal";
 import SiniestroTableRow from "@/components/siniestros/SiniestroTableRow";
+import SiniestroMobileCard from "@/components/siniestros/SiniestroMobileCard"; // 🔥 Importamos la tarjeta móvil
 import Toast from "@/components/ui/Toast";
 import Table, { TableColumn } from "@/components/ui/Table";
 import ConfirmModal from "@/components/ui/ConfirmModal";
@@ -132,7 +133,6 @@ export default function SiniestrosPage() {
     : columnasBase;
 
   return (
-    // 🔥 Sacamos el bg-white para heredar el oscuro del layout
     <div className="flex flex-col p-4 lg:p-8 w-full gap-5 lg:gap-8 min-h-screen overflow-x-hidden transition-colors duration-300">
       
       <TutorialTourSiniestros />
@@ -146,7 +146,6 @@ export default function SiniestrosPage() {
         />
       </div>
 
-      {/* 🔥 Filtros oscurecidos */}
       <div className="flex flex-col md:flex-row gap-4 bg-gray-50/50 dark:bg-gray-800 p-4 rounded-2xl border border-gray-100 dark:border-gray-700 tour-siniestros-filtros transition-colors">
         <div className="flex-1 relative w-full">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500" size={18} />
@@ -175,26 +174,55 @@ export default function SiniestrosPage() {
         </div>
       </div>
 
-      <div className="tour-siniestros-tabla">
-        <Table columns={columnas} isLoading={isLoading} isEmpty={siniestrosOrdenados.length === 0} emptyContent={
-          <div className="flex flex-col items-center justify-center text-gray-500 dark:text-gray-400 py-10 transition-colors">
-            <AlertTriangle size={40} className="text-gray-300 dark:text-gray-600 mb-4" />
-            <p className="font-medium text-gray-900 dark:text-white text-lg">No se encontraron siniestros</p>
-            <p className="text-sm">Tranquilidad pura. Tus clientes están a salvo.</p>
-          </div>
-        }>
-          {siniestrosOrdenados.map((siniestro) => (
-            <SiniestroTableRow 
-              key={siniestro.id}
-              siniestro={siniestro}
-              menuAbiertoId={menuAbiertoId}
-              onToggleMenu={setMenuAbiertoId}
-              puedeModificar={puedeModificar} 
-              onEdit={puedeModificar ? (s) => { setSiniestroAEditar(s); setMenuAbiertoId(null); setIsModalOpen(true); } : undefined}
-              onEliminar={puedeModificar ? (s) => { setSiniestroAEliminar(s); setMenuAbiertoId(null); setIsConfirmOpen(true); } : undefined}
-            />
-          ))}
-        </Table>
+      <div className="tour-siniestros-tabla w-full">
+        {/* 🔥 VISTA ESCRITORIO Y TABLET */}
+        <div className="hidden md:block">
+          <Table columns={columnas} isLoading={isLoading} isEmpty={siniestrosOrdenados.length === 0} emptyContent={
+            <div className="flex flex-col items-center justify-center text-gray-500 dark:text-gray-400 py-10 transition-colors">
+              <AlertTriangle size={40} className="text-gray-300 dark:text-gray-600 mb-4" />
+              <p className="font-medium text-gray-900 dark:text-white text-lg">No se encontraron siniestros</p>
+              <p className="text-sm">Tranquilidad pura. Tus clientes están a salvo.</p>
+            </div>
+          }>
+            {siniestrosOrdenados.map((siniestro) => (
+              <SiniestroTableRow 
+                key={siniestro.id}
+                siniestro={siniestro}
+                menuAbiertoId={menuAbiertoId}
+                onToggleMenu={setMenuAbiertoId}
+                puedeModificar={puedeModificar} 
+                onEdit={puedeModificar ? (s) => { setSiniestroAEditar(s); setMenuAbiertoId(null); setIsModalOpen(true); } : undefined}
+                onEliminar={puedeModificar ? (s) => { setSiniestroAEliminar(s); setMenuAbiertoId(null); setIsConfirmOpen(true); } : undefined}
+              />
+            ))}
+          </Table>
+        </div>
+
+        {/* 🔥 VISTA CELULAR: Tarjetas */}
+        <div className="block md:hidden">
+          {isLoading ? (
+             <div className="text-center py-8 text-gray-500 animate-pulse">Cargando siniestros...</div>
+          ) : siniestrosOrdenados.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-12 text-gray-500 bg-gray-50 dark:bg-gray-800/50 rounded-2xl border border-gray-100 dark:border-gray-800">
+              <AlertTriangle size={32} className="text-gray-300 dark:text-gray-600 mb-3" />
+              <p className="font-medium text-gray-900 dark:text-white text-lg">No hay siniestros</p>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-3 pb-12">
+              {siniestrosOrdenados.map((siniestro) => (
+                <SiniestroMobileCard 
+                  key={siniestro.id}
+                  siniestro={siniestro}
+                  menuAbiertoId={menuAbiertoId}
+                  onToggleMenu={setMenuAbiertoId}
+                  puedeModificar={puedeModificar} 
+                  onEdit={puedeModificar ? (s) => { setSiniestroAEditar(s); setMenuAbiertoId(null); setIsModalOpen(true); } : undefined}
+                  onEliminar={puedeModificar ? (s) => { setSiniestroAEliminar(s); setMenuAbiertoId(null); setIsConfirmOpen(true); } : undefined}
+                />
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
       {puedeModificar && (
