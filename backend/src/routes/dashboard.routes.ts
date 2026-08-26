@@ -87,7 +87,14 @@ router.get('/stats', verificarToken, async (req, res) => {
       type: `${h.accion} ${h.entidad}`, 
       detail: h.descripcion,
       client: h.cliente,
-      date: h.fecha.toLocaleString('es-AR', { hour: '2-digit', minute:'2-digit', day: '2-digit', month: '2-digit' })
+      // 🔥 ACÁ ESTÁ LA MAGIA: Le forzamos la zona horaria de Argentina
+      date: h.fecha.toLocaleString('es-AR', { 
+        timeZone: 'America/Argentina/Buenos_Aires',
+        hour: '2-digit', 
+        minute:'2-digit', 
+        day: '2-digit', 
+        month: '2-digit' 
+      })
     }));
 
     res.json({ totalAsegurados, polizasActivas, vencimientos, totalCompanias, actividadReciente });
