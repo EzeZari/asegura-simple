@@ -63,11 +63,11 @@ export default function TutorialTour() {
   useEffect(() => {
     const tutorialCompletado = localStorage.getItem("asegurasimple_tutorial_completado");
     if (tutorialCompletado !== "true") {
+      // 🔥 ACÁ ESTÁ EL CAMBIO: Esperamos 3.5 segundos antes de lanzar el tour
       const timer = setTimeout(() => {
         setRun(true);
-        // 🔥 LO GUARDAMOS APENAS ARRANCA PARA QUE NO MOLESTE AL RECARGAR (F5)
         localStorage.setItem("asegurasimple_tutorial_completado", "true");
-      }, 1000);
+      }, 3500); 
       return () => clearTimeout(timer);
     }
   }, []);
