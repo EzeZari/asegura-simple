@@ -1,18 +1,15 @@
 "use client";
 
 import { Suspense, useState } from "react";
-import { useSearchParams } from "next/navigation";
 import { Check, Shield, Users, Zap, Loader2, Sparkles } from "lucide-react";
 import Toast from "@/components/ui/Toast";
 import { useAuthStore } from "@/store/authStore"; 
-// Importamos el componente Image de Next.js (opcional, pero recomendado)
 import Image from "next/image";
 
 function PlanesContent() {
-  const searchParams = useSearchParams();
-  const userEmail = searchParams.get("email") || "";
-
+  // 🔥 1. LA MAGIA ACÁ: Sacamos al usuario de la sesión global, ya no dependemos de la URL
   const user = useAuthStore((state: any) => state.user);
+  const userEmail = user?.email || "";
   const planActual = user?.plan || null;
   
   const suscripcionEstado = user?.suscripcion?.estado;
@@ -25,6 +22,7 @@ function PlanesContent() {
   const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
   const [mpEmail, setMpEmail] = useState("");
 
+  // 🔥 2. PRECIOS ACTUALIZADOS: Para que coincidan con la landing y la promo
   const planes = [
     {
       id: "GRATUITO",
@@ -45,7 +43,7 @@ function PlanesContent() {
     {
       id: "BASICO",
       nombre: "Plan Básico",
-      precio: "$9.990",
+      precio: "$8.490",
       descripcion: "Para productores independientes.",
       icon: UserIcon,
       features: [
@@ -61,7 +59,7 @@ function PlanesContent() {
     {
       id: "PROFESIONAL",
       nombre: "Plan Profesional",
-      precio: "$14.990",
+      precio: "$12.490",
       descripcion: "Para equipos en crecimiento.",
       icon: Zap,
       features: [
@@ -78,7 +76,7 @@ function PlanesContent() {
     {
       id: "AGENCIA",
       nombre: "Plan Agencia",
-      precio: "$24.990",
+      precio: "$21.240",
       descripcion: "Para carteras masivas.",
       icon: Users,
       features: [
@@ -94,8 +92,9 @@ function PlanesContent() {
   ];
 
   const handleSeleccionarPlan = (planId: string) => {
+    // Verificamos desde el Store en lugar de la URL
     if (!userEmail) {
-      setMensajeToast("Error: No se detectó el usuario. Volvé a ingresar desde el link de tu correo.");
+      setMensajeToast("Error: Tu sesión expiró o no se detectó. Por favor, volvé a iniciar sesión.");
       setShowToast(true);
       return;
     }
@@ -145,7 +144,6 @@ function PlanesContent() {
   return (
     <div className="flex flex-col items-center justify-center min-h-screen px-4 py-12 md:py-16 bg-gray-50 w-full">
       
-      {/* 🔥 LOGO DE LA MARCA CON LA SOMBRA ESTÁNDAR DE TU APP */}
       <div className="mb-6 md:mb-8 flex justify-center">
         <img 
           src="/logo.png" 

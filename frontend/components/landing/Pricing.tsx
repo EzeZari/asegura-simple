@@ -8,6 +8,7 @@ export default function Pricing() {
   const plans = [
     {
       name: "Plan Prueba",
+      oldPrice: null,
       price: "Gratis",
       period: "",
       desc: "14 días para conocer la plataforma.",
@@ -23,7 +24,8 @@ export default function Pricing() {
     },
     {
       name: "Plan Básico",
-      price: "$9.990",
+      oldPrice: "$9.990",
+      price: "$8.490",
       period: "/mes",
       desc: "Para productores independientes.",
       features: [
@@ -32,13 +34,14 @@ export default function Pricing() {
         "Gestión de pólizas y siniestros", 
         "Soporte estándar"
       ],
-      cta: "Suscribirme",
+      cta: "Aprovechar Descuento",
       href: "/registro",
       highlighted: false
     },
     {
       name: "Plan Profesional",
-      price: "$14.990",
+      oldPrice: "$14.990",
+      price: "$12.490",
       period: "/mes",
       desc: "Para equipos en crecimiento.",
       features: [
@@ -50,11 +53,12 @@ export default function Pricing() {
       cta: "Elegir Profesional",
       href: "/registro",
       highlighted: true,
-      badge: "EL MÁS ELEGIDO"
+      badge: "15% OFF - EL MÁS ELEGIDO"
     },
     {
       name: "Plan Agencia",
-      price: "$24.990",
+      oldPrice: "$24.990",
+      price: "$21.240",
       period: "/mes",
       desc: "Para carteras masivas.",
       features: [
@@ -79,11 +83,14 @@ export default function Pricing() {
           transition={{ duration: 0.6 }}
           className="text-center mb-16"
         >
+          <div className="inline-block mb-4 px-4 py-1.5 bg-green-100 text-green-800 font-bold rounded-full text-sm tracking-wide uppercase">
+            Promo por tiempo limitado
+          </div>
           <h2 className="text-4xl md:text-5xl font-extrabold text-gray-900 mb-4">
             Elegí tu plan ideal
           </h2>
           <p className="text-xl text-gray-600">
-            Arrancá con la versión de prueba de 14 días gratis, o potenciá tu agencia con las herramientas de nuestros planes avanzados.
+            Aprovechá la Semana de la Automatización con precios especiales. Arrancá hoy mismo y dejá que el sistema trabaje por vos.
           </p>
         </motion.div>
 
@@ -113,8 +120,16 @@ export default function Pricing() {
               </div>
               
               <div className="mb-8">
-                <span className="text-4xl font-black text-gray-900">{plan.price}</span>
-                {plan.period && <span className="text-gray-500 font-medium">{plan.period}</span>}
+                {/* Lógica para mostrar precio tachado */}
+                {plan.oldPrice && (
+                  <div className="text-lg font-semibold text-gray-400 line-through mb-1">
+                    {plan.oldPrice}
+                  </div>
+                )}
+                <div className="flex items-baseline gap-1">
+                  <span className="text-4xl font-black text-gray-900">{plan.price}</span>
+                  {plan.period && <span className="text-gray-500 font-medium">{plan.period}</span>}
+                </div>
               </div>
               
               <ul className="flex-1 space-y-4 mb-8">

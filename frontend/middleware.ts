@@ -8,14 +8,13 @@ export function middleware(request: NextRequest) {
   const token = request.cookies.get('next_auth_token')?.value;
 
   // 🔥 1. INMUNIDAD PARA EL BACKOFFICE ADMIN
-  // Lo ponemos arriba de todo para que ni siquiera evalúe si tiene token normal
   if (pathname.startsWith('/admin')) {
     return NextResponse.next();
   }
 
   // 🔥 2. RUTAS PÚBLICAS
   const isPublicRoute = 
-    pathname === '/' || // <-- ACÁ PERMITIMOS LA LANDING PAGE
+    pathname === '/' || 
     pathname.startsWith('/contacto') ||
     pathname.startsWith('/consulta') || 
     pathname.startsWith('/planes') ||
@@ -38,9 +37,17 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL('/login', request.url));
   }
 
-  // Si YA tiene token y está intentando entrar al login/registro -> Lo mandamos al dashboard
+  // Si YA tiene token y está intentando entrar al login/registro -> Lo mandamos a donde pidió o al dashboard
   if (token && isAuthRoute) {
-    // 🔥 ACÁ LO MANDAMOS AL DASHBOARD (Ajustá '/inicio' si tu ruta principal es otra, como '/estadisticas')
+    // 🔥 Leemos si la URL traía una redirección pendiente
+    const redirectPath = request.nextUrl.searchParams.get('redirect');
+    
+    if (redirectPath) {
+      // Si venía del correo, lo mandamos directo al plan
+      return NextResponse.redirect(new URL(redirectPath, request.url));
+    }
+    
+    // Si entró al login de forma normal, lo mandamos a inicio
     return NextResponse.redirect(new URL('/inicio', request.url));
   }
 

@@ -7,11 +7,11 @@ const client = new MercadoPagoConfig({ accessToken: process.env.MERCADO_PAGO_ACC
 export const crearSuscripcion = async (req: Request, res: Response): Promise<any> => {
   const { plan, email, mpEmail } = req.body;
 
-  // 🔥 NUEVOS PRECIOS ESTRATÉGICOS
+  // 🔥 NUEVOS PRECIOS CON DESCUENTO (Semana Promo)
   const planes = {
-    BASICO: { title: "Plan Básico - AseguraSimple", price: 9990 },
-    PROFESIONAL: { title: "Plan Profesional - AseguraSimple", price: 14990 },
-    AGENCIA: { title: "Plan Agencia - AseguraSimple", price: 24990 }
+    BASICO: { title: "Plan Básico - AseguraSimple", price: 8490 },
+    PROFESIONAL: { title: "Plan Profesional - AseguraSimple", price: 12490 },
+    AGENCIA: { title: "Plan Agencia - AseguraSimple", price: 21240 }
   };
 
   const planSeleccionado = planes[plan as keyof typeof planes];
@@ -29,6 +29,16 @@ export const crearSuscripcion = async (req: Request, res: Response): Promise<any
       });
     }
 
+    // 🔥 Sanitizamos la URL para que Mercado Pago no explote
+    let frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+    if (!frontendUrl.startsWith('http')) {
+      frontendUrl = `https://${frontendUrl}`; // Si se olvidaron el http, se lo ponemos a la fuerza
+    }
+    // Si la URL termina con "/", se lo sacamos para evitar "http://localhost:3000//login"
+    if (frontendUrl.endsWith('/')) {
+      frontendUrl = frontendUrl.slice(0, -1);
+    }
+
     const preapproval = new PreApproval(client);
     
     const result = await preapproval.create({
@@ -40,7 +50,7 @@ export const crearSuscripcion = async (req: Request, res: Response): Promise<any
           transaction_amount: planSeleccionado.price,
           currency_id: 'ARS' 
         },
-        back_url: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/login?exito=true`,
+        back_url: `${frontendUrl}/login?exito=true`, // URL completamente segura
         external_reference: `${email}|${plan}`,
         payer_email: mpEmail || email 
       }

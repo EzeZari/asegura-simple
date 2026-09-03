@@ -13,7 +13,6 @@ export default function LoginPage() {
   const [successMsg, setSuccessMsg] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   
-  // 🔥 NUEVO: Estado para mostrar el botón de reenviar correo
   const [showResend, setShowResend] = useState(false); 
   const [isResending, setIsResending] = useState(false);
 
@@ -23,13 +22,15 @@ export default function LoginPage() {
   useEffect(() => {
     setIsMounted(true);
     const params = new URLSearchParams(window.location.search);
+    const redirectParam = params.get("redirect");
+
     if (params.get("verified") === "true") {
       setSuccessMsg("¡Cuenta confirmada con éxito! Ya podés iniciar sesión.");
-      window.history.replaceState(null, '', '/login');
+      window.history.replaceState(null, '', redirectParam ? `/login?redirect=${redirectParam}` : '/login');
     }
     if (params.get("error") === "invalid_token") {
       setError("El enlace de verificación es inválido o ha expirado.");
-      window.history.replaceState(null, '', '/login');
+      window.history.replaceState(null, '', redirectParam ? `/login?redirect=${redirectParam}` : '/login');
     }
   }, []);
 
@@ -44,7 +45,7 @@ export default function LoginPage() {
     e.preventDefault();
     setError("");
     setSuccessMsg("");
-    setShowResend(false); // Escondemos el botón si intentan de nuevo
+    setShowResend(false); 
     if (!email || !password) { setError("Por favor, completá todos los campos."); return; }
     setIsLoading(true);
 
@@ -60,7 +61,6 @@ export default function LoginPage() {
 
       if (!response.ok) { 
         setError(data.error || "Credenciales incorrectas."); 
-        // 🔥 MAGIA: Si el error es 403 (No verificado), mostramos el botón de rescate
         if (response.status === 403) {
           setShowResend(true);
         }
@@ -73,14 +73,18 @@ export default function LoginPage() {
       document.cookie = `next_auth_token=${data.accessToken}; path=/; max-age=86400; secure; samesite=strict`;
       setAccessToken(data.accessToken);
       setUser(data.user);
-      router.push("/inicio");
+      
+      // 🔥 LA MAGIA ESTÁ ACÁ: Leemos la URL en el momento exacto del clic
+      const currentParams = new URLSearchParams(window.location.search);
+      const finalRedirect = currentParams.get("redirect") || "/inicio";
+      router.push(finalRedirect);
+
     } catch (err) {
       setError("Error de conexión con el servidor.");
       setIsLoading(false);
     }
   };
 
-  // 🔥 NUEVA FUNCIÓN: Llama al backend para reenviar el correo
   const handleResendEmail = async () => {
     setIsResending(true);
     setError("");
@@ -99,7 +103,7 @@ export default function LoginPage() {
         setError(data.error || "Error al reenviar el correo.");
       } else {
         setSuccessMsg("¡Correo reenviado! Revisá tu bandeja de entrada o spam.");
-        setShowResend(false); // Ocultamos el botón porque ya se envió
+        setShowResend(false);
       }
     } catch (err) {
       setError("Error de conexión al intentar reenviar el correo.");
@@ -129,7 +133,11 @@ export default function LoginPage() {
       document.cookie = `next_auth_token=${data.accessToken}; path=/; max-age=86400; secure; samesite=strict`;
       setAccessToken(data.accessToken);
       setUser(data.user);
-      router.push("/inicio");
+      
+      // 🔥 REPETIMOS LA LÓGICA ACÁ POR SI TIENEN 2FA
+      const currentParams = new URLSearchParams(window.location.search);
+      const finalRedirect = currentParams.get("redirect") || "/inicio";
+      router.push(finalRedirect);
     } catch (err) {
       setError("Error de conexión con el servidor.");
       setIsLoading(false);
@@ -138,6 +146,7 @@ export default function LoginPage() {
 
   if (!isMounted) return null;
 
+  // ... (El resto del render de los formularios 2FA y Login quedan igual)
   if (step === 2) {
     return (
       <div className="w-full max-w-md flex flex-col gap-8 animate-in fade-in slide-in-from-right-4 duration-300">
@@ -180,7 +189,6 @@ export default function LoginPage() {
           </div>
         )}
 
-        {/* Cajas de Error y Rescate */}
         <div className="flex flex-col gap-2 mt-4">
           {error && (
             <div className="p-3 bg-red-50 border border-red-200 text-red-600 text-sm rounded-md font-medium">
@@ -188,7 +196,6 @@ export default function LoginPage() {
             </div>
           )}
           
-          {/* 🔥 EL BOTÓN SALVAVIDAS: Solo aparece si el usuario está en el limbo */}
           {showResend && (
             <button 
               onClick={handleResendEmail}
@@ -226,7 +233,6 @@ export default function LoginPage() {
         ¿No tenés cuenta? <Link href="/registro" className="text-green-700 font-bold hover:underline">Creá una cuenta</Link>
       </div>
 
-      {/* 🔥 FOOTER LEGAL (Sutil y profesional) */}
       <div className="mt-12 pt-6 border-t border-gray-100 text-xs text-gray-400 flex flex-col sm:flex-row justify-between items-center gap-2 w-full">
         <p>© {new Date().getFullYear()} AseguraSimple. Todos los derechos reservados.</p>
         <div className="flex gap-4 font-medium">
