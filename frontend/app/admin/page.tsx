@@ -104,6 +104,50 @@ export default function AdminDashboard() {
     }
   };
 
+// 🔥 NUEVA FUNCIÓN: MODO DIOS (Impersonar Usuario)
+  const handleImpersonate = async (agencia: any) => {
+    try {
+      setToast({ show: true, msg: `Generando acceso seguro para ${agencia.nombre}...` });
+      
+      const adminToken = localStorage.getItem("asegurasimple_admin_token");
+      const res = await fetch(`${API_URL}/api/admin/agencias/${agencia.id}/impersonate`, {
+        method: "POST",
+        headers: { "Authorization": `Bearer ${adminToken}` }
+      });
+
+      if (!res.ok) throw new Error("Error al intentar acceder a la cuenta");
+
+      const data = await res.json();
+
+      // 1. Guardamos la cookie para que el Middleware nos deje pasar
+      document.cookie = `next_auth_token=${data.token}; path=/; max-age=7200; SameSite=Lax`;
+
+      // 🔥 2. EL ARREGLO FINAL: Estructura EXACTA de tu authStore.ts
+      const zustandState = {
+        state: {
+          user: data.usuario,
+          accessToken: data.token,
+          showUpgradeModal: false,
+          upgradeMessage: "",
+          sessionExpired: false
+        },
+        version: 0
+      };
+      
+      // Inyectamos el objeto como JSON en la key que usa tu store
+      localStorage.setItem("auth-storage", JSON.stringify(zustandState));
+      
+      setToast({ show: true, msg: "¡Acceso concedido! Abriendo panel..." });
+
+      // Abrimos el dashboard del cliente en una pestaña nueva
+      setTimeout(() => {
+        window.open("/inicio", "_blank");
+      }, 1000);
+
+    } catch (error) {
+      setToast({ show: true, msg: "Hubo un error al generar la sesión." });
+    }
+  };
   const confirmarCambioPlan = async () => {
     if (!agenciaSeleccionada) return;
     setIsUpdating(true);
@@ -322,6 +366,7 @@ export default function AdminDashboard() {
           <TablaAgencias 
             agenciasFiltradas={agenciasFiltradas} 
             planesOptions={planesOptions}
+            onImpersonate={handleImpersonate} // 🔥 LE PASAMOS LA FUNCIÓN
             onModificarPlan={(agencia) => {
               setAgenciaSeleccionada(agencia);
               setPlanSeleccionado(agencia.plan || "GRATUITO");
@@ -343,7 +388,7 @@ export default function AdminDashboard() {
         </div>
       </main>
 
-      {/* 🔥 MODAL EDITAR SUSCRIPCIÓN CON LA OPCIÓN "TRIAL" */}
+      {/* MODAL EDITAR SUSCRIPCIÓN */}
       {editSubModalOpen && agenciaSeleccionada && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-950/80 backdrop-blur-sm animate-in fade-in duration-200">
           <div className="bg-gray-900 border border-gray-800 w-full max-w-md rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">

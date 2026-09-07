@@ -72,7 +72,7 @@ export const updatePlan = async (req: Request, res: Response): Promise<void> => 
   }
 };
 
-// 🔥 4. ACTUALIZAR SUSCRIPCIÓN (COBRO MANUAL)
+// 4. ACTUALIZAR SUSCRIPCIÓN (COBRO MANUAL)
 export const updateSuscripcionManual = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
@@ -83,7 +83,6 @@ export const updateSuscripcionManual = async (req: Request, res: Response): Prom
       return;
     }
 
-    // 🔥 VALIDACIÓN ESTRICTA INCLUYENDO "trial"
     const estadosPermitidos = ['pendiente', 'autorizado', 'en_proceso', 'cancelado', 'trial'];
     if (!estadosPermitidos.includes(estado)) {
       res.status(400).json({ error: 'El estado enviado no coincide con las opciones de la base de datos.' });
@@ -100,14 +99,14 @@ export const updateSuscripcionManual = async (req: Request, res: Response): Prom
         data: { estado: estado, fechaVencimiento: new Date(fechaVencimiento) }
       });
     } else {
-      // 🔥 CORRECCIÓN: Usamos los campos exactos de tu schema.prisma
+      // 🔥 FIX: Eliminado el planId que no existía en el esquema
       await prisma.suscripcion.create({
         data: {
           userId: Number(id),
           estado: estado,
           fechaInicio: new Date(),
           fechaVencimiento: new Date(fechaVencimiento),
-          mpPreapprovalId: `manual_${Date.now()}` // Usamos el campo correcto para MP
+          mpPreapprovalId: `manual_${Date.now()}`
         }
       });
     }
@@ -170,5 +169,49 @@ export const updateComunicadoGlobal = async (req: Request, res: Response): Promi
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Error al actualizar los comunicados.' });
+  }
+};
+
+// 🔥 8. MODO DIOS: ENTRAR COMO OTRO USUARIO
+export const impersonateUser = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+
+    const usuario = await prisma.user.findUnique({
+      where: { id: Number(id) }
+    });
+
+    if (!usuario) {
+      res.status(404).json({ error: 'La cuenta no existe.' });
+      return;
+    }
+
+    // 🔥 EL ARREGLO: Le mandamos todas las llaves posibles (userId, id, email, rol, role) 
+    // para que el auth.middleware no tire "Token decodificado incompleto"
+    const token = jwt.sign(
+      { 
+        id: usuario.id, 
+        userId: usuario.id, 
+        email: usuario.email,
+        role: usuario.role,
+        rol: usuario.role
+      },
+      process.env.JWT_SECRET || 'secret',
+      { expiresIn: '2h' } 
+    );
+
+    res.json({
+      message: 'Sesión de soporte generada con éxito.',
+      token,
+      usuario: {
+        id: usuario.id,
+        nombre: usuario.nombre,
+        email: usuario.email,
+        role: usuario.role
+      }
+    });
+  } catch (error) {
+    console.error("Error al impersonar usuario:", error);
+    res.status(500).json({ error: 'Ocurrió un error al intentar iniciar sesión como este usuario.' });
   }
 };

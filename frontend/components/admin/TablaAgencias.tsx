@@ -1,4 +1,4 @@
-import { Mail, Phone, Trash2, FileText, Users, CalendarDays } from "lucide-react";
+import { Mail, Phone, Trash2, FileText, Users, CalendarDays, LogIn } from "lucide-react";
 
 interface TablaAgenciasProps {
   agenciasFiltradas: any[];
@@ -6,9 +6,10 @@ interface TablaAgenciasProps {
   onModificarPlan: (agencia: any) => void;
   onEditarSuscripcion: (agencia: any) => void; 
   onEliminarCuenta: (agencia: any) => void;
+  onImpersonate: (agencia: any) => void; // 🔥 NUEVA PROP PARA ENTRAR COMO USUARIO
 }
 
-export default function TablaAgencias({ agenciasFiltradas, planesOptions, onModificarPlan, onEditarSuscripcion, onEliminarCuenta }: TablaAgenciasProps) {
+export default function TablaAgencias({ agenciasFiltradas, planesOptions, onModificarPlan, onEditarSuscripcion, onEliminarCuenta, onImpersonate }: TablaAgenciasProps) {
   
   const formatearFecha = (fechaString?: string) => {
     if (!fechaString) return "-";
@@ -160,6 +161,14 @@ export default function TablaAgencias({ agenciasFiltradas, planesOptions, onModi
                           <span className="text-xs font-bold text-gray-600 hidden md:block">No aplica plan</span>
                         ) : (
                           <div className="flex flex-wrap gap-2 w-full md:w-auto">
+                            {/* 🔥 NUEVO BOTÓN: MODO DIOS */}
+                            <button 
+                              onClick={() => onImpersonate(agencia)}
+                              title="Entrar como este usuario"
+                              className="text-xs md:text-sm font-bold text-indigo-400 hover:text-indigo-300 transition-colors px-3 py-2 bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/20 rounded-xl flex items-center justify-center gap-1.5 flex-1 md:flex-none"
+                            >
+                              <LogIn size={14} /> <span className="hidden xl:inline">Entrar</span>
+                            </button>
                             <button 
                               onClick={() => onEditarSuscripcion(agencia)}
                               className="text-xs md:text-sm font-bold text-blue-500 hover:text-blue-400 transition-colors px-3 py-2 bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/20 rounded-xl flex-1 md:flex-none"
