@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ShieldCheck, Users, CreditCard, Crown, Star, Zap, X, Check, Loader2, Trash2, AlertTriangle, Megaphone, Save, Layout, AppWindow } from "lucide-react";
+import { ShieldCheck, Users, CreditCard, Crown, Star, Zap, X, Check, Loader2, Trash2, AlertTriangle, Megaphone, Save, Layout, AppWindow, Calendar } from "lucide-react";
 import Toast from "@/components/ui/Toast";
 import FiltrosAgencias from "@/components/admin/FiltrosAgencias";
 import AdminHeader from "@/components/admin/AdminHeader";
@@ -22,6 +22,10 @@ export default function AdminDashboard() {
   const [agenciaSeleccionada, setAgenciaSeleccionada] = useState<any>(null);
   const [planSeleccionado, setPlanSeleccionado] = useState<string>("GRATUITO");
   const [isUpdating, setIsUpdating] = useState(false);
+
+  const [editSubModalOpen, setEditSubModalOpen] = useState(false);
+  const [subData, setSubData] = useState({ estado: "pendiente", fechaVencimiento: "" });
+  const [isUpdatingSub, setIsUpdatingSub] = useState(false);
 
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [agenciaAEliminar, setAgenciaAEliminar] = useState<any>(null);
@@ -121,6 +125,28 @@ export default function AdminDashboard() {
     }
   };
 
+  const confirmarEdicionSuscripcion = async () => {
+    if (!agenciaSeleccionada) return;
+    setIsUpdatingSub(true);
+    try {
+      const token = localStorage.getItem("asegurasimple_admin_token");
+      const res = await fetch(`${API_URL}/api/admin/agencias/${agenciaSeleccionada.id}/suscripcion`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
+        body: JSON.stringify(subData)
+      });
+      if (!res.ok) throw new Error("Error al actualizar la suscripción");
+      
+      await fetchData(); 
+      setToast({ show: true, msg: "Suscripción actualizada correctamente" });
+      setEditSubModalOpen(false);
+    } catch (error) {
+      setToast({ show: true, msg: "Hubo un error al actualizar la suscripción" });
+    } finally {
+      setIsUpdatingSub(false);
+    }
+  };
+
   const confirmarEliminacion = async () => {
     if (!agenciaAEliminar) return;
     setIsDeleting(true);
@@ -176,11 +202,11 @@ export default function AdminDashboard() {
 
   return (
     <div className="min-h-screen bg-gray-950 text-gray-200 selection:bg-green-500/30 font-sans relative pb-10">
-      
       <AdminHeader onLogout={handleLogout} />
 
       <main className="max-w-7xl mx-auto px-4 md:px-6 py-6 md:py-10 flex flex-col gap-10">
         
+        {/* COMUNICADOS GLOBALES */}
         <div className="bg-gray-900 border border-gray-800 rounded-3xl p-6 md:p-8 shadow-2xl flex flex-col gap-8">
           <div>
             <h2 className="text-xl font-bold text-white flex items-center gap-2 mb-2">
@@ -190,8 +216,6 @@ export default function AdminDashboard() {
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            
-            {/* --- CAJA 1: BANNER SUPERIOR --- */}
             <div className="bg-gray-950 border border-gray-800 rounded-2xl p-5 flex flex-col gap-4">
               <div className="flex items-center justify-between border-b border-gray-800 pb-4">
                 <div className="flex items-center gap-2 text-white font-bold">
@@ -206,7 +230,6 @@ export default function AdminDashboard() {
                 </button>
               </div>
 
-              {/* 🔥 Ajustado para mejor legibilidad */}
               <textarea 
                 rows={3}
                 value={comunicado.mensajeBanner}
@@ -223,7 +246,6 @@ export default function AdminDashboard() {
               </div>
             </div>
 
-            {/* --- CAJA 2: MODAL POP-UP --- */}
             <div className="bg-gray-950 border border-gray-800 rounded-2xl p-5 flex flex-col gap-4">
               <div className="flex items-center justify-between border-b border-gray-800 pb-4">
                 <div className="flex items-center gap-2 text-white font-bold">
@@ -239,7 +261,6 @@ export default function AdminDashboard() {
               </div>
 
               <div className="flex flex-col gap-2">
-                {/* 🔥 Aumentamos drásticamente el alto y el texto */}
                 <textarea 
                   rows={7}
                   value={comunicado.mensajeModal}
@@ -259,7 +280,6 @@ export default function AdminDashboard() {
                 <button onClick={() => setComunicado({...comunicado, tipoModal: 'yellow'})} className={`w-6 h-6 rounded-full bg-amber-500 border-2 ${comunicado.tipoModal === 'yellow' ? 'border-white' : 'border-transparent opacity-50'}`} />
               </div>
             </div>
-
           </div>
 
           <div className="flex justify-end mt-2 pt-6 border-t border-gray-800">
@@ -307,6 +327,14 @@ export default function AdminDashboard() {
               setPlanSeleccionado(agencia.plan || "GRATUITO");
               setModalOpen(true);
             }}
+            onEditarSuscripcion={(agencia) => {
+              setAgenciaSeleccionada(agencia);
+              setSubData({
+                estado: agencia.suscripcion?.estado || "pendiente",
+                fechaVencimiento: agencia.suscripcion?.fechaVencimiento ? new Date(agencia.suscripcion.fechaVencimiento).toISOString().split('T')[0] : ""
+              });
+              setEditSubModalOpen(true);
+            }}
             onEliminarCuenta={(agencia) => {
               setAgenciaAEliminar(agencia);
               setDeleteModalOpen(true);
@@ -314,6 +342,64 @@ export default function AdminDashboard() {
           />
         </div>
       </main>
+
+      {/* 🔥 MODAL EDITAR SUSCRIPCIÓN CON LA OPCIÓN "TRIAL" */}
+      {editSubModalOpen && agenciaSeleccionada && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-950/80 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-gray-900 border border-gray-800 w-full max-w-md rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="px-5 md:px-6 py-4 border-b border-gray-800 flex items-center justify-between bg-gray-900/50">
+              <h3 className="text-base md:text-lg font-bold text-white flex items-center gap-2">
+                <Calendar size={18} className="text-blue-500"/> Editar Suscripción
+              </h3>
+              <button onClick={() => setEditSubModalOpen(false)} className="text-gray-500 hover:text-white transition-colors bg-gray-800/50 hover:bg-gray-800 p-2 rounded-full">
+                <X size={18} />
+              </button>
+            </div>
+            
+            <div className="p-5 md:p-6 space-y-4">
+              <div>
+                <p className="text-xs text-gray-400">Modificando acceso manual para:</p>
+                <p className="text-sm font-black text-white">{agenciaSeleccionada.nombre}</p>
+              </div>
+              
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-gray-400 uppercase tracking-wide">Estado Actual</label>
+                <select 
+                  value={subData.estado} 
+                  onChange={(e) => setSubData({...subData, estado: e.target.value})}
+                  className="w-full bg-gray-950 border border-gray-800 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-blue-500 transition-colors"
+                >
+                  <option value="autorizado">Autorizado (Activo Pago)</option>
+                  <option value="trial">Trial (Prueba 14 días)</option>
+                  <option value="en_proceso">En Proceso (Pago en revisión)</option>
+                  <option value="pendiente">Pendiente (Pago atrasado)</option>
+                  <option value="cancelado">Cancelado (Sin acceso)</option>
+                </select>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-gray-400 uppercase tracking-wide">Fecha de Próx. Cobro / Fin Trial</label>
+                <input 
+                  type="date" 
+                  value={subData.fechaVencimiento} 
+                  onChange={(e) => setSubData({...subData, fechaVencimiento: e.target.value})}
+                  className="w-full bg-gray-950 border border-gray-800 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-blue-500 transition-colors"
+                />
+              </div>
+              <p className="text-[11px] text-yellow-500/80 bg-yellow-500/10 p-3 rounded-xl border border-yellow-500/20">
+                ⚠️ Cuidado: Modificar esto sobreescribirá la información de Mercado Pago. Útil para cobros manuales o alargar períodos de prueba.
+              </p>
+            </div>
+            
+            <div className="px-5 md:px-6 py-4 border-t border-gray-800 bg-gray-950/50 flex flex-col sm:flex-row justify-end gap-3">
+              <button onClick={() => setEditSubModalOpen(false)} className="w-full sm:w-auto px-5 py-2.5 text-sm font-bold text-gray-400 hover:text-white bg-gray-800 sm:bg-transparent rounded-xl" disabled={isUpdatingSub}>Cancelar</button>
+              <button onClick={confirmarEdicionSuscripcion} disabled={isUpdatingSub} className="w-full sm:w-auto justify-center px-6 py-2.5 bg-blue-600 hover:bg-blue-500 text-white text-sm font-bold rounded-xl shadow-lg transition-all flex items-center gap-2 disabled:opacity-50">
+                {isUpdatingSub ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />} Guardar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* MODAL CAMBIAR PLAN */}
       {modalOpen && agenciaSeleccionada && (

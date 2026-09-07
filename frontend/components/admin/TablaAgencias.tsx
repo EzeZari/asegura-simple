@@ -4,20 +4,16 @@ interface TablaAgenciasProps {
   agenciasFiltradas: any[];
   planesOptions: any[];
   onModificarPlan: (agencia: any) => void;
+  onEditarSuscripcion: (agencia: any) => void; 
   onEliminarCuenta: (agencia: any) => void;
 }
 
-export default function TablaAgencias({ agenciasFiltradas, planesOptions, onModificarPlan, onEliminarCuenta }: TablaAgenciasProps) {
+export default function TablaAgencias({ agenciasFiltradas, planesOptions, onModificarPlan, onEditarSuscripcion, onEliminarCuenta }: TablaAgenciasProps) {
   
-  // 🔥 NUEVA FUNCIÓN: Para formatear las fechas de la base de datos
   const formatearFecha = (fechaString?: string) => {
     if (!fechaString) return "-";
     const fecha = new Date(fechaString);
-    return fecha.toLocaleDateString("es-AR", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric"
-    });
+    return fecha.toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric" });
   };
 
   return (
@@ -124,7 +120,6 @@ export default function TablaAgencias({ agenciasFiltradas, planesOptions, onModi
                       </div>
                     </td>
                     
-                    {/* 🔥 MODIFICADO: Agregamos las fechas de suscripción */}
                     <td className="block md:table-cell p-2 md:p-5 border-b border-gray-800/50 md:border-0 pt-3 md:pt-5">
                       <span className="lg:hidden text-xs text-gray-500 font-bold uppercase block mb-2">Plan y Suscripción</span>
                       {agencia.jefeId ? (
@@ -139,7 +134,7 @@ export default function TablaAgencias({ agenciasFiltradas, planesOptions, onModi
                             <div className="flex flex-col gap-1.5 text-[11px] text-gray-400 bg-gray-950/50 p-2.5 rounded-lg border border-gray-800">
                               <div className="flex items-center justify-between gap-3">
                                 <span className="font-semibold text-gray-500">Estado MP:</span>
-                                <span className={`${agencia.suscripcion.estado === 'autorizado' ? 'text-green-400' : 'text-red-400'} font-bold uppercase text-[10px]`}>
+                                <span className={`${agencia.suscripcion.estado === 'autorizado' ? 'text-green-400' : agencia.suscripcion.estado === 'trial' ? 'text-cyan-400' : agencia.suscripcion.estado === 'pendiente' ? 'text-amber-400' : 'text-red-400'} font-bold uppercase text-[10px]`}>
                                   {agencia.suscripcion.estado}
                                 </span>
                               </div>
@@ -160,16 +155,24 @@ export default function TablaAgencias({ agenciasFiltradas, planesOptions, onModi
                     </td>
                     
                     <td className="block md:table-cell p-2 md:p-5 pt-4 md:pt-5">
-                      <div className="flex items-center justify-between md:justify-end gap-3 w-full">
+                      <div className="flex items-center justify-between md:justify-end gap-2 w-full">
                         {agencia.jefeId ? (
                           <span className="text-xs font-bold text-gray-600 hidden md:block">No aplica plan</span>
                         ) : (
-                          <button 
-                            onClick={() => onModificarPlan(agencia)}
-                            className="text-xs md:text-sm font-bold text-green-500 hover:text-green-400 transition-colors px-4 py-2 bg-green-500/10 hover:bg-green-500/20 border border-green-500/20 rounded-xl flex-1 md:flex-none"
-                          >
-                            Modificar Plan
-                          </button>
+                          <div className="flex flex-wrap gap-2 w-full md:w-auto">
+                            <button 
+                              onClick={() => onEditarSuscripcion(agencia)}
+                              className="text-xs md:text-sm font-bold text-blue-500 hover:text-blue-400 transition-colors px-3 py-2 bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/20 rounded-xl flex-1 md:flex-none"
+                            >
+                              Suscripción
+                            </button>
+                            <button 
+                              onClick={() => onModificarPlan(agencia)}
+                              className="text-xs md:text-sm font-bold text-green-500 hover:text-green-400 transition-colors px-3 py-2 bg-green-500/10 hover:bg-green-500/20 border border-green-500/20 rounded-xl flex-1 md:flex-none"
+                            >
+                              Modificar Plan
+                            </button>
+                          </div>
                         )}
                         <button 
                           onClick={() => onEliminarCuenta(agencia)}

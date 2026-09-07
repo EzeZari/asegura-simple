@@ -6,7 +6,6 @@ import { prisma } from '../config/db';
 export const loginAdmin = async (req: Request, res: Response): Promise<void> => {
   try {
     const { email, password } = req.body;
-
     const adminEmail = process.env.ADMIN_EMAIL;
     const adminPassword = process.env.ADMIN_PASSWORD;
 
@@ -21,13 +20,7 @@ export const loginAdmin = async (req: Request, res: Response): Promise<void> => 
       { expiresIn: '12h' }
     );
 
-    res.json({
-      token,
-      admin: {
-        email: adminEmail,
-        rol: 'SUPERADMIN'
-      }
-    });
+    res.json({ token, admin: { email: adminEmail, rol: 'SUPERADMIN' } });
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Error en el servidor al intentar loguear al admin' });
@@ -39,24 +32,12 @@ export const getAgencias = async (req: Request, res: Response): Promise<void> =>
   try {
     const agencias = await prisma.user.findMany({
       include: {
-        suscripcion: true, // 🔥 ESTO YA ESTABA, ENVÍA LAS FECHAS AL FRONTEND
-        jefe: {
-          select: { nombre: true, email: true } 
-        },
-        productor: {
-          select: {
-            _count: {
-              select: { 
-                polizas: true,
-                asegurados: true 
-              }
-            }
-          }
-        }
+        suscripcion: true,
+        jefe: { select: { nombre: true, email: true } },
+        productor: { select: { _count: { select: { polizas: true, asegurados: true } } } }
       },
       orderBy: { id: 'desc' }
     });
-
     res.json(agencias);
   } catch (error) {
     console.error("Error al obtener agencias desde el panel admin:", error);
@@ -87,43 +68,84 @@ export const updatePlan = async (req: Request, res: Response): Promise<void> => 
     });
   } catch (error) {
     console.error("Error al actualizar el plan:", error);
-    res.status(500).json({ error: 'Ocurrió un error al intentar actualizar el plan de la cuenta.' });
+    res.status(500).json({ error: 'Ocurrió un error al intentar actualizar el plan.' });
   }
 };
 
-// 4. ELIMINAR UNA CUENTA
+// 🔥 4. ACTUALIZAR SUSCRIPCIÓN (COBRO MANUAL)
+export const updateSuscripcionManual = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const { estado, fechaVencimiento } = req.body;
+
+    if (!fechaVencimiento) {
+      res.status(400).json({ error: 'La fecha de vencimiento es obligatoria.' });
+      return;
+    }
+
+    // 🔥 VALIDACIÓN ESTRICTA INCLUYENDO "trial"
+    const estadosPermitidos = ['pendiente', 'autorizado', 'en_proceso', 'cancelado', 'trial'];
+    if (!estadosPermitidos.includes(estado)) {
+      res.status(400).json({ error: 'El estado enviado no coincide con las opciones de la base de datos.' });
+      return;
+    }
+
+    const suscripcionExistente = await prisma.suscripcion.findFirst({
+      where: { userId: Number(id) }
+    });
+
+    if (suscripcionExistente) {
+      await prisma.suscripcion.update({
+        where: { id: suscripcionExistente.id },
+        data: { estado: estado, fechaVencimiento: new Date(fechaVencimiento) }
+      });
+    } else {
+      // 🔥 CORRECCIÓN: Usamos los campos exactos de tu schema.prisma
+      await prisma.suscripcion.create({
+        data: {
+          userId: Number(id),
+          estado: estado,
+          fechaInicio: new Date(),
+          fechaVencimiento: new Date(fechaVencimiento),
+          mpPreapprovalId: `manual_${Date.now()}` // Usamos el campo correcto para MP
+        }
+      });
+    }
+
+    res.json({ message: 'Suscripción manual actualizada con éxito.' });
+  } catch (error) {
+    console.error("Error al actualizar la suscripción manual:", error);
+    res.status(500).json({ error: 'Error interno al modificar la suscripción.' });
+  }
+};
+
+// 5. ELIMINAR UNA CUENTA
 export const deleteAgencia = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
-
-    const usuario = await prisma.user.findUnique({
-      where: { id: Number(id) }
-    });
+    const usuario = await prisma.user.findUnique({ where: { id: Number(id) } });
 
     if (!usuario) {
       res.status(404).json({ error: 'La cuenta no existe.' });
       return;
     }
 
-    await prisma.user.delete({
-      where: { id: Number(id) }
-    });
-
+    await prisma.user.delete({ where: { id: Number(id) } });
     res.json({ message: 'Cuenta eliminada exitosamente del sistema.' });
   } catch (error) {
     console.error("Error al eliminar la cuenta:", error);
-    res.status(500).json({ error: 'Ocurrió un error al intentar eliminar la cuenta. Verifica que no tenga registros dependientes bloqueando la acción.' });
+    res.status(500).json({ error: 'Ocurrió un error al intentar eliminar la cuenta.' });
   }
 };
-// 5. OBTENER COMUNICADO GLOBAL (PANEL ADMIN)
+
+// 6. OBTENER COMUNICADO GLOBAL
 export const getComunicadoGlobal = async (req: Request, res: Response): Promise<void> => {
   try {
     let comunicado = await prisma.comunicadoAdmin.findUnique({ where: { id: 1 } });
     if (!comunicado) {
       comunicado = await prisma.comunicadoAdmin.create({
         data: { 
-          id: 1, 
-          mensajeBanner: "", activoBanner: false, tipoBanner: "blue",
+          id: 1, mensajeBanner: "", activoBanner: false, tipoBanner: "blue",
           mensajeModal: "", activoModal: false, tipoModal: "blue"
         }
       });
@@ -135,7 +157,7 @@ export const getComunicadoGlobal = async (req: Request, res: Response): Promise<
   }
 };
 
-// 6. ACTUALIZAR COMUNICADO GLOBAL (PANEL ADMIN)
+// 7. ACTUALIZAR COMUNICADO GLOBAL
 export const updateComunicadoGlobal = async (req: Request, res: Response): Promise<void> => {
   try {
     const { mensajeBanner, activoBanner, tipoBanner, mensajeModal, activoModal, tipoModal } = req.body;
