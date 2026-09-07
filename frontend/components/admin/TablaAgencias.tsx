@@ -1,4 +1,4 @@
-import { Mail, Phone, Trash2, FileText, Users, CalendarDays, LogIn } from "lucide-react";
+import { Mail, Phone, Trash2, FileText, Users, CalendarDays, LogIn, Clock } from "lucide-react";
 
 interface TablaAgenciasProps {
   agenciasFiltradas: any[];
@@ -6,7 +6,7 @@ interface TablaAgenciasProps {
   onModificarPlan: (agencia: any) => void;
   onEditarSuscripcion: (agencia: any) => void; 
   onEliminarCuenta: (agencia: any) => void;
-  onImpersonate: (agencia: any) => void; // 🔥 NUEVA PROP PARA ENTRAR COMO USUARIO
+  onImpersonate: (agencia: any) => void;
 }
 
 export default function TablaAgencias({ agenciasFiltradas, planesOptions, onModificarPlan, onEditarSuscripcion, onEliminarCuenta, onImpersonate }: TablaAgenciasProps) {
@@ -15,6 +15,19 @@ export default function TablaAgencias({ agenciasFiltradas, planesOptions, onModi
     if (!fechaString) return "-";
     const fecha = new Date(fechaString);
     return fecha.toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric" });
+  };
+
+  // 🔥 NUEVA FUNCIÓN: Para mostrar fecha y hora de la última conexión
+  const formatearFechaHora = (fechaString?: string) => {
+    if (!fechaString) return "Nunca";
+    const fecha = new Date(fechaString);
+    return fecha.toLocaleString("es-AR", { 
+      day: "2-digit", 
+      month: "2-digit", 
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit"
+    }) + " hs";
   };
 
   return (
@@ -76,12 +89,21 @@ export default function TablaAgencias({ agenciasFiltradas, planesOptions, onModi
                         {agencia.nombre}
                         {agencia.isVerified && <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full shadow-[0_0_8px_rgba(16,185,129,0.8)]" title="Email Confirmado"></span>}
                       </div>
-                      <div className="flex items-center gap-2 mb-1">{renderRolBadge(agencia)}</div>
-                      {agencia.jefe && (
-                        <div className="text-[11px] text-gray-400 mt-1 bg-gray-800/50 inline-block px-2 py-1 rounded-md">
-                          Equipo de: <span className="font-bold text-gray-300">{agencia.jefe.nombre}</span>
+                      <div className="flex items-center gap-2 mb-2">{renderRolBadge(agencia)}</div>
+                      
+                      {/* 🔥 ACÁ AGREGAMOS LA ETIQUETA DE ÚLTIMA CONEXIÓN */}
+                      <div className="flex flex-col gap-1.5">
+                        <div className="text-[11px] text-gray-400 flex items-center gap-1.5 bg-gray-950/50 w-fit px-2 py-1 rounded-md border border-gray-800/50" title="Última vez que inició sesión">
+                          <Clock size={12} className="text-gray-500" />
+                          <span>Últ. acceso: <strong className="text-gray-300 font-mono">{formatearFechaHora(agencia.ultimoLogin)}</strong></span>
                         </div>
-                      )}
+
+                        {agencia.jefe && (
+                          <div className="text-[11px] text-gray-400 bg-gray-800/50 inline-block px-2 py-1 rounded-md w-fit">
+                            Equipo de: <span className="font-bold text-gray-300">{agencia.jefe.nombre}</span>
+                          </div>
+                        )}
+                      </div>
                     </td>
                     
                     <td className="block md:table-cell p-2 md:p-5 border-b border-gray-800/50 md:border-0 pt-3 md:pt-5">
@@ -161,7 +183,6 @@ export default function TablaAgencias({ agenciasFiltradas, planesOptions, onModi
                           <span className="text-xs font-bold text-gray-600 hidden md:block">No aplica plan</span>
                         ) : (
                           <div className="flex flex-wrap gap-2 w-full md:w-auto">
-                            {/* 🔥 NUEVO BOTÓN: MODO DIOS */}
                             <button 
                               onClick={() => onImpersonate(agencia)}
                               title="Entrar como este usuario"

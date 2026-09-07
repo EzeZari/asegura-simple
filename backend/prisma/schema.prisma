@@ -220,6 +220,8 @@ model User {
   role                 Role     @default(PRODUCTOR) 
   createdAt            DateTime @default(now())
 
+  ultimoLogin          DateTime?
+
   resetPasswordToken   String?  
   resetPasswordExpires DateTime? 
   twoFactorEnabled     Boolean @default(false)

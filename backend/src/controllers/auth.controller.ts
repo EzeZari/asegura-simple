@@ -38,11 +38,9 @@ export const register = async (req: Request, res: Response): Promise<any> => {
     const hashedPassword = await bcrypt.hash(password, 10);
     const verificationToken = crypto.randomBytes(32).toString('hex');
 
-    // 🔥 1. CALCULAMOS LA FECHA DE VENCIMIENTO DEL PLAN DE PRUEBA (14 DÍAS)
     const fechaVencimiento = new Date();
     fechaVencimiento.setDate(fechaVencimiento.getDate() + 14);
 
-    // 🔥 2. CREAMOS EL USUARIO Y SU SUSCRIPCIÓN EN EL MISMO PASO
     const newUser = await prisma.user.create({
       data: { 
         nombre, 
@@ -50,10 +48,9 @@ export const register = async (req: Request, res: Response): Promise<any> => {
         telefono, 
         password: hashedPassword, 
         verificationToken,
-        // Al crear el usuario, le anexamos directamente la suscripción gratuita
         suscripcion: {
           create: {
-            estado: 'trial', // Estado especial para saber que está en prueba
+            estado: 'trial', 
             fechaVencimiento: fechaVencimiento
           }
         }
@@ -122,6 +119,12 @@ export const login = async (req: Request, res: Response): Promise<any> => {
         userId: user.id
       });
     }
+
+    // 🔥 REGISTRAMOS LA ÚLTIMA CONEXIÓN (Login normal)
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { ultimoLogin: new Date() }
+    });
 
     const { accessToken, refreshToken } = generateTokens(user.id, user.role);
 
@@ -290,7 +293,14 @@ export const verify2FALogin = async (req: Request, res: Response): Promise<any> 
       return res.status(400).json({ error: 'Código de seguridad incorrecto.' });
     }
 
-    await prisma.user.update({ where: { id: user.id }, data: { codigoVerificacion: null } });
+    // 🔥 REGISTRAMOS LA ÚLTIMA CONEXIÓN (Login con 2FA)
+    await prisma.user.update({ 
+      where: { id: user.id }, 
+      data: { 
+        codigoVerificacion: null,
+        ultimoLogin: new Date() 
+      } 
+    });
 
     const { accessToken, refreshToken } = generateTokens(user.id, user.role);
 
@@ -400,7 +410,6 @@ export const refreshUserData = async (req: any, res: Response): Promise<any> => 
   }
 };
 
-// 🔥 FUNCIÓN WIPE DATA TOTALMENTE BLINDADA
 export const wipeData = async (req: Request, res: Response): Promise<any> => {
   try {
     const { email, confirmacion } = req.body;
@@ -409,11 +418,9 @@ export const wipeData = async (req: Request, res: Response): Promise<any> => {
       return res.status(400).json({ error: "Palabra de confirmación incorrecta." });
     }
 
-    // Buscamos al usuario que hace la petición
     const user = await prisma.user.findUnique({ where: { email } });
     if (!user) return res.status(404).json({ error: "Usuario no encontrado." });
 
-    // Identificamos a qué Agencia (Productor) pertenece este usuario
     const idAgencia = user.jefeId ? user.jefeId : user.id;
     const productor = await prisma.productor.findUnique({ where: { userId: idAgencia } });
 
@@ -423,7 +430,6 @@ export const wipeData = async (req: Request, res: Response): Promise<any> => {
 
     const productorId = productor.id;
 
-    // 🔥 PREVENCIÓN DE CASCADA: Buscamos primero los IDs de todo lo que le pertenece
     const asegurados = await prisma.asegurado.findMany({ where: { productorId }, select: { id: true } });
     const aseguradoIds = asegurados.map(a => a.id);
 
@@ -433,7 +439,6 @@ export const wipeData = async (req: Request, res: Response): Promise<any> => {
     const siniestros = await prisma.siniestro.findMany({ where: { polizaId: { in: polizaIds } }, select: { id: true } });
     const siniestroIds = siniestros.map(s => s.id);
 
-    // 🔥 BORRADO SEGURO CON TRANSACCIÓN (Solo afecta a los IDs calculados arriba)
     await prisma.$transaction([
       prisma.notificacion.deleteMany({ where: { siniestroId: { in: siniestroIds } } }),
       prisma.linkConsulta.deleteMany({ where: { siniestroId: { in: siniestroIds } } }),
