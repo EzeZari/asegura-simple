@@ -2,74 +2,79 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ShieldCheck, Users, CreditCard, Crown, Star, Zap, X, Check, Loader2, Trash2, AlertTriangle, Megaphone, Save, Layout, AppWindow, Calendar, TrendingUp, Activity, DollarSign } from "lucide-react";
+import { ShieldCheck, Users, CreditCard, Crown, Star, Zap } from "lucide-react";
 import Toast from "@/components/ui/Toast";
-import FiltrosAgencias from "@/components/admin/FiltrosAgencias";
 import AdminHeader from "@/components/admin/AdminHeader";
+import FiltrosAgencias from "@/components/admin/FiltrosAgencias";
 import TablaAgencias from "@/components/admin/TablaAgencias";
+import EstadisticasMRR from "@/components/admin/EstadisticasMRR";
+import GestorComunicados from "@/components/admin/GestorComunicados";
+import ModalEditarSuscripcion from "@/components/admin/ModalEditarSuscripcion";
+import ModalCambiarPlan from "@/components/admin/ModalCambiarPlan";
+import ModalEliminarCuenta from "@/components/admin/ModalEliminarCuenta";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
 export default function AdminDashboard() {
   const router = useRouter();
-  const [agencias, setAgencias] = useState<any[]>([]);
+  
+  // ESTADOS PRINCIPALES
   const [loading, setLoading] = useState(true);
-  
-  // 🔥 NUEVO ESTADO: Guardamos las estadísticas financieras
+  const [agencias, setAgencias] = useState<any[]>([]);
   const [stats, setStats] = useState({ totalAgenciasActivas: 0, usuariosPagos: 0, usuariosTrial: 0, mrr: 0 });
-  
-  const [searchTerm, setSearchTerm] = useState("");
-  const [filtroPlan, setFiltroPlan] = useState("TODOS");
-
-  const [modalOpen, setModalOpen] = useState(false);
-  const [agenciaSeleccionada, setAgenciaSeleccionada] = useState<any>(null);
-  const [planSeleccionado, setPlanSeleccionado] = useState<string>("GRATUITO");
-  const [isUpdating, setIsUpdating] = useState(false);
-
-  const [editSubModalOpen, setEditSubModalOpen] = useState(false);
-  const [subData, setSubData] = useState({ estado: "pendiente", fechaVencimiento: "" });
-  const [isUpdatingSub, setIsUpdatingSub] = useState(false);
-
-  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
-  const [agenciaAEliminar, setAgenciaAEliminar] = useState<any>(null);
-  const [isDeleting, setIsDeleting] = useState(false);
-  
   const [comunicado, setComunicado] = useState({ 
     mensajeBanner: "", activoBanner: false, tipoBanner: "blue",
     mensajeModal: "", activoModal: false, tipoModal: "blue"
   });
-  const [isSavingComunicado, setIsSavingComunicado] = useState(false);
+  
+  // ESTADOS DE FILTROS
+  const [searchTerm, setSearchTerm] = useState("");
+  const [filtroPlan, setFiltroPlan] = useState("TODOS");
 
+  // ESTADOS DE MODALES Y ACCIONES
+  const [modalOpen, setModalOpen] = useState(false);
+  const [editSubModalOpen, setEditSubModalOpen] = useState(false);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  
+  const [agenciaSeleccionada, setAgenciaSeleccionada] = useState<any>(null);
+  const [agenciaAEliminar, setAgenciaAEliminar] = useState<any>(null);
+  
+  const [planSeleccionado, setPlanSeleccionado] = useState<string>("GRATUITO");
+  const [subData, setSubData] = useState({ estado: "pendiente", fechaVencimiento: "" });
+  
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [isUpdatingSub, setIsUpdatingSub] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isSavingComunicado, setIsSavingComunicado] = useState(false);
   const [toast, setToast] = useState({ show: false, msg: "" });
 
+  const planesOptions = [
+    { id: "GRATUITO", nombre: "Gratuito", icon: <CreditCard size={20} />, color: "text-gray-400", bg: "bg-gray-400/10", border: "border-gray-400/20" },
+    { id: "BASICO", nombre: "Básico", icon: <Zap size={20} />, color: "text-cyan-400", bg: "bg-cyan-400/10", border: "border-cyan-400/20" },
+    { id: "PROFESIONAL", nombre: "Profesional", icon: <Star size={20} />, color: "text-blue-400", bg: "bg-blue-400/10", border: "border-blue-400/20" },
+    { id: "AGENCIA", nombre: "Agencia Elite", icon: <Crown size={20} />, color: "text-amber-400", bg: "bg-amber-400/10", border: "border-amber-400/20" }
+  ];
+
+  // FETCH INICIAL
   const fetchData = async () => {
     try {
       const token = localStorage.getItem("asegurasimple_admin_token");
-      
       const [resAgencias, resComunicado, resStats] = await Promise.all([
         fetch(`${API_URL}/api/admin/agencias`, { headers: { "Authorization": `Bearer ${token}` } }),
         fetch(`${API_URL}/api/admin/comunicado`, { headers: { "Authorization": `Bearer ${token}` } }),
-        fetch(`${API_URL}/api/admin/estadisticas`, { headers: { "Authorization": `Bearer ${token}` } }) // 🔥 NUEVA PETICIÓN
+        fetch(`${API_URL}/api/admin/estadisticas`, { headers: { "Authorization": `Bearer ${token}` } })
       ]);
 
       if (!resAgencias.ok) throw new Error("Error al obtener cuentas");
-      const dataAgencias = await resAgencias.json();
-      setAgencias(dataAgencias);
+      setAgencias(await resAgencias.json());
 
-      if (resStats.ok) {
-        const dataStats = await resStats.json();
-        setStats(dataStats);
-      }
+      if (resStats.ok) setStats(await resStats.json());
 
       if (resComunicado.ok) {
-        const dataComunicado = await resComunicado.json();
-        if (dataComunicado) setComunicado({
-          mensajeBanner: dataComunicado.mensajeBanner || "",
-          activoBanner: dataComunicado.activoBanner || false,
-          tipoBanner: dataComunicado.tipoBanner || "blue",
-          mensajeModal: dataComunicado.mensajeModal || "",
-          activoModal: dataComunicado.activoModal || false,
-          tipoModal: dataComunicado.tipoModal || "blue"
+        const data = await resComunicado.json();
+        if (data) setComunicado({
+          mensajeBanner: data.mensajeBanner || "", activoBanner: data.activoBanner || false, tipoBanner: data.tipoBanner || "blue",
+          mensajeModal: data.mensajeModal || "", activoModal: data.activoModal || false, tipoModal: data.tipoModal || "blue"
         });
       }
     } catch (error) {
@@ -82,12 +87,11 @@ export default function AdminDashboard() {
   };
 
   useEffect(() => {
-    const token = localStorage.getItem("asegurasimple_admin_token");
-    if (!token) {
+    if (!localStorage.getItem("asegurasimple_admin_token")) {
       router.push("/admin/login");
-      return;
+    } else {
+      fetchData();
     }
-    fetchData();
   }, [router]);
 
   const handleLogout = () => {
@@ -95,6 +99,7 @@ export default function AdminDashboard() {
     router.push("/admin/login");
   };
 
+  // FUNCIONES DE API
   const guardarComunicado = async () => {
     setIsSavingComunicado(true);
     try {
@@ -116,38 +121,20 @@ export default function AdminDashboard() {
   const handleImpersonate = async (agencia: any) => {
     try {
       setToast({ show: true, msg: `Generando acceso seguro para ${agencia.nombre}...` });
-      
       const adminToken = localStorage.getItem("asegurasimple_admin_token");
-      const res = await fetch(`${API_URL}/api/admin/agencias/${agencia.id}/impersonate`, {
-        method: "POST",
-        headers: { "Authorization": `Bearer ${adminToken}` }
-      });
-
+      const res = await fetch(`${API_URL}/api/admin/agencias/${agencia.id}/impersonate`, { method: "POST", headers: { "Authorization": `Bearer ${adminToken}` } });
       if (!res.ok) throw new Error("Error al intentar acceder a la cuenta");
 
       const data = await res.json();
-
       document.cookie = `next_auth_token=${data.token}; path=/; max-age=7200; SameSite=Lax`;
-
-      const zustandState = {
-        state: {
-          user: data.usuario,
-          accessToken: data.token,
-          showUpgradeModal: false,
-          upgradeMessage: "",
-          sessionExpired: false
-        },
-        version: 0
-      };
       
-      localStorage.setItem("auth-storage", JSON.stringify(zustandState));
+      localStorage.setItem("auth-storage", JSON.stringify({
+        state: { user: data.usuario, accessToken: data.token, showUpgradeModal: false, upgradeMessage: "", sessionExpired: false },
+        version: 0
+      }));
       
       setToast({ show: true, msg: "¡Acceso concedido! Abriendo panel..." });
-
-      setTimeout(() => {
-        window.open("/inicio", "_blank");
-      }, 1000);
-
+      setTimeout(() => window.open("/inicio", "_blank"), 1000);
     } catch (error) {
       setToast({ show: true, msg: "Hubo un error al generar la sesión." });
     }
@@ -164,8 +151,7 @@ export default function AdminDashboard() {
         body: JSON.stringify({ nuevoPlan: planSeleccionado })
       });
       if (!res.ok) throw new Error("Error al actualizar el plan");
-      
-      await fetchData(); // Refrescamos para actualizar el MRR
+      await fetchData();
       setToast({ show: true, msg: "Plan actualizado con éxito" });
       setModalOpen(false);
     } catch (error) {
@@ -186,8 +172,7 @@ export default function AdminDashboard() {
         body: JSON.stringify(subData)
       });
       if (!res.ok) throw new Error("Error al actualizar la suscripción");
-      
-      await fetchData(); // Refrescamos para actualizar el MRR
+      await fetchData(); 
       setToast({ show: true, msg: "Suscripción actualizada correctamente" });
       setEditSubModalOpen(false);
     } catch (error) {
@@ -202,15 +187,9 @@ export default function AdminDashboard() {
     setIsDeleting(true);
     try {
       const token = localStorage.getItem("asegurasimple_admin_token");
-      const res = await fetch(`${API_URL}/api/admin/agencias/${agenciaAEliminar.id}`, {
-        method: "DELETE",
-        headers: { "Authorization": `Bearer ${token}` }
-      });
-      
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Error al eliminar la cuenta");
-      
-      await fetchData(); // Refrescamos para actualizar el MRR
+      const res = await fetch(`${API_URL}/api/admin/agencias/${agenciaAEliminar.id}`, { method: "DELETE", headers: { "Authorization": `Bearer ${token}` } });
+      if (!res.ok) throw new Error((await res.json()).error || "Error al eliminar la cuenta");
+      await fetchData();
       setToast({ show: true, msg: "Cuenta eliminada permanentemente del sistema" });
       setDeleteModalOpen(false);
     } catch (error: any) {
@@ -221,23 +200,10 @@ export default function AdminDashboard() {
   };
 
   const agenciasFiltradas = agencias.filter((agencia) => {
-    const matchSearch = 
-      agencia.nombre?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      agencia.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      agencia.id.toString() === searchTerm;
-
-    const planUsuario = agencia.plan || "GRATUITO";
-    const matchPlan = filtroPlan === "TODOS" || planUsuario === filtroPlan;
-
+    const matchSearch = agencia.nombre?.toLowerCase().includes(searchTerm.toLowerCase()) || agencia.email?.toLowerCase().includes(searchTerm.toLowerCase()) || agencia.id.toString() === searchTerm;
+    const matchPlan = filtroPlan === "TODOS" || (agencia.plan || "GRATUITO") === filtroPlan;
     return matchSearch && matchPlan;
   });
-
-  const planesOptions = [
-    { id: "GRATUITO", nombre: "Gratuito", icon: <CreditCard size={20} />, color: "text-gray-400", bg: "bg-gray-400/10", border: "border-gray-400/20" },
-    { id: "BASICO", nombre: "Básico", icon: <Zap size={20} />, color: "text-cyan-400", bg: "bg-cyan-400/10", border: "border-cyan-400/20" },
-    { id: "PROFESIONAL", nombre: "Profesional", icon: <Star size={20} />, color: "text-blue-400", bg: "bg-blue-400/10", border: "border-blue-400/20" },
-    { id: "AGENCIA", nombre: "Agencia Elite", icon: <Crown size={20} />, color: "text-amber-400", bg: "bg-amber-400/10", border: "border-amber-400/20" }
-  ];
 
   if (loading) {
     return (
@@ -255,154 +221,20 @@ export default function AdminDashboard() {
       <AdminHeader onLogout={handleLogout} />
 
       <main className="max-w-7xl mx-auto px-4 md:px-6 py-6 md:py-10 flex flex-col gap-10">
+        <EstadisticasMRR stats={stats} />
         
-        {/* 🔥 NUEVA SECCIÓN: MÉTRICAS FINANCIERAS (MRR) */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="bg-gray-900 border border-gray-800 rounded-3xl p-6 shadow-2xl flex items-center gap-5">
-            <div className="w-14 h-14 rounded-2xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-500 shrink-0">
-              <Activity size={28} />
-            </div>
-            <div>
-              <p className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-1">Agencias Activas</p>
-              <div className="flex items-baseline gap-2">
-                <span className="text-3xl font-black text-white">{stats.totalAgenciasActivas}</span>
-                <span className="text-sm font-medium text-gray-500">dueños</span>
-              </div>
-            </div>
-          </div>
+        <GestorComunicados 
+          comunicado={comunicado} 
+          setComunicado={setComunicado} 
+          onGuardar={guardarComunicado} 
+          isSaving={isSavingComunicado} 
+        />
 
-          <div className="bg-gray-900 border border-gray-800 rounded-3xl p-6 shadow-2xl flex items-center gap-5">
-            <div className="w-14 h-14 rounded-2xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-500 shrink-0">
-              <TrendingUp size={28} />
-            </div>
-            <div>
-              <p className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-1">Salud de Cartera</p>
-              <div className="flex items-center gap-3">
-                <div className="flex items-baseline gap-1.5" title="Usuarios que están pagando">
-                  <span className="text-2xl font-black text-green-400">{stats.usuariosPagos}</span>
-                  <span className="text-xs font-bold text-gray-500 uppercase">Pagos</span>
-                </div>
-                <div className="w-px h-6 bg-gray-800"></div>
-                <div className="flex items-baseline gap-1.5" title="Usuarios en período de prueba gratuito">
-                  <span className="text-2xl font-black text-cyan-400">{stats.usuariosTrial}</span>
-                  <span className="text-xs font-bold text-gray-500 uppercase">En Trial</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-gray-900 border border-green-500/20 rounded-3xl p-6 shadow-[0_0_30px_rgba(22,163,74,0.05)] flex items-center gap-5 relative overflow-hidden">
-            <div className="absolute right-0 top-0 bottom-0 w-32 bg-gradient-to-l from-green-500/5 to-transparent pointer-events-none"></div>
-            <div className="w-14 h-14 rounded-2xl bg-green-500/10 border border-green-500/30 flex items-center justify-center text-green-500 shrink-0 relative z-10">
-              <DollarSign size={28} />
-            </div>
-            <div className="relative z-10">
-              <p className="text-sm font-bold text-green-500/80 uppercase tracking-wider mb-1">Ingreso Mensual (MRR)</p>
-              <div className="flex items-baseline gap-1">
-                <span className="text-2xl font-bold text-green-500">$</span>
-                <span className="text-4xl font-black text-white tracking-tight">
-                  {stats.mrr.toLocaleString('es-AR')}
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* COMUNICADOS GLOBALES */}
-        <div className="bg-gray-900 border border-gray-800 rounded-3xl p-6 md:p-8 shadow-2xl flex flex-col gap-8">
-          <div>
-            <h2 className="text-xl font-bold text-white flex items-center gap-2 mb-2">
-              <Megaphone className="text-blue-500 w-6 h-6" /> Centro de Comunicados
-            </h2>
-            <p className="text-sm text-gray-400">Gestioná los mensajes globales. Podés tener un Banner superior (para avisos rápidos) y un Modal (para noticias de lectura obligatoria) activos al mismo tiempo.</p>
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            <div className="bg-gray-950 border border-gray-800 rounded-2xl p-5 flex flex-col gap-4">
-              <div className="flex items-center justify-between border-b border-gray-800 pb-4">
-                <div className="flex items-center gap-2 text-white font-bold">
-                <Layout size={18} className="text-gray-400"/> Banner Superior
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setComunicado({ ...comunicado, activoBanner: !comunicado.activoBanner })}
-                  className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors focus:outline-none ${comunicado.activoBanner ? 'bg-green-600' : 'bg-gray-700'}`}
-                >
-                  <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${comunicado.activoBanner ? 'translate-x-6' : 'translate-x-1'}`} />
-                </button>
-              </div>
-
-              <textarea 
-                rows={3}
-                value={comunicado.mensajeBanner}
-                onChange={(e) => setComunicado({...comunicado, mensajeBanner: e.target.value})}
-                placeholder="Escribí el texto del banner acá..."
-                className="w-full bg-gray-900/80 border border-gray-800 rounded-xl p-5 text-gray-200 outline-none focus:border-blue-500 transition-colors resize-y min-h-[100px] text-base leading-relaxed custom-scrollbar"
-              />
-              
-              <div className="flex gap-2">
-                <button onClick={() => setComunicado({...comunicado, tipoBanner: 'blue'})} className={`w-6 h-6 rounded-full bg-blue-600 border-2 ${comunicado.tipoBanner === 'blue' ? 'border-white' : 'border-transparent opacity-50'}`} />
-                <button onClick={() => setComunicado({...comunicado, tipoBanner: 'red'})} className={`w-6 h-6 rounded-full bg-red-600 border-2 ${comunicado.tipoBanner === 'red' ? 'border-white' : 'border-transparent opacity-50'}`} />
-                <button onClick={() => setComunicado({...comunicado, tipoBanner: 'green'})} className={`w-6 h-6 rounded-full bg-green-600 border-2 ${comunicado.tipoBanner === 'green' ? 'border-white' : 'border-transparent opacity-50'}`} />
-                <button onClick={() => setComunicado({...comunicado, tipoBanner: 'yellow'})} className={`w-6 h-6 rounded-full bg-amber-500 border-2 ${comunicado.tipoBanner === 'yellow' ? 'border-white' : 'border-transparent opacity-50'}`} />
-              </div>
-            </div>
-
-            <div className="bg-gray-950 border border-gray-800 rounded-2xl p-5 flex flex-col gap-4">
-              <div className="flex items-center justify-between border-b border-gray-800 pb-4">
-                <div className="flex items-center gap-2 text-white font-bold">
-                  <AppWindow size={18} className="text-gray-400"/> Modal Pop-up <span className="text-[10px] bg-gray-800 text-gray-400 px-2 py-0.5 rounded uppercase font-semibold ml-2">Lectura obligatoria</span>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setComunicado({ ...comunicado, activoModal: !comunicado.activoModal })}
-                  className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors focus:outline-none ${comunicado.activoModal ? 'bg-purple-600' : 'bg-gray-700'}`}
-                >
-                  <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${comunicado.activoModal ? 'translate-x-6' : 'translate-x-1'}`} />
-                </button>
-              </div>
-
-              <div className="flex flex-col gap-2">
-                <textarea 
-                  rows={7}
-                  value={comunicado.mensajeModal}
-                  onChange={(e) => setComunicado({...comunicado, mensajeModal: e.target.value})}
-                  placeholder="Escribí la noticia del modal acá..."
-                  className="w-full bg-gray-900/80 border border-gray-800 rounded-xl p-5 text-gray-200 outline-none focus:border-purple-500 transition-colors resize-y min-h-[180px] text-base leading-relaxed custom-scrollbar"
-                />
-                <p className="text-[11px] text-gray-500 font-medium px-1">
-                  💡 <strong>Tip de formato:</strong> Usá <code className="text-gray-400"># </code> para títulos grandes, <code className="text-gray-400">## </code> para subtítulos, <code className="text-gray-400">- </code> para listas, y encerrá palabras en <code className="text-gray-400">**asteriscos**</code> para hacerlas <strong>negritas</strong>.
-                </p>
-              </div>
-              
-              <div className="flex gap-2">
-                <button onClick={() => setComunicado({...comunicado, tipoModal: 'blue'})} className={`w-6 h-6 rounded-full bg-blue-600 border-2 ${comunicado.tipoModal === 'blue' ? 'border-white' : 'border-transparent opacity-50'}`} />
-                <button onClick={() => setComunicado({...comunicado, tipoModal: 'red'})} className={`w-6 h-6 rounded-full bg-red-600 border-2 ${comunicado.tipoModal === 'red' ? 'border-white' : 'border-transparent opacity-50'}`} />
-                <button onClick={() => setComunicado({...comunicado, tipoModal: 'green'})} className={`w-6 h-6 rounded-full bg-green-600 border-2 ${comunicado.tipoModal === 'green' ? 'border-white' : 'border-transparent opacity-50'}`} />
-                <button onClick={() => setComunicado({...comunicado, tipoModal: 'yellow'})} className={`w-6 h-6 rounded-full bg-amber-500 border-2 ${comunicado.tipoModal === 'yellow' ? 'border-white' : 'border-transparent opacity-50'}`} />
-              </div>
-            </div>
-          </div>
-
-          <div className="flex justify-end mt-2 pt-6 border-t border-gray-800">
-            <button 
-              onClick={guardarComunicado}
-              disabled={isSavingComunicado}
-              className="flex items-center w-full sm:w-auto justify-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-8 py-3 rounded-xl font-bold transition-all disabled:opacity-50"
-            >
-              {isSavingComunicado ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
-              Guardar Todos los Anuncios
-            </button>
-          </div>
-        </div>
-
-        {/* TABLA DE CUENTAS */}
         <div className="flex flex-col gap-4">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-2">
             <div>
               <h2 className="text-xl md:text-2xl font-bold text-white flex items-center gap-2">
-                <Users className="text-gray-500 w-5 h-5 md:w-6 md:h-6" /> 
-                Cuentas Registradas
+                <Users className="text-gray-500 w-5 h-5 md:w-6 md:h-6" /> Cuentas Registradas
               </h2>
               <p className="text-sm md:text-base text-gray-400 mt-1">Radiografía completa de usuarios y suscripciones.</p>
             </div>
@@ -414,169 +246,40 @@ export default function AdminDashboard() {
             </div>
           </div>
 
-          <FiltrosAgencias 
-            searchTerm={searchTerm} 
-            setSearchTerm={setSearchTerm} 
-            filtroPlan={filtroPlan} 
-            setFiltroPlan={setFiltroPlan} 
-          />
+          <FiltrosAgencias searchTerm={searchTerm} setSearchTerm={setSearchTerm} filtroPlan={filtroPlan} setFiltroPlan={setFiltroPlan} />
 
           <TablaAgencias 
             agenciasFiltradas={agenciasFiltradas} 
             planesOptions={planesOptions}
             onImpersonate={handleImpersonate}
-            onModificarPlan={(agencia) => {
-              setAgenciaSeleccionada(agencia);
-              setPlanSeleccionado(agencia.plan || "GRATUITO");
-              setModalOpen(true);
-            }}
-            onEditarSuscripcion={(agencia) => {
-              setAgenciaSeleccionada(agencia);
-              setSubData({
-                estado: agencia.suscripcion?.estado || "pendiente",
-                fechaVencimiento: agencia.suscripcion?.fechaVencimiento ? new Date(agencia.suscripcion.fechaVencimiento).toISOString().split('T')[0] : ""
-              });
+            onModificarPlan={(a) => { setAgenciaSeleccionada(a); setPlanSeleccionado(a.plan || "GRATUITO"); setModalOpen(true); }}
+            onEditarSuscripcion={(a) => {
+              setAgenciaSeleccionada(a);
+              setSubData({ estado: a.suscripcion?.estado || "pendiente", fechaVencimiento: a.suscripcion?.fechaVencimiento ? new Date(a.suscripcion.fechaVencimiento).toISOString().split('T')[0] : "" });
               setEditSubModalOpen(true);
             }}
-            onEliminarCuenta={(agencia) => {
-              setAgenciaAEliminar(agencia);
-              setDeleteModalOpen(true);
-            }}
+            onEliminarCuenta={(a) => { setAgenciaAEliminar(a); setDeleteModalOpen(true); }}
           />
         </div>
       </main>
 
-      {/* MODALES DE ADMINISTRACIÓN */}
-      
-      {/* MODAL EDITAR SUSCRIPCIÓN */}
-      {editSubModalOpen && agenciaSeleccionada && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-950/80 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-gray-900 border border-gray-800 w-full max-w-md rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
-            <div className="px-5 md:px-6 py-4 border-b border-gray-800 flex items-center justify-between bg-gray-900/50">
-              <h3 className="text-base md:text-lg font-bold text-white flex items-center gap-2">
-                <Calendar size={18} className="text-blue-500"/> Editar Suscripción
-              </h3>
-              <button onClick={() => setEditSubModalOpen(false)} className="text-gray-500 hover:text-white transition-colors bg-gray-800/50 hover:bg-gray-800 p-2 rounded-full">
-                <X size={18} />
-              </button>
-            </div>
-            
-            <div className="p-5 md:p-6 space-y-4">
-              <div>
-                <p className="text-xs text-gray-400">Modificando acceso manual para:</p>
-                <p className="text-sm font-black text-white">{agenciaSeleccionada.nombre}</p>
-              </div>
-              
-              <div className="space-y-2">
-                <label className="text-xs font-bold text-gray-400 uppercase tracking-wide">Estado Actual</label>
-                <select 
-                  value={subData.estado} 
-                  onChange={(e) => setSubData({...subData, estado: e.target.value})}
-                  className="w-full bg-gray-950 border border-gray-800 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-blue-500 transition-colors"
-                >
-                  <option value="autorizado">Autorizado (Activo Pago)</option>
-                  <option value="trial">Trial (Prueba 14 días)</option>
-                  <option value="en_proceso">En Proceso (Pago en revisión)</option>
-                  <option value="pendiente">Pendiente (Pago atrasado)</option>
-                  <option value="cancelado">Cancelado (Sin acceso)</option>
-                </select>
-              </div>
+      <ModalEditarSuscripcion 
+        isOpen={editSubModalOpen} onClose={() => setEditSubModalOpen(false)} 
+        agencia={agenciaSeleccionada} subData={subData} setSubData={setSubData} 
+        onConfirm={confirmarEdicionSuscripcion} isUpdating={isUpdatingSub} 
+      />
 
-              <div className="space-y-2">
-                <label className="text-xs font-bold text-gray-400 uppercase tracking-wide">Fecha de Próx. Cobro / Fin Trial</label>
-                <input 
-                  type="date" 
-                  value={subData.fechaVencimiento} 
-                  onChange={(e) => setSubData({...subData, fechaVencimiento: e.target.value})}
-                  className="w-full bg-gray-950 border border-gray-800 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-blue-500 transition-colors"
-                />
-              </div>
-              <p className="text-[11px] text-yellow-500/80 bg-yellow-500/10 p-3 rounded-xl border border-yellow-500/20">
-                ⚠️ Cuidado: Modificar esto sobreescribirá la información de Mercado Pago. Útil para cobros manuales o alargar períodos de prueba.
-              </p>
-            </div>
-            
-            <div className="px-5 md:px-6 py-4 border-t border-gray-800 bg-gray-950/50 flex flex-col sm:flex-row justify-end gap-3">
-              <button onClick={() => setEditSubModalOpen(false)} className="w-full sm:w-auto px-5 py-2.5 text-sm font-bold text-gray-400 hover:text-white bg-gray-800 sm:bg-transparent rounded-xl" disabled={isUpdatingSub}>Cancelar</button>
-              <button onClick={confirmarEdicionSuscripcion} disabled={isUpdatingSub} className="w-full sm:w-auto justify-center px-6 py-2.5 bg-blue-600 hover:bg-blue-500 text-white text-sm font-bold rounded-xl shadow-lg transition-all flex items-center gap-2 disabled:opacity-50">
-                {isUpdatingSub ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />} Guardar
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ModalCambiarPlan 
+        isOpen={modalOpen} onClose={() => setModalOpen(false)} 
+        agencia={agenciaSeleccionada} planesOptions={planesOptions} 
+        planSeleccionado={planSeleccionado} setPlanSeleccionado={setPlanSeleccionado} 
+        onConfirm={confirmarCambioPlan} isUpdating={isUpdating} 
+      />
 
-      {/* MODAL CAMBIAR PLAN */}
-      {modalOpen && agenciaSeleccionada && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-950/80 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-gray-900 border border-gray-800 w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
-            <div className="px-5 md:px-6 py-4 border-b border-gray-800 flex items-center justify-between bg-gray-900/50 shrink-0">
-              <h3 className="text-base md:text-lg font-bold text-white">Gestionar Suscripción</h3>
-              <button onClick={() => setModalOpen(false)} className="text-gray-500 hover:text-white transition-colors bg-gray-800/50 hover:bg-gray-800 p-2 rounded-full">
-                <X size={18} />
-              </button>
-            </div>
-            <div className="p-5 md:p-6 overflow-y-auto">
-              <div className="mb-6">
-                <p className="text-xs md:text-sm text-gray-400">Seleccioná el nuevo nivel de acceso para:</p>
-                <p className="text-base md:text-lg font-black text-white mt-1 break-words">{agenciaSeleccionada.nombre}</p>
-                <p className="text-xs text-gray-500 break-words">{agenciaSeleccionada.email}</p>
-              </div>
-              <div className="flex flex-col gap-3">
-                {planesOptions.map((plan) => (
-                  <button key={plan.id} onClick={() => setPlanSeleccionado(plan.id)}
-                    className={`relative w-full flex items-center justify-between p-3 md:p-4 rounded-2xl border-2 text-left transition-all ${planSeleccionado === plan.id ? "bg-gray-800 border-green-600 shadow-[0_0_15px_rgba(22,163,74,0.15)]" : "bg-gray-950 border-gray-800 hover:border-gray-700 hover:bg-gray-900/50"}`}
-                  >
-                    <div className="flex items-center gap-3 md:gap-4">
-                      <div className={`${plan.bg} ${plan.color} p-2.5 md:p-3 rounded-xl border ${plan.border}`}>{plan.icon}</div>
-                      <div>
-                        <span className="block font-bold text-white text-sm md:text-base">{plan.nombre}</span>
-                        <span className="block text-[10px] md:text-xs text-gray-500 mt-0.5">Nivel de acceso al sistema</span>
-                      </div>
-                    </div>
-                    {planSeleccionado === plan.id && (
-                      <div className="w-5 h-5 md:w-6 md:h-6 rounded-full bg-green-600 text-white flex items-center justify-center shadow-lg">
-                        <Check size={14} strokeWidth={3} />
-                      </div>
-                    )}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div className="px-5 md:px-6 py-4 border-t border-gray-800 bg-gray-950/50 flex flex-col sm:flex-row justify-end gap-3 shrink-0">
-              <button onClick={() => setModalOpen(false)} className="w-full sm:w-auto px-5 py-2.5 text-sm font-bold text-gray-400 hover:text-white transition-colors bg-gray-800 sm:bg-transparent rounded-xl" disabled={isUpdating}>Cancelar</button>
-              <button onClick={confirmarCambioPlan} disabled={isUpdating} className="w-full sm:w-auto justify-center px-6 py-2.5 bg-green-700 hover:bg-green-600 text-white text-sm font-bold rounded-xl shadow-lg shadow-green-900/20 transition-all flex items-center gap-2 disabled:opacity-50">
-                {isUpdating ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />} Aplicar
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* MODAL ELIMINAR */}
-      {deleteModalOpen && agenciaAEliminar && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-950/90 backdrop-blur-md animate-in fade-in duration-200">
-          <div className="bg-gray-900 border border-red-900/50 w-full max-w-md rounded-3xl shadow-[0_0_50px_rgba(220,38,38,0.1)] overflow-hidden animate-in zoom-in-95 duration-200">
-            <div className="p-6 md:p-8 flex flex-col items-center text-center">
-              <div className="w-14 h-14 md:w-16 md:h-16 bg-red-500/10 text-red-500 rounded-full flex items-center justify-center mb-5 md:mb-6 border border-red-500/20 shadow-inner">
-                <AlertTriangle size={28} className="md:w-8 md:h-8" />
-              </div>
-              <h3 className="text-lg md:text-xl font-black text-white mb-2">¿Eliminar esta cuenta?</h3>
-              <p className="text-gray-400 text-xs md:text-sm leading-relaxed mb-6">
-                Estás a punto de eliminar el acceso para <strong className="text-white">{agenciaAEliminar.nombre}</strong>. Esta acción es irreversible.
-              </p>
-              <div className="flex flex-col-reverse sm:flex-row w-full gap-3 mt-2">
-                <button onClick={() => setDeleteModalOpen(false)} disabled={isDeleting} className="flex-1 py-3 bg-gray-800 hover:bg-gray-700 text-white text-sm font-bold rounded-xl transition-colors disabled:opacity-50">
-                  Cancelar
-                </button>
-                <button onClick={confirmarEliminacion} disabled={isDeleting} className="flex-1 py-3 bg-red-600 hover:bg-red-500 text-white text-sm font-bold rounded-xl shadow-lg shadow-red-900/20 transition-all flex items-center justify-center gap-2 disabled:opacity-50">
-                  {isDeleting ? <Loader2 size={18} className="animate-spin" /> : <Trash2 size={18} />} Eliminar
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      <ModalEliminarCuenta 
+        isOpen={deleteModalOpen} onClose={() => setDeleteModalOpen(false)} 
+        agencia={agenciaAEliminar} onConfirm={confirmarEliminacion} isDeleting={isDeleting} 
+      />
 
       <Toast message={toast.msg} isVisible={toast.show} onClose={() => setToast({ ...toast, show: false })} />
     </div>
