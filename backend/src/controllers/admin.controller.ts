@@ -99,7 +99,6 @@ export const updateSuscripcionManual = async (req: Request, res: Response): Prom
         data: { estado: estado, fechaVencimiento: new Date(fechaVencimiento) }
       });
     } else {
-      // 🔥 FIX: Eliminado el planId que no existía en el esquema
       await prisma.suscripcion.create({
         data: {
           userId: Number(id),
@@ -172,7 +171,7 @@ export const updateComunicadoGlobal = async (req: Request, res: Response): Promi
   }
 };
 
-// 🔥 8. MODO DIOS: ENTRAR COMO OTRO USUARIO
+// 8. MODO DIOS: ENTRAR COMO OTRO USUARIO
 export const impersonateUser = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
@@ -186,8 +185,6 @@ export const impersonateUser = async (req: Request, res: Response): Promise<void
       return;
     }
 
-    // 🔥 EL ARREGLO: Le mandamos todas las llaves posibles (userId, id, email, rol, role) 
-    // para que el auth.middleware no tire "Token decodificado incompleto"
     const token = jwt.sign(
       { 
         id: usuario.id, 
@@ -213,5 +210,56 @@ export const impersonateUser = async (req: Request, res: Response): Promise<void
   } catch (error) {
     console.error("Error al impersonar usuario:", error);
     res.status(500).json({ error: 'Ocurrió un error al intentar iniciar sesión como este usuario.' });
+  }
+};
+
+// 🔥 9. ESTADÍSTICAS FINANCIERAS (MRR)
+export const getEstadisticasAdmin = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const agenciasActivas = await prisma.user.findMany({
+      where: {
+        suscripcion: {
+          estado: { in: ['autorizado', 'trial'] }
+        },
+        jefeId: null, // Solo dueños
+        email: {
+          notIn: ['fmgestionesyseguros@hotmail.com', 'ezequielzari@gmail.com'] // 🔥 ACÁ LAS EXCLUÍS
+        }
+      },
+      select: {
+        plan: true,
+        suscripcion: { select: { estado: true } }
+      }
+    });
+
+    const PRECIOS: Record<string, number> = {
+      'BASICO': 9990,
+      'PROFESIONAL': 14990,
+      'AGENCIA': 24990,
+      'GRATUITO': 0
+    };
+
+    let mrr = 0;
+    let usuariosPagos = 0;
+    let usuariosTrial = 0;
+
+    agenciasActivas.forEach(agencia => {
+      if (agencia.suscripcion?.estado === 'autorizado') {
+        mrr += PRECIOS[agencia.plan] || 0;
+        usuariosPagos++;
+      } else if (agencia.suscripcion?.estado === 'trial') {
+        usuariosTrial++;
+      }
+    });
+
+    res.json({
+      totalAgenciasActivas: agenciasActivas.length,
+      usuariosPagos,
+      usuariosTrial,
+      mrr
+    });
+  } catch (error) {
+    console.error("Error al obtener estadísticas del panel admin:", error);
+    res.status(500).json({ error: 'Error al obtener las estadísticas financieras.' });
   }
 };

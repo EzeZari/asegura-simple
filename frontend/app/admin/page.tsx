@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ShieldCheck, Users, CreditCard, Crown, Star, Zap, X, Check, Loader2, Trash2, AlertTriangle, Megaphone, Save, Layout, AppWindow, Calendar } from "lucide-react";
+import { ShieldCheck, Users, CreditCard, Crown, Star, Zap, X, Check, Loader2, Trash2, AlertTriangle, Megaphone, Save, Layout, AppWindow, Calendar, TrendingUp, Activity, DollarSign } from "lucide-react";
 import Toast from "@/components/ui/Toast";
 import FiltrosAgencias from "@/components/admin/FiltrosAgencias";
 import AdminHeader from "@/components/admin/AdminHeader";
@@ -14,6 +14,9 @@ export default function AdminDashboard() {
   const router = useRouter();
   const [agencias, setAgencias] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  
+  // 🔥 NUEVO ESTADO: Guardamos las estadísticas financieras
+  const [stats, setStats] = useState({ totalAgenciasActivas: 0, usuariosPagos: 0, usuariosTrial: 0, mrr: 0 });
   
   const [searchTerm, setSearchTerm] = useState("");
   const [filtroPlan, setFiltroPlan] = useState("TODOS");
@@ -43,14 +46,20 @@ export default function AdminDashboard() {
     try {
       const token = localStorage.getItem("asegurasimple_admin_token");
       
-      const [resAgencias, resComunicado] = await Promise.all([
+      const [resAgencias, resComunicado, resStats] = await Promise.all([
         fetch(`${API_URL}/api/admin/agencias`, { headers: { "Authorization": `Bearer ${token}` } }),
-        fetch(`${API_URL}/api/admin/comunicado`, { headers: { "Authorization": `Bearer ${token}` } })
+        fetch(`${API_URL}/api/admin/comunicado`, { headers: { "Authorization": `Bearer ${token}` } }),
+        fetch(`${API_URL}/api/admin/estadisticas`, { headers: { "Authorization": `Bearer ${token}` } }) // 🔥 NUEVA PETICIÓN
       ]);
 
       if (!resAgencias.ok) throw new Error("Error al obtener cuentas");
       const dataAgencias = await resAgencias.json();
       setAgencias(dataAgencias);
+
+      if (resStats.ok) {
+        const dataStats = await resStats.json();
+        setStats(dataStats);
+      }
 
       if (resComunicado.ok) {
         const dataComunicado = await resComunicado.json();
@@ -104,7 +113,6 @@ export default function AdminDashboard() {
     }
   };
 
-// 🔥 NUEVA FUNCIÓN: MODO DIOS (Impersonar Usuario)
   const handleImpersonate = async (agencia: any) => {
     try {
       setToast({ show: true, msg: `Generando acceso seguro para ${agencia.nombre}...` });
@@ -119,10 +127,8 @@ export default function AdminDashboard() {
 
       const data = await res.json();
 
-      // 1. Guardamos la cookie para que el Middleware nos deje pasar
       document.cookie = `next_auth_token=${data.token}; path=/; max-age=7200; SameSite=Lax`;
 
-      // 🔥 2. EL ARREGLO FINAL: Estructura EXACTA de tu authStore.ts
       const zustandState = {
         state: {
           user: data.usuario,
@@ -134,12 +140,10 @@ export default function AdminDashboard() {
         version: 0
       };
       
-      // Inyectamos el objeto como JSON en la key que usa tu store
       localStorage.setItem("auth-storage", JSON.stringify(zustandState));
       
       setToast({ show: true, msg: "¡Acceso concedido! Abriendo panel..." });
 
-      // Abrimos el dashboard del cliente en una pestaña nueva
       setTimeout(() => {
         window.open("/inicio", "_blank");
       }, 1000);
@@ -148,6 +152,7 @@ export default function AdminDashboard() {
       setToast({ show: true, msg: "Hubo un error al generar la sesión." });
     }
   };
+
   const confirmarCambioPlan = async () => {
     if (!agenciaSeleccionada) return;
     setIsUpdating(true);
@@ -159,7 +164,8 @@ export default function AdminDashboard() {
         body: JSON.stringify({ nuevoPlan: planSeleccionado })
       });
       if (!res.ok) throw new Error("Error al actualizar el plan");
-      setAgencias(prev => prev.map(a => a.id === agenciaSeleccionada.id ? { ...a, plan: planSeleccionado } : a));
+      
+      await fetchData(); // Refrescamos para actualizar el MRR
       setToast({ show: true, msg: "Plan actualizado con éxito" });
       setModalOpen(false);
     } catch (error) {
@@ -181,7 +187,7 @@ export default function AdminDashboard() {
       });
       if (!res.ok) throw new Error("Error al actualizar la suscripción");
       
-      await fetchData(); 
+      await fetchData(); // Refrescamos para actualizar el MRR
       setToast({ show: true, msg: "Suscripción actualizada correctamente" });
       setEditSubModalOpen(false);
     } catch (error) {
@@ -204,7 +210,7 @@ export default function AdminDashboard() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Error al eliminar la cuenta");
       
-      setAgencias(prev => prev.filter(a => a.id !== agenciaAEliminar.id));
+      await fetchData(); // Refrescamos para actualizar el MRR
       setToast({ show: true, msg: "Cuenta eliminada permanentemente del sistema" });
       setDeleteModalOpen(false);
     } catch (error: any) {
@@ -250,6 +256,58 @@ export default function AdminDashboard() {
 
       <main className="max-w-7xl mx-auto px-4 md:px-6 py-6 md:py-10 flex flex-col gap-10">
         
+        {/* 🔥 NUEVA SECCIÓN: MÉTRICAS FINANCIERAS (MRR) */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="bg-gray-900 border border-gray-800 rounded-3xl p-6 shadow-2xl flex items-center gap-5">
+            <div className="w-14 h-14 rounded-2xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-500 shrink-0">
+              <Activity size={28} />
+            </div>
+            <div>
+              <p className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-1">Agencias Activas</p>
+              <div className="flex items-baseline gap-2">
+                <span className="text-3xl font-black text-white">{stats.totalAgenciasActivas}</span>
+                <span className="text-sm font-medium text-gray-500">dueños</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-gray-900 border border-gray-800 rounded-3xl p-6 shadow-2xl flex items-center gap-5">
+            <div className="w-14 h-14 rounded-2xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-500 shrink-0">
+              <TrendingUp size={28} />
+            </div>
+            <div>
+              <p className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-1">Salud de Cartera</p>
+              <div className="flex items-center gap-3">
+                <div className="flex items-baseline gap-1.5" title="Usuarios que están pagando">
+                  <span className="text-2xl font-black text-green-400">{stats.usuariosPagos}</span>
+                  <span className="text-xs font-bold text-gray-500 uppercase">Pagos</span>
+                </div>
+                <div className="w-px h-6 bg-gray-800"></div>
+                <div className="flex items-baseline gap-1.5" title="Usuarios en período de prueba gratuito">
+                  <span className="text-2xl font-black text-cyan-400">{stats.usuariosTrial}</span>
+                  <span className="text-xs font-bold text-gray-500 uppercase">En Trial</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-gray-900 border border-green-500/20 rounded-3xl p-6 shadow-[0_0_30px_rgba(22,163,74,0.05)] flex items-center gap-5 relative overflow-hidden">
+            <div className="absolute right-0 top-0 bottom-0 w-32 bg-gradient-to-l from-green-500/5 to-transparent pointer-events-none"></div>
+            <div className="w-14 h-14 rounded-2xl bg-green-500/10 border border-green-500/30 flex items-center justify-center text-green-500 shrink-0 relative z-10">
+              <DollarSign size={28} />
+            </div>
+            <div className="relative z-10">
+              <p className="text-sm font-bold text-green-500/80 uppercase tracking-wider mb-1">Ingreso Mensual (MRR)</p>
+              <div className="flex items-baseline gap-1">
+                <span className="text-2xl font-bold text-green-500">$</span>
+                <span className="text-4xl font-black text-white tracking-tight">
+                  {stats.mrr.toLocaleString('es-AR')}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* COMUNICADOS GLOBALES */}
         <div className="bg-gray-900 border border-gray-800 rounded-3xl p-6 md:p-8 shadow-2xl flex flex-col gap-8">
           <div>
@@ -366,7 +424,7 @@ export default function AdminDashboard() {
           <TablaAgencias 
             agenciasFiltradas={agenciasFiltradas} 
             planesOptions={planesOptions}
-            onImpersonate={handleImpersonate} // 🔥 LE PASAMOS LA FUNCIÓN
+            onImpersonate={handleImpersonate}
             onModificarPlan={(agencia) => {
               setAgenciaSeleccionada(agencia);
               setPlanSeleccionado(agencia.plan || "GRATUITO");
@@ -388,6 +446,8 @@ export default function AdminDashboard() {
         </div>
       </main>
 
+      {/* MODALES DE ADMINISTRACIÓN */}
+      
       {/* MODAL EDITAR SUSCRIPCIÓN */}
       {editSubModalOpen && agenciaSeleccionada && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-950/80 backdrop-blur-sm animate-in fade-in duration-200">
