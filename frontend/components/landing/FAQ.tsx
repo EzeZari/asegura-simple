@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { ChevronDown } from 'lucide-react';
 
 export default function FAQ() {
@@ -30,8 +30,28 @@ export default function FAQ() {
     }
   ];
 
+  // 🔥 JSON-LD para rich snippets de FAQ en Google
+  const faqSchema = {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": faqs.map((faq) => ({
+      "@type": "Question",
+      "name": faq.q,
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": faq.a
+      }
+    }))
+  };
+
   return (
     <section id="faq" className="py-24 bg-gray-50">
+      {/* 🔥 Schema FAQPage — habilita rich snippets */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }}
+      />
+
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         
         <motion.div 
@@ -75,7 +95,6 @@ export default function FAQ() {
                     {faq.q}
                   </span>
                   
-                  {/* Contenedor del ícono con fondo dinámico */}
                   <div className={`ml-4 flex-shrink-0 w-10 h-10 flex items-center justify-center rounded-full transition-colors duration-300 ${
                     isOpen 
                       ? 'bg-green-100 text-green-700' 
@@ -88,20 +107,21 @@ export default function FAQ() {
                   </div>
                 </button>
                 
-                <AnimatePresence initial={false}>
-                  {isOpen && (
-                    <motion.div 
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: "auto", opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      transition={{ duration: 0.3, ease: "easeInOut" }}
-                    >
-                      <div className="px-6 pb-6 text-gray-600 leading-relaxed border-t border-gray-50 pt-4">
-                        {faq.a}
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
+                {/* 🔥 Ahora SIEMPRE está montado en el DOM (bueno para SEO). 
+                    Se anima con height/opacity en vez de montar/desmontar con AnimatePresence. */}
+                <motion.div
+                  initial={false}
+                  animate={{ 
+                    height: isOpen ? "auto" : 0, 
+                    opacity: isOpen ? 1 : 0 
+                  }}
+                  transition={{ duration: 0.3, ease: "easeInOut" }}
+                  style={{ overflow: "hidden" }}
+                >
+                  <div className="px-6 pb-6 text-gray-600 leading-relaxed border-t border-gray-50 pt-4">
+                    {faq.a}
+                  </div>
+                </motion.div>
               </motion.div>
             );
           })}
