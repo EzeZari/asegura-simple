@@ -25,7 +25,7 @@ export default function Hero() {
     transition: {
       duration: 4,
       repeat: Infinity,
-      ease: "easeInOut"
+      ease: "easeInOut" as const // 🔥 ACÁ ESTÁ EL FIX
     }
   };
 
@@ -34,7 +34,7 @@ export default function Hero() {
     transition: {
       duration: 5,
       repeat: Infinity,
-      ease: "easeInOut"
+      ease: "easeInOut" as const // 🔥 Y ACÁ TAMBIÉN
     }
   };
 
