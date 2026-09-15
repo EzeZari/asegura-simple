@@ -15,8 +15,9 @@ export default function Features() {
           transition={{ duration: 0.6 }}
           className="text-center mb-20"
         >
+          {/* 🔥 H2 OPTIMIZADO: Agregamos "cartera de seguros" para darle contexto a Google */}
           <h2 className="text-3xl md:text-4xl font-extrabold text-gray-900 mb-4 tracking-tight">
-            Todo lo que necesitás para escalar tu cartera
+            Todo lo que necesitás para escalar tu cartera de seguros
           </h2>
           <p className="text-xl text-gray-600 max-w-2xl mx-auto">
             Herramientas diseñadas específicamente para que los productores de seguros ahorren tiempo y aumenten sus renovaciones.
@@ -25,7 +26,7 @@ export default function Features() {
 
         <div className="space-y-24">
           
-          {/* Feature 1: Calendario (Imagen a la derecha) */}
+          {/* Feature 1: Calendario */}
           <div className="flex flex-col lg:flex-row items-center gap-12 lg:gap-20">
             <motion.div 
               initial={{ opacity: 0, x: -50 }}
@@ -61,15 +62,16 @@ export default function Features() {
               className="lg:w-1/2 relative w-full"
             >
               <div className="absolute inset-0 bg-orange-50 rounded-[2rem] transform translate-x-4 translate-y-4 -z-10"></div>
+              {/* 🔥 ALT optimizado */}
               <img 
                 src="/calendario.png" 
-                alt="Calendario de Vencimientos" 
+                alt="Calendario de vencimientos de pólizas para PAS" 
                 className="rounded-2xl shadow-2xl border border-gray-100 w-full object-cover" 
               />
             </motion.div>
           </div>
 
-          {/* Feature 2: Estadísticas (Imagen a la izquierda) */}
+          {/* Feature 2: Estadísticas */}
           <div className="flex flex-col lg:flex-row-reverse items-center gap-12 lg:gap-20">
             <motion.div 
               initial={{ opacity: 0, x: 50 }}
@@ -105,15 +107,16 @@ export default function Features() {
               className="lg:w-1/2 relative w-full"
             >
               <div className="absolute inset-0 bg-green-50 rounded-[2rem] transform -translate-x-4 translate-y-4 -z-10"></div>
+              {/* 🔥 ALT optimizado */}
               <img 
                 src="/estadisticas.png" 
-                alt="Métricas y Estadísticas" 
+                alt="Métricas y Estadísticas de AseguraSimple" 
                 className="rounded-2xl shadow-2xl border border-gray-100 w-full object-cover" 
               />
             </motion.div>
           </div>
 
-          {/* Feature 3: Detalle de Póliza (Imagen a la derecha) */}
+          {/* Feature 3: Detalle de Póliza */}
           <div className="flex flex-col lg:flex-row items-center gap-12 lg:gap-20">
             <motion.div 
               initial={{ opacity: 0, x: -50 }}
@@ -149,16 +152,16 @@ export default function Features() {
               className="lg:w-1/2 relative w-full"
             >
               <div className="absolute inset-0 bg-blue-50 rounded-[2rem] transform translate-x-4 translate-y-4 -z-10"></div>
-              {/* 🔥 ACÁ CARGAMOS LA NUEVA IMAGEN */}
+              {/* 🔥 ALT optimizado */}
               <img 
                 src="/poliza.png" 
-                alt="Detalle de Póliza AseguraSimple" 
+                alt="Detalle de Póliza en AseguraSimple" 
                 className="rounded-2xl shadow-2xl border border-gray-100 w-full object-cover" 
               />
             </motion.div>
           </div>
 
-          {/* Feature 4: Comunicación (Tarjetas explicativas abajo) */}
+          {/* Feature 4: Comunicación */}
           <motion.div 
             initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}

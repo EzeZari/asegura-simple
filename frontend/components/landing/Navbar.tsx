@@ -29,6 +29,8 @@ export default function Navbar() {
           <Link href="#funcionalidades" className="hover:text-green-700 transition-colors">Funcionalidades</Link>
           <Link href="#precios" className="hover:text-green-700 transition-colors">Precios</Link>
           <Link href="#faq" className="hover:text-green-700 transition-colors">FAQ</Link>
+          {/* 🔥 Link al Blog añadido */}
+          {/* <Link href="/blog" className="hover:text-green-700 transition-colors font-bold">Blog para PAS</Link> */}
         </nav>
         
         {/* Desktop Buttons */}
@@ -63,6 +65,8 @@ export default function Navbar() {
               <Link href="#funcionalidades" onClick={() => setIsMobileMenuOpen(false)} className="font-medium text-gray-600 hover:text-green-700">Funcionalidades</Link>
               <Link href="#precios" onClick={() => setIsMobileMenuOpen(false)} className="font-medium text-gray-600 hover:text-green-700">Precios</Link>
               <Link href="#faq" onClick={() => setIsMobileMenuOpen(false)} className="font-medium text-gray-600 hover:text-green-700">FAQ</Link>
+              {/* 🔥 Link al Blog en menú móvil */}
+              <Link href="/blog" onClick={() => setIsMobileMenuOpen(false)} className="font-medium text-gray-900 hover:text-green-700">Blog para PAS</Link>
               
               <div className="h-px w-full bg-gray-100 my-2"></div>
               
