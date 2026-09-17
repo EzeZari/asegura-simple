@@ -30,7 +30,7 @@ export default function Navbar() {
           <Link href="#precios" className="hover:text-green-700 transition-colors">Precios</Link>
           <Link href="#faq" className="hover:text-green-700 transition-colors">FAQ</Link>
           {/* 🔥 Link al Blog añadido */}
-          <Link href="/blog" className="hover:text-green-700 transition-colors font-bold">Blog para PAS</Link>
+          {/* <Link href="/blog" className="hover:text-green-700 transition-colors font-bold">Blog para PAS</Link> */}
         </nav>
         
         {/* Desktop Buttons */}
