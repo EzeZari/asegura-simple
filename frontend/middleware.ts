@@ -19,7 +19,8 @@ export function middleware(request: NextRequest) {
     pathname.startsWith('/consulta') || 
     pathname.startsWith('/planes') ||
     pathname.startsWith('/terminos') ||
-    pathname.startsWith('/privacidad');
+    pathname.startsWith('/privacidad')||
+    pathname.startsWith('/blog'); // 🔥 AGREGAMOS ESTA LÍNEA PARA EL BLOG
                         
   if (isPublicRoute) {
     return NextResponse.next();
