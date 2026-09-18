@@ -30,6 +30,8 @@ export default function PolizaTableRow({
 
   const getEstadoInteligente = (p: any) => {
     if (p.estado === "Anulada" || p.estado === "Renovada") return p.estado;
+    if (!p.fechaVencimiento) return p.estado; // 🔥 ESCUDO AGREGADO
+
     const hoy = new Date();
     hoy.setHours(0, 0, 0, 0); 
     
