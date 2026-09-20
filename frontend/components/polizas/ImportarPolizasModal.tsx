@@ -1,9 +1,16 @@
 "use client";
 
-import { useState, useRef } from "react";
-import { X, UploadCloud, FileSpreadsheet, AlertTriangle, Loader2, CheckCircle2, Info } from "lucide-react";
+import { useState, useRef, useEffect } from "react";
+import { X, UploadCloud, Check } from "lucide-react";
 import * as XLSX from "xlsx";
-import { apiFetch } from "@/services/api"; 
+import { apiFetch } from "@/services/api";
+import { descargarTemplatePolizas } from "@/utils/excelTemplates";
+
+// Subcomponentes modulares
+import PasoUpload from "./importar/PasoUpload";
+import PasoMapping from "./importar/PasoMapping";
+import PasoPreview from "./importar/PasoPreview";
+import PasoResult from "./importar/PasoResult";
 
 interface Props {
   isOpen: boolean;
@@ -11,175 +18,389 @@ interface Props {
   onSuccess: (mensaje: string) => void;
 }
 
+const RAMAS_PERMITIDAS = [
+  "Accidentes personales", "ART", "Automotor", "Cascos", "Caución", 
+  "Combinado familiar", "Ecomovilidad", "Incendio", "Integral para comercio", 
+  "Motovehículo", "Responsabilidad civil", "Robo", "Seguro técnico", 
+  "Transporte", "Vida colectivo", "Vida individual", "Vida simple"
+];
+
 export default function ImportarPolizasModal({ isOpen, onClose, onSuccess }: Props) {
-  const [file, setFile] = useState<File | null>(null);
-  const [previewData, setPreviewData] = useState<any[]>([]);
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [error, setError] = useState("");
+  const [step, setStep] = useState<"upload" | "mapping" | "preview" | "result">("upload");
+  const [polizas, setPolizas] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [resultado, setResultado] = useState<any>(null);
+  const [isCopied, setIsCopied] = useState(false);
+
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 15;
+
+  const [companiasDB, setCompaniasDB] = useState<any[]>([]);
+  const [aseguradosDB, setAseguradosDB] = useState<any[]>([]);
+
+  const [companiasDesconocidas, setCompaniasDesconocidas] = useState<string[]>([]);
+  const [ramasDesconocidas, setRamasDesconocidas] = useState<string[]>([]);
+  const [dnisDesconocidosFilas, setDnisDesconocidosFilas] = useState<any[]>([]);
+
+  const [mapeosCompanias, setMapeosCompanias] = useState<Record<string, string>>({});
+  const [mapeosRamas, setMapeosRamas] = useState<Record<string, string>>({});
+  const [mapeosAsegurados, setMapeosAsegurados] = useState<Record<number, string>>({});
+
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  if (!isOpen) return null;
+  useEffect(() => {
+    if (isOpen) {
+      Promise.all([
+        apiFetch('/api/companias').then(r => r.json()),
+        apiFetch('/api/asegurados').then(r => r.json())
+      ]).then(([comps, asegs]) => {
+        if (Array.isArray(comps)) setCompaniasDB(comps);
+        if (Array.isArray(asegs)) setAseguradosDB(asegs);
+      }).catch(err => console.error("Error al cargar datos:", err));
+    }
+  }, [isOpen]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedFile = e.target.files?.[0];
-    if (!selectedFile) return;
-
-    const extension = selectedFile.name.split('.').pop()?.toLowerCase();
-    if (extension !== 'xlsx' && extension !== 'xls' && extension !== 'csv') {
-      setError("Formato no válido. Subí un archivo .xlsx, .xls o .csv");
-      return;
-    }
-
-    setError("");
-    setFile(selectedFile);
-
+    const file = e.target.files?.[0];
+    if (!file) return;
     const reader = new FileReader();
+
     reader.onload = (evt) => {
-      try {
-        const bstr = evt.target?.result;
-        const workbook = XLSX.read(bstr, { type: 'binary' });
-        const sheetName = workbook.SheetNames[0];
-        const worksheet = workbook.Sheets[sheetName];
-        
-        const json: any[] = XLSX.utils.sheet_to_json(worksheet, { raw: false }); 
-        setPreviewData(json);
-      } catch (err) {
-        setError("Error al leer la estructura del archivo.");
-      }
-    };
-    reader.readAsBinaryString(selectedFile);
-  };
+      const data = evt.target?.result;
+      const workbook = XLSX.read(data, { type: "binary", cellDates: true });
+      const sheetName = workbook.SheetNames[0];
+      const sheet = workbook.Sheets[sheetName];
+      const jsonData = XLSX.utils.sheet_to_json(sheet, { defval: "" });
 
-  const handleImport = async () => {
-    if (previewData.length === 0) return;
-    setIsProcessing(true);
-    setError("");
+      const estandarizadas = jsonData.map((pRaw: any) => {
+        const getVal = (keywords: string[]) => {
+          const key = Object.keys(pRaw).find(k => {
+            const lower = k.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, '');
+            return keywords.some(kw => lower.includes(kw));
+          });
+          return key ? pRaw[key] : "";
+        };
 
-    try {
-      const res = await apiFetch(`/api/polizas/importar`, {
-        method: "POST",
-        body: JSON.stringify(previewData),
+        return {
+          nropoliza: String(getVal(['poliza', 'nro', 'numero', 'certif'])).trim(),
+          dnicuit: String(getVal(['dni', 'cuit', 'cuil', 'doc'])).replace(/[^0-9]/g, ''),
+          compania: String(getVal(['compania', 'aseguradora', 'cia', 'seguro'])).trim(),
+          ramariesgo: String(getVal(['rama', 'riesgo', 'ramo', 'tipo'])).trim(),
+          cobertura: String(getVal(['cobertura', 'plan'])).trim(),
+          formapago: String(getVal(['pago', 'forma', 'metodo'])).trim(),
+          patente: String(getVal(['patente', 'dominio', 'chapa'])).replace(/[\s-]/g, '').toUpperCase(),
+          marca: String(getVal(['marca'])).trim(),
+          modelo: String(getVal(['modelo'])).trim(),
+          ubicacionriesgo: String(getVal(['ubicacion', 'direccion', 'domicilio'])).trim(),
+          cantidadempleados: String(getVal(['empleado', 'personal', 'capita'])).trim(),
+          vigenciadesde: getVal(['desde', 'inicio', 'vigenciadesde']),
+          vigenciahasta: getVal(['hasta', 'vencimiento', 'fin', 'vigenciahasta'])
+        };
       });
 
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Error en la carga.");
+      const ciasUnicas = new Set<string>();
+      const ramasUnicas = new Set<string>();
+      const dnisConflictivos: any[] = [];
+      const mapeosInicialesAseg: Record<number, string> = {};
 
-      onSuccess(`¡Éxito! Se importaron ${data.creados} pólizas (se omitieron ${data.salteados} por falta de DNI o duplicados).`);
-      handleClose();
-    } catch (err: any) {
-      setError(err.message);
+      estandarizadas.forEach((p: any, index: number) => {
+        const existeCia = companiasDB.some(c => c.nombre.toLowerCase().trim() === p.compania.toLowerCase());
+        if (!existeCia || p.compania === "") ciasUnicas.add(p.compania || "Vacía");
+
+        const existeRama = RAMAS_PERMITIDAS.some(r => r.toLowerCase() === p.ramariesgo.toLowerCase());
+        if (!existeRama || p.ramariesgo === "") ramasUnicas.add(p.ramariesgo || "Vacía");
+
+        const existeDni = aseguradosDB.some(a => String(a.dni).replace(/[^0-9]/g, '') === p.dnicuit);
+        if (!existeDni || p.dnicuit === "") {
+          dnisConflictivos.push({
+            index,
+            filaExcel: index + 2,
+            poliza: p.nropoliza || "Sin Nro",
+            dniOriginal: p.dnicuit || "Vacío"
+          });
+          mapeosInicialesAseg[index] = "IGNORAR";
+        }
+      });
+
+      const arrayCias = Array.from(ciasUnicas);
+      const arrayRamas = Array.from(ramasUnicas);
+
+      const mapeosInicialesCia: Record<string, string> = {};
+      arrayCias.forEach(c => mapeosInicialesCia[c] = "IGNORAR");
+
+      const mapeosInicialesRama: Record<string, string> = {};
+      arrayRamas.forEach(r => mapeosInicialesRama[r] = "IGNORAR");
+
+      setPolizas(estandarizadas);
+      setCompaniasDesconocidas(arrayCias);
+      setRamasDesconocidas(arrayRamas);
+      setDnisDesconocidosFilas(dnisConflictivos);
+
+      setMapeosCompanias(mapeosInicialesCia);
+      setMapeosRamas(mapeosInicialesRama);
+      setMapeosAsegurados(mapeosInicialesAseg);
+
+      setCurrentPage(1);
+
+      if (arrayCias.length > 0 || arrayRamas.length > 0 || dnisConflictivos.length > 0) {
+        setStep("mapping");
+      } else {
+        setStep("preview");
+      }
+    };
+    reader.readAsBinaryString(file);
+  };
+
+  const aplicarMapeo = () => {
+    const polizasActualizadas = polizas.map((p, idx) => {
+      const copia = { ...p };
+      const ciaKey = copia.compania || "Vacía";
+      if (mapeosCompanias[ciaKey]) {
+        copia.compania = mapeosCompanias[ciaKey] !== "IGNORAR" ? mapeosCompanias[ciaKey] : "";
+      }
+
+      const ramaKey = copia.ramariesgo || "Vacía";
+      if (mapeosRamas[ramaKey]) {
+        copia.ramariesgo = mapeosRamas[ramaKey] !== "IGNORAR" ? mapeosRamas[ramaKey] : "";
+      }
+
+      if (mapeosAsegurados[idx] !== undefined) {
+        copia.dnicuit = mapeosAsegurados[idx] !== "IGNORAR" ? mapeosAsegurados[idx] : "";
+      }
+
+      return copia;
+    });
+
+    setPolizas(polizasActualizadas);
+    setStep("preview");
+    setCurrentPage(1);
+  };
+
+  const handleImportar = async () => {
+    setIsLoading(true);
+    try {
+      const res = await apiFetch("/api/polizas/importar", {
+        method: "POST",
+        body: JSON.stringify(polizas),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Error al importar");
+
+      setResultado(data);
+      setStep("result");
+    } catch (error: any) {
+      alert(error.message);
     } finally {
-      setIsProcessing(false);
+      setIsLoading(false);
     }
   };
 
   const handleClose = () => {
-    setFile(null);
-    setPreviewData([]);
-    setError("");
-    if (fileInputRef.current) fileInputRef.current.value = '';
+    setStep("upload");
+    setPolizas([]);
+    setResultado(null);
+    setIsCopied(false);
+    setCurrentPage(1);
+    if (fileInputRef.current) fileInputRef.current.value = "";
     onClose();
   };
 
+  const handleSuccess = () => {
+    onSuccess(`Se importaron ${resultado?.creados || 0} pólizas correctamente.`);
+    handleClose();
+  };
+
+  const copiarReporte = () => {
+    if (!resultado?.reporte) return;
+    let texto = "📋 REPORTE DE IMPORTACIÓN - AseguraSimple\n";
+    texto += `Fecha: ${new Date().toLocaleString("es-AR")}\n\n`;
+    const exitos = resultado.reporte.filter((r: any) => r.estado === "exito");
+    const errores = resultado.reporte.filter((r: any) => r.estado === "error");
+
+    texto += `✅ IMPORTADAS CON ÉXITO: ${exitos.length}\n`;
+    exitos.forEach((r: any) => { texto += `- Fila ${r.fila} | Póliza #${r.poliza}\n`; });
+
+    texto += `\n❌ SALTEADAS O CON ERRORES: ${errores.length}\n`;
+    errores.forEach((r: any) => { texto += `- Fila ${r.fila} | Póliza #${r.poliza} -> ERROR: ${r.motivo}\n`; });
+
+    navigator.clipboard.writeText(texto);
+    setIsCopied(true);
+    setTimeout(() => setIsCopied(false), 2000);
+  };
+
+  const descargarExcelErrores = () => {
+    if (!resultado?.reporte) return;
+    const errores = resultado.reporte.filter((r: any) => r.estado === "error");
+    if (errores.length === 0) return;
+
+    const dataExcel = errores.map((err: any) => {
+      const polizaFila = polizas[err.fila - 2] || {};
+      return {
+        Fila_Original: err.fila,
+        NroPoliza: err.poliza,
+        DNI_CUIT: polizaFila.dnicuit || "",
+        Compania: polizaFila.compania || "",
+        Rama_Riesgo: polizaFila.ramariesgo || "",
+        Patente: polizaFila.patente || "",
+        Motivo_Rechazo: err.motivo
+      };
+    });
+
+    const ws = XLSX.utils.json_to_sheet(dataExcel);
+    ws['!cols'] = [{ wch: 12 }, { wch: 15 }, { wch: 15 }, { wch: 20 }, { wch: 20 }, { wch: 12 }, { wch: 45 }];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Rechazadas");
+    XLSX.writeFile(wb, `polizas_rechazadas_${new Date().toISOString().split("T")[0]}.xlsx`);
+  };
+
+  const StepIndicator = ({ number, title, isActive, isDone }: any) => (
+    <div className={`flex items-center gap-2 ${isActive ? 'opacity-100' : isDone ? 'opacity-80' : 'opacity-40'}`}>
+      <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold transition-colors ${
+        isActive 
+          ? 'bg-emerald-600 text-white' 
+          : isDone 
+          ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30' 
+          : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300'
+      }`}>
+        {isDone ? <Check size={12} /> : number}
+      </div>
+      <span className="text-xs font-bold text-gray-700 dark:text-gray-200 hidden sm:block">{title}</span>
+    </div>
+  );
+
+  if (!isOpen) return null;
+
+  const totalPages = Math.ceil(polizas.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const currentPolizas = polizas.slice(startIndex, startIndex + itemsPerPage);
+
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[200] p-4">
-      <div className="bg-white dark:bg-gray-800 rounded-xl w-full max-w-3xl shadow-xl relative animate-in fade-in zoom-in duration-200 border border-transparent dark:border-gray-700 transition-colors">
-        
-        <div className="p-6 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center bg-gray-50/50 dark:bg-gray-900/50 rounded-t-xl transition-colors">
-          <h2 className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2 transition-colors">
-            <FileSpreadsheet size={22} className="text-green-700 dark:text-green-500" /> Importar Pólizas
-          </h2>
-          <button onClick={handleClose} disabled={isProcessing} className="text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors p-1">
-            <X size={20} />
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+      <div className="bg-white dark:bg-gray-900 rounded-3xl shadow-2xl w-full max-w-5xl max-h-[90vh] flex flex-col border border-gray-200 dark:border-gray-800 overflow-hidden transition-colors">
+
+        {/* Header con Stepper */}
+        <div className="flex items-center justify-between p-4 md:p-5 border-b border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-900/50">
+          <div className="flex items-center gap-3 sm:gap-6">
+            <StepIndicator number={1} title="Subir" isActive={step === "upload"} isDone={step !== "upload"} />
+            <span className="text-gray-300 dark:text-gray-700 hidden sm:block">›</span>
+            <StepIndicator number={2} title="Ajustar" isActive={step === "mapping"} isDone={step === "preview" || step === "result"} />
+            <span className="text-gray-300 dark:text-gray-700 hidden sm:block">›</span>
+            <StepIndicator number={3} title="Revisar" isActive={step === "preview"} isDone={step === "result"} />
+            <span className="text-gray-300 dark:text-gray-700 hidden sm:block">›</span>
+            <StepIndicator number={4} title="Resultado" isActive={step === "result"} isDone={false} />
+          </div>
+          <button onClick={handleClose} className="text-gray-400 hover:text-gray-700 dark:hover:text-white transition-colors p-1.5 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800">
+            <X size={18} />
           </button>
         </div>
 
-        <div className="p-6 flex flex-col gap-5">
-          
-          <div className="bg-blue-50/50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800/30 rounded-xl p-4 transition-colors">
-            <h3 className="text-sm font-bold text-blue-900 dark:text-blue-400 flex items-center gap-2 mb-2 transition-colors">
-              <Info size={16} /> Estructura recomendada
-            </h3>
-            <p className="text-xs text-blue-800 dark:text-blue-300 mb-3 leading-relaxed transition-colors">
-              Tu archivo Excel debe tener las siguientes columnas. Para que la póliza se asigne correctamente, <strong className="font-black">el DNI del Asegurado ya debe existir en tu lista de clientes</strong>.
-            </p>
-            <div className="overflow-x-auto rounded-lg border border-blue-200 dark:border-blue-800/30 bg-white dark:bg-gray-800 transition-colors custom-scrollbar">
-              <table className="w-full text-left text-[10px] text-gray-600 dark:text-gray-300 whitespace-nowrap">
-                <thead className="bg-blue-50 dark:bg-blue-900/40 text-blue-900 dark:text-blue-300 font-bold uppercase transition-colors">
-                  <tr>
-                    <th className="px-3 py-2 border-r border-blue-100 dark:border-gray-700">Nro Póliza *</th>
-                    <th className="px-3 py-2 border-r border-blue-100 dark:border-gray-700">DNI / CUIT *</th>
-                    <th className="px-3 py-2 border-r border-blue-100 dark:border-gray-700">Compañía</th>
-                    <th className="px-3 py-2 border-r border-blue-100 dark:border-gray-700">Rama / Riesgo</th>
-                    <th className="px-3 py-2 border-r border-blue-100 dark:border-gray-700">Vigencia Desde</th>
-                    <th className="px-3 py-2">Estado</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr>
-                    <td className="px-3 py-2 border-r border-gray-100 dark:border-gray-700 font-bold text-emerald-600 dark:text-emerald-500">3232232</td>
-                    <td className="px-3 py-2 border-r border-gray-100 dark:border-gray-700 font-mono">44576382</td>
-                    <td className="px-3 py-2 border-r border-gray-100 dark:border-gray-700">San Cristobal</td>
-                    <td className="px-3 py-2 border-r border-gray-100 dark:border-gray-700">Automotor</td>
-                    <td className="px-3 py-2 border-r border-gray-100 dark:border-gray-700">14/6/2026</td>
-                    <td className="px-3 py-2 font-medium">Vigente</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
+        {/* Contenedor dinámico según el paso */}
+        <div className="flex-1 overflow-auto p-5 custom-scrollbar">
+          {step === "upload" && (
+            <PasoUpload 
+              fileInputRef={fileInputRef} 
+              onFileChange={handleFileChange} 
+              onDescargarTemplate={descargarTemplatePolizas} 
+            />
+          )}
 
-          {error && <div className="bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 p-3 rounded-lg text-sm font-medium flex items-center gap-2 transition-colors"><AlertTriangle size={16}/> {error}</div>}
+          {step === "mapping" && (
+            <PasoMapping
+              companiasDesconocidas={companiasDesconocidas}
+              ramasDesconocidas={ramasDesconocidas}
+              dnisDesconocidosFilas={dnisDesconocidosFilas}
+              companiasDB={companiasDB}
+              aseguradosDB={aseguradosDB}
+              ramasPermitidas={RAMAS_PERMITIDAS}
+              mapeosCompanias={mapeosCompanias}
+              setMapeosCompanias={setMapeosCompanias}
+              mapeosRamas={mapeosRamas}
+              setMapeosRamas={setMapeosRamas}
+              mapeosAsegurados={mapeosAsegurados}
+              setMapeosAsegurados={setMapeosAsegurados}
+            />
+          )}
 
-          {!file ? (
-            <div 
-              onClick={() => fileInputRef.current?.click()}
-              className="border-2 border-dashed border-gray-200 dark:border-gray-700 hover:border-green-500 dark:hover:border-green-500 bg-gray-50/50 dark:bg-gray-900/50 hover:bg-green-50/30 dark:hover:bg-green-900/20 p-6 rounded-xl flex flex-col items-center justify-center gap-3 cursor-pointer transition-all group"
-            >
-              <UploadCloud size={32} className="text-gray-400 dark:text-gray-500 group-hover:text-green-600 dark:group-hover:text-green-500 transition-colors" />
-              <div className="text-center">
-                <p className="text-sm font-bold text-gray-700 dark:text-gray-200 transition-colors">Hacé clic para seleccionar planilla</p>
-                <p className="text-xs text-gray-400 dark:text-gray-500 mt-1 transition-colors">Soporta .xlsx, .xls o .csv</p>
-              </div>
-              <input type="file" ref={fileInputRef} onChange={handleFileChange} accept=".xlsx, .xls, .csv" className="hidden" />
-            </div>
-          ) : (
-            <div className="bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-700 rounded-xl p-4 flex items-center justify-between transition-colors">
-              <div className="flex items-center gap-3 min-w-0">
-                <div className="p-2.5 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded-lg transition-colors">
-                  <FileSpreadsheet size={20} />
-                </div>
-                <div className="min-w-0">
-                  <p className="text-sm font-bold text-gray-800 dark:text-gray-200 truncate transition-colors">{file.name}</p>
-                  <p className="text-xs text-green-700 dark:text-green-400 font-medium mt-0.5 flex items-center gap-1 transition-colors">
-                    <CheckCircle2 size={12}/> {previewData.length} filas detectadas
-                  </p>
-                </div>
-              </div>
-              <button 
-                onClick={() => { setFile(null); setPreviewData([]); }} 
-                className="text-xs text-red-500 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 font-bold px-2 py-1 bg-red-50 dark:bg-red-900/30 rounded-lg transition-colors shrink-0"
-              >
-                Cambiar
-              </button>
-            </div>
+          {step === "preview" && (
+            <PasoPreview
+              polizas={polizas}
+              currentPolizas={currentPolizas}
+              aseguradosDB={aseguradosDB}
+              companiasDB={companiasDB}
+              ramasPermitidas={RAMAS_PERMITIDAS}
+              currentPage={currentPage}
+              totalPages={totalPages}
+              setCurrentPage={setCurrentPage}
+              startIndex={startIndex}
+              itemsPerPage={itemsPerPage}
+            />
+          )}
+
+          {step === "result" && (
+            <PasoResult
+              resultado={resultado}
+              isCopied={isCopied}
+              onCopiarReporte={copiarReporte}
+              onDescargarErrores={descargarExcelErrores}
+            />
           )}
         </div>
 
-        <div className="p-6 bg-gray-50/50 dark:bg-gray-900/50 rounded-b-xl border-t border-gray-100 dark:border-gray-700 flex justify-end gap-3 transition-colors">
-          <button onClick={handleClose} disabled={isProcessing} className="px-4 py-2 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg font-medium transition-colors">
-            Cancelar
-          </button>
-          <button 
-            onClick={handleImport}
-            disabled={previewData.length === 0 || isProcessing}
-            className="px-4 py-2 bg-green-700 hover:bg-green-800 disabled:opacity-40 text-white rounded-lg font-bold transition-colors shadow-sm flex items-center gap-2"
-          >
-            {isProcessing ? <Loader2 size={16} className="animate-spin" /> : <UploadCloud size={16} />}
-            {isProcessing ? "Importando..." : "Importar Pólizas"}
-          </button>
-        </div>
+        {/* Footer */}
+        <div className="p-4 md:p-5 border-t border-gray-100 dark:border-gray-800 flex justify-between items-center bg-gray-50/50 dark:bg-gray-900/50">
+          <div>
+            {step === "preview" && (
+              <button 
+                type="button" 
+                onClick={() => setStep("upload")} 
+                className="text-sm font-bold text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors px-3 py-2"
+              >
+                ← Volver a subir
+              </button>
+            )}
+            {step === "mapping" && (
+              <button 
+                type="button" 
+                onClick={aplicarMapeo} 
+                className="px-6 py-2.5 bg-amber-600 hover:bg-amber-700 text-white text-sm font-bold rounded-xl transition-all shadow-md"
+              >
+                Confirmar y Continuar
+              </button>
+            )}
+          </div>
 
+          <div className="flex gap-3">
+            {step === "upload" && (
+              <button 
+                type="button" 
+                onClick={handleClose} 
+                className="px-5 py-2.5 text-sm font-bold text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
+              >
+                Cerrar
+              </button>
+            )}
+            {step === "preview" && (
+              <button
+                type="button"
+                onClick={handleImportar}
+                disabled={isLoading}
+                className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold rounded-xl transition-all disabled:opacity-50 flex items-center gap-2 shadow-md"
+              >
+                <UploadCloud size={16} />
+                {isLoading ? "Procesando Excel..." : `Importar ${polizas.length} pólizas`}
+              </button>
+            )}
+            {step === "result" && (
+              <button 
+                type="button" 
+                onClick={handleSuccess} 
+                className="px-8 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold rounded-xl transition-all shadow-md"
+              >
+                Finalizar
+              </button>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );

@@ -3,7 +3,56 @@ import { prisma } from '../config/db';
 import { enviarAvisoVencimiento } from '../services/email.service';
 import { supabase } from '../config/supabase';
 
-// 🔥 Función: Evita el problema del desfasaje horario al guardar
+// 🔥 NORMALIZADORES INTELIGENTES PARA EXCEL
+const normalizarFormaPago = (valor: any) => {
+  if (!valor) return null;
+  const v = String(valor).toLowerCase().trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  
+  if (v.includes('credito') || v === 'tc') return 'Tarjeta de Crédito';
+  if (v.includes('debito') || v === 'td') return 'Tarjeta de Débito';
+  if (v.includes('cbu') || v.includes('automatico')) return 'CBU / Débito Automático';
+  if (v.includes('efectivo') || v.includes('facil') || v.includes('rapipago') || v.includes('cupon')) return 'Efectivo / Pago Fácil';
+  if (v.includes('transferencia') || v.includes('banco')) return 'Transferencia Bancaria';
+  
+  return String(valor).trim(); 
+};
+
+const normalizarEstado = (valor: any) => {
+  if (!valor) return 'Vigente';
+  const v = String(valor).toLowerCase().trim();
+  
+  if (v.includes('pendiente') || v.includes('deuda') || v.includes('impaga')) return 'Pendiente de Pago';
+  if (v.includes('anulada') || v.includes('baja') || v.includes('cancelada')) return 'Anulada';
+  if (v.includes('renovada')) return 'Renovada';
+  
+  return 'Vigente';
+};
+
+const normalizarRama = (valor: any) => {
+  if (!valor) return 'Automotor';
+  const v = String(valor).toLowerCase().trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  
+  if (v.includes('moto')) return 'Motovehículo';
+  if (v.includes('auto') || v.includes('vehiculo') || v.includes('coche')) return 'Automotor';
+  if (v.includes('art') || v.includes('riesgo de trabajo')) return 'ART';
+  if (v.includes('vida') && v.includes('colectivo')) return 'Vida colectivo';
+  if (v.includes('vida') && v.includes('individual')) return 'Vida individual';
+  if (v.includes('vida')) return 'Vida simple';
+  if (v.includes('hogar') || v.includes('combinado') || v.includes('familiar')) return 'Combinado familiar';
+  if (v.includes('comercio') || v.includes('integral')) return 'Integral para comercio';
+  if (v.includes('caucion') || v.includes('garantia')) return 'Caución';
+  if (v.includes('transporte') || v.includes('carga')) return 'Transporte';
+  if (v.includes('tecnico') || v.includes('equipos')) return 'Seguro técnico';
+  if (v.includes('robo')) return 'Robo';
+  if (v.includes('incendio')) return 'Incendio';
+  if (v.includes('responsabilidad') || v.includes('rc')) return 'Responsabilidad civil';
+  if (v.includes('casco') || v.includes('embarcacion')) return 'Cascos';
+  if (v.includes('eco') || v.includes('monopatin') || v.includes('bici')) return 'Ecomovilidad';
+  
+  const original = String(valor).trim();
+  return original.charAt(0).toUpperCase() + original.slice(1).toLowerCase();
+};
+
 const parsearFechaSegura = (fechaStr: string) => {
   if (!fechaStr) return null;
   const partes = fechaStr.split('T')[0].split('-');
@@ -109,7 +158,7 @@ export const crearPoliza = async (req: Request, res: Response): Promise<any> => 
         ubicacionRiesgo: ubicacionRiesgo || null,
         cantidadEmpleados: cantidadEmpleados || null,
         formaPago: formaPago || null,
-        enviarCuponera: enviarCuponera === true || enviarCuponera === 'true', // 🔥 NUEVO CAMPO
+        enviarCuponera: enviarCuponera === true || enviarCuponera === 'true', 
       },
       include: { asegurado: true }
     });
@@ -163,7 +212,7 @@ export const actualizarPoliza = async (req: Request, res: Response): Promise<any
         ubicacionRiesgo: data.ubicacionRiesgo || null,
         cantidadEmpleados: data.cantidadEmpleados || null,
         formaPago: data.formaPago || null, 
-        enviarCuponera: data.enviarCuponera !== undefined ? (data.enviarCuponera === true || data.enviarCuponera === 'true') : undefined, // 🔥 NUEVO CAMPO
+        enviarCuponera: data.enviarCuponera !== undefined ? (data.enviarCuponera === true || data.enviarCuponera === 'true') : undefined,
       },
       include: { asegurado: true, compania: true }
     });
@@ -208,14 +257,12 @@ export const eliminarPoliza = async (req: Request, res: Response): Promise<any> 
     
     await prisma.poliza.delete({ where: { id: parseInt(id) } });
 
-    // 🔥 Limpia PDF de Póliza
     if (polizaABorrar.pdfUrl && polizaABorrar.pdfUrl.includes('supabase.co')) {
       const partesUrl = polizaABorrar.pdfUrl.split('/');
       const nombreArchivoViejo = partesUrl[partesUrl.length - 1];
       await supabase.storage.from('polizas').remove([nombreArchivoViejo]);
     }
 
-    // 🔥 Limpia PDF de Cuponera
     if (polizaABorrar.cuponeraUrl && polizaABorrar.cuponeraUrl.includes('supabase.co')) {
       const partesUrl = polizaABorrar.cuponeraUrl.split('/');
       const nombreArchivoViejo = partesUrl[partesUrl.length - 1];
@@ -238,7 +285,6 @@ export const eliminarPoliza = async (req: Request, res: Response): Promise<any> 
   }
 };
 
-// 🔥 MODIFICADO: También chequea si se debe adjuntar al forzar el correo a mano
 export const avisarVencimiento = async (req: Request, res: Response): Promise<any> => {
   try {
     const id = req.params.id as string;
@@ -270,7 +316,6 @@ export const avisarVencimiento = async (req: Request, res: Response): Promise<an
 
     const fechaVencimientoFormateada = new Date(poliza.fechaVencimiento).toLocaleDateString("es-AR");
 
-    // 🔥 LÓGICA INTELIGENTE: Para el envío manual también
     const cuponeraParaEnviar = (poliza.enviarCuponera && poliza.cuponeraUrl) 
       ? poliza.cuponeraUrl 
       : null;
@@ -288,7 +333,7 @@ export const avisarVencimiento = async (req: Request, res: Response): Promise<an
       poliza.modelo,
       poliza.ubicacionRiesgo,
       poliza.cantidadEmpleados,
-      cuponeraParaEnviar // 🔥 Va el archivo
+      cuponeraParaEnviar 
     );
 
     await prisma.poliza.update({
@@ -313,13 +358,11 @@ export const avisarVencimiento = async (req: Request, res: Response): Promise<an
   }
 };
 
-// 🔥 MODIFICADO: Ahora maneja dos archivos en una sola petición
 export const subirPdf = async (req: Request, res: Response): Promise<any> => {
   try {
     const id = req.params.id as string; 
     const productorId = await obtenerProductorId(req.userId!);
 
-    // Casting de los archivos recibidos
     const files = req.files as { [fieldname: string]: Express.Multer.File[] };
     const pdfFile = files?.pdf?.[0];
     const cuponeraFile = files?.cuponera?.[0];
@@ -342,7 +385,6 @@ export const subirPdf = async (req: Request, res: Response): Promise<any> => {
     let dataToUpdate: any = {};
     let descActividad = [];
 
-    // --- 1. PROCESAR EL PDF DE LA PÓLIZA ---
     if (pdfFile && pdfFile.buffer) {
       if (polizaExistente.pdfUrl && polizaExistente.pdfUrl.includes('supabase.co')) {
         const partesUrl = polizaExistente.pdfUrl.split('/');
@@ -361,7 +403,6 @@ export const subirPdf = async (req: Request, res: Response): Promise<any> => {
       descActividad.push("Póliza");
     }
 
-    // --- 2. PROCESAR LA CUPONERA DE PAGO ---
     if (cuponeraFile && cuponeraFile.buffer) {
       if (polizaExistente.cuponeraUrl && polizaExistente.cuponeraUrl.includes('supabase.co')) {
         const partesUrl = polizaExistente.cuponeraUrl.split('/');
@@ -381,7 +422,6 @@ export const subirPdf = async (req: Request, res: Response): Promise<any> => {
       descActividad.push("Cuponera de pago");
     }
 
-    // Actualizamos la base de datos
     const polizaActualizada = await prisma.poliza.update({
       where: { id: parseInt(id) },
       data: dataToUpdate, 
@@ -410,6 +450,7 @@ export const subirPdf = async (req: Request, res: Response): Promise<any> => {
   }
 };
 
+// 🔥 MEJORA DE REPORTE DETALLADO EN IMPORTACIÓN MASIVA
 export const importarPolizas = async (req: Request, res: Response): Promise<any> => {
   try {
     const productorId = await obtenerProductorId(req.userId!);
@@ -429,14 +470,21 @@ export const importarPolizas = async (req: Request, res: Response): Promise<any>
       select: { id: true, nombre: true } 
     });
 
+    // 1. Nos traemos los números de pólizas que ya existen para compararlos rápido
+    const polizasExistentes = await prisma.poliza.findMany({
+      where: { productorId: productorId },
+      select: { nroPoliza: true }
+    });
+
     if (companias.length === 0) {
       return res.status(400).json({ 
-        error: ' Por favor, asegúrate de tener al menos una Compañía cargada en el sistema antes de importar las pólizas.' 
+        error: 'Por favor, asegurate de tener al menos una Compañía cargada antes de importar pólizas.' 
       });
     }
 
     const mapaAsegurados = new Map(asegurados.map(a => [String(a.dni).replace(/[^0-9]/g, ''), a.id]));
     const mapaCompanias = new Map(companias.map(c => [c.nombre.toLowerCase().trim(), c.id]));
+    const setPolizasExistentes = new Set(polizasExistentes.map(p => String(p.nroPoliza).trim()));
 
     const normalizarLlaves = (obj: any) => {
       const nuevoObj: any = {};
@@ -449,106 +497,142 @@ export const importarPolizas = async (req: Request, res: Response): Promise<any>
 
     const parsearFecha = (valorStr: any) => {
       if (!valorStr) return null;
-
-      if (valorStr instanceof Date) {
-        return isNaN(valorStr.getTime()) ? null : valorStr;
-      }
-
+      if (valorStr instanceof Date) return isNaN(valorStr.getTime()) ? null : valorStr;
       if (typeof valorStr === 'number') {
         const excelEpoch = new Date(1899, 11, 30);
-        const diasMilisecons = valorStr * 86400000;
-        const result = new Date(excelEpoch.getTime() + diasMilisecons);
+        const result = new Date(excelEpoch.getTime() + valorStr * 86400000);
         return isNaN(result.getTime()) ? null : result;
       }
-      
       const str = String(valorStr).trim();
       const partes = str.split('/');
-      
       let fechaResultante = null;
-
       if (partes.length === 3) {
         const dia = partes[0].padStart(2, '0');
         const mes = partes[1].padStart(2, '0');
         const anio = partes[2];
-        fechaResultante = new Date(`${anio}-${mes}-${dia}T12:00:00Z`); 
+        fechaResultante = new Date(`${anio}-${mes}-${dia}T12:00:00Z`);
       } else {
         fechaResultante = new Date(str);
       }
-
-      if (isNaN(fechaResultante.getTime())) {
-        return null;
-      }
-
-      return fechaResultante;
+      return isNaN(fechaResultante.getTime()) ? null : fechaResultante;
     };
 
-    let salteadasPorFaltaDeDatos = 0;
+    const datosParaInsertar: any[] = [];
+    const reporteDetallado: any[] = [];
+    let creados = 0;
+    let salteados = 0;
 
-    const datosParaInsertar = polizasExcel
-      .map((p: any) => {
-        const row = normalizarLlaves(p);
+    // 2. Iteramos generando el reporte línea por línea
+    polizasExcel.forEach((p: any, index: number) => {
+      const filaExcel = index + 2; 
+      const row = normalizarLlaves(p);
 
-        const nroPoliza = String(row.nropoliza || row.poliza || row.numero || '').trim();
-        const dniCrudo = String(row.dnicuit || row.dni || row.documento || row.cuit || '').replace(/[^0-9]/g, '');
-        const companiaCruda = String(row.compania || row.aseguradora || '').toLowerCase().trim();
-        const tipoPoliza = String(row.ramariesgo || row.rama || row.tipo || row.riesgo || 'Automotor').trim();
-        const estado = String(row.estado || 'Vigente').trim();
+      const nroPoliza = String(row.nropoliza || row.poliza || row.numero || row.nro || '').trim();
+      const dniCrudo = String(row.dnicuit || row.dni || row.documento || row.cuit || '').replace(/[^0-9]/g, '');
+      const companiaCruda = String(row.compania || row.aseguradora || row.cia || '').toLowerCase().trim();
 
-        const aseguradoId = mapaAsegurados.get(dniCrudo);
-        let companiaId = mapaCompanias.get(companiaCruda);
+      // VALIDACIÓN 1: Número de póliza
+      if (!nroPoliza) {
+        reporteDetallado.push({ fila: filaExcel, poliza: "Sin Nro", estado: "error", motivo: "El número de póliza está vacío." });
+        salteados++;
+        return; 
+      }
 
-        if (!companiaId && companias.length > 0) {
-          companiaId = companias[0].id; 
-        }
+      // VALIDACIÓN 2: DNI Vacio
+      if (!dniCrudo) {
+        reporteDetallado.push({ fila: filaExcel, poliza: nroPoliza, estado: "error", motivo: "El DNI/CUIT está vacío." });
+        salteados++;
+        return;
+      }
 
-        let fechaInicio = parsearFecha(row.vigenciadesde || row.desde || row.fechainicio);
-        let fechaVencimiento = parsearFecha(row.vigenciahasta || row.hasta || row.fechavencimiento);
+      // VALIDACIÓN 3: ¿Existe el cliente?
+      const aseguradoId = mapaAsegurados.get(dniCrudo);
+      if (!aseguradoId) {
+        reporteDetallado.push({ fila: filaExcel, poliza: nroPoliza, estado: "error", motivo: `El DNI/CUIT ${dniCrudo} no existe en tus asegurados.` });
+        salteados++;
+        return;
+      }
 
-        if (!fechaInicio) {
-          fechaInicio = new Date();
-        }
-        if (!fechaVencimiento) {
-          fechaVencimiento = new Date(fechaInicio);
-          fechaVencimiento.setMonth(fechaVencimiento.getMonth() + 6); 
-        }
+      // VALIDACIÓN 4: ¿Ya está cargada la póliza?
+      if (setPolizasExistentes.has(nroPoliza)) {
+        reporteDetallado.push({ fila: filaExcel, poliza: nroPoliza, estado: "error", motivo: "La póliza ya existe en el sistema." });
+        salteados++;
+        return;
+      }
 
-        return {
-          nroPoliza, aseguradoId, companiaId, tipoPoliza, estado, fechaInicio, fechaVencimiento,
-          cobertura: row.cobertura ? String(row.cobertura).trim() : null,
-          patente: row.patente ? String(row.patente).trim().toUpperCase() : null,
-          productorId 
-        };
-      })
-      .filter((p: any) => {
-        if (p.nroPoliza.length > 0 && p.aseguradoId) return true;
-        salteadasPorFaltaDeDatos++;
-        return false;
+      // 🔥 VALIDACIÓN 5 (NUEVA): Compañía estricta
+      let companiaId = mapaCompanias.get(companiaCruda);
+      if (!companiaId) {
+        reporteDetallado.push({ fila: filaExcel, poliza: nroPoliza, estado: "error", motivo: `Compañía desconocida en tu sistema (${row.compania || row.aseguradora || 'Vacía'}).` });
+        salteados++;
+        return;
+      }
+
+      // SI PASÓ TODAS LAS VALIDACIONES -> PREPARAMOS LA DATA
+      const tipoPoliza = normalizarRama(row.ramariesgo || row.rama || row.tipo || row.riesgo || row.ramo);
+      const estado = normalizarEstado(row.estado);
+      const formaPago = normalizarFormaPago(row.formapago || row.pago || row.modalidadpago);
+
+      let fechaInicio = parsearFecha(row.vigenciadesde || row.desde || row.fechainicio || row.inicio);
+      let fechaVencimiento = parsearFecha(row.vigenciahasta || row.hasta || row.fechavencimiento || row.vencimiento);
+
+      if (!fechaInicio) fechaInicio = new Date();
+      if (!fechaVencimiento) {
+        fechaVencimiento = new Date(fechaInicio);
+        fechaVencimiento.setMonth(fechaVencimiento.getMonth() + 6);
+      }
+
+      const marca = row.marca ? String(row.marca).trim() : null;
+      const modelo = row.modelo ? String(row.modelo).trim() : null;
+      const patente = row.patente ? String(row.patente).trim().toUpperCase() : null;
+      const cobertura = row.cobertura ? String(row.cobertura).trim() : null;
+      const ubicacionRiesgo = row.ubicacionriesgo || row.ubicacion || row.direccionriesgo 
+        ? String(row.ubicacionriesgo || row.ubicacion || row.direccionriesgo).trim() 
+        : null;
+      const cantidadEmpleados = row.cantidadempleados || row.empleados || row.personal
+        ? String(row.cantidadempleados || row.empleados || row.personal).trim()
+        : null;
+
+      datosParaInsertar.push({
+        nroPoliza, aseguradoId, companiaId, tipoPoliza, estado,
+        fechaInicio, fechaVencimiento, cobertura, patente, marca,          
+        modelo, ubicacionRiesgo, cantidadEmpleados, formaPago,      
+        enviarCuponera: false, productorId
       });
 
-    if (datosParaInsertar.length === 0) {
-      return res.status(400).json({ error: 'No se encontraron pólizas válidas. Asegurate de que los DNI del Excel ya estén cargados en tus Asegurados.' });
+      creados++;
+      reporteDetallado.push({
+        fila: filaExcel,
+        poliza: nroPoliza,
+        estado: "exito",
+        motivo: "Importada correctamente."
+      });
+    });
+
+    // 3. Ejecutamos la inserción final
+    if (datosParaInsertar.length > 0) {
+      await (prisma as any).poliza.createMany({
+        data: datosParaInsertar,
+        skipDuplicates: true
+      });
+
+      await (prisma as any).actividad.create({
+        data: {
+          accion: "Alta",
+          entidad: "Póliza",
+          descripcion: `Importación masiva: se cargaron ${creados} pólizas.`,
+          cliente: "Sistema / Excel",
+          productorId
+        }
+      });
     }
-
-    const resultado = await (prisma as any).poliza.createMany({
-      data: datosParaInsertar,
-      skipDuplicates: true
-    });
-
-    await (prisma as any).actividad.create({
-      data: {
-        accion: "Alta",
-        entidad: "Póliza",
-        descripcion: `Importación masiva: se cargaron ${resultado.count} pólizas.`,
-        cliente: "Sistema / Excel",
-        productorId 
-      }
-    });
 
     return res.json({ 
       message: 'Importación procesada', 
       procesados: polizasExcel.length,
-      creados: resultado.count,
-      salteados: (polizasExcel.length - resultado.count) + salteadasPorFaltaDeDatos
+      creados: creados,
+      salteados: salteados,
+      reporte: reporteDetallado 
     });
 
   } catch (error: any) {
