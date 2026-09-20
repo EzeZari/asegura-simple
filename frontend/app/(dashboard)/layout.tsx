@@ -9,6 +9,7 @@ import UpgradeModal from "@/components/ui/UpgradeModal";
 import GracePeriodBanner from "@/components/layout/GracePeriodBanner"; 
 import SessionExpiredModal from "@/components/ui/SessionExpiredModal";
 import ComunicadosGlobales from "@/components/layout/ComunicadosGlobales";
+import TrialBanner from "@/components/layout/TrialBanner"; // 🔥 ACÁ IMPORTAMOS EL NUEVO BANNER
 import Script from "next/script";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -65,7 +66,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </button>
         </div>
 
-        {/* 🔥 INYECTAMOS EL COMPONENTE LIMPIO */}
+        {/* 🔥 ACÁ INYECTAMOS EL BANNER DE PRUEBA Y LOS COMUNICADOS */}
+        <TrialBanner />
         <ComunicadosGlobales />
         <GracePeriodBanner />
 
