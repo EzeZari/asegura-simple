@@ -8,11 +8,11 @@ import { verificarRol } from '../middlewares/role.middleware';
 
 const router = Router();
 
-// 🔥 MIDDLEWARES GLOBALES PARA ESTE ARCHIVO
+// 🔥 MIDDLEWARES GLOBALES PARA ESTE ENRUTADOR
 router.use(verificarToken);
 router.use(verificarSuscripcionActiva);
 
-// Función helper para obtener la Agencia (Productor) del usuario o su jefe
+// Helper para obtener el Productor asociado al usuario o a su agencia
 const obtenerProductorId = async (userId: number): Promise<number> => {
   const usuarioActual = await prisma.user.findUnique({ where: { id: userId } });
   const idAgencia = usuarioActual?.jefeId ? usuarioActual.jefeId : userId;
@@ -20,8 +20,8 @@ const obtenerProductorId = async (userId: number): Promise<number> => {
   let productor = await prisma.productor.findUnique({ where: { userId: idAgencia } });
   
   if (!productor) {
-    const userDueño = idAgencia === userId ? usuarioActual : await prisma.user.findUnique({ where: { id: idAgencia } });
-    const userEmail = userDueño?.email || `user${idAgencia}@asegurasimple.com`;
+    const userDueno = idAgencia === userId ? usuarioActual : await prisma.user.findUnique({ where: { id: idAgencia } });
+    const userEmail = userDueno?.email || `user${idAgencia}@asegurasimple.com`;
 
     productor = await prisma.productor.findUnique({ where: { email: userEmail } });
 
@@ -33,7 +33,7 @@ const obtenerProductorId = async (userId: number): Promise<number> => {
     } else {
       productor = await prisma.productor.create({
         data: {
-          nombre: userDueño?.nombre || 'Productor',
+          nombre: userDueno?.nombre || 'Productor',
           apellido: '',
           email: userEmail,
           usuario: userEmail,
@@ -68,7 +68,6 @@ router.get('/', async (req, res) => {
 
 router.get('/:id/polizas', async (req, res): Promise<any> => {
   try {
-    // 🔥 CORRECCIÓN TYPESCRIPT
     const id = req.params.id as string;
     const productorId = await obtenerProductorId(req.userId!);
 
@@ -148,7 +147,6 @@ router.post('/', verificarRol(['DUENO', 'PRODUCTOR']), async (req, res): Promise
 
 router.put('/:id', verificarRol(['DUENO', 'PRODUCTOR']), async (req, res): Promise<any> => {
   try {
-    // 🔥 CORRECCIÓN TYPESCRIPT
     const id = req.params.id as string;
     const data = req.body;
     const productorId = await obtenerProductorId(req.userId!);
@@ -162,9 +160,15 @@ router.put('/:id', verificarRol(['DUENO', 'PRODUCTOR']), async (req, res): Promi
     const aseguradoActualizado = await prisma.asegurado.update({
       where: { id: parseInt(id) },
       data: {
-        nombre: data.nombre, apellido: data.apellido, tipo: data.tipo, dni: data.dni,
-        condicionIva: data.condicionIva, email: data.email, telefono: data.telefono,
-        direccion: data.direccion, codigoPostal: data.codigoPostal,
+        nombre: data.nombre, 
+        apellido: data.apellido, 
+        tipo: data.tipo, 
+        dni: data.dni,
+        condicionIva: data.condicionIva, 
+        email: data.email, 
+        telefono: data.telefono,
+        direccion: data.direccion, 
+        codigoPostal: data.codigoPostal,
         fechaNacimiento: data.fechaNacimiento ? new Date(data.fechaNacimiento) : null,
         activo: data.activo,
       },
@@ -200,7 +204,6 @@ router.put('/:id', verificarRol(['DUENO', 'PRODUCTOR']), async (req, res): Promi
 
 router.delete('/:id', verificarRol(['DUENO', 'PRODUCTOR']), async (req, res): Promise<any> => {
   try {
-    // 🔥 CORRECCIÓN TYPESCRIPT
     const id = req.params.id as string;
     const productorId = await obtenerProductorId(req.userId!);
 
@@ -228,14 +231,25 @@ router.delete('/:id', verificarRol(['DUENO', 'PRODUCTOR']), async (req, res): Pr
   }
 });
 
+// ==========================================
+// 🚀 IMPORTACIÓN MASIVA INTELIGENTE DE ASEGURADOS
+// ==========================================
+
 router.post('/importar', verificarRol(['DUENO', 'PRODUCTOR']), async (req, res): Promise<any> => {
   try {
     const productorId = await obtenerProductorId(req.userId!);
 
-    const clientes = req.body;
-    if (!Array.isArray(clientes)) {
+    const clientesExcel = req.body;
+    if (!Array.isArray(clientesExcel)) {
       return res.status(400).json({ error: 'El formato de datos debe ser un arreglo.' });
     }
+
+    // Buscamos los DNIs que ya existen en la base de datos de esta agencia
+    const aseguradosExistentes = await prisma.asegurado.findMany({
+      where: { productorId },
+      select: { dni: true }
+    });
+    const setDnisExistentes = new Set(aseguradosExistentes.map(a => String(a.dni).trim().replace(/[^0-9]/g, '')));
 
     const normalizarLlaves = (obj: any) => {
       const nuevoObj: any = {};
@@ -248,49 +262,160 @@ router.post('/importar', verificarRol(['DUENO', 'PRODUCTOR']), async (req, res):
       return nuevoObj;
     };
 
-    const datosParaInsertar = clientes
-      .map((c: any) => {
-        const row = normalizarLlaves(c);
-        
-        const nombreCrudo = row.nombre || row.nombres || row.razonsocial || row.nombrerazonsocial || row.cliente || '';
-        const apellidoCrudo = row.apellido || row.apellidos || null;
-        const dniCrudo = row.dni || row.cuit || row.documento || row.doc || row.dnicuit || '';
-        
-        const nombreLimpio = String(nombreCrudo).trim();
-        const apellidoLimpio = apellidoCrudo ? String(apellidoCrudo).trim() : null;
-        const dniLimpio = String(dniCrudo).trim().replace(/[^0-9]/g, '');
-        const telefonoLimpio = row.telefono || row.celular || row.tel || null;
-        const emailLimpio = row.email || row.correo || row.mail || null;
-        
-        let tipoCalculado = "Individual";
-        const tipoOriginal = String(row.tipo || row.tipocliente || row.tipodecliente || '').toLowerCase();
-        if (tipoOriginal.includes('empresa') || tipoOriginal.includes('juridico') || dniLimpio.length === 11) {
-          tipoCalculado = "Empresa";
-        }
+    const normalizarCondicionIva = (valor: any) => {
+      if (!valor) return "Consumidor Final";
+      const v = String(valor).toLowerCase().trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+      if (v.includes('mono')) return 'Monotributo';
+      if (v.includes('inscripto') || v === 'ri') return 'Responsable Inscripto';
+      if (v.includes('exento')) return 'Exento';
+      return 'Consumidor Final';
+    };
 
-        let activoCalculado = true;
-        const estadoOriginal = String(row.estado || row.estadoensistema || '').toLowerCase();
-        if (estadoOriginal === 'inactivo') {
-          activoCalculado = false;
-        }
+    const parsearFecha = (valorStr: any) => {
+      if (!valorStr) return null;
+      if (valorStr instanceof Date) return isNaN(valorStr.getTime()) ? null : valorStr;
+      if (typeof valorStr === 'number') {
+        const excelEpoch = new Date(1899, 11, 30);
+        const result = new Date(excelEpoch.getTime() + valorStr * 86400000);
+        return isNaN(result.getTime()) ? null : result;
+      }
+      const str = String(valorStr).trim();
+      const partes = str.split('/');
+      let fechaResultante = null;
+      if (partes.length === 3) {
+        const dia = partes[0].padStart(2, '0');
+        const mes = partes[1].padStart(2, '0');
+        const anio = partes[2];
+        fechaResultante = new Date(`${anio}-${mes}-${dia}T12:00:00Z`);
+      } else {
+        fechaResultante = new Date(str);
+      }
+      return isNaN(fechaResultante.getTime()) ? null : fechaResultante;
+    };
 
-        return {
-          nombre: nombreLimpio, 
-          apellido: apellidoLimpio, 
-          dni: dniLimpio,
-          telefono: telefonoLimpio ? String(telefonoLimpio).trim() : null,
-          email: emailLimpio ? String(emailLimpio).trim() : null,
-          tipo: tipoCalculado, 
-          activo: activoCalculado, 
-          productorId
-        };
-      })
-      .filter((c: any) => c.nombre.length > 0 && c.dni.length > 0);
+    const datosParaInsertar: any[] = [];
+    const reporteDetallado: any[] = [];
+    const setDnisEnEsteExcel = new Set<string>();
+
+    let creados = 0;
+    let salteados = 0;
+
+    clientesExcel.forEach((c: any, index: number) => {
+      const filaExcel = index + 2;
+      const row = normalizarLlaves(c);
+
+      const nombreCrudo = row.nombre || row.nombres || row.razonsocial || row.nombrerazonsocial || row.cliente || '';
+      const apellidoCrudo = row.apellido || row.apellidos || null;
+      const dniCrudo = row.dni || row.cuit || row.documento || row.doc || row.dnicuit || '';
+
+      const nombreLimpio = String(nombreCrudo).trim();
+      const apellidoLimpio = apellidoCrudo ? String(apellidoCrudo).trim() : null;
+      const dniLimpio = String(dniCrudo).trim().replace(/[^0-9]/g, '');
+
+      // VALIDACIÓN 1: Nombre obligatorio
+      if (!nombreLimpio) {
+        reporteDetallado.push({ 
+          fila: filaExcel, 
+          cliente: "Sin Nombre", 
+          dni: dniLimpio || "S/D", 
+          estado: "error", 
+          motivo: "El nombre o razón social está vacío." 
+        });
+        salteados++;
+        return;
+      }
+
+      // VALIDACIÓN 2: DNI/CUIT obligatorio
+      if (!dniLimpio) {
+        reporteDetallado.push({ 
+          fila: filaExcel, 
+          cliente: nombreLimpio, 
+          dni: "Vacío", 
+          estado: "error", 
+          motivo: "El número de DNI o CUIT está vacío." 
+        });
+        salteados++;
+        return;
+      }
+
+      // VALIDACIÓN 3: Ya existe en la cartera
+      if (setDnisExistentes.has(dniLimpio)) {
+        reporteDetallado.push({ 
+          fila: filaExcel, 
+          cliente: `${nombreLimpio} ${apellidoLimpio || ''}`.trim(), 
+          dni: dniLimpio, 
+          estado: "error", 
+          motivo: "Este DNI/CUIT ya existe en tu cartera." 
+        });
+        salteados++;
+        return;
+      }
+
+      // VALIDACIÓN 4: Repetido en el mismo Excel
+      if (setDnisEnEsteExcel.has(dniLimpio)) {
+        reporteDetallado.push({ 
+          fila: filaExcel, 
+          cliente: `${nombreLimpio} ${apellidoLimpio || ''}`.trim(), 
+          dni: dniLimpio, 
+          estado: "error", 
+          motivo: "DNI/CUIT duplicado dentro de la misma planilla." 
+        });
+        salteados++;
+        return;
+      }
+
+      setDnisEnEsteExcel.add(dniLimpio);
+
+      // Normalizaciones y cálculo de datos adicionales
+      let tipoCalculado = "Individuo";
+      const tipoOriginal = String(row.tipo || row.tipocliente || row.tipodecliente || '').toLowerCase();
+      if (tipoOriginal.includes('empresa') || tipoOriginal.includes('juridico') || dniLimpio.length === 11) {
+        tipoCalculado = "Empresa";
+      }
+
+      const condicionIvaCalculada = normalizarCondicionIva(row.condicioniva || row.iva || row.situacioniva);
+      const telefonoLimpio = row.telefono || row.celular || row.tel ? String(row.telefono || row.celular || row.tel).trim() : null;
+      const emailLimpio = row.email || row.correo || row.mail ? String(row.email || row.correo || row.mail).trim().toLowerCase() : null;
+      const direccionLimpia = row.direccion || row.domicilio || row.calle ? String(row.direccion || row.domicilio || row.calle).trim() : null;
+      const codigoPostalLimpio = row.codigopostal || row.cp ? String(row.codigopostal || row.cp).trim() : null;
+      const fechaNac = parsearFecha(row.fechanacimiento || row.fechanac || row.nacimiento);
+
+      let activoCalculado = true;
+      const estadoOriginal = String(row.estado || row.estadoensistema || '').toLowerCase();
+      if (estadoOriginal === 'inactivo') {
+        activoCalculado = false;
+      }
+
+      datosParaInsertar.push({
+        nombre: nombreLimpio,
+        apellido: apellidoLimpio,
+        dni: dniLimpio,
+        tipo: tipoCalculado,
+        condicionIva: condicionIvaCalculada,
+        email: emailLimpio,
+        telefono: telefonoLimpio,
+        direccion: direccionLimpia,
+        codigoPostal: codigoPostalLimpio,
+        fechaNacimiento: fechaNac,
+        activo: activoCalculado,
+        productorId
+      });
+
+      creados++;
+      reporteDetallado.push({
+        fila: filaExcel,
+        cliente: `${nombreLimpio} ${apellidoLimpio || ''}`.trim(),
+        dni: dniLimpio,
+        estado: "exito",
+        motivo: "Cliente importado correctamente."
+      });
+    });
 
     if (datosParaInsertar.length === 0) {
-      return res.status(400).json({ error: 'No se encontraron registros válidos.' });
+      return res.status(400).json({ error: 'No se encontraron registros válidos para importar.' });
     }
 
+    // Control de límite de clientes según el plan contratado
     const validacion = await verificarLimiteAsegurados(req.userId!, datosParaInsertar.length);
     if (validacion.superado) {
       return res.status(403).json({ error: validacion.mensaje, codigo: "LIMITE_EXCEDIDO" });
@@ -305,7 +430,7 @@ router.post('/importar', verificarRol(['DUENO', 'PRODUCTOR']), async (req, res):
       data: {
         accion: "Alta", 
         entidad: "Asegurado",
-        descripcion: `Importación masiva: ${resultado.count} nuevos clientes cargados.`,
+        descripcion: `Importación masiva: se cargaron ${resultado.count} clientes nuevos.`,
         cliente: "Sistema / Excel",
         productorId 
       }
@@ -313,13 +438,14 @@ router.post('/importar', verificarRol(['DUENO', 'PRODUCTOR']), async (req, res):
 
     res.json({
       message: 'Importación procesada con éxito',
-      procesados: datosParaInsertar.length,
+      procesados: clientesExcel.length,
       creados: resultado.count,
-      salteados: datosParaInsertar.length - resultado.count
+      salteados: salteados + (datosParaInsertar.length - resultado.count),
+      reporte: reporteDetallado
     });
 
   } catch (error: any) {
-    console.error("Error en importación masiva:", error);
+    console.error("Error en importación masiva de asegurados:", error);
     res.status(500).json({ error: error.message || 'Error interno al procesar la carga masiva.' });
   }
 });
