@@ -36,12 +36,16 @@ export default function AlertaCard({ poliza, nivel, isSelected, onSelect }: Prop
     return `Vence en ${diff} días`;
   };
 
+  // 🔥 Integración de patente limpia en WhatsApp
   const generarLinkWhatsApp = (telefono: string, nombre: string, compania: string, fecha: string) => {
     if (!telefono) return "#";
     const numeroLimpio = telefono.replace(/\D/g, '');
+    const datoPatente = poliza.patente ? ` (Patente: ${poliza.patente.toUpperCase()})` : "";
+
     const mensaje = nivel === "vencida"
-      ? `Hola ${nombre}, te escribo urgente porque tu póliza de ${compania} venció el ${fecha}. Avisame si la renovamos para no dejarte sin cobertura.`
-      : `Hola ${nombre}, te aviso que tu póliza de ${compania} vence el ${fecha}. ¿Avanzamos con la renovación?`;
+      ? `Hola ${nombre}, te escribo urgente porque tu póliza de ${compania || "seguro"}${datoPatente} venció el ${fecha}. Avisame si la renovamos para no dejarte sin cobertura.`
+      : `Hola ${nombre}, te aviso que tu póliza de ${compania || "seguro"}${datoPatente} vence el ${fecha}. ¿Avanzamos con la renovación?`;
+      
     return `https://wa.me/${numeroLimpio}?text=${encodeURIComponent(mensaje)}`;
   };
 
@@ -111,7 +115,6 @@ export default function AlertaCard({ poliza, nivel, isSelected, onSelect }: Prop
           <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-black uppercase tracking-wider ${estilos.fondo} ${estilos.texto} transition-colors`}>
             {calcularDias(poliza.fechaVencimiento)}
           </span>
-          {/* 🔥 COLORES ORIGINALES CON HOVER SUTIL */}
           <span 
             onClick={() => router.push(`/polizas/${poliza.id}`)}
             className="text-xs font-mono text-gray-400 dark:text-gray-500 cursor-pointer hover:underline hover:opacity-80 transition-all"
@@ -122,7 +125,6 @@ export default function AlertaCard({ poliza, nivel, isSelected, onSelect }: Prop
         </div>
 
         <div className="ml-2 mb-4">
-          {/* 🔥 COLORES ORIGINALES CON HOVER SUTIL */}
           <h3 
             onClick={() => router.push(`/polizas/${poliza.id}`)}
             className="text-lg inline-block font-bold text-gray-900 dark:text-white leading-tight cursor-pointer hover:underline hover:opacity-80 transition-all"
@@ -181,7 +183,7 @@ export default function AlertaCard({ poliza, nivel, isSelected, onSelect }: Prop
             )
           )}
 
-          <a href={generarLinkWhatsApp(poliza.asegurado.telefono, poliza.asegurado.nombre, poliza.compania.nombre, fechaFormat)} target="_blank" rel="noopener noreferrer" className={`flex-1 flex justify-center items-center gap-1.5 bg-green-50 dark:bg-green-900/30 hover:bg-green-100 dark:hover:bg-green-900/50 text-green-700 dark:text-green-400 py-2 rounded-xl text-sm font-bold transition-colors ${!poliza.asegurado.telefono ? 'opacity-50 pointer-events-none' : ''}`}>
+          <a href={generarLinkWhatsApp(poliza.asegurado.telefono, poliza.asegurado.nombre, poliza.compania?.nombre, fechaFormat)} target="_blank" rel="noopener noreferrer" className={`flex-1 flex justify-center items-center gap-1.5 bg-green-50 dark:bg-green-900/30 hover:bg-green-100 dark:hover:bg-green-900/50 text-green-700 dark:text-green-400 py-2 rounded-xl text-sm font-bold transition-colors ${!poliza.asegurado.telefono ? 'opacity-50 pointer-events-none' : ''}`}>
             <MessageCircle size={16} /> <span className="hidden sm:inline">Wsp</span>
           </a>
 

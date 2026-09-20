@@ -37,20 +37,25 @@ export default function AlertaListRow({ poliza, nivel, menuAbiertoId, onToggleMe
     return `${diff} días`;
   };
 
+  // 🔥 Integración de patente limpia en WhatsApp
   const generarLinkWhatsApp = () => {
     const { telefono, nombre } = poliza.asegurado;
     if (!telefono) return "#";
     const numeroLimpio = telefono.replace(/\D/g, '');
     const fecha = new Date(poliza.fechaVencimiento).toLocaleDateString("es-AR");
+
+    const datoPatente = poliza.patente ? ` (Patente: ${poliza.patente.toUpperCase()})` : "";
+
     const mensaje = nivel === "vencida"
-      ? `Hola ${nombre}, te escribo urgente porque tu póliza de ${poliza.compania?.nombre} venció el ${fecha}. Avisame si la renovamos.`
-      : `Hola ${nombre}, te aviso que tu póliza de ${poliza.compania?.nombre} vence el ${fecha}. ¿Avanzamos con la renovación?`;
+      ? `Hola ${nombre}, te escribo urgente porque tu póliza de ${poliza.compania?.nombre || "seguro"}${datoPatente} venció el ${fecha}. Avisame si la renovamos.`
+      : `Hola ${nombre}, te aviso que tu póliza de ${poliza.compania?.nombre || "seguro"}${datoPatente} vence el ${fecha}. ¿Avanzamos con la renovación?`;
+      
     return `https://wa.me/${numeroLimpio}?text=${encodeURIComponent(mensaje)}`;
   };
 
   const enviarWsp = () => {
     const url = generarLinkWhatsApp();
-    if(url !== "#") window.open(url, '_blank');
+    if (url !== "#") window.open(url, '_blank');
   };
 
   const ejecutarBaja = async () => {
@@ -67,13 +72,6 @@ export default function AlertaListRow({ poliza, nivel, menuAbiertoId, onToggleMe
       setIsBajaLoading(false);
       setShowConfirmModal(false);
     }
-  };
-
-  const yaAvisadoHoy = () => {
-    if (!poliza.ultimoAviso) return false;
-    const hoy = new Date().toLocaleDateString("es-AR");
-    const ultimoAviso = new Date(poliza.ultimoAviso).toLocaleDateString("es-AR");
-    return hoy === ultimoAviso;
   };
 
   const estilos = {
@@ -102,7 +100,6 @@ export default function AlertaListRow({ poliza, nivel, menuAbiertoId, onToggleMe
               {poliza.tipoPoliza === 'Automotor' || poliza.tipoPoliza === 'Motovehículo' ? <CarFront size={18} /> : <Shield size={18} />}
             </div>
             <div className="flex flex-col">
-              {/* 🔥 COLORES ORIGINALES CON HOVER SUTIL */}
               <span 
                 onClick={() => router.push(`/polizas/${poliza.id}`)}
                 className="font-bold text-gray-900 dark:text-white text-sm cursor-pointer hover:underline hover:opacity-80 transition-all"
@@ -123,7 +120,6 @@ export default function AlertaListRow({ poliza, nivel, menuAbiertoId, onToggleMe
           {poliza.tipoPoliza} <span className="mx-1 text-gray-300 dark:text-gray-600">•</span> {poliza.compania?.nombre || "-"}
         </td>
         
-        {/* 🔥 COLORES ORIGINALES CON HOVER SUTIL */}
         <td className="p-3 md:p-4 whitespace-nowrap font-mono text-sm font-semibold transition-colors">
           <span 
             onClick={() => router.push(`/polizas/${poliza.id}`)}
