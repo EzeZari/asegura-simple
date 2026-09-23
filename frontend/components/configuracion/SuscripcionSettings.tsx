@@ -52,8 +52,17 @@ export default function SuscripcionSettings() {
   const esGratis = plan.toUpperCase() === "GRATUITO";
   
   const suscripcion = user.suscripcion;
-  const estaActivo = suscripcion?.estado === "autorizado";
-  const estaCancelado = suscripcion?.estado === "cancelled" || suscripcion?.estado === "paused";
+  
+  // 🔥 MAGIA ACÁ: Validamos si tiene tiempo a favor matemáticamente
+  const hoyTime = new Date().getTime();
+  const vencimientoTime = suscripcion?.fechaVencimiento ? new Date(suscripcion.fechaVencimiento).getTime() : 0;
+  const tieneTiempoAFavor = vencimientoTime > hoyTime;
+
+  // Si MercadoPago está autorizado O tiene tiempo a favor por pago manual, lo marcamos como Activo/Al día
+  const estaActivo = suscripcion?.estado === "autorizado" || tieneTiempoAFavor;
+  
+  // Solo está cancelado de verdad si MP está cortado Y además no tiene tiempo a favor
+  const estaCancelado = (suscripcion?.estado === "cancelled" || suscripcion?.estado === "paused") && !tieneTiempoAFavor;
   
   const fechaVencimiento = suscripcion?.fechaVencimiento 
     ? new Date(suscripcion.fechaVencimiento).toLocaleDateString("es-AR", { day: '2-digit', month: 'long', year: 'numeric' })
@@ -93,7 +102,6 @@ export default function SuscripcionSettings() {
       
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          {/* 🔥 Textos adaptados */}
           <h2 className="text-xl font-bold text-gray-900 dark:text-white transition-colors">Mi Suscripción</h2>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 transition-colors">Gestioná tu plan actual y tus métodos de pago.</p>
         </div>
@@ -101,7 +109,6 @@ export default function SuscripcionSettings() {
         <button 
           onClick={fetchLatestData} 
           disabled={isRefreshing || isCancelling}
-          // 🔥 Botón de refresco oscurecido
           className="px-3 py-2 bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-xl transition-colors flex items-center justify-center gap-2 text-sm font-semibold border border-gray-200 dark:border-gray-700 shadow-sm disabled:opacity-50"
         >
           <RefreshCw size={16} className={isRefreshing ? "animate-spin text-green-600" : ""} />
@@ -153,7 +160,6 @@ export default function SuscripcionSettings() {
           <div className="mt-8 flex gap-3">
             <Link 
               href={`/planes?email=${user.email}`}
-              // 🔥 Botón de acción invertido en oscuro
               className="flex-1 bg-gray-900 dark:bg-gray-100 hover:bg-gray-800 dark:hover:bg-white text-white dark:text-gray-900 text-center text-sm font-bold py-2.5 rounded-xl transition-colors"
             >
               {esGratis ? "Elegir un Plan Pago" : estaCancelado ? "Reactivar Plan" : "Cambiar Plan"}

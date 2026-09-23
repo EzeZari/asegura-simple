@@ -17,7 +17,13 @@ export default function GracePeriodBanner() {
 
   const { estado, fechaVencimiento } = userData.suscripcion;
 
-  if (estado === "autorizado") return null;
+  // 🔥 MAGIA ACÁ: Verificamos si tiene tiempo a favor matemáticamente
+  const hoyTime = new Date().getTime();
+  const vencimientoTime = fechaVencimiento ? new Date(fechaVencimiento).getTime() : 0;
+  const tieneTiempoAFavor = vencimientoTime > hoyTime;
+
+  // Si está autorizado en MP O tiene tiempo a favor por pago manual, ocultamos el cartel
+  if (estado === "autorizado" || tieneTiempoAFavor) return null;
 
   const fechaVence = fechaVencimiento ? new Date(fechaVencimiento) : new Date();
   const fechaLimiteGracia = new Date(fechaVence);
@@ -25,6 +31,7 @@ export default function GracePeriodBanner() {
 
   const hoy = new Date();
 
+  // Si ya pasó el período de gracia, se oculta el banner (porque seguramente actúa el bloqueo de pantalla completa)
   if (hoy > fechaLimiteGracia) return null;
 
   const formatoFecha = fechaLimiteGracia.toLocaleDateString("es-AR", {
@@ -46,7 +53,6 @@ export default function GracePeriodBanner() {
       </div>
       
       <button
-        // 🔥 Lo mandamos a Configuración donde está el panel de Suscripción
         onClick={() => router.push("/configuracion")}
         className="bg-white text-orange-700 hover:bg-orange-50 font-bold text-xs px-4 py-1.5 rounded-lg shadow-sm transition-all active:scale-95 flex items-center gap-1.5 shrink-0"
       >
