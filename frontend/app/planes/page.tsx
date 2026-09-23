@@ -7,7 +7,6 @@ import { useAuthStore } from "@/store/authStore";
 import Image from "next/image";
 
 function PlanesContent() {
-  // 🔥 1. LA MAGIA ACÁ: Sacamos al usuario de la sesión global, ya no dependemos de la URL
   const user = useAuthStore((state: any) => state.user);
   const userEmail = user?.email || "";
   const planActual = user?.plan || null;
@@ -22,7 +21,7 @@ function PlanesContent() {
   const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
   const [mpEmail, setMpEmail] = useState("");
 
-  // 🔥 2. PRECIOS ACTUALIZADOS: Para que coincidan con la landing y la promo
+  // 🔥 PRECIOS ORIGINALES RESTAURADOS
   const planes = [
     {
       id: "GRATUITO",
@@ -43,7 +42,7 @@ function PlanesContent() {
     {
       id: "BASICO",
       nombre: "Plan Básico",
-      precio: "$8.490",
+      precio: "$9.990",
       descripcion: "Para productores independientes.",
       icon: UserIcon,
       features: [
@@ -59,14 +58,14 @@ function PlanesContent() {
     {
       id: "PROFESIONAL",
       nombre: "Plan Profesional",
-      precio: "$12.490",
+      precio: "$14.990",
       descripcion: "Para equipos en crecimiento.",
       icon: Zap,
       features: [
         "Hasta 300 asegurados",
         "Hasta 3 usuarios (Equipo)",
         "Gestión avanzada de permisos",
-        "Soporte prioritario"
+        "Importación masiva inteligente"
       ],
       popular: true,
       color: "border-orange-500 bg-white text-gray-900 shadow-xl ring-4 ring-orange-500/10 xl:scale-105 z-10",
@@ -76,14 +75,14 @@ function PlanesContent() {
     {
       id: "AGENCIA",
       nombre: "Plan Agencia",
-      precio: "$21.240",
+      precio: "$24.990",
       descripcion: "Para carteras masivas.",
       icon: Users,
       features: [
         "Asegurados ilimitados",
         "Hasta 10 usuarios",
         "Reportes consolidados",
-        "Asesor de cuenta dedicado"
+        "Gestión de permisos avanzados"
       ],
       color: "border-gray-200 bg-white text-gray-900",
       btnColor: "bg-gray-900 hover:bg-gray-800 text-white",
@@ -92,7 +91,6 @@ function PlanesContent() {
   ];
 
   const handleSeleccionarPlan = (planId: string) => {
-    // Verificamos desde el Store en lugar de la URL
     if (!userEmail) {
       setMensajeToast("Error: Tu sesión expiró o no se detectó. Por favor, volvé a iniciar sesión.");
       setShowToast(true);

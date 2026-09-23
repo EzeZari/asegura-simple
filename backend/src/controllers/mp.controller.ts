@@ -7,11 +7,11 @@ const client = new MercadoPagoConfig({ accessToken: process.env.MERCADO_PAGO_ACC
 export const crearSuscripcion = async (req: Request, res: Response): Promise<any> => {
   const { plan, email, mpEmail } = req.body;
 
-  // 🔥 NUEVOS PRECIOS CON DESCUENTO (Semana Promo)
+  // 🔥 PRECIOS ORIGINALES RESTAURADOS (Sin promoción)
   const planes = {
-    BASICO: { title: "Plan Básico - AseguraSimple", price: 8490 },
-    PROFESIONAL: { title: "Plan Profesional - AseguraSimple", price: 12490 },
-    AGENCIA: { title: "Plan Agencia - AseguraSimple", price: 21240 }
+    BASICO: { title: "Plan Básico - AseguraSimple", price: 9990 },
+    PROFESIONAL: { title: "Plan Profesional - AseguraSimple", price: 14990 },
+    AGENCIA: { title: "Plan Agencia - AseguraSimple", price: 24990 }
   };
 
   const planSeleccionado = planes[plan as keyof typeof planes];
@@ -32,9 +32,8 @@ export const crearSuscripcion = async (req: Request, res: Response): Promise<any
     // 🔥 Sanitizamos la URL para que Mercado Pago no explote
     let frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
     if (!frontendUrl.startsWith('http')) {
-      frontendUrl = `https://${frontendUrl}`; // Si se olvidaron el http, se lo ponemos a la fuerza
+      frontendUrl = `https://${frontendUrl}`; 
     }
-    // Si la URL termina con "/", se lo sacamos para evitar "http://localhost:3000//login"
     if (frontendUrl.endsWith('/')) {
       frontendUrl = frontendUrl.slice(0, -1);
     }
@@ -50,7 +49,7 @@ export const crearSuscripcion = async (req: Request, res: Response): Promise<any
           transaction_amount: planSeleccionado.price,
           currency_id: 'ARS' 
         },
-        back_url: `${frontendUrl}/login?exito=true`, // URL completamente segura
+        back_url: `${frontendUrl}/login?exito=true`,
         external_reference: `${email}|${plan}`,
         payer_email: mpEmail || email 
       }
@@ -168,13 +167,11 @@ export const webhookMercadoPago = async (req: Request, res: Response) => {
   }
 };
 
-// 🔥 FUNCIÓN: Cancelar suscripción activa en MP (Restaurada)
 export const cancelarSuscripcion = async (req: any, res: Response): Promise<any> => {
   try {
     const idBruto = req.user?.userId || req.user?.id || req.usuario?.id || req.userId;
 
     if (!idBruto) {
-      console.error("Token decodificado incompleto:", req.user || req.usuario || req.userId);
       return res.status(401).json({ error: "No se pudo extraer el ID del usuario del token." });
     }
 
@@ -207,7 +204,6 @@ export const cancelarSuscripcion = async (req: any, res: Response): Promise<any>
   }
 };
 
-// 🔥 FUNCIÓN: Obtener historial de pagos (Restaurada)
 export const obtenerHistorialPagos = async (req: any, res: Response): Promise<any> => {
   try {
     const idBruto = req.user?.userId || req.user?.id || req.usuario?.id || req.userId;
