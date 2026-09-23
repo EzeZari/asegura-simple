@@ -32,7 +32,6 @@ const normalizarRama = (valor: any) => {
   if (!valor) return 'Automotor';
   const v = String(valor).toLowerCase().trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
   
-  // 🔥 FIX: Se invirtió el orden. Ahora busca primero 'auto' para que 'autoMOTOr' no caiga en la trampa de 'moto'.
   if (v.includes('auto') || v.includes('vehiculo') || v.includes('coche')) return 'Automotor';
   if (v.includes('moto')) return 'Motovehículo';
   
@@ -94,6 +93,31 @@ const obtenerProductorId = async (userId: number): Promise<number> => {
   return productor.id;
 };
 
+// 🔥 GENERADOR AUTOMÁTICO DE CUOTAS
+const generarCuotas = (inicio: Date, fin: Date) => {
+  const cuotas = [];
+  const startYear = inicio.getUTCFullYear();
+  const startMonth = inicio.getUTCMonth();
+  const endYear = fin.getUTCFullYear();
+  const endMonth = fin.getUTCMonth();
+  
+  let mesesDiff = (endYear - startYear) * 12 + (endMonth - startMonth);
+  if (mesesDiff <= 0) mesesDiff = 1; // Al menos 1 cuota siempre
+  
+  let actual = new Date(Date.UTC(startYear, startMonth, 15)); // Día 15 para evitar saltos de zona horaria
+  const mesesNombres = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+
+  for (let i = 0; i < mesesDiff; i++) {
+    cuotas.push({
+      id: i + 1,
+      mes: `${mesesNombres[actual.getUTCMonth()]} ${actual.getUTCFullYear()}`,
+      pagado: false
+    });
+    actual.setUTCMonth(actual.getUTCMonth() + 1);
+  }
+  return cuotas;
+};
+
 export const obtenerTodas = async (req: Request, res: Response): Promise<any> => {
   try {
     if (!req.userId) return res.status(401).json({ error: 'No autorizado' });
@@ -145,11 +169,14 @@ export const crearPoliza = async (req: Request, res: Response): Promise<any> => 
 
     if (!asegurado) return res.status(403).json({ error: 'El asegurado no te pertenece o no existe.' });
 
+    const fechaInicioParseada = parsearFechaSegura(fechaInicio)!;
+    const fechaVencimientoParseada = parsearFechaSegura(fechaVencimiento)!;
+
     const nuevaPoliza = await prisma.poliza.create({
       data: {
         nroPoliza, tipoPoliza, 
-        fechaInicio: parsearFechaSegura(fechaInicio)!, 
-        fechaVencimiento: parsearFechaSegura(fechaVencimiento)!, 
+        fechaInicio: fechaInicioParseada, 
+        fechaVencimiento: fechaVencimientoParseada, 
         estado, cobertura, 
         aseguradoId: parseInt(aseguradoId), 
         companiaId: parseInt(companiaId),
@@ -161,6 +188,7 @@ export const crearPoliza = async (req: Request, res: Response): Promise<any> => 
         cantidadEmpleados: cantidadEmpleados || null,
         formaPago: formaPago || null,
         enviarCuponera: enviarCuponera === true || enviarCuponera === 'true', 
+        estadoCuotas: generarCuotas(fechaInicioParseada, fechaVencimientoParseada),
       },
       include: { asegurado: true }
     });
@@ -197,6 +225,15 @@ export const actualizarPoliza = async (req: Request, res: Response): Promise<any
 
     if (!vieja) return res.status(404).json({ error: 'Póliza no encontrada o no autorizada.' });
 
+    // 🔥 RETROCOMPATIBILIDAD: Si editamos una póliza vieja que no tiene cuotas, se las creamos.
+    let nuevasCuotas = data.estadoCuotas !== undefined ? data.estadoCuotas : undefined;
+    
+    if (data.estadoCuotas === undefined && (!vieja.estadoCuotas || (Array.isArray(vieja.estadoCuotas) && vieja.estadoCuotas.length === 0))) {
+      const fInicio = data.fechaInicio ? parsearFechaSegura(data.fechaInicio)! : vieja.fechaInicio;
+      const fVenc = data.fechaVencimiento ? parsearFechaSegura(data.fechaVencimiento)! : vieja.fechaVencimiento;
+      nuevasCuotas = generarCuotas(fInicio, fVenc);
+    }
+
     const actualizada = await prisma.poliza.update({
       where: { id: parseInt(id) },
       data: {
@@ -215,6 +252,7 @@ export const actualizarPoliza = async (req: Request, res: Response): Promise<any
         cantidadEmpleados: data.cantidadEmpleados || null,
         formaPago: data.formaPago || null, 
         enviarCuponera: data.enviarCuponera !== undefined ? (data.enviarCuponera === true || data.enviarCuponera === 'true') : undefined,
+        estadoCuotas: nuevasCuotas, // 🔥 APLICAMOS LAS CUOTAS INTELIGENTES ACÁ
       },
       include: { asegurado: true, compania: true }
     });
@@ -225,6 +263,13 @@ export const actualizarPoliza = async (req: Request, res: Response): Promise<any
     if (data.companiaId && vieja.companiaId !== parseInt(data.companiaId)) cambios.push(`Compañía actualizada`);
     
     let textoDetalle = cambios.length > 0 ? cambios.join(" | ") : "Actualización de datos técnicos";
+
+    // Si solo actualizamos las cuotas desde el checklist, no hace falta generar una actividad gigante.
+    if (data.estadoCuotas && Object.keys(data).length === 1) {
+       textoDetalle = "Se actualizó el control de pagos / cuotas.";
+    } else if (nuevasCuotas && (!vieja.estadoCuotas || (Array.isArray(vieja.estadoCuotas) && vieja.estadoCuotas.length === 0))) {
+       textoDetalle += " (Se generó el control de cuotas retroactivamente).";
+    }
 
     await prisma.actividad.create({
       data: {
@@ -590,7 +635,8 @@ export const importarPolizas = async (req: Request, res: Response): Promise<any>
         nroPoliza, aseguradoId, companiaId, tipoPoliza, estado,
         fechaInicio, fechaVencimiento, cobertura, patente, marca,          
         modelo, ubicacionRiesgo, cantidadEmpleados, formaPago,      
-        enviarCuponera: false, productorId
+        enviarCuponera: false, productorId,
+        estadoCuotas: generarCuotas(fechaInicio, fechaVencimiento), // 🔥 TAMBIÉN EN LA IMPORTACIÓN MASIVA
       });
 
       creados++;

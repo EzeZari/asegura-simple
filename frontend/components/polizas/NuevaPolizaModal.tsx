@@ -180,6 +180,10 @@ export default function NuevaPolizaModal({ isOpen, onClose, onSuccess, polizaAEd
       delete payloadToSave.asegurado; 
       delete payloadToSave.compania;  
       
+      // 🔥 LA SOLUCIÓN: Borramos estadoCuotas para que el backend lo vea como "undefined"
+      // y aplique la lógica de generación automática para pólizas viejas.
+      delete payloadToSave.estadoCuotas; 
+      
       if (!isEditMode) {
         delete payloadToSave.id; 
         delete payloadToSave.pdfUrl; 
@@ -233,7 +237,6 @@ export default function NuevaPolizaModal({ isOpen, onClose, onSuccess, polizaAEd
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[150] p-4">
-      {/* 🔥 Contenedor adaptado */}
       <div className="bg-white dark:bg-gray-800 rounded-xl p-6 w-full max-w-2xl shadow-xl relative animate-in fade-in zoom-in duration-200 max-h-[90vh] overflow-y-auto border border-transparent dark:border-gray-700 transition-colors custom-scrollbar">
         
         <button onClick={onClose} className="absolute top-4 right-4 text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors p-1">
@@ -254,7 +257,6 @@ export default function NuevaPolizaModal({ isOpen, onClose, onSuccess, polizaAEd
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 transition-colors">Asegurado Titular *</label>
-                {/* 🔥 Selectores y campos de texto transparentes */}
                 <select 
                   name="aseguradoId" 
                   value={formData.aseguradoId} 
@@ -446,7 +448,6 @@ export default function NuevaPolizaModal({ isOpen, onClose, onSuccess, polizaAEd
                   className="hidden" 
                 />
                 
-                {/* 🔥 Botón archivos */}
                 <button 
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
@@ -518,7 +519,6 @@ export default function NuevaPolizaModal({ isOpen, onClose, onSuccess, polizaAEd
                 )}
               </div>
 
-              {/* 🔥 Checkbox adaptado */}
               <div className="flex items-center gap-3 mt-3 p-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-700 rounded-lg transition-colors">
                 <input
                   type="checkbox"

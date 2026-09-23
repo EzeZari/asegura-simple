@@ -112,6 +112,8 @@ model Poliza {
   cuponeraUrl    String?
   enviarCuponera Boolean  @default(false)
 
+  estadoCuotas   Json?
+
   @@unique([productorId, nroPoliza]) // 🔥 3. LA REGLA MAESTRA MULTI-TENANT
 }
 

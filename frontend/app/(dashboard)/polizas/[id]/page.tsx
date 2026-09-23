@@ -8,9 +8,10 @@ import {
 } from "lucide-react";
 
 import NuevaPolizaModal from "@/components/polizas/NuevaPolizaModal";
-// 🔥 IMPORTAMOS LOS DOS COMPONENTES NUEVOS
 import PolizaDocumentos from "@/components/polizas/PolizaDocumentos";
 import PolizaSiniestros from "@/components/polizas/PolizaSiniestros";
+// 🔥 IMPORTAMOS EL NUEVO COMPONENTE DE CUOTAS
+import PolizaCuotas from "@/components/polizas/PolizaCuotas";
 
 import Toast from "@/components/ui/Toast";
 import { apiFetch } from "@/services/api";
@@ -28,7 +29,6 @@ export default function PolizaDetallePage() {
   const [isLoading, setIsLoading] = useState(true);
   
   const [isModalOpen, setIsModalOpen] = useState(false);
-  // 🔥 NUEVO ESTADO PARA EL MODAL DE RENOVACIÓN
   const [showRenovarModal, setShowRenovarModal] = useState(false);
   
   const [showToast, setShowToast] = useState(false);
@@ -142,7 +142,6 @@ export default function PolizaDetallePage() {
           
           <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
             
-            {/* Botones de Comunicación */}
             <a 
               href={generarLinkWhatsApp()} 
               target="_blank" rel="noopener noreferrer"
@@ -170,7 +169,6 @@ export default function PolizaDetallePage() {
                </span>
             </button>
 
-            {/* 🔥 NUEVO: BOTÓN RENOVAR */}
             {puedeModificar && poliza.estado !== "Renovada" && (
               <button 
                 onClick={() => setShowRenovarModal(true)}
@@ -230,15 +228,16 @@ export default function PolizaDetallePage() {
             </div>
           </div>
 
-          {/* 🔥 INYECTAMOS EL NUEVO COMPONENTE DE SINIESTROS VINCULADOS */}
           <PolizaSiniestros polizaId={poliza.id} />
+
+          {/* 🔥 INYECTAMOS EL NUEVO COMPONENTE DE CUOTAS AQUÍ */}
+          <PolizaCuotas poliza={poliza} puedeModificar={puedeModificar} />
 
         </div>
 
         {/* Columna Lateral */}
         <div className="flex flex-col gap-6">
           
-          {/* 🔥 INYECTAMOS EL NUEVO COMPONENTE DE DOCUMENTACIÓN (PDF + CUPONERA) */}
           <PolizaDocumentos 
             poliza={poliza} 
             puedeModificar={puedeModificar}
@@ -279,7 +278,6 @@ export default function PolizaDetallePage() {
         </div>
       </div>
 
-      {/* MODAL DE EDICIÓN */}
       {puedeModificar && isModalOpen && (
         <NuevaPolizaModal 
           isOpen={isModalOpen} 
@@ -289,14 +287,13 @@ export default function PolizaDetallePage() {
         />
       )}
 
-      {/* 🔥 MODAL DE RENOVACIÓN */}
       {puedeModificar && showRenovarModal && (
         <NuevaPolizaModal 
           isOpen={showRenovarModal} 
           onClose={() => setShowRenovarModal(false)} 
           onSuccess={() => handleActionSuccess("La póliza fue renovada y se guardó como un nuevo registro")} 
           polizaAEditar={poliza}
-          isRenovacion={true} // Le pasamos la prop que ya habías programado
+          isRenovacion={true} 
         />
       )}
 
