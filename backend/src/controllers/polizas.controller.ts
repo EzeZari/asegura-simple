@@ -32,8 +32,10 @@ const normalizarRama = (valor: any) => {
   if (!valor) return 'Automotor';
   const v = String(valor).toLowerCase().trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
   
-  if (v.includes('moto')) return 'Motovehículo';
+  // 🔥 FIX: Se invirtió el orden. Ahora busca primero 'auto' para que 'autoMOTOr' no caiga en la trampa de 'moto'.
   if (v.includes('auto') || v.includes('vehiculo') || v.includes('coche')) return 'Automotor';
+  if (v.includes('moto')) return 'Motovehículo';
+  
   if (v.includes('art') || v.includes('riesgo de trabajo')) return 'ART';
   if (v.includes('vida') && v.includes('colectivo')) return 'Vida colectivo';
   if (v.includes('vida') && v.includes('individual')) return 'Vida individual';
@@ -450,7 +452,6 @@ export const subirPdf = async (req: Request, res: Response): Promise<any> => {
   }
 };
 
-// 🔥 MEJORA DE REPORTE DETALLADO EN IMPORTACIÓN MASIVA
 export const importarPolizas = async (req: Request, res: Response): Promise<any> => {
   try {
     const productorId = await obtenerProductorId(req.userId!);
@@ -470,7 +471,6 @@ export const importarPolizas = async (req: Request, res: Response): Promise<any>
       select: { id: true, nombre: true } 
     });
 
-    // 1. Nos traemos los números de pólizas que ya existen para compararlos rápido
     const polizasExistentes = await prisma.poliza.findMany({
       where: { productorId: productorId },
       select: { nroPoliza: true }
@@ -522,7 +522,6 @@ export const importarPolizas = async (req: Request, res: Response): Promise<any>
     let creados = 0;
     let salteados = 0;
 
-    // 2. Iteramos generando el reporte línea por línea
     polizasExcel.forEach((p: any, index: number) => {
       const filaExcel = index + 2; 
       const row = normalizarLlaves(p);
@@ -531,21 +530,18 @@ export const importarPolizas = async (req: Request, res: Response): Promise<any>
       const dniCrudo = String(row.dnicuit || row.dni || row.documento || row.cuit || '').replace(/[^0-9]/g, '');
       const companiaCruda = String(row.compania || row.aseguradora || row.cia || '').toLowerCase().trim();
 
-      // VALIDACIÓN 1: Número de póliza
       if (!nroPoliza) {
         reporteDetallado.push({ fila: filaExcel, poliza: "Sin Nro", estado: "error", motivo: "El número de póliza está vacío." });
         salteados++;
         return; 
       }
 
-      // VALIDACIÓN 2: DNI Vacio
       if (!dniCrudo) {
         reporteDetallado.push({ fila: filaExcel, poliza: nroPoliza, estado: "error", motivo: "El DNI/CUIT está vacío." });
         salteados++;
         return;
       }
 
-      // VALIDACIÓN 3: ¿Existe el cliente?
       const aseguradoId = mapaAsegurados.get(dniCrudo);
       if (!aseguradoId) {
         reporteDetallado.push({ fila: filaExcel, poliza: nroPoliza, estado: "error", motivo: `El DNI/CUIT ${dniCrudo} no existe en tus asegurados.` });
@@ -553,14 +549,12 @@ export const importarPolizas = async (req: Request, res: Response): Promise<any>
         return;
       }
 
-      // VALIDACIÓN 4: ¿Ya está cargada la póliza?
       if (setPolizasExistentes.has(nroPoliza)) {
         reporteDetallado.push({ fila: filaExcel, poliza: nroPoliza, estado: "error", motivo: "La póliza ya existe en el sistema." });
         salteados++;
         return;
       }
 
-      // 🔥 VALIDACIÓN 5 (NUEVA): Compañía estricta
       let companiaId = mapaCompanias.get(companiaCruda);
       if (!companiaId) {
         reporteDetallado.push({ fila: filaExcel, poliza: nroPoliza, estado: "error", motivo: `Compañía desconocida en tu sistema (${row.compania || row.aseguradora || 'Vacía'}).` });
@@ -568,7 +562,6 @@ export const importarPolizas = async (req: Request, res: Response): Promise<any>
         return;
       }
 
-      // SI PASÓ TODAS LAS VALIDACIONES -> PREPARAMOS LA DATA
       const tipoPoliza = normalizarRama(row.ramariesgo || row.rama || row.tipo || row.riesgo || row.ramo);
       const estado = normalizarEstado(row.estado);
       const formaPago = normalizarFormaPago(row.formapago || row.pago || row.modalidadpago);
@@ -609,7 +602,6 @@ export const importarPolizas = async (req: Request, res: Response): Promise<any>
       });
     });
 
-    // 3. Ejecutamos la inserción final
     if (datosParaInsertar.length > 0) {
       await (prisma as any).poliza.createMany({
         data: datosParaInsertar,
