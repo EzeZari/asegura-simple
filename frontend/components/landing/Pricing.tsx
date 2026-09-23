@@ -24,8 +24,8 @@ export default function Pricing() {
     },
     {
       name: "Plan Básico",
-      oldPrice: "$9.990",
-      price: "$8.490",
+      oldPrice: null,
+      price: "$9.990",
       period: "/mes",
       desc: "Para productores independientes.",
       features: [
@@ -34,38 +34,38 @@ export default function Pricing() {
         "Gestión de pólizas y siniestros", 
         "Soporte estándar"
       ],
-      cta: "Aprovechar Descuento",
+      cta: "Elegir Básico",
       href: "/registro",
       highlighted: false
     },
     {
       name: "Plan Profesional",
-      oldPrice: "$14.990",
-      price: "$12.490",
+      oldPrice: null,
+      price: "$14.990",
       period: "/mes",
       desc: "Para equipos en crecimiento.",
       features: [
         "Hasta 300 asegurados", 
         "Hasta 3 usuarios (Equipo)", 
         "Gestión avanzada de permisos", 
-        "Soporte prioritario"
+        "Importación masiva inteligente"
       ],
       cta: "Elegir Profesional",
       href: "/registro",
       highlighted: true,
-      badge: "15% OFF - EL MÁS ELEGIDO"
+      badge: "EL MÁS ELEGIDO"
     },
     {
       name: "Plan Agencia",
-      oldPrice: "$24.990",
-      price: "$21.240",
+      oldPrice: null,
+      price: "$24.990",
       period: "/mes",
       desc: "Para carteras masivas.",
       features: [
         "Asegurados ilimitados", 
         "Hasta 10 usuarios", 
         "Reportes consolidados", 
-        "Asesor de cuenta dedicado"
+        "Gestión de permisos avanzados" // 🔥 Actualizado acá también
       ],
       cta: "Elegir Agencia",
       href: "/registro",
@@ -83,14 +83,12 @@ export default function Pricing() {
           transition={{ duration: 0.6 }}
           className="text-center mb-16"
         >
-          <div className="inline-block mb-4 px-4 py-1.5 bg-green-100 text-green-800 font-bold rounded-full text-sm tracking-wide uppercase">
-            Promo por tiempo limitado
-          </div>
+          {/* 🔥 Se eliminó el cartelito de Promo por tiempo limitado */}
           <h2 className="text-4xl md:text-5xl font-extrabold text-gray-900 mb-4">
             Elegí tu plan ideal
           </h2>
           <p className="text-xl text-gray-600">
-            Aprovechá la Semana de la Automatización con precios especiales. Arrancá hoy mismo y dejá que el sistema trabaje por vos.
+            Arrancá hoy mismo con tus 14 días gratis y dejá que el sistema automatice tu gestión diaria por vos.
           </p>
         </motion.div>
 
@@ -120,7 +118,6 @@ export default function Pricing() {
               </div>
               
               <div className="mb-8">
-                {/* Lógica para mostrar precio tachado */}
                 {plan.oldPrice && (
                   <div className="text-lg font-semibold text-gray-400 line-through mb-1">
                     {plan.oldPrice}
