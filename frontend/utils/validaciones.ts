@@ -23,7 +23,6 @@ export const validarDniCuit = (valor: string): string => {
   return "";
 };
 
-// 🔥 AHORA TODAS ESTAS FUNCIONES ACEPTAN UN SEGUNDO PARÁMETRO (obligatorio)
 export const validarEmail = (email: string, obligatorio: boolean = false): string => {
   if (!email || String(email).trim() === "") return obligatorio ? "El email es obligatorio." : "";
   
@@ -75,18 +74,19 @@ export const validarCodigoPostal = (cp: string, obligatorio: boolean = false): s
   }
   return "";
 };
+
 export const validarNroPoliza = (valor: string): string => {
   if (!valor || String(valor).trim() === "") return "El número de póliza es obligatorio.";
   
-  // 🔥 Solo permite números, espacios y guiones. ¡Cero letras!
-  const regex = /^[0-9\-\s]+$/;
+  // 🔥 Ahora permite números, letras, espacios, guiones (-) y barras (/)
+  const regex = /^[a-zA-Z0-9\-\s\/]+$/;
   if (!regex.test(valor)) {
-    return "El número de póliza solo puede contener números y guiones.";
+    return "El número de póliza solo puede contener letras, números, guiones y barras (/).";
   }
   
   return "";
-  
 };
+
 export const validarPassword = (password: string): string => {
   if (!password || String(password).trim() === "") return "La contraseña es obligatoria.";
   
