@@ -5,6 +5,9 @@ import { Providers } from "./providers";
 export const metadata: Metadata = {
   title: "AseguraSimple",
   description: "Sistema de Gestión de Seguros",
+  verification: {
+    google: "dcNDxe2BN3PQ4IaIT2JOxKu6_E6bss36-Xr3l2SpomA",
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
