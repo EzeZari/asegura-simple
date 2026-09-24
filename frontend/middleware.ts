@@ -1,4 +1,4 @@
-// v5 - fix landing page publica + redireccion de usuarios
+// v5 - fix landing page publica + redireccion de usuarios + sitemap
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
@@ -19,8 +19,10 @@ export function middleware(request: NextRequest) {
     pathname.startsWith('/consulta') || 
     pathname.startsWith('/planes') ||
     pathname.startsWith('/terminos') ||
-    pathname.startsWith('/privacidad')||
-    pathname.startsWith('/blog'); // 🔥 AGREGAMOS ESTA LÍNEA PARA EL BLOG
+    pathname.startsWith('/privacidad') ||
+    pathname.startsWith('/blog') ||
+    pathname === '/sitemap.xml' || // 🔥 Dejamos pasar a Google para el sitemap
+    pathname === '/robots.txt';    // 🔥 Dejamos pasar a Google para el robots
                         
   if (isPublicRoute) {
     return NextResponse.next();
@@ -56,5 +58,6 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/((?!api|_next/static|_next/image|favicon.ico|.*\\.(?:png|jpg|jpeg|svg|gif|webp)$).*)'],
+  // 🔥 Agregamos xml y txt a las exclusiones para que el middleware no los bloquee
+  matcher: ['/((?!api|_next/static|_next/image|favicon.ico|.*\\.(?:png|jpg|jpeg|svg|gif|webp|xml|txt)$).*)'],
 };
