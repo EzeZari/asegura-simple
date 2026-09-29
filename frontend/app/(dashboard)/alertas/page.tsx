@@ -14,6 +14,7 @@ const ExportarExcelModal = dynamic(() => import("@/components/ui/ExportarExcelMo
 
 export default function AlertasPage() {
   const { user } = useAuthStore();
+  const accessToken = useAuthStore((state) => state.accessToken); // 🔥 NUEVO: Esperamos el token igual que en el Dashboard
   const puedeModificar = tienePermiso(user, PERMISOS.PUEDE_MODIFICAR_DATOS);
 
   const [data, setData] = useState<{ vencidas: any[]; criticas: any[]; proximas: any[]; config: { diasCritica: number; diasMax: number }; }>({
@@ -23,7 +24,6 @@ export default function AlertasPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   
-  // 🔥 INICIALIZAMOS LA VISTA EN LISTA POR DEFECTO
   const [vista, setVista] = useState<"lista" | "tarjetas" | "calendario">("lista");
 
   const [filtroRama, setFiltroRama] = useState("TODAS");
@@ -35,7 +35,13 @@ export default function AlertasPage() {
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [toast, setToast] = useState({ show: false, msg: "" });
 
-  // 🔥 1. AL CARGAR LA PÁGINA, BUSCAMOS LA MEMORIA DEL NAVEGADOR
+  // 🔥 ESTADO CON LAS TRES PLANTILLAS
+  const [plantillas, setPlantillas] = useState({
+    proxima: "Hola [Nombre], te avisamos que tu póliza de [Rama] ([NroPoliza]) en [Compania] vence el próximo [Vencimiento]. ¿Avanzamos con la renovación?",
+    critica: "Hola [Nombre], te recuerdo que tu póliza de [Rama] ([NroPoliza]) vence en unos días ([Vencimiento]). Avisame así la renovamos a tiempo.",
+    vencida: "Hola [Nombre], te escribo urgente porque tu póliza de [Rama] ([NroPoliza]) venció el [Vencimiento]. Avisame si la renovamos para no dejarte sin cobertura."
+  });
+
   useEffect(() => {
     const vistaGuardada = localStorage.getItem("asegurasimple_vista_alertas");
     if (vistaGuardada === "lista" || vistaGuardada === "tarjetas" || vistaGuardada === "calendario") {
@@ -43,15 +49,15 @@ export default function AlertasPage() {
     }
   }, []);
 
-  // 🔥 2. FUNCIÓN PARA CAMBIAR LA VISTA Y GUARDARLA EN LA MEMORIA AL MISMO TIEMPO
   const cambiarVista = (nuevaVista: "lista" | "tarjetas" | "calendario") => {
     setVista(nuevaVista);
     localStorage.setItem("asegurasimple_vista_alertas", nuevaVista);
   };
 
-  const fetchAlertas = async () => {
+  // Separamos la carga de alertas para poder re-usarla al mandar correos masivos
+  const cargarAlertas = async () => {
     try {
-      const res = await apiFetch('/api/alertas');
+      const res = await apiFetch('/api/alertas', { cache: 'no-store' });
       const resData = await res.json();
       if (resData && Array.isArray(resData.vencidas)) setData(resData);
     } catch (err) {
@@ -61,7 +67,26 @@ export default function AlertasPage() {
     }
   };
 
-  useEffect(() => { fetchAlertas(); }, []);
+  // 🔥 EL MISMO MÉTODO QUE EL DASHBOARD (Esperamos al token)
+  useEffect(() => {
+    if (!accessToken) return; // ← Espera a que haya token para disparar las consultas
+
+    cargarAlertas();
+
+    apiFetch('/api/agencia', { cache: 'no-store' })
+      .then((res) => res.json())
+      .then((configData) => {
+        if (configData) {
+          setPlantillas((prev) => ({
+            proxima: configData.mensajeVencimiento || prev.proxima,
+            critica: configData.mensajePolizaCritica || prev.critica,
+            vencida: configData.mensajePolizaVencida || prev.vencida
+          }));
+        }
+      })
+      .catch((err) => console.error("Error al cargar la plantilla:", err));
+
+  }, [accessToken]); // ← Se ejecuta cuando llega el token
 
   const todasLasAlertas = [...data.vencidas, ...data.criticas, ...data.proximas];
   const ramasUnicas = Array.from(new Set(todasLasAlertas.map(p => p.tipoPoliza))).filter(Boolean);
@@ -98,7 +123,7 @@ export default function AlertasPage() {
       );
       setToast({ show: true, msg: `Se enviaron ${paraEnviar.length} recordatorios con éxito.` });
       setSelectedIds([]); 
-      fetchAlertas(); 
+      cargarAlertas(); // Recargamos las alertas
     } catch (error) {
       setToast({ show: true, msg: "Hubo un error al enviar algunos correos." });
     } finally {
@@ -207,7 +232,6 @@ export default function AlertasPage() {
               </div>
             </div>
 
-            {/* 🔥 USAMOS LA NUEVA FUNCIÓN cambiarVista EN LOS BOTONES */}
             <div className="flex items-center bg-gray-100 dark:bg-gray-900/50 p-1 rounded-xl border border-gray-200 dark:border-gray-800 w-full md:w-auto transition-colors shrink-0">
               <button onClick={() => cambiarVista("lista")} className={`flex-1 md:flex-none flex justify-center p-2 rounded-lg transition-all ${vista === "lista" ? "bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm" : "text-gray-500"}`} title="Vista de Lista"><List size={16} /></button>
               <button onClick={() => cambiarVista("tarjetas")} className={`flex-1 md:flex-none flex justify-center p-2 rounded-lg transition-all ${vista === "tarjetas" ? "bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm" : "text-gray-500"}`} title="Vista de Tarjetas"><LayoutGrid size={16} /></button>
@@ -226,16 +250,19 @@ export default function AlertasPage() {
             titulo="Vencidas (Sin cobertura)" Icono={XOctagon} nivel="vencida" vista={vista}
             alertas={filtrarAlertas(data.vencidas)} mensajeVacio="Excelente, no tenés pólizas vencidas sin gestionar." 
             selectedIds={selectedIds} onToggleSelect={toggleSelect} onToggleSelectAll={toggleSelectAll}
+            plantillas={plantillas} // 🔥 Pasamos las plantillas
           />
           <AlertaSection 
             titulo={`Críticas (0 a ${data.config.diasCritica} días)`} Icono={AlertTriangle} nivel="critica" vista={vista}
             alertas={filtrarAlertas(data.criticas)} mensajeVacio="No hay vencimientos críticos." 
             selectedIds={selectedIds} onToggleSelect={toggleSelect} onToggleSelectAll={toggleSelectAll}
+            plantillas={plantillas} // 🔥 Pasamos las plantillas
           />
           <AlertaSection 
             titulo={`Próximas (${data.config.diasCritica + 1} a ${data.config.diasMax} días)`} Icono={Clock} nivel="proxima" vista={vista}
             alertas={filtrarAlertas(data.proximas)} mensajeVacio="No hay vencimientos próximos." 
             selectedIds={selectedIds} onToggleSelect={toggleSelect} onToggleSelectAll={toggleSelectAll}
+            plantillas={plantillas} // 🔥 Pasamos las plantillas
           />
         </>
       )}

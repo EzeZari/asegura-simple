@@ -267,8 +267,10 @@ model Agencia {
   telefono              String?
   firma                 String?
   logoUrl               String?  
-  mensajeVencimiento    String?  @db.Text
-  mensajeBienvenida     String?  @db.Text
+  mensajeVencimiento    String?  @db.Text  // Este ya lo tenías (Lo usaremos para el AMARILLO)
+  mensajePolizaCritica  String?  @db.Text  // 🔥 NUEVO: Para el NARANJA
+  mensajePolizaVencida  String?  @db.Text  // 🔥 NUEVO: Para el ROJO
+  mensajeBienvenida     String?  @db.Text  // Este ya lo tenías
   diasAlertaVencimiento Int      @default(30)
   diasAlertaCritica     Int      @default(7)  
 

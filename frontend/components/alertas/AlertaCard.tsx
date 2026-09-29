@@ -8,17 +8,18 @@ import NuevaPolizaModal from "../polizas/NuevaPolizaModal";
 import { apiFetch } from "@/services/api"; 
 import { useAuthStore } from "@/store/authStore"; 
 import { PERMISOS, tienePermiso } from "@/utils/roles"; 
+import { generarLinkWhatsApp } from "@/utils/whatsapp"; // 🔥 IMPORTAMOS EL AYUDANTE
 
 interface Props {
   poliza: any;
   nivel: "vencida" | "critica" | "proxima";
   isSelected?: boolean;
   onSelect?: () => void;
+  plantillas: { proxima: string; critica: string; vencida: string };
 }
 
-export default function AlertaCard({ poliza, nivel, isSelected, onSelect }: Props) {
+export default function AlertaCard({ poliza, nivel, isSelected, onSelect, plantillas }: Props) {
   const router = useRouter();
-  
   const { user } = useAuthStore();
   const puedeModificar = tienePermiso(user, PERMISOS.PUEDE_MODIFICAR_DATOS);
 
@@ -36,30 +37,13 @@ export default function AlertaCard({ poliza, nivel, isSelected, onSelect }: Prop
     return `Vence en ${diff} días`;
   };
 
-  // 🔥 Integración de patente limpia en WhatsApp
-  const generarLinkWhatsApp = (telefono: string, nombre: string, compania: string, fecha: string) => {
-    if (!telefono) return "#";
-    const numeroLimpio = telefono.replace(/\D/g, '');
-    const datoPatente = poliza.patente ? ` (Patente: ${poliza.patente.toUpperCase()})` : "";
-
-    const mensaje = nivel === "vencida"
-      ? `Hola ${nombre}, te escribo urgente porque tu póliza de ${compania || "seguro"}${datoPatente} venció el ${fecha}. Avisame si la renovamos para no dejarte sin cobertura.`
-      : `Hola ${nombre}, te aviso que tu póliza de ${compania || "seguro"}${datoPatente} vence el ${fecha}. ¿Avanzamos con la renovación?`;
-      
-    return `https://wa.me/${numeroLimpio}?text=${encodeURIComponent(mensaje)}`;
-  };
-
   const ejecutarBaja = async () => {
     if (!puedeModificar) return; 
     setIsBajaLoading(true);
     try {
-      await apiFetch(`/api/polizas/${poliza.id}`, {
-        method: "PUT",
-        body: JSON.stringify({ ...poliza, estado: "Anulada" })
-      });
+      await apiFetch(`/api/polizas/${poliza.id}`, { method: "PUT", body: JSON.stringify({ ...poliza, estado: "Anulada" }) });
       window.location.reload(); 
     } catch (error) {
-      console.error("Error al anular", error);
       setIsBajaLoading(false);
       setShowConfirmModal(false);
     }
@@ -102,37 +86,17 @@ export default function AlertaCard({ poliza, nivel, isSelected, onSelect }: Prop
         
         {onSelect && (
           <div className="absolute top-4 right-4 z-10">
-             <input 
-              type="checkbox" 
-              checked={isSelected}
-              onChange={onSelect}
-              className="w-4 h-4 text-blue-600 bg-white border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 dark:bg-gray-700 dark:border-gray-600 cursor-pointer"
-            />
+             <input type="checkbox" checked={isSelected} onChange={onSelect} className="w-4 h-4 text-blue-600 bg-white border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 dark:bg-gray-700 dark:border-gray-600 cursor-pointer" />
           </div>
         )}
 
         <div className="flex justify-between items-start mb-3 ml-2 pr-6">
-          <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-black uppercase tracking-wider ${estilos.fondo} ${estilos.texto} transition-colors`}>
-            {calcularDias(poliza.fechaVencimiento)}
-          </span>
-          <span 
-            onClick={() => router.push(`/polizas/${poliza.id}`)}
-            className="text-xs font-mono text-gray-400 dark:text-gray-500 cursor-pointer hover:underline hover:opacity-80 transition-all"
-            title="Ver detalle de póliza"
-          >
-            #{poliza.nroPoliza}
-          </span>
+          <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-black uppercase tracking-wider ${estilos.fondo} ${estilos.texto} transition-colors`}>{calcularDias(poliza.fechaVencimiento)}</span>
+          <span onClick={() => router.push(`/polizas/${poliza.id}`)} className="text-xs font-mono text-gray-400 dark:text-gray-500 cursor-pointer hover:underline hover:opacity-80 transition-all">#{poliza.nroPoliza}</span>
         </div>
 
         <div className="ml-2 mb-4">
-          <h3 
-            onClick={() => router.push(`/polizas/${poliza.id}`)}
-            className="text-lg inline-block font-bold text-gray-900 dark:text-white leading-tight cursor-pointer hover:underline hover:opacity-80 transition-all"
-            title="Ver detalle de póliza"
-          >
-            {poliza.asegurado?.nombre} {poliza.asegurado?.apellido}
-          </h3>
-          
+          <h3 onClick={() => router.push(`/polizas/${poliza.id}`)} className="text-lg inline-block font-bold text-gray-900 dark:text-white leading-tight cursor-pointer hover:underline hover:opacity-80 transition-all">{poliza.asegurado?.nombre} {poliza.asegurado?.apellido}</h3>
           <div className="flex items-center gap-1.5 text-sm mt-2 transition-colors">
             <Shield size={14} className="text-gray-400 dark:text-gray-500" />
             <span className="font-semibold text-gray-800 dark:text-gray-200">{poliza.tipoPoliza}</span>
@@ -143,47 +107,25 @@ export default function AlertaCard({ poliza, nivel, isSelected, onSelect }: Prop
           <div className="ml-5 mt-1.5 mb-1 min-h-[24px]">
             {(poliza.tipoPoliza === "Automotor" || poliza.tipoPoliza === "Motovehículo") && (poliza.patente || poliza.marca || poliza.modelo) && (
               <div className="flex items-center gap-2">
-                {poliza.patente && (
-                  <span className="bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 px-2 py-0.5 rounded font-mono font-bold uppercase text-gray-800 dark:text-gray-200 text-[10px] tracking-wider transition-colors">
-                    {poliza.patente}
-                  </span>
-                )}
+                {poliza.patente && <span className="bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 px-2 py-0.5 rounded font-mono font-bold uppercase text-gray-800 dark:text-gray-200 text-[10px] tracking-wider transition-colors">{poliza.patente}</span>}
                 <span className="text-xs text-gray-600 dark:text-gray-400 font-medium truncate transition-colors">{poliza.marca} {poliza.modelo}</span>
               </div>
             )}
-
-            {(poliza.tipoPoliza === "Combinado Familiar" || poliza.tipoPoliza === "Integral de Comercio") && poliza.ubicacionRiesgo && (
-              <div className="text-xs text-gray-600 dark:text-gray-400 flex items-center gap-1.5 transition-colors">
-                <MapPin size={14} className="text-gray-400 dark:text-gray-500" /> 
-                <span className="truncate">{poliza.ubicacionRiesgo}</span>
-              </div>
-            )}
-
-            {poliza.tipoPoliza === "ART" && poliza.cantidadEmpleados && (
-              <div className="text-xs text-gray-600 dark:text-gray-400 flex items-center gap-1.5 transition-colors">
-                <Users size={14} className="text-gray-400 dark:text-gray-500" /> 
-                <span>{poliza.cantidadEmpleados} Empleados</span>
-              </div>
-            )}
           </div>
-
           <p className="text-xs text-gray-500 dark:text-gray-500 mt-2 ml-5 font-medium transition-colors">Vence el {fechaFormat}</p>
         </div>
 
         <div className="mt-auto ml-2 flex gap-2 pt-4 border-t border-gray-50 dark:border-gray-700/50 transition-colors">
           {puedeModificar && (
             nivel === "vencida" ? (
-              <button onClick={() => setShowConfirmModal(true)} className="flex-1 flex justify-center items-center gap-1.5 bg-rose-50 dark:bg-rose-900/30 hover:bg-rose-100 dark:hover:bg-rose-900/50 text-rose-700 dark:text-rose-400 py-2 rounded-xl text-sm font-bold transition-colors">
-                <Trash2 size={16} /> <span className="hidden sm:inline">Anular</span>
-              </button>
+              <button onClick={() => setShowConfirmModal(true)} className="flex-1 flex justify-center items-center gap-1.5 bg-rose-50 dark:bg-rose-900/30 hover:bg-rose-100 dark:hover:bg-rose-900/50 text-rose-700 dark:text-rose-400 py-2 rounded-xl text-sm font-bold transition-colors"><Trash2 size={16} /> <span className="hidden sm:inline">Anular</span></button>
             ) : (
-              <button onClick={() => setShowRenovarModal(true)} className="flex-1 flex justify-center items-center gap-1.5 bg-emerald-50 dark:bg-emerald-900/30 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 text-emerald-700 dark:text-emerald-400 py-2 rounded-xl text-sm font-bold transition-colors">
-                <RefreshCcw size={16} /> <span className="hidden sm:inline">Renovar</span>
-              </button>
+              <button onClick={() => setShowRenovarModal(true)} className="flex-1 flex justify-center items-center gap-1.5 bg-emerald-50 dark:bg-emerald-900/30 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 text-emerald-700 dark:text-emerald-400 py-2 rounded-xl text-sm font-bold transition-colors"><RefreshCcw size={16} /> <span className="hidden sm:inline">Renovar</span></button>
             )
           )}
 
-          <a href={generarLinkWhatsApp(poliza.asegurado.telefono, poliza.asegurado.nombre, poliza.compania?.nombre, fechaFormat)} target="_blank" rel="noopener noreferrer" className={`flex-1 flex justify-center items-center gap-1.5 bg-green-50 dark:bg-green-900/30 hover:bg-green-100 dark:hover:bg-green-900/50 text-green-700 dark:text-green-400 py-2 rounded-xl text-sm font-bold transition-colors ${!poliza.asegurado.telefono ? 'opacity-50 pointer-events-none' : ''}`}>
+          {/* 🔥 USAMOS EL AYUDANTE ACÁ, PASÁNDOLE LA PLANTILLA QUE CORRESPONDE */}
+          <a href={generarLinkWhatsApp(poliza, plantillas[nivel])} target="_blank" rel="noopener noreferrer" className={`flex-1 flex justify-center items-center gap-1.5 bg-green-50 dark:bg-green-900/30 hover:bg-green-100 dark:hover:bg-green-900/50 text-green-700 dark:text-green-400 py-2 rounded-xl text-sm font-bold transition-colors ${!poliza.asegurado.telefono ? 'opacity-50 pointer-events-none' : ''}`}>
             <MessageCircle size={16} /> <span className="hidden sm:inline">Wsp</span>
           </a>
 

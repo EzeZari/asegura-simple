@@ -26,8 +26,9 @@ router.get('/', verificarToken, async (req: any, res) => {
 router.put('/', verificarToken, async (req: any, res) => {
   try {
     const { 
-      nombre, cuit, email, telefono, firma, usarFirma, // 🔥 EXTRAEMOS EL NUEVO DATO
+      nombre, cuit, email, telefono, firma, usarFirma, 
       mensajeVencimiento, mensajeBienvenida,
+      mensajePolizaCritica, mensajePolizaVencida, // 🔥 AGREGAMOS LOS DOS CAMPOS NUEVOS ACÁ
       diasAlertaVencimiento, diasAlertaCritica,
       envioAutomaticoActivo, horaEnvioAutomatico,
       diasAvisoAutomatico, enviarMailBienvenida 
@@ -36,8 +37,9 @@ router.put('/', verificarToken, async (req: any, res) => {
     const agenciaActualizada = await prisma.agencia.update({
       where: { id: 1 },
       data: { 
-        nombre, cuit, email, telefono, firma, usarFirma, // 🔥 LO GUARDAMOS
+        nombre, cuit, email, telefono, firma, usarFirma, 
         mensajeVencimiento, mensajeBienvenida,
+        mensajePolizaCritica, mensajePolizaVencida, // 🔥 Y LOS AGREGAMOS A LA BASE DE DATOS ACÁ
         diasAlertaVencimiento, diasAlertaCritica,
         envioAutomaticoActivo, horaEnvioAutomatico,
         diasAvisoAutomatico, enviarMailBienvenida 

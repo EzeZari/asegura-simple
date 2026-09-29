@@ -14,9 +14,11 @@ interface Props {
   selectedIds: number[];
   onToggleSelect: (id: number) => void;
   onToggleSelectAll: (ids: number[], isSelecting: boolean) => void;
+  // 🔥 AGREGAMOS LA PROP PARA RECIBIR LAS PLANTILLAS
+  plantillas: { proxima: string; critica: string; vencida: string }; 
 }
 
-export default function AlertaSection({ titulo, Icono, nivel, alertas = [], mensajeVacio, vista, selectedIds, onToggleSelect, onToggleSelectAll }: Props) {
+export default function AlertaSection({ titulo, Icono, nivel, alertas = [], mensajeVacio, vista, selectedIds, onToggleSelect, onToggleSelectAll, plantillas }: Props) {
   const [menuAbiertoId, setMenuAbiertoId] = useState<number | null>(null);
 
   const estilos = {
@@ -43,7 +45,14 @@ export default function AlertaSection({ titulo, Icono, nivel, alertas = [], mens
       ) : vista === "tarjetas" ? (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           {alertas.map(poliza => (
-            <AlertaCard key={poliza.id} poliza={poliza} nivel={nivel} isSelected={selectedIds.includes(poliza.id)} onSelect={() => onToggleSelect(poliza.id)} />
+            <AlertaCard 
+              key={poliza.id} 
+              poliza={poliza} 
+              nivel={nivel} 
+              isSelected={selectedIds.includes(poliza.id)} 
+              onSelect={() => onToggleSelect(poliza.id)} 
+              plantillas={plantillas} // 🔥 SE LAS PASAMOS A LA TARJETA
+            />
           ))}
         </div>
       ) : (
@@ -78,6 +87,7 @@ export default function AlertaSection({ titulo, Icono, nivel, alertas = [], mens
                   onToggleMenu={setMenuAbiertoId}
                   isSelected={selectedIds.includes(poliza.id)}
                   onSelect={() => onToggleSelect(poliza.id)}
+                  plantillas={plantillas} // 🔥 SE LAS PASAMOS A LA FILA
                 />
               ))}
             </tbody>
