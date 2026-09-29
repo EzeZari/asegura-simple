@@ -188,3 +188,28 @@ export const enviarAvisoCuentaSuspendida = async (email: string, nombre: string)
     await enviarAlertaErrorSistema('enviarAvisoCuentaSuspendida', error.message || error, `Cliente: ${nombre} | Email: ${email}`);
   }
 };
+export const enviarAlertaSugerencia = async (nombreCliente: string, emailCliente: string, plan: string, titulo: string, descripcion: string) => {
+  try {
+    await sendMail({
+      to: 'asegurasimple@gmail.com', // Te llega a vos
+      subject: `💡 Nueva Mejora Sugerida por ${nombreCliente}`,
+      html: `
+        <div style="font-family: Arial, sans-serif; padding: 20px; color: #333;">
+          <h2 style="color: #2563eb;">¡Tenés una nueva sugerencia!</h2>
+          <p>Un cliente con plan pago acaba de dejar una idea en el portal de mejoras:</p>
+          <div style="background-color: #f3f4f6; padding: 15px; border-radius: 8px; margin: 15px 0;">
+            <p><strong>Cliente:</strong> ${nombreCliente} (${emailCliente})</p>
+            <p><strong>Plan:</strong> ${plan}</p>
+            <hr style="border: 0; border-top: 1px solid #e5e7eb; margin: 15px 0;" />
+            <p><strong>Título:</strong> ${titulo}</p>
+            <p><strong>Desarrollo de la idea:</strong><br/>${descripcion.replace(/\n/g, '<br/>')}</p>
+          </div>
+          <p style="font-size: 12px; color: #6b7280;">Este es un mensaje automático de AseguraSimple.</p>
+        </div>
+      `
+    });
+    console.log(`📧 Alerta de sugerencia enviada a admin (Idea de: ${nombreCliente})`);
+  } catch (error: any) {
+    console.error("Error al enviar la alerta de sugerencia:", error);
+  }
+};

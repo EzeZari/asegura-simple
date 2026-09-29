@@ -244,6 +244,7 @@ model User {
   jefeId               Int?
   jefe                 User?         @relation("Equipo", fields: [jefeId], references: [id])
   empleados            User[]        @relation("Equipo")
+  sugerencias   Sugerencia[]
 }
 
 model Actividad {
@@ -334,4 +335,16 @@ model ComunicadoAdmin {
   tipoModal      String   @default("blue")
   
   updatedAt      DateTime @updatedAt
+}
+model Sugerencia {
+  id          Int      @id @default(autoincrement())
+  titulo      String
+  descripcion String   @db.Text
+  estado      String   @default("Pendiente") // Puede ser: Pendiente, En Análisis, En Desarrollo, Implementado
+  
+  // Relación con el usuario que la creó
+  userId      Int
+  user        User     @relation(fields: [userId], references: [id])
+  
+  createdAt   DateTime @default(now())
 }

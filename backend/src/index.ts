@@ -25,6 +25,7 @@ import equipoRoutes from './routes/equipo.routes';
 import adminRoutes from './routes/admin.routes';
 import contactoRoutes from './routes/contacto.routes';
 import healthRoutes from './routes/health.routes';
+import sugerenciaRoutes from './routes/sugerencia.routes';
 
 dotenv.config();
 
@@ -83,6 +84,7 @@ app.use('/api/equipo', equipoRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/contacto', contactoRoutes);
 app.use('/api/health', healthRoutes); // 🟢 El Health Check de UptimeRobot
+app.use('/api/sugerencias', sugerenciaRoutes);
 
 // 🔥 SENTRY 3: Atrapamos los errores (Debe ir SIEMPRE después de las rutas y antes del listen)
 Sentry.setupExpressErrorHandler(app);

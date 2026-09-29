@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { UserCircle, Building2, MessageSquare, Bell, Users, Shield, CreditCard } from "lucide-react"; 
+import { UserCircle, Building2, MessageSquare, Bell, Users, Shield, CreditCard, Lightbulb } from "lucide-react"; 
 
 import MiPerfilSettings from "@/components/configuracion/MiPerfilSettings"; 
 import PerfilSettings from "@/components/configuracion/PerfilSettings";
@@ -10,6 +10,8 @@ import NotificacionesSettings from "@/components/configuracion/NotificacionesSet
 import EquipoSettings from "@/components/configuracion/EquipoSettings";
 import SeguridadSettings from "@/components/configuracion/SeguridadSettings";
 import SuscripcionSettings from "@/components/configuracion/SuscripcionSettings"; 
+import MejorasSettings from "@/components/configuracion/MejorasSettings"; // 🔥 IMPORTAMOS LA NUEVA PESTAÑA
+
 import { useAuthStore } from "@/store/authStore"; 
 import { PERMISOS, tienePermiso } from "@/utils/roles"; 
 
@@ -28,13 +30,13 @@ export default function ConfiguracionPage() {
     { id: "notificaciones", label: "Notificaciones", icon: Bell, show: esAdmin },
     { id: "equipo", label: "Equipo", icon: Users, show: esDueno }, 
     { id: "suscripcion", label: "Suscripción", icon: CreditCard, show: esDueno }, 
-    { id: "seguridad", label: "Seguridad y Datos", icon: Shield, show: true }, 
+    { id: "seguridad", label: "Seguridad y Datos", icon: Shield, show: true },
+    { id: "mejoras", label: "Mejoras", icon: Lightbulb, show: true }, // 🔥 AGREGAMOS LA PESTAÑA AL FINAL
   ];
 
   const tabs = todasLasPestanas.filter(tab => tab.show);
 
   return (
-    // 🔥 Quitamos bg-white para que herede del layout
     <div className="flex flex-col p-4 lg:p-8 w-full gap-4 lg:gap-6 min-h-screen overflow-x-hidden transition-colors duration-300">
       <div>
         <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white tracking-tight transition-colors">Configuración</h1>
@@ -49,7 +51,6 @@ export default function ConfiguracionPage() {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              // 🔥 Colores de pestañas adaptados al modo oscuro
               className={`flex items-center gap-2 py-3 px-4 md:px-6 font-medium text-sm transition-colors border-b-2 mb-[-1px] whitespace-nowrap ${
                 isActive 
                   ? "border-green-600 dark:border-green-500 text-green-700 dark:text-green-400" 
@@ -70,6 +71,7 @@ export default function ConfiguracionPage() {
         {esDueno && activeTab === "equipo" && <EquipoSettings />}
         {esDueno && activeTab === "suscripcion" && <SuscripcionSettings />} 
         {activeTab === "seguridad" && <SeguridadSettings />} 
+        {activeTab === "mejoras" && <MejorasSettings />} {/* 🔥 RENDERIZAMOS EL COMPONENTE ACÁ */}
       </div>
     </div>
   );
