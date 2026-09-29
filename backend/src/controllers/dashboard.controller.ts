@@ -1,14 +1,12 @@
 import { Request, Response } from 'express';
 import { prisma } from '../config/db';
 
-// 🔥 HELPER: Función antibug para sacar el ID del token
 const obtenerIdSeguro = (req: any): number => {
   const idBruto = req.user?.userId || req.user?.id || req.usuario?.id || req.userId;
   if (!idBruto) throw new Error("No autorizado. Token inválido o sin ID.");
   return Number(idBruto);
 };
 
-// 🔥 HELPER: Detecta la Agencia para que el Vendedor vea los mismos números que el Dueño
 const obtenerProductorId = async (userId: number): Promise<number> => {
   const usuarioActual = await prisma.user.findUnique({ where: { id: userId } });
   const idAgencia = usuarioActual?.jefeId ? usuarioActual.jefeId : userId;
@@ -37,22 +35,16 @@ const obtenerProductorId = async (userId: number): Promise<number> => {
 export const getDashboardStats = async (req: Request, res: Response): Promise<any> => {
   try {
     const userId = obtenerIdSeguro(req);
-    const productorId = await obtenerProductorId(userId); // 🔥 Acá unificamos las vistas
+    const productorId = await obtenerProductorId(userId); 
 
-    // 1. Total Asegurados
     const totalAsegurados = await prisma.asegurado.count({
       where: { productorId: productorId, activo: true }
     });
 
-    // 2. Pólizas Activas (Vigentes reales)
     const polizasActivas = await prisma.poliza.count({
-      where: { 
-        asegurado: { productorId: productorId },
-        estado: 'Vigente' // 🔥 CORREGIDO: Ahora busca estrictamente "Vigente"
-      }
+      where: { productorId: productorId, estado: 'Vigente' }
     });
 
-    // 3. Vencimientos próximos (30 días)
     const hoy = new Date();
     hoy.setHours(0, 0, 0, 0);
     const en30Dias = new Date();
@@ -60,22 +52,67 @@ export const getDashboardStats = async (req: Request, res: Response): Promise<an
 
     const vencimientos = await prisma.poliza.count({
       where: {
-        asegurado: { productorId: productorId },
+        productorId: productorId,
         fechaVencimiento: { gte: hoy, lte: en30Dias },
-        estado: 'Vigente' // 🔥 CORREGIDO: Solo alerta sobre vencimientos de las que están vigentes
+        estado: 'Vigente' 
       }
     });
 
-    // 4. Total Aseguradoras
     const totalCompanias = await prisma.compania.count({
       where: { productorId: productorId }
     });
 
-    // 5. Actividad Reciente de TODA la agencia
-    const actividadReciente = await prisma.actividad.findMany({
+    const historial = await prisma.actividad.findMany({
       where: { productorId: productorId },
+      take: 10,
+      orderBy: { fecha: 'desc' }
+    });
+
+    const actividadReciente = historial.map(h => ({
+      id: h.id.toString(),
+      type: `${h.accion} ${h.entidad}`, 
+      detail: h.descripcion,
+      client: h.cliente,
+      date: h.fecha.toLocaleString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires', hour: '2-digit', minute:'2-digit', day: '2-digit', month: '2-digit' })
+    }));
+
+    // 🔥 AHORA TRAEMOS TODOS LOS VENCIMIENTOS DEL MES (Sin el 'take: 7')
+    const renovacionesProximas = await prisma.poliza.findMany({
+      where: {
+        productorId: productorId,
+        estado: 'Vigente',
+        fechaVencimiento: { gte: hoy, lte: en30Dias }
+      },
+      include: {
+        asegurado: { select: { nombre: true, apellido: true } },
+        compania: { select: { nombre: true } }
+      },
+      orderBy: { fechaVencimiento: 'asc' }
+    });
+
+    // 🔥 AHORA TRAEMOS TODOS LOS SINIESTROS ACTIVOS (Sin el 'take: 5')
+    const siniestrosActivosRaw = await prisma.siniestro.findMany({
+      where: {
+        productorId: productorId,
+        estadoSiniestro: { not: 'Cerrado' }
+      },
+      include: {
+        poliza: { include: { asegurado: { select: { nombre: true, apellido: true } } } }
+      },
+      orderBy: { fechaHecho: 'desc' }
+    });
+
+    const siniestrosActivos = siniestrosActivosRaw.map(sin => ({
+      ...sin,
+      asegurado: sin.poliza?.asegurado,
+      fechaOcurrencia: sin.fechaHecho,
+      estado: sin.estadoSiniestro
+    }));
+
+    const actividadRobots = await prisma.actividad.findMany({
+      where: { productorId: productorId, accion: 'Automatización' },
       orderBy: { fecha: 'desc' },
-      take: 10
+      take: 5
     });
 
     res.json({
@@ -83,7 +120,10 @@ export const getDashboardStats = async (req: Request, res: Response): Promise<an
       polizasActivas,
       vencimientos,
       totalCompanias,
-      actividadReciente
+      actividadReciente,
+      renovacionesProximas,
+      siniestrosActivos,
+      actividadRobots
     });
   } catch (error: any) {
     console.error("Error al obtener estadísticas del dashboard:", error);

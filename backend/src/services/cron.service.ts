@@ -100,10 +100,11 @@ export const iniciarTareasProgramadas = () => {
         for (const poliza of polizasAVencer) {
           if (poliza.asegurado?.email) {
             const cuponeraParaEnviar = (poliza.enviarCuponera && poliza.cuponeraUrl) ? poliza.cuponeraUrl : null;
+            const clienteNombre = `${poliza.asegurado.nombre} ${poliza.asegurado.apellido || ''}`.trim();
 
             await enviarAvisoVencimiento(
               poliza.asegurado.email,
-              `${poliza.asegurado.nombre} ${poliza.asegurado.apellido || ''}`.trim(),
+              clienteNombre,
               poliza.nroPoliza,
               poliza.compania?.nombre || "Sin Compañía",
               poliza.tipoPoliza,
@@ -121,21 +122,24 @@ export const iniciarTareasProgramadas = () => {
               where: { id: poliza.id },
               data: { ultimoAviso: new Date() }
             });
+            
+            // 🔥 LA MAGIA ACÁ: Registro individual en la bitácora
+            await prisma.actividad.create({
+              data: {
+                accion: "Automatización",
+                entidad: "Aviso",
+                descripcion: `Aviso de vencimiento (Póliza #${poliza.nroPoliza})`,
+                cliente: clienteNombre,
+                productorId: productor.id 
+              }
+            });
+
             enviados++;
           }
         }
 
         if (enviados > 0) {
-          await prisma.actividad.create({
-            data: {
-              accion: "Automatización",
-              entidad: "Sistema",
-              descripcion: `Robot automático: ${enviados} avisos enviados (Preventivos + Críticos).`,
-              cliente: "Robot",
-              productorId: productor.id 
-            }
-          });
-          console.log(`[ROBOT] Trabajo terminado para ${productor.nombre}: ${enviados} correos enviados.`);
+          console.log(`[ROBOT] Trabajo terminado para ${productor.nombre}: ${enviados} correos enviados y registrados individualmente.`);
         }
       }
     } catch (error: any) {
@@ -160,17 +164,14 @@ export const iniciarTareasProgramadas = () => {
 
       const hoy = new Date();
       
-      // 1. Rango para los que vencen en 3 DÍAS (Aviso Preventivo)
       const target3Dias = new Date();
       target3Dias.setDate(hoy.getDate() + 3); 
       const inicio3Dias = new Date(target3Dias.setHours(0, 0, 0, 0));
       const fin3Dias = new Date(target3Dias.setHours(23, 59, 59, 999));
 
-      // 2. Rango para los que vencen HOY (Aviso de Vencimiento)
       const inicioHoy = new Date(hoy).setHours(0, 0, 0, 0);
       const finHoy = new Date(hoy).setHours(23, 59, 59, 999);
 
-      // Traemos las suscripciones que entran en la ventana de 3 días
       const aVencerEn3Dias = await prisma.suscripcion.findMany({
         where: {
           fechaVencimiento: { gte: new Date(inicio3Dias), lte: new Date(fin3Dias) }
@@ -178,7 +179,6 @@ export const iniciarTareasProgramadas = () => {
         include: { user: true }
       });
 
-      // Traemos las suscripciones que están venciendo en el día de hoy
       const vencenHoy = await prisma.suscripcion.findMany({
         where: {
           fechaVencimiento: { gte: new Date(inicioHoy), lte: new Date(finHoy) }
@@ -189,7 +189,6 @@ export const iniciarTareasProgramadas = () => {
       let avisos3Dias = 0;
       let avisosHoy = 0;
 
-      // Despachar recordatorios de 3 Días
       for (const sub of aVencerEn3Dias) {
         if (sub.user && sub.user.plan !== 'GRATUITO' && sub.user.email) {
           await enviarRecordatorioSuscripcion(sub.user.email, sub.user.nombre, sub.fechaVencimiento!);
@@ -197,7 +196,6 @@ export const iniciarTareasProgramadas = () => {
         }
       }
 
-      // Despachar avisos de Vencimiento (Hoy)
       for (const sub of vencenHoy) {
         if (sub.user && sub.user.plan !== 'GRATUITO' && sub.user.email) {
           await enviarAvisoCuentaSuspendida(sub.user.email, sub.user.nombre);

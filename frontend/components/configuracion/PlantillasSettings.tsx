@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Save, MessageSquare, Info, Smartphone, CheckCheck } from "lucide-react";
 import Toast from "@/components/ui/Toast";
+import { apiFetch } from "@/services/api"; // ← AGREGAR
 
 const DEFAULT_VENCIMIENTO = "Hola [Nombre], te escribimos de AseguraSimple. Te avisamos que tu póliza de [Rama] [Patente] ([NroPoliza]) en [Compania] vence el próximo [Vencimiento]. Por favor, confirmame si avanzamos con la renovación.";
 const DEFAULT_BIENVENIDA = "¡Hola [Nombre]! Bienvenido/a. Te confirmamos que ya emitimos tu nueva póliza de [Rama] [Patente] con [Compania]. Tu número de póliza es [NroPoliza]. Cualquier consulta estamos a disposición.";
@@ -24,7 +25,7 @@ export default function PlantillasSettings() {
   useEffect(() => {
     const fetchPlantillas = async () => {
       try {
-        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/agencia`);
+        const res = await apiFetch('/api/agencia'); // ← CAMBIO
         const data = await res.json();
         setAgencia({
           ...data,
@@ -43,9 +44,8 @@ export default function PlantillasSettings() {
   const guardarPlantillas = async () => {
     setIsSaving(true);
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/agencia`, {
+      const res = await apiFetch('/api/agencia', { // ← CAMBIO
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(agencia),
       });
 
@@ -66,7 +66,6 @@ export default function PlantillasSettings() {
     setAgencia({ ...agencia, [e.target.name]: e.target.value });
   };
 
-  // 🔥 Inserta la variable en la posición del cursor
   const insertarVariable = (campo: "mensajeVencimiento" | "mensajeBienvenida", tag: string) => {
     const ref = campo === "mensajeVencimiento" ? vtoRef.current : bienvenidaRef.current;
     if (!ref) {
@@ -93,20 +92,17 @@ export default function PlantillasSettings() {
     { tag: "[NroPoliza]", desc: "Número de la póliza" },
     { tag: "[Vencimiento]", desc: "Fecha de fin de vigencia" },
     { tag: "[Rama]", desc: "Tipo de cobertura (Auto, Hogar, etc.)" },
-    { tag: "[Patente]", desc: "Patente del vehículo (si aplica)" }, // 🔥 NUEVA VARIABLE
+    { tag: "[Patente]", desc: "Patente del vehículo (si aplica)" },
   ];
 
-  // Render simulador de mensaje real
   const renderSimulador = (plantillaRaw: string) => {
-    const mensaje = (plantillaRaw || "")
+    return (plantillaRaw || "")
       .replace(/\[Nombre\]/g, "Juan Pérez")
       .replace(/\[Compania\]/g, "Sancor Seguros")
       .replace(/\[NroPoliza\]/g, "POL-98421")
       .replace(/\[Vencimiento\]/g, "15/11/2026")
       .replace(/\[Rama\]/g, "Automotor")
       .replace(/\[Patente\]/g, "(Patente: AB 123 CD)");
-
-    return mensaje;
   };
 
   if (isLoading) {
@@ -116,7 +112,6 @@ export default function PlantillasSettings() {
   return (
     <div className="flex flex-col gap-6 animate-in fade-in duration-300">
       
-      {/* Caja de ayuda con chips interactivos */}
       <div className="bg-blue-50/60 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800/30 p-5 rounded-2xl flex gap-3.5 items-start transition-colors">
         <Info size={20} className="text-blue-600 dark:text-blue-400 mt-0.5 shrink-0" />
         <div className="flex flex-col gap-2">
@@ -141,13 +136,11 @@ export default function PlantillasSettings() {
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         
-        {/* Formulario de Edición */}
         <div className="lg:col-span-7 bg-white dark:bg-gray-800 p-5 md:p-6 rounded-2xl border border-gray-200/80 dark:border-gray-700 shadow-sm flex flex-col gap-6 transition-colors">
           <h3 className="text-lg font-bold text-gray-900 dark:text-white border-b border-gray-100 dark:border-gray-700 pb-3 flex items-center gap-2">
             <MessageSquare size={18} className="text-green-600 dark:text-green-500" /> Plantillas de WhatsApp
           </h3>
 
-          {/* Plantilla 1: Vencimiento */}
           <div className="flex flex-col gap-2">
             <div className="flex justify-between items-center">
               <label className="text-sm font-bold text-gray-800 dark:text-gray-200">
@@ -166,7 +159,6 @@ export default function PlantillasSettings() {
               className="w-full p-3.5 bg-gray-50/50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-600 rounded-xl outline-none focus:ring-2 focus:ring-green-600 dark:focus:ring-green-500 text-sm text-gray-900 dark:text-white resize-none leading-relaxed transition-colors font-sans"
             />
 
-            {/* Inserción rápida */}
             <div className="flex flex-wrap items-center gap-1.5 pt-1">
               <span className="text-[11px] text-gray-400 mr-1 font-medium">Insertar:</span>
               {variablesDisponibles.map((v) => (
@@ -182,7 +174,6 @@ export default function PlantillasSettings() {
             </div>
           </div>
 
-          {/* Plantilla 2: Bienvenida */}
           <div className="flex flex-col gap-2 pt-4 border-t border-gray-100 dark:border-gray-700">
             <div className="flex justify-between items-center">
               <label className="text-sm font-bold text-gray-800 dark:text-gray-200">
@@ -201,7 +192,6 @@ export default function PlantillasSettings() {
               className="w-full p-3.5 bg-gray-50/50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-600 rounded-xl outline-none focus:ring-2 focus:ring-green-600 dark:focus:ring-green-500 text-sm text-gray-900 dark:text-white resize-none leading-relaxed transition-colors font-sans"
             />
 
-            {/* Inserción rápida */}
             <div className="flex flex-wrap items-center gap-1.5 pt-1">
               <span className="text-[11px] text-gray-400 mr-1 font-medium">Insertar:</span>
               {variablesDisponibles.map((v) => (
@@ -228,7 +218,6 @@ export default function PlantillasSettings() {
           </div>
         </div>
 
-        {/* Simulador visual en vivo de WhatsApp */}
         <div className="lg:col-span-5 flex flex-col gap-3">
           <div className="flex items-center justify-between px-1">
             <div className="flex items-center gap-2 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
@@ -260,10 +249,7 @@ export default function PlantillasSettings() {
             </div>
           </div>
 
-          {/* Maqueta de celular */}
           <div className="bg-[#efeae2] dark:bg-[#0b141a] rounded-3xl p-4 md:p-5 border border-gray-300 dark:border-gray-800 shadow-inner flex flex-col min-h-[360px] justify-end relative overflow-hidden transition-colors">
-            
-            {/* Mensaje simulado */}
             <div className="bg-white dark:bg-[#202c33] text-gray-900 dark:text-[#e9edef] rounded-2xl rounded-tr-none p-3.5 max-w-[90%] shadow-md ml-auto relative">
               <p className="text-xs sm:text-sm leading-relaxed whitespace-pre-wrap font-sans">
                 {renderSimulador(previewTab === "vencimiento" ? agencia.mensajeVencimiento : agencia.mensajeBienvenida)}
