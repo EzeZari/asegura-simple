@@ -19,6 +19,14 @@ const ESTADO_INICIAL = {
   patente: "", marca: "", modelo: "", ubicacionRiesgo: "", cantidadEmpleados: "", enviarCuponera: false, 
 };
 
+const FORMAS_PAGO = [
+  "Tarjeta de Crédito",
+  "Tarjeta de Débito", 
+  "CBU / Débito Automático",
+  "Efectivo / Cupón",
+  "Transferencia"
+];
+
 export default function NuevaPolizaModal({ isOpen, onClose, onSuccess, polizaAEditar, isRenovacion = false }: Props) {
   const [formData, setFormData] = useState(ESTADO_INICIAL);
   const [clientes, setClientes] = useState<any[]>([]); 
@@ -34,69 +42,80 @@ export default function NuevaPolizaModal({ isOpen, onClose, onSuccess, polizaAEd
   const cuponeraInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    if (isOpen) {
-      apiFetch('/api/asegurados')
-        .then((res) => res.json())
-        .then((data) => {
-          if (Array.isArray(data)) setClientes(data.filter((c: any) => c.activo));
-        })
-        .catch((err) => console.error("Error al cargar clientes:", err));
-      
-      apiFetch('/api/companias')
-        .then((res) => res.json())
-        .then((data) => {
-          if (Array.isArray(data)) setCompanias(data);
-        })
-        .catch((err) => console.error("Error al cargar compañías:", err));
-
-      if (polizaAEditar) {
-        if (isRenovacion) {
-          const fechaInicioNueva = polizaAEditar.fechaVencimiento.split('T')[0];
-          const [año, mes, dia] = fechaInicioNueva.split('-');
-          
-          const vDate = new Date(Number(año), Number(mes) - 1, Number(dia));
-          vDate.setMonth(vDate.getMonth() + 6);
-          
-          const yyyy = vDate.getFullYear();
-          const mm = String(vDate.getMonth() + 1).padStart(2, '0');
-          const dd = String(vDate.getDate()).padStart(2, '0');
-          const fechaVencimientoNueva = `${yyyy}-${mm}-${dd}`;
-
-          setFormData({
-            ...polizaAEditar,
-            nroPoliza: "", 
-            fechaInicio: fechaInicioNueva,
-            fechaVencimiento: fechaVencimientoNueva,
-            estado: "Vigente", 
-            aseguradoId: polizaAEditar.aseguradoId.toString(),
-            companiaId: polizaAEditar.companiaId?.toString() || "",
-            formaPago: polizaAEditar.formaPago || "",
-            enviarCuponera: polizaAEditar.enviarCuponera || false, 
-          });
-        } else {
-          setFormData({
-            ...polizaAEditar,
-            fechaInicio: polizaAEditar.fechaInicio.split('T')[0],
-            fechaVencimiento: polizaAEditar.fechaVencimiento.split('T')[0],
-            aseguradoId: polizaAEditar.aseguradoId.toString(),
-            companiaId: polizaAEditar.companiaId?.toString() || "",
-            formaPago: polizaAEditar.formaPago || "",
-            enviarCuponera: polizaAEditar.enviarCuponera || false, 
-          });
-        }
-      } else {
-        setFormData(ESTADO_INICIAL);
-      }
-      
+    // 🔥 BUG 4 FIX: Limpieza completa al cerrar
+    if (!isOpen) {
+      setFormData(ESTADO_INICIAL);
       setErrorGlobal("");
       setErrores({});
-      
       setPdfFile(null);
-      if (fileInputRef.current) fileInputRef.current.value = '';
-
       setCuponeraFile(null);
+      if (fileInputRef.current) fileInputRef.current.value = '';
       if (cuponeraInputRef.current) cuponeraInputRef.current.value = '';
+      return;
     }
+
+    apiFetch('/api/asegurados')
+      .then((res) => res.json())
+      .then((data) => {
+        if (Array.isArray(data)) setClientes(data.filter((c: any) => c.activo));
+      })
+      .catch((err) => console.error("Error al cargar clientes:", err));
+    
+    apiFetch('/api/companias')
+      .then((res) => res.json())
+      .then((data) => {
+        if (Array.isArray(data)) setCompanias(data);
+      })
+      .catch((err) => console.error("Error al cargar compañías:", err));
+
+    if (polizaAEditar) {
+      if (isRenovacion) {
+        const fechaInicioNueva = polizaAEditar.fechaVencimiento.split('T')[0];
+        const [año, mes, dia] = fechaInicioNueva.split('-');
+        
+        const vDate = new Date(Number(año), Number(mes) - 1, Number(dia));
+        vDate.setMonth(vDate.getMonth() + 6);
+        
+        const yyyy = vDate.getFullYear();
+        const mm = String(vDate.getMonth() + 1).padStart(2, '0');
+        const dd = String(vDate.getDate()).padStart(2, '0');
+        const fechaVencimientoNueva = `${yyyy}-${mm}-${dd}`;
+
+        setFormData({
+          ...ESTADO_INICIAL,
+          ...polizaAEditar,
+          nroPoliza: "", 
+          fechaInicio: fechaInicioNueva,
+          fechaVencimiento: fechaVencimientoNueva,
+          estado: "Vigente", 
+          aseguradoId: polizaAEditar.aseguradoId.toString(),
+          companiaId: polizaAEditar.companiaId?.toString() || "",
+          formaPago: polizaAEditar.formaPago || "",
+          enviarCuponera: polizaAEditar.enviarCuponera || false, 
+        });
+      } else {
+        setFormData({
+          ...ESTADO_INICIAL,
+          ...polizaAEditar,
+          fechaInicio: polizaAEditar.fechaInicio.split('T')[0],
+          fechaVencimiento: polizaAEditar.fechaVencimiento.split('T')[0],
+          aseguradoId: polizaAEditar.aseguradoId.toString(),
+          companiaId: polizaAEditar.companiaId?.toString() || "",
+          formaPago: polizaAEditar.formaPago || "",
+          enviarCuponera: polizaAEditar.enviarCuponera || false, 
+        });
+      }
+    } else {
+      setFormData(ESTADO_INICIAL);
+    }
+    
+    setErrorGlobal("");
+    setErrores({});
+    setPdfFile(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+    setCuponeraFile(null);
+    if (cuponeraInputRef.current) cuponeraInputRef.current.value = '';
+
   }, [isOpen, polizaAEditar, isRenovacion]);
 
   if (!isOpen) return null;
@@ -104,9 +123,7 @@ export default function NuevaPolizaModal({ isOpen, onClose, onSuccess, polizaAEd
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const target = e.target as HTMLInputElement;
     const value = target.type === 'checkbox' ? target.checked : target.value;
-    
     setFormData({ ...formData, [target.name]: value });
-    
     if (errores[target.name]) {
       setErrores({ ...errores, [target.name]: "" });
     }
@@ -179,9 +196,6 @@ export default function NuevaPolizaModal({ isOpen, onClose, onSuccess, polizaAEd
       const payloadToSave: any = { ...formData };
       delete payloadToSave.asegurado; 
       delete payloadToSave.compania;  
-      
-      // 🔥 LA SOLUCIÓN: Borramos estadoCuotas para que el backend lo vea como "undefined"
-      // y aplique la lógica de generación automática para pólizas viejas.
       delete payloadToSave.estadoCuotas; 
       
       if (!isEditMode) {
@@ -332,22 +346,16 @@ export default function NuevaPolizaModal({ isOpen, onClose, onSuccess, polizaAEd
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 transition-colors">Vigencia Desde *</label>
                 <input 
-                  type="date" 
-                  name="fechaInicio" 
-                  value={formData.fechaInicio} 
-                  onChange={handleChange} 
-                  className={`w-full px-3 py-2 border bg-transparent text-gray-900 dark:text-white ${errores.fechaInicio ? 'border-red-500 bg-red-50 dark:bg-red-900/20' : 'border-gray-200 dark:border-gray-700'} rounded-lg focus:ring-2 focus:ring-green-600 dark:focus:ring-green-500 outline-none transition-colors ${!errores.fechaInicio && 'dark:text-gray-300'}`} 
+                  type="date" name="fechaInicio" value={formData.fechaInicio} onChange={handleChange} 
+                  className={`w-full px-3 py-2 border bg-transparent text-gray-900 dark:text-white ${errores.fechaInicio ? 'border-red-500 bg-red-50 dark:bg-red-900/20' : 'border-gray-200 dark:border-gray-700'} rounded-lg focus:ring-2 focus:ring-green-600 dark:focus:ring-green-500 outline-none transition-colors`} 
                 />
                 {errores.fechaInicio && <p className="text-red-500 text-xs mt-1 font-medium">{errores.fechaInicio}</p>}
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 transition-colors">Vigencia Hasta *</label>
                 <input 
-                  type="date" 
-                  name="fechaVencimiento" 
-                  value={formData.fechaVencimiento} 
-                  onChange={handleChange} 
-                  className={`w-full px-3 py-2 border bg-transparent text-gray-900 dark:text-white ${errores.fechaVencimiento ? 'border-red-500 bg-red-50 dark:bg-red-900/20' : 'border-gray-200 dark:border-gray-700'} rounded-lg focus:ring-2 focus:ring-green-600 dark:focus:ring-green-500 outline-none transition-colors ${!errores.fechaVencimiento && 'dark:text-gray-300'}`} 
+                  type="date" name="fechaVencimiento" value={formData.fechaVencimiento} onChange={handleChange} 
+                  className={`w-full px-3 py-2 border bg-transparent text-gray-900 dark:text-white ${errores.fechaVencimiento ? 'border-red-500 bg-red-50 dark:bg-red-900/20' : 'border-gray-200 dark:border-gray-700'} rounded-lg focus:ring-2 focus:ring-green-600 dark:focus:ring-green-500 outline-none transition-colors`} 
                 />
                 {errores.fechaVencimiento && <p className="text-red-500 text-xs mt-1 font-medium">{errores.fechaVencimiento}</p>}
               </div>
@@ -365,13 +373,15 @@ export default function NuevaPolizaModal({ isOpen, onClose, onSuccess, polizaAEd
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 transition-colors">Forma de Pago</label>
-                <select name="formaPago" value={formData.formaPago} onChange={handleChange} className="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-green-600 dark:focus:ring-green-500 outline-none bg-transparent text-gray-900 dark:text-white transition-colors">
+                {/* 🔥 BUG 3 FIX: Muestra el valor guardado aunque no esté en la lista */}
+                <select name="formaPago" value={formData.formaPago || ""} onChange={handleChange} className="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-green-600 dark:focus:ring-green-500 outline-none bg-transparent text-gray-900 dark:text-white transition-colors">
                   <option value="" className="dark:bg-gray-800">-- Seleccionar --</option>
-                  <option value="Tarjeta de Crédito" className="dark:bg-gray-800">Tarjeta de Crédito</option>
-                  <option value="Tarjeta de Débito" className="dark:bg-gray-800">Tarjeta de Débito</option>
-                  <option value="CBU / Débito Automático" className="dark:bg-gray-800">CBU / Débito Automático</option>
-                  <option value="Efectivo / Cupón" className="dark:bg-gray-800">Efectivo / Pago Fácil</option>
-                  <option value="Transferencia" className="dark:bg-gray-800">Transferencia Bancaria</option>
+                  {FORMAS_PAGO.map(f => (
+                    <option key={f} value={f} className="dark:bg-gray-800">{f}</option>
+                  ))}
+                  {formData.formaPago && !FORMAS_PAGO.includes(formData.formaPago) && (
+                    <option value={formData.formaPago} className="dark:bg-gray-800">{formData.formaPago}</option>
+                  )}
                 </select>
               </div>
               <div>
@@ -388,12 +398,7 @@ export default function NuevaPolizaModal({ isOpen, onClose, onSuccess, polizaAEd
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 transition-colors">Patente</label>
-                    <input 
-                      type="text" 
-                      name="patente" 
-                      value={formData.patente || ""} 
-                      onChange={handleChange} 
-                      placeholder="Ej: AB123CD" 
+                    <input type="text" name="patente" value={formData.patente || ""} onChange={handleChange} placeholder="Ej: AB123CD" 
                       className={`w-full px-3 py-2 border bg-transparent text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 ${errores.patente ? 'border-red-500 bg-red-50 dark:bg-red-900/20' : 'border-gray-200 dark:border-gray-700'} rounded-lg focus:ring-2 focus:ring-green-600 dark:focus:ring-green-500 outline-none uppercase transition-colors`} 
                     />
                     {errores.patente && <p className="text-red-500 text-xs mt-1 font-medium">{errores.patente}</p>}
@@ -412,7 +417,7 @@ export default function NuevaPolizaModal({ isOpen, onClose, onSuccess, polizaAEd
 
             {(formData.tipoPoliza === "Combinado familiar" || formData.tipoPoliza === "Integral para comercio") && (
               <div className="space-y-4 pt-4 border-t border-gray-100 dark:border-gray-700 mt-4 animate-in fade-in slide-in-from-top-2 duration-300 transition-colors">
-                 <h3 className="text-sm font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider flex items-center gap-2 transition-colors">
+                <h3 className="text-sm font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider flex items-center gap-2 transition-colors">
                   Ubicación del Riesgo <span className="text-[10px] bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 px-2 py-0.5 rounded-full normal-case transition-colors">Opcional</span>
                 </h3>
                 <div>
@@ -424,7 +429,7 @@ export default function NuevaPolizaModal({ isOpen, onClose, onSuccess, polizaAEd
 
             {formData.tipoPoliza === "ART" && (
               <div className="space-y-4 pt-4 border-t border-gray-100 dark:border-gray-700 mt-4 animate-in fade-in slide-in-from-top-2 duration-300 transition-colors">
-                 <h3 className="text-sm font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider flex items-center gap-2 transition-colors">
+                <h3 className="text-sm font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider flex items-center gap-2 transition-colors">
                   Datos Laborales <span className="text-[10px] bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 px-2 py-0.5 rounded-full normal-case transition-colors">Opcional</span>
                 </h3>
                 <div>
@@ -438,39 +443,21 @@ export default function NuevaPolizaModal({ isOpen, onClose, onSuccess, polizaAEd
               <h3 className="text-sm font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider flex items-center gap-2 transition-colors">
                 Póliza Digital <span className="text-[10px] bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 px-2 py-0.5 rounded-full normal-case transition-colors">Opcional</span>
               </h3>
-              
               <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-                <input 
-                  type="file" 
-                  ref={fileInputRef} 
-                  onChange={handleFileChange} 
-                  accept="application/pdf" 
-                  className="hidden" 
-                />
-                
-                <button 
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  className="flex items-center gap-2 px-4 py-2 bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg font-medium transition-colors"
-                >
+                <input type="file" ref={fileInputRef} onChange={handleFileChange} accept="application/pdf" className="hidden" />
+                <button type="button" onClick={() => fileInputRef.current?.click()} className="flex items-center gap-2 px-4 py-2 bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg font-medium transition-colors">
                   <UploadCloud size={18} />
                   {pdfFile ? "Cambiar archivo" : "Adjuntar PDF"}
                 </button>
-
                 {pdfFile && (
                   <div className="flex items-center gap-2 text-sm text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-900/30 px-3 py-1.5 rounded-lg border border-green-200 dark:border-green-800/30 transition-colors">
                     <FileText size={16} />
                     <span className="font-medium truncate max-w-[200px]">{pdfFile.name}</span>
-                    <button 
-                      type="button" 
-                      onClick={() => { setPdfFile(null); if (fileInputRef.current) fileInputRef.current.value = ''; }}
-                      className="ml-2 text-green-600 dark:text-green-500 hover:text-red-500 dark:hover:text-red-400 transition-colors"
-                    >
+                    <button type="button" onClick={() => { setPdfFile(null); if (fileInputRef.current) fileInputRef.current.value = ''; }} className="ml-2 text-green-600 dark:text-green-500 hover:text-red-500 dark:hover:text-red-400 transition-colors">
                       <X size={16} />
                     </button>
                   </div>
                 )}
-                
                 {!pdfFile && polizaAEditar?.pdfUrl && (
                   <span className="text-sm text-gray-500 dark:text-gray-400 italic transition-colors">Ya tiene un PDF guardado.</span>
                 )}
@@ -481,59 +468,32 @@ export default function NuevaPolizaModal({ isOpen, onClose, onSuccess, polizaAEd
               <h3 className="text-sm font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider flex items-center gap-2 transition-colors">
                 Cuponera de Pago <span className="text-[10px] bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 px-2 py-0.5 rounded-full normal-case transition-colors">Opcional</span>
               </h3>
-              
               <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-                <input 
-                  type="file" 
-                  ref={cuponeraInputRef} 
-                  onChange={handleCuponeraChange} 
-                  accept="application/pdf" 
-                  className="hidden" 
-                />
-                
-                <button 
-                  type="button"
-                  onClick={() => cuponeraInputRef.current?.click()}
-                  className="flex items-center gap-2 px-4 py-2 bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-900/50 border border-blue-200 dark:border-blue-800/30 text-blue-700 dark:text-blue-400 rounded-lg font-medium transition-colors"
-                >
+                <input type="file" ref={cuponeraInputRef} onChange={handleCuponeraChange} accept="application/pdf" className="hidden" />
+                <button type="button" onClick={() => cuponeraInputRef.current?.click()} className="flex items-center gap-2 px-4 py-2 bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-900/50 border border-blue-200 dark:border-blue-800/30 text-blue-700 dark:text-blue-400 rounded-lg font-medium transition-colors">
                   <UploadCloud size={18} />
                   {cuponeraFile ? "Cambiar Cuponera" : "Adjuntar Cuponera"}
                 </button>
-
                 {cuponeraFile && (
                   <div className="flex items-center gap-2 text-sm text-blue-700 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 px-3 py-1.5 rounded-lg border border-blue-200 dark:border-blue-800/30 transition-colors">
                     <FileText size={16} />
                     <span className="font-medium truncate max-w-[200px]">{cuponeraFile.name}</span>
-                    <button 
-                      type="button" 
-                      onClick={() => { setCuponeraFile(null); if (cuponeraInputRef.current) cuponeraInputRef.current.value = ''; }}
-                      className="ml-2 text-blue-600 dark:text-blue-500 hover:text-red-500 dark:hover:text-red-400 transition-colors"
-                    >
+                    <button type="button" onClick={() => { setCuponeraFile(null); if (cuponeraInputRef.current) cuponeraInputRef.current.value = ''; }} className="ml-2 text-blue-600 dark:text-blue-500 hover:text-red-500 dark:hover:text-red-400 transition-colors">
                       <X size={16} />
                     </button>
                   </div>
                 )}
-                
                 {!cuponeraFile && polizaAEditar?.cuponeraUrl && (
                   <span className="text-sm text-gray-500 dark:text-gray-400 italic transition-colors">Ya tiene una cuponera guardada.</span>
                 )}
               </div>
-
               <div className="flex items-center gap-3 mt-3 p-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-700 rounded-lg transition-colors">
-                <input
-                  type="checkbox"
-                  id="enviarCuponera"
-                  name="enviarCuponera"
-                  checked={formData.enviarCuponera}
-                  onChange={handleChange}
-                  className="w-4 h-4 text-green-600 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 rounded focus:ring-green-600 dark:focus:ring-green-500 transition-colors"
-                />
+                <input type="checkbox" id="enviarCuponera" name="enviarCuponera" checked={formData.enviarCuponera} onChange={handleChange} className="w-4 h-4 text-green-600 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 rounded focus:ring-green-600 dark:focus:ring-green-500 transition-colors" />
                 <label htmlFor="enviarCuponera" className="text-sm text-gray-700 dark:text-gray-300 font-medium cursor-pointer leading-tight transition-colors">
                   Adjuntar automáticamente esta cuponera en el correo de aviso de vencimiento.
                 </label>
               </div>
             </div>
-
           </div>
 
           <div className="mt-4 flex justify-end gap-3 pt-6 border-t border-gray-100 dark:border-gray-700 transition-colors">

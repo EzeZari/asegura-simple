@@ -32,8 +32,15 @@ const normalizarRama = (valor: any) => {
   if (!valor) return 'Automotor';
   const v = String(valor).toLowerCase().trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
   
-  if (v.includes('auto') || v.includes('vehiculo') || v.includes('coche')) return 'Automotor';
+  // 🔥 BUG 2.1 FIX: El orden de los factores sí altera el producto.
+  // 1. Si dice "auto" (Automotor, Auto), lo sacamos del medio rápido.
+  if (v.includes('auto') || v.includes('coche')) return 'Automotor';
+  
+  // 2. Si sobrevivió al filtro anterior y dice "moto" (Motovehículo, Moto), es moto.
   if (v.includes('moto')) return 'Motovehículo';
+  
+  // 3. Si dice "vehiculo" a secas (y no fue "motovehículo"), es Automotor.
+  if (v.includes('vehiculo')) return 'Automotor';
   
   if (v.includes('art') || v.includes('riesgo de trabajo')) return 'ART';
   if (v.includes('vida') && v.includes('colectivo')) return 'Vida colectivo';

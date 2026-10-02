@@ -29,6 +29,14 @@ export default function NuevoAseguradoModal({ isOpen, onClose, onSuccess, client
   const setShowUpgradeModal = useAuthStore((state) => state.setShowUpgradeModal);
 
   useEffect(() => {
+    // 🔥 FIX: Limpieza total al cerrar el modal
+    if (!isOpen) {
+      setFormData(ESTADO_INICIAL);
+      setError("");
+      setErrores({});
+      return;
+    }
+
     if (clienteAEditar) {
       setFormData({
         ...ESTADO_INICIAL,
@@ -109,7 +117,6 @@ export default function NuevoAseguradoModal({ isOpen, onClose, onSuccess, client
   return (
     <>
       <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-        {/* 🔥 Adaptado: bg-white -> dark:bg-gray-800 y bordes oscuros */}
         <div className="bg-white dark:bg-gray-800 rounded-xl p-6 w-full max-w-2xl shadow-xl relative animate-in fade-in zoom-in duration-200 max-h-[90vh] overflow-y-auto border border-transparent dark:border-gray-700 transition-colors">
           <button onClick={onClose} className="absolute top-4 right-4 text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors p-1">
             <X size={24} />
@@ -127,7 +134,6 @@ export default function NuevoAseguradoModal({ isOpen, onClose, onSuccess, client
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="md:col-span-2">
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nombre Completo / Razón Social *</label>
-                  {/* 🔥 Adaptación de inputs para fondos oscuros */}
                   <input 
                     type="text" 
                     name="nombre" 
