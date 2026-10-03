@@ -42,7 +42,6 @@ export default function NuevaPolizaModal({ isOpen, onClose, onSuccess, polizaAEd
   const cuponeraInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    // 🔥 BUG 4 FIX: Limpieza completa al cerrar
     if (!isOpen) {
       setFormData(ESTADO_INICIAL);
       setErrorGlobal("");
@@ -132,8 +131,17 @@ export default function NuevaPolizaModal({ isOpen, onClose, onSuccess, polizaAEd
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
+      
+      // 🔥 NUEVO: Validar peso de la Póliza (Máximo 5 MB)
+      if (file.size > 20 * 1024 * 1024) {
+        setErrorGlobal("El archivo de la póliza es muy pesado. Máximo 5 MB.");
+        if (fileInputRef.current) fileInputRef.current.value = '';
+        return;
+      }
+
       if (file.type !== "application/pdf") {
         setErrorGlobal("Solo se permiten archivos en formato PDF.");
+        if (fileInputRef.current) fileInputRef.current.value = '';
         return;
       }
       setPdfFile(file);
@@ -144,8 +152,17 @@ export default function NuevaPolizaModal({ isOpen, onClose, onSuccess, polizaAEd
   const handleCuponeraChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
+      
+      // 🔥 NUEVO: Validar peso de la Cuponera (Máximo 5 MB)
+      if (file.size > 20 * 1024 * 1024) {
+        setErrorGlobal("El archivo de la cuponera es muy pesado. Máximo 5 MB.");
+        if (cuponeraInputRef.current) cuponeraInputRef.current.value = '';
+        return;
+      }
+
       if (file.type !== "application/pdf") {
         setErrorGlobal("Solo se permiten archivos en formato PDF para la cuponera.");
+        if (cuponeraInputRef.current) cuponeraInputRef.current.value = '';
         return;
       }
       setCuponeraFile(file);
@@ -373,7 +390,6 @@ export default function NuevaPolizaModal({ isOpen, onClose, onSuccess, polizaAEd
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 transition-colors">Forma de Pago</label>
-                {/* 🔥 BUG 3 FIX: Muestra el valor guardado aunque no esté en la lista */}
                 <select name="formaPago" value={formData.formaPago || ""} onChange={handleChange} className="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-green-600 dark:focus:ring-green-500 outline-none bg-transparent text-gray-900 dark:text-white transition-colors">
                   <option value="" className="dark:bg-gray-800">-- Seleccionar --</option>
                   {FORMAS_PAGO.map(f => (
