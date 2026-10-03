@@ -134,7 +134,7 @@ export default function NuevaPolizaModal({ isOpen, onClose, onSuccess, polizaAEd
       
       // 🔥 NUEVO: Validar peso de la Póliza (Máximo 5 MB)
       if (file.size > 20 * 1024 * 1024) {
-        setErrorGlobal("El archivo de la póliza es muy pesado. Máximo 5 MB.");
+        setErrorGlobal("El archivo de la póliza es muy pesado. Máximo 20 MB.");
         if (fileInputRef.current) fileInputRef.current.value = '';
         return;
       }
