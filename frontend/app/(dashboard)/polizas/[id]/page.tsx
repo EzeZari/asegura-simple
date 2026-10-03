@@ -10,8 +10,8 @@ import {
 import NuevaPolizaModal from "@/components/polizas/NuevaPolizaModal";
 import PolizaDocumentos from "@/components/polizas/PolizaDocumentos";
 import PolizaSiniestros from "@/components/polizas/PolizaSiniestros";
-// 🔥 IMPORTAMOS EL NUEVO COMPONENTE DE CUOTAS
 import PolizaCuotas from "@/components/polizas/PolizaCuotas";
+import PolizaHistorial from "@/components/polizas/PolizaHistorial";
 
 import Toast from "@/components/ui/Toast";
 import { apiFetch } from "@/services/api";
@@ -228,9 +228,11 @@ export default function PolizaDetallePage() {
             </div>
           </div>
 
+          {/* 🔥 EL HISTORIAL QUEDÓ ACÁ: Entre el riesgo y los siniestros */}
+          <PolizaHistorial actividades={poliza.actividades} />
+
           <PolizaSiniestros polizaId={poliza.id} />
 
-          {/* 🔥 INYECTAMOS EL NUEVO COMPONENTE DE CUOTAS AQUÍ */}
           <PolizaCuotas poliza={poliza} puedeModificar={puedeModificar} />
 
         </div>
@@ -275,6 +277,7 @@ export default function PolizaDetallePage() {
               </div>
             </div>
           </div>
+
         </div>
       </div>
 

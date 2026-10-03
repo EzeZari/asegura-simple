@@ -74,6 +74,8 @@ export default function AlertaSection({ titulo, Icono, nivel, alertas = [], mens
                 <th className="p-4 font-bold whitespace-nowrap">Vehículo / Detalles</th>
                 <th className="p-4 font-bold whitespace-nowrap">Vence el</th>
                 <th className="p-4 font-bold whitespace-nowrap">Días restantes</th>
+                {/* 🔥 COLUMNA NUEVA AGREGADA AQUÍ */}
+                <th className="p-4 font-bold whitespace-nowrap">Gestión / Notas</th>
                 <th className="p-4 font-bold text-right whitespace-nowrap">Acciones</th>
               </tr>
             </thead>

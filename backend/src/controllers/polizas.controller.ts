@@ -32,14 +32,8 @@ const normalizarRama = (valor: any) => {
   if (!valor) return 'Automotor';
   const v = String(valor).toLowerCase().trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
   
-  // 🔥 BUG 2.1 FIX: El orden de los factores sí altera el producto.
-  // 1. Si dice "auto" (Automotor, Auto), lo sacamos del medio rápido.
   if (v.includes('auto') || v.includes('coche')) return 'Automotor';
-  
-  // 2. Si sobrevivió al filtro anterior y dice "moto" (Motovehículo, Moto), es moto.
   if (v.includes('moto')) return 'Motovehículo';
-  
-  // 3. Si dice "vehiculo" a secas (y no fue "motovehículo"), es Automotor.
   if (v.includes('vehiculo')) return 'Automotor';
   
   if (v.includes('art') || v.includes('riesgo de trabajo')) return 'ART';
@@ -100,7 +94,6 @@ const obtenerProductorId = async (userId: number): Promise<number> => {
   return productor.id;
 };
 
-// 🔥 GENERADOR AUTOMÁTICO DE CUOTAS
 const generarCuotas = (inicio: Date, fin: Date) => {
   const cuotas = [];
   const startYear = inicio.getUTCFullYear();
@@ -109,9 +102,9 @@ const generarCuotas = (inicio: Date, fin: Date) => {
   const endMonth = fin.getUTCMonth();
   
   let mesesDiff = (endYear - startYear) * 12 + (endMonth - startMonth);
-  if (mesesDiff <= 0) mesesDiff = 1; // Al menos 1 cuota siempre
+  if (mesesDiff <= 0) mesesDiff = 1; 
   
-  let actual = new Date(Date.UTC(startYear, startMonth, 15)); // Día 15 para evitar saltos de zona horaria
+  let actual = new Date(Date.UTC(startYear, startMonth, 15)); 
   const mesesNombres = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
 
   for (let i = 0; i < mesesDiff; i++) {
@@ -151,7 +144,11 @@ export const obtenerPorId = async (req: Request, res: Response): Promise<any> =>
         id: parseInt(id),
         productorId: productorId 
       },
-      include: { asegurado: true, compania: true }
+      include: { 
+        asegurado: true, 
+        compania: true,
+        actividades: { orderBy: { fecha: 'desc' } } // 🔥 ESTA ES LA LÍNEA NUEVA
+      }
     });
 
     if (!poliza) return res.status(404).json({ error: 'Póliza no encontrada' });
@@ -206,7 +203,8 @@ export const crearPoliza = async (req: Request, res: Response): Promise<any> => 
         entidad: "Póliza",
         descripcion: `Póliza #${nroPoliza} (${tipoPoliza})`,
         cliente: `${nuevaPoliza.asegurado.nombre} ${nuevaPoliza.asegurado.apellido || ''}`.trim(),
-        productorId 
+        productorId,
+        polizaId: nuevaPoliza.id
       }
     });
 
@@ -232,7 +230,6 @@ export const actualizarPoliza = async (req: Request, res: Response): Promise<any
 
     if (!vieja) return res.status(404).json({ error: 'Póliza no encontrada o no autorizada.' });
 
-    // 🔥 RETROCOMPATIBILIDAD: Si editamos una póliza vieja que no tiene cuotas, se las creamos.
     let nuevasCuotas = data.estadoCuotas !== undefined ? data.estadoCuotas : undefined;
     
     if (data.estadoCuotas === undefined && (!vieja.estadoCuotas || (Array.isArray(vieja.estadoCuotas) && vieja.estadoCuotas.length === 0))) {
@@ -259,7 +256,7 @@ export const actualizarPoliza = async (req: Request, res: Response): Promise<any
         cantidadEmpleados: data.cantidadEmpleados || null,
         formaPago: data.formaPago || null, 
         enviarCuponera: data.enviarCuponera !== undefined ? (data.enviarCuponera === true || data.enviarCuponera === 'true') : undefined,
-        estadoCuotas: nuevasCuotas, // 🔥 APLICAMOS LAS CUOTAS INTELIGENTES ACÁ
+        estadoCuotas: nuevasCuotas, 
       },
       include: { asegurado: true, compania: true }
     });
@@ -271,7 +268,6 @@ export const actualizarPoliza = async (req: Request, res: Response): Promise<any
     
     let textoDetalle = cambios.length > 0 ? cambios.join(" | ") : "Actualización de datos técnicos";
 
-    // Si solo actualizamos las cuotas desde el checklist, no hace falta generar una actividad gigante.
     if (data.estadoCuotas && Object.keys(data).length === 1) {
        textoDetalle = "Se actualizó el control de pagos / cuotas.";
     } else if (nuevasCuotas && (!vieja.estadoCuotas || (Array.isArray(vieja.estadoCuotas) && vieja.estadoCuotas.length === 0))) {
@@ -284,7 +280,8 @@ export const actualizarPoliza = async (req: Request, res: Response): Promise<any
         entidad: "Póliza",
         descripcion: textoDetalle,
         cliente: `${actualizada.asegurado.nombre} ${actualizada.asegurado.apellido || ''}`.trim(),
-        productorId 
+        productorId,
+        polizaId: actualizada.id
       }
     });
 
@@ -369,10 +366,7 @@ export const avisarVencimiento = async (req: Request, res: Response): Promise<an
     }
 
     const fechaVencimientoFormateada = new Date(poliza.fechaVencimiento).toLocaleDateString("es-AR");
-
-    const cuponeraParaEnviar = (poliza.enviarCuponera && poliza.cuponeraUrl) 
-      ? poliza.cuponeraUrl 
-      : null;
+    const cuponeraParaEnviar = (poliza.enviarCuponera && poliza.cuponeraUrl) ? poliza.cuponeraUrl : null;
 
     await enviarAvisoVencimiento(
       poliza.asegurado.email, 
@@ -390,18 +384,20 @@ export const avisarVencimiento = async (req: Request, res: Response): Promise<an
       cuponeraParaEnviar 
     );
 
+    // 🔥 Automatización de tilde al enviar email exitosamente
     await prisma.poliza.update({
       where: { id: poliza.id },
-      data: { ultimoAviso: new Date() }
+      data: { ultimoAviso: new Date(), avisoGestionado: true }
     });
 
     await prisma.actividad.create({
       data: {
         accion: "Edición",
         entidad: "Póliza",
-        descripcion: `Aviso de vencimiento enviado por correo (Póliza #${poliza.nroPoliza})`,
+        descripcion: `Aviso de vencimiento enviado por correo (Póliza #${poliza.nroPoliza}). Se marcó como contactado.`,
         cliente: `${poliza.asegurado.nombre} ${poliza.asegurado.apellido || ''}`.trim(),
-        productorId 
+        productorId,
+        polizaId: poliza.id
       }
     });
 
@@ -426,15 +422,10 @@ export const subirPdf = async (req: Request, res: Response): Promise<any> => {
     }
 
     const polizaExistente = await prisma.poliza.findFirst({
-      where: { 
-        id: parseInt(id),
-        productorId: productorId 
-      }
+      where: { id: parseInt(id), productorId: productorId }
     });
 
-    if (!polizaExistente) {
-      return res.status(404).json({ error: 'Póliza no encontrada o no autorizada.' });
-    }
+    if (!polizaExistente) return res.status(404).json({ error: 'Póliza no encontrada o no autorizada.' });
 
     let dataToUpdate: any = {};
     let descActividad = [];
@@ -445,10 +436,8 @@ export const subirPdf = async (req: Request, res: Response): Promise<any> => {
         const nombreArchivoViejo = partesUrl[partesUrl.length - 1];
         await supabase.storage.from('polizas').remove([nombreArchivoViejo]);
       }
-
       const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
       const fileNamePdf = `poliza-${id}-${uniqueSuffix}.pdf`;
-
       const { error: uploadError } = await supabase.storage.from('polizas').upload(fileNamePdf, pdfFile.buffer, { contentType: 'application/pdf', upsert: true });
       if (uploadError) throw new Error(`Error de Supabase (Póliza): ${uploadError.message}`);
 
@@ -463,11 +452,9 @@ export const subirPdf = async (req: Request, res: Response): Promise<any> => {
         const nombreArchivoViejo = partesUrl[partesUrl.length - 1];
         await supabase.storage.from('polizas').remove([nombreArchivoViejo]);
       }
-
       const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
       const extension = cuponeraFile.originalname.split('.').pop() || 'pdf';
       const fileNameCuponera = `cuponera-${id}-${uniqueSuffix}.${extension}`;
-
       const { error: uploadError } = await supabase.storage.from('polizas').upload(fileNameCuponera, cuponeraFile.buffer, { contentType: cuponeraFile.mimetype, upsert: true });
       if (uploadError) throw new Error(`Error de Supabase (Cuponera): ${uploadError.message}`);
 
@@ -488,7 +475,8 @@ export const subirPdf = async (req: Request, res: Response): Promise<any> => {
         entidad: "Póliza",
         descripcion: `Se adjuntó documento (${descActividad.join(' y ')}) a la Póliza #${polizaActualizada.nroPoliza}`,
         cliente: `${polizaActualizada.asegurado.nombre} ${polizaActualizada.asegurado.apellido || ''}`.trim(),
-        productorId 
+        productorId,
+        polizaId: polizaActualizada.id
       }
     });
 
@@ -643,7 +631,7 @@ export const importarPolizas = async (req: Request, res: Response): Promise<any>
         fechaInicio, fechaVencimiento, cobertura, patente, marca,          
         modelo, ubicacionRiesgo, cantidadEmpleados, formaPago,      
         enviarCuponera: false, productorId,
-        estadoCuotas: generarCuotas(fechaInicio, fechaVencimiento), // 🔥 TAMBIÉN EN LA IMPORTACIÓN MASIVA
+        estadoCuotas: generarCuotas(fechaInicio, fechaVencimiento),
       });
 
       creados++;
@@ -683,5 +671,46 @@ export const importarPolizas = async (req: Request, res: Response): Promise<any>
   } catch (error: any) {
     console.error("Error en importación de pólizas:", error);
     return res.status(500).json({ error: error.message || 'Error interno al procesar la carga.' });
+  }
+};
+
+export const actualizarGestionAviso = async (req: Request, res: Response): Promise<any> => {
+  try {
+    const id = req.params.id as string;
+    const productorId = await obtenerProductorId(req.userId!);
+    const { avisoGestionado, observacionesAviso } = req.body;
+    
+    const polizaVieja = await prisma.poliza.findUnique({
+      where: { id: parseInt(id) },
+      include: { asegurado: true }
+    });
+
+    if (!polizaVieja) return res.status(404).json({ error: 'Póliza no encontrada' });
+
+    const actualizada = await prisma.poliza.update({
+      where: { id: parseInt(id) },
+      data: { 
+        avisoGestionado: avisoGestionado, 
+        observacionesAviso: observacionesAviso 
+      }
+    });
+
+    if (observacionesAviso && observacionesAviso !== polizaVieja.observacionesAviso) {
+       await prisma.actividad.create({
+         data: {
+           accion: "Edición",
+           entidad: "Gestion de Alerta", // 🔥 Más limpio que "Gestión de Alerta"
+           descripcion: observacionesAviso, // 🔥 ACÁ ESTÁ EL CAMBIO: Guarda solo tu mensaje directo
+           cliente: `${polizaVieja.asegurado.nombre} ${polizaVieja.asegurado.apellido || ''}`.trim(),
+           productorId: productorId,
+           polizaId: polizaVieja.id 
+         }
+       });
+    }
+
+    return res.json({ message: "Gestión actualizada", poliza: actualizada });
+  } catch (error) {
+    console.error("Error al guardar gestión:", error);
+    return res.status(500).json({ error: 'Error al actualizar la gestión del aviso.' });
   }
 };

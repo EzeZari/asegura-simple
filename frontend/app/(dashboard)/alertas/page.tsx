@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { AlertTriangle, Clock, XOctagon, Search, List, LayoutGrid, Download, Mail, Loader2, Filter, CalendarDays } from "lucide-react";
+import { AlertTriangle, Clock, XOctagon, Download, Mail, Loader2 } from "lucide-react";
 import dynamic from "next/dynamic";
 import AlertaSection from "@/components/alertas/AlertaSection";
-import AlertaCalendar from "@/components/alertas/AlertaCalendar"; 
+import AlertaCalendar from "@/components/alertas/AlertaCalendar";
+import AlertasFiltros from "@/components/alertas/AlertasFiltros"; // 🔥 IMPORTAMOS EL COMPONENTE
 import Toast from "@/components/ui/Toast";
 import { apiFetch } from "@/services/api"; 
 import { useAuthStore } from "@/store/authStore";
@@ -14,7 +15,7 @@ const ExportarExcelModal = dynamic(() => import("@/components/ui/ExportarExcelMo
 
 export default function AlertasPage() {
   const { user } = useAuthStore();
-  const accessToken = useAuthStore((state) => state.accessToken); // 🔥 NUEVO: Esperamos el token igual que en el Dashboard
+  const accessToken = useAuthStore((state) => state.accessToken); 
   const puedeModificar = tienePermiso(user, PERMISOS.PUEDE_MODIFICAR_DATOS);
 
   const [data, setData] = useState<{ vencidas: any[]; criticas: any[]; proximas: any[]; config: { diasCritica: number; diasMax: number }; }>({
@@ -22,12 +23,13 @@ export default function AlertasPage() {
   });
   
   const [isLoading, setIsLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState("");
   
+  // Estados para los filtros
+  const [searchTerm, setSearchTerm] = useState("");
   const [vista, setVista] = useState<"lista" | "tarjetas" | "calendario">("lista");
-
   const [filtroRama, setFiltroRama] = useState("TODAS");
   const [filtroCompania, setFiltroCompania] = useState("TODAS");
+  const [filtroGestion, setFiltroGestion] = useState("PENDIENTES");
 
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [isSendingBulk, setIsSendingBulk] = useState(false);
@@ -35,7 +37,6 @@ export default function AlertasPage() {
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [toast, setToast] = useState({ show: false, msg: "" });
 
-  // 🔥 ESTADO CON LAS TRES PLANTILLAS
   const [plantillas, setPlantillas] = useState({
     proxima: "Hola [Nombre], te avisamos que tu póliza de [Rama] ([NroPoliza]) en [Compania] vence el próximo [Vencimiento]. ¿Avanzamos con la renovación?",
     critica: "Hola [Nombre], te recuerdo que tu póliza de [Rama] ([NroPoliza]) vence en unos días ([Vencimiento]). Avisame así la renovamos a tiempo.",
@@ -54,7 +55,6 @@ export default function AlertasPage() {
     localStorage.setItem("asegurasimple_vista_alertas", nuevaVista);
   };
 
-  // Separamos la carga de alertas para poder re-usarla al mandar correos masivos
   const cargarAlertas = async () => {
     try {
       const res = await apiFetch('/api/alertas', { cache: 'no-store' });
@@ -67,9 +67,8 @@ export default function AlertasPage() {
     }
   };
 
-  // 🔥 EL MISMO MÉTODO QUE EL DASHBOARD (Esperamos al token)
   useEffect(() => {
-    if (!accessToken) return; // ← Espera a que haya token para disparar las consultas
+    if (!accessToken) return; 
 
     cargarAlertas();
 
@@ -86,10 +85,10 @@ export default function AlertasPage() {
       })
       .catch((err) => console.error("Error al cargar la plantilla:", err));
 
-  }, [accessToken]); // ← Se ejecuta cuando llega el token
+  }, [accessToken]); 
 
   const todasLasAlertas = [...data.vencidas, ...data.criticas, ...data.proximas];
-  const ramasUnicas = Array.from(new Set(todasLasAlertas.map(p => p.tipoPoliza))).filter(Boolean);
+  // 🔥 Mantenemos dinámicas solo a las compañías, porque esas dependen de las que tengas cargadas
   const companiasUnicas = Array.from(new Set(todasLasAlertas.map(p => p.compania?.nombre))).filter(Boolean);
 
   const filtrarAlertas = (lista: any[]) => {
@@ -99,7 +98,11 @@ export default function AlertasPage() {
       const matchRama = filtroRama === "TODAS" || p.tipoPoliza === filtroRama;
       const matchCompania = filtroCompania === "TODAS" || p.compania?.nombre === filtroCompania;
       
-      return matchSearch && matchRama && matchCompania;
+      const matchGestion = filtroGestion === "TODAS" ? true :
+                           filtroGestion === "PENDIENTES" ? !p.avisoGestionado :
+                           p.avisoGestionado;
+      
+      return matchSearch && matchRama && matchCompania && matchGestion;
     });
   };
 
@@ -123,7 +126,7 @@ export default function AlertasPage() {
       );
       setToast({ show: true, msg: `Se enviaron ${paraEnviar.length} recordatorios con éxito.` });
       setSelectedIds([]); 
-      cargarAlertas(); // Recargamos las alertas
+      cargarAlertas(); 
     } catch (error) {
       setToast({ show: true, msg: "Hubo un error al enviar algunos correos." });
     } finally {
@@ -205,39 +208,15 @@ export default function AlertasPage() {
             </button>
           </div>
 
-          <div className="flex flex-col md:flex-row items-center gap-3 w-full">
-            <div className="relative w-full md:w-64">
-              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-              <input 
-                type="text" placeholder="Buscar póliza..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-9 pr-4 py-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white rounded-xl focus:ring-2 focus:ring-green-500 outline-none text-sm transition-colors shadow-sm"
-              />
-            </div>
-
-            <div className="flex items-center gap-2 w-full md:w-auto">
-              <div className="relative flex-1 md:w-36">
-                <Filter size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-                <select value={filtroRama} onChange={(e) => setFiltroRama(e.target.value)} className="w-full pl-8 pr-3 py-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 rounded-xl outline-none text-sm cursor-pointer appearance-none shadow-sm transition-colors font-medium">
-                  <option value="TODAS">Todas las Ramas</option>
-                  {ramasUnicas.map(r => <option key={r as string} value={r as string}>{r as string}</option>)}
-                </select>
-              </div>
-
-              <div className="relative flex-1 md:w-36">
-                <Filter size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-                <select value={filtroCompania} onChange={(e) => setFiltroCompania(e.target.value)} className="w-full pl-8 pr-3 py-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 rounded-xl outline-none text-sm cursor-pointer appearance-none shadow-sm transition-colors font-medium">
-                  <option value="TODAS">Todas las Cías.</option>
-                  {companiasUnicas.map(c => <option key={c as string} value={c as string}>{c as string}</option>)}
-                </select>
-              </div>
-            </div>
-
-            <div className="flex items-center bg-gray-100 dark:bg-gray-900/50 p-1 rounded-xl border border-gray-200 dark:border-gray-800 w-full md:w-auto transition-colors shrink-0">
-              <button onClick={() => cambiarVista("lista")} className={`flex-1 md:flex-none flex justify-center p-2 rounded-lg transition-all ${vista === "lista" ? "bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm" : "text-gray-500"}`} title="Vista de Lista"><List size={16} /></button>
-              <button onClick={() => cambiarVista("tarjetas")} className={`flex-1 md:flex-none flex justify-center p-2 rounded-lg transition-all ${vista === "tarjetas" ? "bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm" : "text-gray-500"}`} title="Vista de Tarjetas"><LayoutGrid size={16} /></button>
-              <button onClick={() => cambiarVista("calendario")} className={`flex-1 md:flex-none flex justify-center p-2 rounded-lg transition-all ${vista === "calendario" ? "bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm" : "text-gray-500"}`} title="Vista de Calendario"><CalendarDays size={16} /></button>
-            </div>
-          </div>
+          {/* 🔥 INYECTAMOS EL COMPONENTE DE FILTROS ACÁ */}
+          <AlertasFiltros 
+            searchTerm={searchTerm} setSearchTerm={setSearchTerm}
+            filtroGestion={filtroGestion} setFiltroGestion={setFiltroGestion}
+            filtroRama={filtroRama} setFiltroRama={setFiltroRama}
+            filtroCompania={filtroCompania} setFiltroCompania={setFiltroCompania}
+            companiasUnicas={companiasUnicas as string[]}
+            vista={vista} cambiarVista={cambiarVista}
+          />
 
         </div>
       </div>
@@ -248,21 +227,21 @@ export default function AlertasPage() {
         <>
           <AlertaSection 
             titulo="Vencidas (Sin cobertura)" Icono={XOctagon} nivel="vencida" vista={vista}
-            alertas={filtrarAlertas(data.vencidas)} mensajeVacio="Excelente, no tenés pólizas vencidas sin gestionar." 
+            alertas={filtrarAlertas(data.vencidas)} mensajeVacio={filtroGestion === "PENDIENTES" ? "¡Excelente! No te quedó ninguna póliza vencida sin gestionar." : "No hay pólizas vencidas en esta categoría."} 
             selectedIds={selectedIds} onToggleSelect={toggleSelect} onToggleSelectAll={toggleSelectAll}
-            plantillas={plantillas} // 🔥 Pasamos las plantillas
+            plantillas={plantillas} 
           />
           <AlertaSection 
             titulo={`Críticas (0 a ${data.config.diasCritica} días)`} Icono={AlertTriangle} nivel="critica" vista={vista}
-            alertas={filtrarAlertas(data.criticas)} mensajeVacio="No hay vencimientos críticos." 
+            alertas={filtrarAlertas(data.criticas)} mensajeVacio={filtroGestion === "PENDIENTES" ? "Todo al día por acá. Sin vencimientos críticos pendientes." : "No hay vencimientos críticos."} 
             selectedIds={selectedIds} onToggleSelect={toggleSelect} onToggleSelectAll={toggleSelectAll}
-            plantillas={plantillas} // 🔥 Pasamos las plantillas
+            plantillas={plantillas} 
           />
           <AlertaSection 
             titulo={`Próximas (${data.config.diasCritica + 1} a ${data.config.diasMax} días)`} Icono={Clock} nivel="proxima" vista={vista}
-            alertas={filtrarAlertas(data.proximas)} mensajeVacio="No hay vencimientos próximos." 
+            alertas={filtrarAlertas(data.proximas)} mensajeVacio="No tenés vencimientos próximos a la vista." 
             selectedIds={selectedIds} onToggleSelect={toggleSelect} onToggleSelectAll={toggleSelectAll}
-            plantillas={plantillas} // 🔥 Pasamos las plantillas
+            plantillas={plantillas} 
           />
         </>
       )}

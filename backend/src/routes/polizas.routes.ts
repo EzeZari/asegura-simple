@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { 
   obtenerTodas, obtenerPorId, crearPoliza, 
   actualizarPoliza, eliminarPoliza, avisarVencimiento, 
-  subirPdf, importarPolizas 
+  subirPdf, importarPolizas, actualizarGestionAviso 
 } from '../controllers/polizas.controller';
 import { verificarToken } from '../middlewares/auth.middleware';
 import { verificarRol } from '../middlewares/role.middleware';
@@ -20,9 +20,12 @@ router.put('/:id', verificarToken, verificarRol(['DUENO', 'PRODUCTOR']), actuali
 router.delete('/:id', verificarToken, verificarRol(['DUENO', 'PRODUCTOR']), eliminarPoliza);
 router.post('/:id/aviso', verificarToken, verificarRol(['DUENO', 'PRODUCTOR']), avisarVencimiento);
 
-// 🔥 MODIFICADO: Ahora aceptamos tanto "pdf" como "cuponera"
+// 🔥 MODIFICADO: Aceptamos tanto "pdf" como "cuponera"
 router.post('/:id/subir-pdf', verificarToken, verificarRol(['DUENO', 'PRODUCTOR']), upload.fields([{ name: 'pdf', maxCount: 1 }, { name: 'cuponera', maxCount: 1 }]), subirPdf);
 
 router.post('/importar', verificarToken, verificarRol(['DUENO', 'PRODUCTOR']), importarPolizas);
+
+// 🔥 NUEVA RUTA: Para guardar notas rápidas desde el panel de alertas sin recargar
+router.patch('/:id/gestion-aviso', verificarToken, verificarRol(['DUENO', 'PRODUCTOR']), actualizarGestionAviso);
 
 export default router;
