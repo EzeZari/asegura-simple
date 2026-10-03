@@ -9,19 +9,19 @@ import UpgradeModal from "@/components/ui/UpgradeModal";
 import GracePeriodBanner from "@/components/layout/GracePeriodBanner"; 
 import SessionExpiredModal from "@/components/ui/SessionExpiredModal";
 import ComunicadosGlobales from "@/components/layout/ComunicadosGlobales";
-import TrialBanner from "@/components/layout/TrialBanner"; // 🔥 ACÁ IMPORTAMOS EL NUEVO BANNER
+import TrialBanner from "@/components/layout/TrialBanner";
 import Script from "next/script";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const setUser = useAuthStore((state: any) => state.setUser); 
   const user = useAuthStore((state: any) => state.user); 
   
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false); 
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false); 
 
   useEffect(() => {
     const initApp = async () => {
       try {
-        // 1. Rehidratamos la sesión
         const resSession = await apiFetch(`/api/auth/refresh`, { method: "POST" });
         if (resSession.ok) {
           const data = await resSession.json();
@@ -52,21 +52,28 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 relative overflow-x-hidden transition-colors duration-300">
       
-      <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
+      <Sidebar 
+        isOpen={isSidebarOpen} 
+        onClose={() => setIsSidebarOpen(false)} 
+        isCollapsed={isSidebarCollapsed}
+        onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+      />
       
-      <div className="lg:pl-64 flex flex-col min-h-screen w-full transition-all duration-300">
+      <div className={`${isSidebarCollapsed ? 'lg:pl-20' : 'lg:pl-64'} flex flex-col min-h-screen w-full transition-all duration-300`}>
         
         <div className="lg:hidden flex items-center justify-between bg-green-700 text-white p-4 shadow-md sticky top-0 z-30">
           <span className="font-bold text-xl tracking-wide">AseguraSimple</span>
           <button 
-            onClick={() => setIsSidebarOpen(true)} 
+            onClick={() => {
+              setIsSidebarOpen(true);
+              setIsSidebarCollapsed(false); // 🔥 ACÁ ESTÁ LA MAGIA: Obliga a que se expanda al abrirlo en móvil
+            }} 
             className="p-1.5 hover:bg-green-600 rounded-md transition-colors"
           >
             <Menu size={26} />
           </button>
         </div>
 
-        {/* 🔥 ACÁ INYECTAMOS EL BANNER DE PRUEBA Y LOS COMUNICADOS */}
         <TrialBanner />
         <ComunicadosGlobales />
         <GracePeriodBanner />
