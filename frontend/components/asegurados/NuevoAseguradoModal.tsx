@@ -29,7 +29,6 @@ export default function NuevoAseguradoModal({ isOpen, onClose, onSuccess, client
   const setShowUpgradeModal = useAuthStore((state) => state.setShowUpgradeModal);
 
   useEffect(() => {
-    // 🔥 FIX: Limpieza total al cerrar el modal
     if (!isOpen) {
       setFormData(ESTADO_INICIAL);
       setError("");
@@ -62,8 +61,10 @@ export default function NuevoAseguradoModal({ isOpen, onClose, onSuccess, client
     e.preventDefault();
     setError("");
 
+    // 🔥 Validación inteligente dependiendo del tipo de cliente
     const nuevosErrores: Record<string, string> = {
-      nombre: validarRequerido(formData.nombre, "Nombre"),
+      nombre: validarRequerido(formData.nombre, formData.tipo === "Empresa" ? "Razón Social" : "Nombre"),
+      apellido: formData.tipo === "Individuo" ? validarRequerido(formData.apellido, "Apellido") : "",
       dni: validarDniCuit(formData.dni),
       email: validarEmail(formData.email, true),
       telefono: validarTelefono(formData.telefono, true),
@@ -90,9 +91,15 @@ export default function NuevoAseguradoModal({ isOpen, onClose, onSuccess, client
       
       const method = clienteAEditar ? "PUT" : "POST";
 
+      // Si es empresa, nos aseguramos de que el apellido vaya vacío
+      const payloadToSave = { ...formData };
+      if (payloadToSave.tipo === "Empresa") {
+        payloadToSave.apellido = "";
+      }
+
       const response = await apiFetch(endpoint, {
         method,
-        body: JSON.stringify(formData),
+        body: JSON.stringify(payloadToSave),
       });
 
       const data = await response.json();
@@ -117,7 +124,7 @@ export default function NuevoAseguradoModal({ isOpen, onClose, onSuccess, client
   return (
     <>
       <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-        <div className="bg-white dark:bg-gray-800 rounded-xl p-6 w-full max-w-2xl shadow-xl relative animate-in fade-in zoom-in duration-200 max-h-[90vh] overflow-y-auto border border-transparent dark:border-gray-700 transition-colors">
+        <div className="bg-white dark:bg-gray-800 rounded-xl p-6 w-full max-w-2xl shadow-xl relative animate-in fade-in zoom-in duration-200 max-h-[90vh] overflow-y-auto border border-transparent dark:border-gray-700 transition-colors custom-scrollbar">
           <button onClick={onClose} className="absolute top-4 right-4 text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors p-1">
             <X size={24} />
           </button>
@@ -131,18 +138,40 @@ export default function NuevoAseguradoModal({ isOpen, onClose, onSuccess, client
 
             <div className="space-y-4">
               <h3 className="text-sm font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Datos Personales y Fiscales</h3>
+              
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nombre Completo / Razón Social *</label>
-                  <input 
-                    type="text" 
-                    name="nombre" 
-                    value={formData.nombre} 
-                    onChange={handleChange} 
-                    className={`w-full px-3 py-2 border bg-transparent text-gray-900 dark:text-white ${errores.nombre ? 'border-red-500 bg-red-50 dark:bg-red-900/20' : 'border-gray-200 dark:border-gray-700'} rounded-lg focus:ring-2 focus:ring-green-600 dark:focus:ring-green-500 outline-none transition-colors`} 
-                  />
-                  {errores.nombre && <p className="text-red-500 text-xs mt-1 font-medium">{errores.nombre}</p>}
-                </div>
+                
+                {/* 🔥 ACÁ ESTÁ LA MAGIA: Interfaz condicional Nombre/Apellido vs Razón Social */}
+                {formData.tipo === "Individuo" ? (
+                  <>
+                    <div className="md:col-span-1">
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nombre *</label>
+                      <input 
+                        type="text" name="nombre" value={formData.nombre} onChange={handleChange} 
+                        className={`w-full px-3 py-2 border bg-transparent text-gray-900 dark:text-white ${errores.nombre ? 'border-red-500 bg-red-50 dark:bg-red-900/20' : 'border-gray-200 dark:border-gray-700'} rounded-lg focus:ring-2 focus:ring-green-600 dark:focus:ring-green-500 outline-none transition-colors`} 
+                      />
+                      {errores.nombre && <p className="text-red-500 text-xs mt-1 font-medium">{errores.nombre}</p>}
+                    </div>
+                    <div className="md:col-span-1">
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Apellido *</label>
+                      <input 
+                        type="text" name="apellido" value={formData.apellido || ""} onChange={handleChange} 
+                        className={`w-full px-3 py-2 border bg-transparent text-gray-900 dark:text-white ${errores.apellido ? 'border-red-500 bg-red-50 dark:bg-red-900/20' : 'border-gray-200 dark:border-gray-700'} rounded-lg focus:ring-2 focus:ring-green-600 dark:focus:ring-green-500 outline-none transition-colors`} 
+                      />
+                      {errores.apellido && <p className="text-red-500 text-xs mt-1 font-medium">{errores.apellido}</p>}
+                    </div>
+                  </>
+                ) : (
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Razón Social *</label>
+                    <input 
+                      type="text" name="nombre" value={formData.nombre} onChange={handleChange} placeholder="Ej: AseguraSimple S.A."
+                      className={`w-full px-3 py-2 border bg-transparent text-gray-900 dark:text-white ${errores.nombre ? 'border-red-500 bg-red-50 dark:bg-red-900/20' : 'border-gray-200 dark:border-gray-700'} rounded-lg focus:ring-2 focus:ring-green-600 dark:focus:ring-green-500 outline-none transition-colors`} 
+                    />
+                    {errores.nombre && <p className="text-red-500 text-xs mt-1 font-medium">{errores.nombre}</p>}
+                  </div>
+                )}
+
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Tipo de Cliente</label>
                   <select name="tipo" value={formData.tipo} onChange={handleChange} className="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-green-600 dark:focus:ring-green-500 outline-none bg-transparent text-gray-900 dark:text-white transition-colors">
