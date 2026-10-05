@@ -106,7 +106,8 @@ export default function PolizasPage() {
   const enviarAvisoVencimiento = async (poliza: any) => {
     setMenuAbiertoId(null);
     try {
-      const res = await apiFetch(`/api/polizas/${poliza.id}/avisar-vencimiento`, { method: "POST" });
+      // 🔥 ACÁ ESTABA EL ERROR: Cambiamos "avisar-vencimiento" por "aviso"
+      const res = await apiFetch(`/api/polizas/${poliza.id}/aviso`, { method: "POST" });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Error al enviar aviso");
       setMensajeToast("Correo de aviso enviado exitosamente");
