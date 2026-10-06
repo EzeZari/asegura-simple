@@ -37,9 +37,14 @@ export default function NuevoAseguradoModal({ isOpen, onClose, onSuccess, client
     }
 
     if (clienteAEditar) {
+      // 🔥 ACÁ ESTÁ LA MAGIA: Unimos el nombre y el apellido para que no se corte en el input
+      const nombreCompleto = `${clienteAEditar.nombre || ""} ${clienteAEditar.apellido || ""}`.trim();
+
       setFormData({
         ...ESTADO_INICIAL,
         ...clienteAEditar,
+        nombre: nombreCompleto, // Lo mostramos todo junto
+        apellido: "", // Vaciamos esto para que al guardar no se duplique la información
         fechaNacimiento: clienteAEditar.fechaNacimiento ? clienteAEditar.fechaNacimiento.split('T')[0] : "",
       });
     } else {
@@ -89,9 +94,12 @@ export default function NuevoAseguradoModal({ isOpen, onClose, onSuccess, client
       
       const method = clienteAEditar ? "PUT" : "POST";
 
+      // 🔥 Aseguramos que el apellido vaya vacío a la base de datos (se guarda todo en nombre)
+      const payloadToSave = { ...formData, apellido: "" };
+
       const response = await apiFetch(endpoint, {
         method,
-        body: JSON.stringify(formData),
+        body: JSON.stringify(payloadToSave),
       });
 
       const data = await response.json();
