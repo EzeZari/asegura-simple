@@ -69,7 +69,8 @@ export default function NuevaPolizaModal({ isOpen, onClose, onSuccess, polizaAEd
 
     if (polizaAEditar) {
       if (isRenovacion) {
-        const fechaInicioNueva = polizaAEditar.fechaVencimiento.split('T')[0];
+        // 🔥 CORRECCIÓN: Si no hay fecha, usamos la fecha de hoy por defecto para no romper el split
+        const fechaInicioNueva = polizaAEditar.fechaVencimiento ? polizaAEditar.fechaVencimiento.split('T')[0] : new Date().toISOString().split('T')[0];
         const [año, mes, dia] = fechaInicioNueva.split('-');
         
         const vDate = new Date(Number(año), Number(mes) - 1, Number(dia));
@@ -87,7 +88,7 @@ export default function NuevaPolizaModal({ isOpen, onClose, onSuccess, polizaAEd
           fechaInicio: fechaInicioNueva,
           fechaVencimiento: fechaVencimientoNueva,
           estado: "Vigente", 
-          aseguradoId: polizaAEditar.aseguradoId.toString(),
+          aseguradoId: polizaAEditar.aseguradoId?.toString() || "",
           companiaId: polizaAEditar.companiaId?.toString() || "",
           formaPago: polizaAEditar.formaPago || "",
           enviarCuponera: polizaAEditar.enviarCuponera || false, 
@@ -96,9 +97,10 @@ export default function NuevaPolizaModal({ isOpen, onClose, onSuccess, polizaAEd
         setFormData({
           ...ESTADO_INICIAL,
           ...polizaAEditar,
-          fechaInicio: polizaAEditar.fechaInicio.split('T')[0],
-          fechaVencimiento: polizaAEditar.fechaVencimiento.split('T')[0],
-          aseguradoId: polizaAEditar.aseguradoId.toString(),
+          // 🔥 CORRECCIÓN: Evita crashear si fechaInicio o fechaVencimiento vienen nulas
+          fechaInicio: polizaAEditar.fechaInicio ? polizaAEditar.fechaInicio.split('T')[0] : "",
+          fechaVencimiento: polizaAEditar.fechaVencimiento ? polizaAEditar.fechaVencimiento.split('T')[0] : "",
+          aseguradoId: polizaAEditar.aseguradoId?.toString() || "",
           companiaId: polizaAEditar.companiaId?.toString() || "",
           formaPago: polizaAEditar.formaPago || "",
           enviarCuponera: polizaAEditar.enviarCuponera || false, 
@@ -132,7 +134,6 @@ export default function NuevaPolizaModal({ isOpen, onClose, onSuccess, polizaAEd
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
       
-      // 🔥 NUEVO: Validar peso de la Póliza (Máximo 5 MB)
       if (file.size > 20 * 1024 * 1024) {
         setErrorGlobal("El archivo de la póliza es muy pesado. Máximo 20 MB.");
         if (fileInputRef.current) fileInputRef.current.value = '';
@@ -153,7 +154,6 @@ export default function NuevaPolizaModal({ isOpen, onClose, onSuccess, polizaAEd
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
       
-      // 🔥 NUEVO: Validar peso de la Cuponera (Máximo 5 MB)
       if (file.size > 20 * 1024 * 1024) {
         setErrorGlobal("El archivo de la cuponera es muy pesado. Máximo 5 MB.");
         if (cuponeraInputRef.current) cuponeraInputRef.current.value = '';
