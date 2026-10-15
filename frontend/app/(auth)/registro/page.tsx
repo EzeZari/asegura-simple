@@ -12,7 +12,6 @@ export default function RegisterPage() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   
-  // 🔥 AHORA GUARDAMOS LOS ERRORES POR CAMPO
   const [errores, setErrores] = useState<Record<string, string>>({});
   
   const [isLoading, setIsLoading] = useState(false);
@@ -25,28 +24,24 @@ export default function RegisterPage() {
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
-    setErrores({}); // Limpiamos errores previos
+    setErrores({}); 
 
     const nuevosErrores: Record<string, string> = {};
 
-    // 1. Validar campos vacíos
     if (!nombre.trim()) nuevosErrores.nombre = "El nombre es obligatorio.";
     if (!email.trim()) nuevosErrores.email = "El email es obligatorio.";
     if (!telefono.trim()) nuevosErrores.telefono = "El teléfono es obligatorio.";
     if (!password) nuevosErrores.password = "La contraseña es obligatoria.";
     if (!confirmPassword) nuevosErrores.confirmPassword = "Debes confirmar tu contraseña.";
 
-    // 2. Validación Legal
     if (!aceptaTerminos) {
       nuevosErrores.terminos = "Debes aceptar los Términos y Condiciones.";
     }
 
-    // 3. Coincidencia de contraseñas
     if (password && confirmPassword && password !== confirmPassword) {
       nuevosErrores.confirmPassword = "Las contraseñas no coinciden.";
     }
 
-    // 4. Validaciones centralizadas (solo si escribieron algo)
     if (email) {
       const errorEmail = validarEmail(email, true);
       if (errorEmail) nuevosErrores.email = errorEmail;
@@ -60,7 +55,6 @@ export default function RegisterPage() {
       if (errorPassword) nuevosErrores.password = errorPassword;
     }
 
-    // Si hay algún error, cortamos acá y mostramos los rojos
     if (Object.keys(nuevosErrores).length > 0) {
       setErrores(nuevosErrores);
       return;
@@ -81,6 +75,12 @@ export default function RegisterPage() {
         setErrores({ general: data.error || "Error al crear la cuenta." });
         setIsLoading(false);
         return;
+      }
+
+      // 🔥 DISPARO DE LA CONVERSIÓN DE META ADS
+      // Le avisamos a Facebook que ganamos un cliente recién cuando el servidor responde OK
+      if (typeof window !== "undefined" && (window as any).fbq) {
+        (window as any).fbq('track', 'CompleteRegistration');
       }
 
       setIsSuccess(true);
@@ -116,7 +116,6 @@ export default function RegisterPage() {
     }
   };
 
-  // 🔥 FUNCIÓN PARA ESTILOS DINÁMICOS DEL BORDE
   const getInputClass = (campo: string) => {
     const baseClass = "w-full border rounded-md px-4 py-3 text-sm text-gray-900 focus:outline-none transition-all disabled:bg-gray-50 ";
     if (errores[campo]) {
@@ -167,11 +166,9 @@ export default function RegisterPage() {
         <>
           <div>
             <h1 className="text-3xl md:text-4xl leading-tight font-bold text-gray-900 tracking-tight">Creá tu cuenta</h1>
-            {/* Error General (ej: Backend caído) */}
             {errores.general && <div className="mt-4 p-3 bg-red-50 border border-red-200 text-red-600 text-sm rounded-md font-medium">{errores.general}</div>}
           </div>
 
-          {/* 🔥 AGREGAMOS noValidate PARA APAGAR LOS CARTELES NATIVOS DE GOOGLE */}
           <form onSubmit={handleRegister} className="flex flex-col gap-4 mt-2" noValidate>
             
             <div>
