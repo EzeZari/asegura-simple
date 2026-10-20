@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { Eye, EyeOff, MailCheck } from "lucide-react";
+import { Eye, EyeOff, MailCheck, ArrowLeft } from "lucide-react"; // 🔥 Agregamos ArrowLeft
 import { validarEmail, validarTelefono, validarPassword } from "@/utils/validaciones";
 
 export default function RegisterPage() {
@@ -78,7 +78,6 @@ export default function RegisterPage() {
       }
 
       // 🔥 DISPARO DE LA CONVERSIÓN DE META ADS
-      // Le avisamos a Facebook que ganamos un cliente recién cuando el servidor responde OK
       if (typeof window !== "undefined" && (window as any).fbq) {
         (window as any).fbq('track', 'CompleteRegistration');
       }
@@ -127,8 +126,14 @@ export default function RegisterPage() {
   return (
     <div className="w-full max-w-md flex flex-col gap-6 my-auto py-10 px-4 md:px-0">
 
+      {/* 🔥 BOTÓN PARA VOLVER ATRÁS */}
+      <Link href="/" className="inline-flex items-center gap-2 text-sm font-medium text-gray-500 hover:text-green-700 transition-colors w-fit mb-2">
+        <ArrowLeft size={18} />
+        Volver a la web
+      </Link>
+
       {isSuccess ? (
-        <div className="flex flex-col items-center text-center gap-6 py-12 animate-in fade-in zoom-in duration-500">
+        <div className="flex flex-col items-center text-center gap-6 py-6 animate-in fade-in zoom-in duration-500">
           <div className="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center mb-2">
             <MailCheck className="text-blue-600" size={40} />
           </div>

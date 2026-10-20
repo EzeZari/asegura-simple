@@ -2,6 +2,8 @@
 
 import { motion } from 'framer-motion';
 import { CalendarDays, MessageCircle, BarChart3, Mail, FileText } from 'lucide-react';
+// 🔥 IMPORTAMOS EL NUEVO COMPONENTE
+import ZoomableImage from '@/components/ui/ZoomableImage';
 
 export default function Features() {
   return (
@@ -15,7 +17,6 @@ export default function Features() {
           transition={{ duration: 0.6 }}
           className="text-center mb-20"
         >
-          {/* 🔥 H2 OPTIMIZADO: Agregamos "cartera de seguros" para darle contexto a Google */}
           <h2 className="text-3xl md:text-4xl font-extrabold text-gray-900 mb-4 tracking-tight">
             Todo lo que necesitás para escalar tu cartera de seguros
           </h2>
@@ -62,8 +63,8 @@ export default function Features() {
               className="lg:w-1/2 relative w-full"
             >
               <div className="absolute inset-0 bg-orange-50 rounded-[2rem] transform translate-x-4 translate-y-4 -z-10"></div>
-              {/* 🔥 ALT optimizado */}
-              <img 
+              {/* 🔥 REEMPLAZO POR COMPONENTE ZOOMABLE */}
+              <ZoomableImage 
                 src="/calendario.png" 
                 alt="Calendario de vencimientos de pólizas para PAS" 
                 className="rounded-2xl shadow-2xl border border-gray-100 w-full object-cover" 
@@ -107,8 +108,8 @@ export default function Features() {
               className="lg:w-1/2 relative w-full"
             >
               <div className="absolute inset-0 bg-green-50 rounded-[2rem] transform -translate-x-4 translate-y-4 -z-10"></div>
-              {/* 🔥 ALT optimizado */}
-              <img 
+              {/* 🔥 REEMPLAZO POR COMPONENTE ZOOMABLE */}
+              <ZoomableImage 
                 src="/estadisticas.png" 
                 alt="Métricas y Estadísticas de AseguraSimple" 
                 className="rounded-2xl shadow-2xl border border-gray-100 w-full object-cover" 
@@ -152,8 +153,8 @@ export default function Features() {
               className="lg:w-1/2 relative w-full"
             >
               <div className="absolute inset-0 bg-blue-50 rounded-[2rem] transform translate-x-4 translate-y-4 -z-10"></div>
-              {/* 🔥 ALT optimizado */}
-              <img 
+              {/* 🔥 REEMPLAZO POR COMPONENTE ZOOMABLE */}
+              <ZoomableImage 
                 src="/poliza.png" 
                 alt="Detalle de Póliza en AseguraSimple" 
                 className="rounded-2xl shadow-2xl border border-gray-100 w-full object-cover" 
@@ -176,7 +177,6 @@ export default function Features() {
             </div>
             
             <div className="grid md:grid-cols-2 gap-8 max-w-5xl mx-auto">
-              {/* WhatsApp */}
               <div className="bg-white p-8 rounded-3xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow group">
                 <div className="w-14 h-14 bg-green-50 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
                   <MessageCircle size={28} className="text-green-600" />
@@ -187,7 +187,6 @@ export default function Features() {
                 </p>
               </div>
               
-              {/* Email */}
               <div className="bg-white p-8 rounded-3xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow group">
                 <div className="w-14 h-14 bg-blue-50 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
                   <Mail size={28} className="text-blue-600" />
