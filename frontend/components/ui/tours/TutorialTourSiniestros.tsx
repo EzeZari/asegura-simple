@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import dynamic from "next/dynamic";
+import { useAuthStore } from "@/store/authStore";
 
 const Joyride: any = dynamic(
   async () => {
@@ -31,55 +32,38 @@ const CustomTooltip = ({ index, step, backProps, closeProps, primaryProps, toolt
 
 export default function TutorialTourSiniestros() {
   const [run, setRun] = useState(false);
+  const puedeMostrarTour = useAuthStore((state: any) => state.puedeMostrarTour);
 
   useEffect(() => {
-    // 🔥 CLAVE EXCLUSIVA PARA LA PANTALLA DE SINIESTROS
+    if (!puedeMostrarTour) return;
+
     const tutorialCompletado = localStorage.getItem("asegurasimple_tutorial_siniestros_completado");
     if (tutorialCompletado !== "true") {
       const timer = setTimeout(() => {
         setRun(true);
-        // 🔥 LO GUARDAMOS APENAS ARRANCA
         localStorage.setItem("asegurasimple_tutorial_siniestros_completado", "true");
-      }, 800);
+      }, 500);
       return () => clearTimeout(timer);
     }
-  }, []);
+  }, [puedeMostrarTour]);
 
-  // 🔥 CAMBIO CLAVE A any[] PARA QUE NO FALLE EL BUILD
+  // 🔥 AGREGADO: disableBeacon: true EN TODOS LOS PASOS
   const steps: any[] = [
-    {
-      target: "body",
-      placement: "center",
-      title: "Seguimiento de Siniestros ⚠️",
-      content: "Acá vas a controlar el estado de los reclamos, choques y eventos reportados por tus asegurados.",
-      disableBeacon: true,
-    },
-    {
-      target: ".tour-siniestros-header button", 
-      title: "Reportar un Hecho",
-      content: "Cuando un cliente sufra un accidente, hacé clic acá para abrir una nueva ficha de siniestro, asociarla a su póliza y detallar lo ocurrido.",
-      placement: "bottom",
-    },
-    {
-      target: ".tour-siniestros-filtros",
-      title: "Filtros de Control",
-      content: "Buscá reclamos por número, patente o cliente. También podés segmentar por el estado del trámite (En Análisis, Aprobado, Pagado, etc.).",
-      placement: "bottom",
-    },
-    {
-      target: ".tour-siniestros-tabla",
-      title: "Historial de Casos",
-      content: "En esta lista verás los siniestros cargados. Para ir al panel técnico detallado del siniestro, ver fotos del choque o la documentación, hacé clic sobre el número de siniestro o en el menú de acciones.",
-      placement: "top",
-    }
+    { target: "body", placement: "center", title: "Seguimiento de Siniestros ⚠️", content: "Acá vas a controlar el estado de los reclamos, choques y eventos reportados por tus asegurados.", disableBeacon: true },
+    { target: ".tour-siniestros-header button", title: "Reportar un Hecho", content: "Cuando un cliente sufra un accidente, hacé clic acá para abrir una nueva ficha de siniestro, asociarla a su póliza y detallar lo ocurrido.", placement: "bottom", disableBeacon: true },
+    { target: ".tour-siniestros-filtros", title: "Filtros de Control", content: "Buscá reclamos por número, patente o cliente. También podés segmentar por el estado del trámite (En Análisis, Aprobado, Pagado, etc.).", placement: "bottom", disableBeacon: true },
+    { target: ".tour-siniestros-tabla", title: "Historial de Casos", content: "En esta lista verás los siniestros cargados. Para ir al panel técnico detallado del siniestro, ver fotos del choque o la documentación, hacé clic sobre el número de siniestro o en el menú de acciones.", placement: "top", disableBeacon: true }
   ];
 
   const handleJoyrideCallback = (data: any) => {
-    const { status } = data;
-    if (status === "finished" || status === "skipped") {
+    const { status, action } = data;
+    // 🔥 AGREGADO: CAPTURAMOS TAMBIÉN LA ACCIÓN DE "CLOSE"
+    if (status === "finished" || status === "skipped" || action === "close") {
       setRun(false);
     }
   };
+
+  if (!run) return null; // 🔥 DESTRUYE EL COMPONENTE SI SE OMITE
 
   return (
     <Joyride

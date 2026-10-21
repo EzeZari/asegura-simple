@@ -7,7 +7,7 @@ interface User {
   email: string;
   plan?: string;
   role: string;
-  jefeId?: number; // 🔥 ACÁ ESTÁ LA PIEZA FALTANTE
+  jefeId?: number; 
   suscripcion?: {
     estado: string;
   };
@@ -17,17 +17,19 @@ interface AuthState {
   user: User | null;
   accessToken: string | null;
   
-  // Estados globales para el modal de upgrade
   showUpgradeModal: boolean;
   upgradeMessage: string;
   
-  // 🔥 NUEVO ESTADO PARA LA SESIÓN EXPIRADA
   sessionExpired: boolean;
+  
+  // 🔥 SEMÁFORO PARA LOS TOURS
+  puedeMostrarTour: boolean; 
   
   setUser: (user: User) => void;
   setAccessToken: (token: string) => void;
   setShowUpgradeModal: (show: boolean, message?: string) => void;
-  setSessionExpired: (status: boolean) => void; // 🔥 NUEVO SETTER
+  setSessionExpired: (status: boolean) => void; 
+  setPuedeMostrarTour: (puede: boolean) => void; // 🔥 SETTER DEL SEMÁFORO
   logout: () => void;
 }
 
@@ -38,10 +40,10 @@ export const useAuthStore = create<AuthState>()(
       accessToken: null,
       showUpgradeModal: false,
       upgradeMessage: "",
-      sessionExpired: false, // 🔥 ESTADO INICIAL
+      sessionExpired: false, 
+      puedeMostrarTour: false, // 🔥 INICIALIZAMOS EL SEMÁFORO
       
       setUser: (user) => {
-        // 🔥 LOGICA DE FORZADO: Si sos vos, siempre sos AGENCIA y AUTORIZADO
         const esAdmin = user.email === 'churrospop.funes@hotmail.com';
         
         const userProcesado = esAdmin ? {
@@ -58,15 +60,15 @@ export const useAuthStore = create<AuthState>()(
       setShowUpgradeModal: (show, message = "") => 
         set({ showUpgradeModal: show, upgradeMessage: message }),
         
-      setSessionExpired: (status) => set({ sessionExpired: status }), // 🔥 IMPLEMENTACIÓN
+      setSessionExpired: (status) => set({ sessionExpired: status }), 
+      
+      setPuedeMostrarTour: (puede) => set({ puedeMostrarTour: puede }), // 🔥 IMPLEMENTACIÓN
         
-      // 🔥 ACÁ ESTÁ EL LOGOUT ARREGLADO CON LA DESTRUCCIÓN DE LA COOKIE
       logout: () => {
         if (typeof document !== 'undefined') {
-          // Destruimos la cookie poniendo su tiempo de vida (max-age) en 0
           document.cookie = "next_auth_token=; path=/; max-age=0; secure; samesite=strict";
         }
-        set({ user: null, accessToken: null, sessionExpired: false });
+        set({ user: null, accessToken: null, sessionExpired: false, puedeMostrarTour: false });
       },
     }),
     {

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import dynamic from "next/dynamic";
+import { useAuthStore } from "@/store/authStore";
 
 const Joyride: any = dynamic(
   async () => {
@@ -31,59 +32,39 @@ const CustomTooltip = ({ index, step, backProps, closeProps, primaryProps, toolt
 
 export default function TutorialTourAsegurados() {
   const [run, setRun] = useState(false);
+  const puedeMostrarTour = useAuthStore((state: any) => state.puedeMostrarTour);
 
   useEffect(() => {
+    if (!puedeMostrarTour) return;
+
     const tutorialCompletado = localStorage.getItem("asegurasimple_tutorial_asegurados_completado");
     if (tutorialCompletado !== "true") {
       const timer = setTimeout(() => {
         setRun(true);
-        // 🔥 LO GUARDAMOS APENAS ARRANCA PARA QUE NO MOLESTE AL RECARGAR (F5)
         localStorage.setItem("asegurasimple_tutorial_asegurados_completado", "true");
-      }, 800);
+      }, 500);
       return () => clearTimeout(timer);
     }
-  }, []);
+  }, [puedeMostrarTour]);
 
+  // 🔥 AGREGADO: disableBeacon: true EN TODOS LOS PASOS
   const steps: any[] = [
-    {
-      target: "body",
-      placement: "center",
-      title: "Tu Cartera de Clientes 👥",
-      content: "Acá vas a gestionar a todos tus asegurados. Vamos a ver rápidamente cómo funcionan las herramientas de esta pantalla.",
-      disableBeacon: true,
-    },
-    {
-      target: ".tour-asegurados-header button", 
-      title: "Alta de Clientes",
-      content: "Con este botón vas a poder registrar clientes nuevos de forma manual ingresando sus datos personales o de empresa.",
-      placement: "bottom",
-    },
-    {
-      target: ".tour-asegurados-filtros",
-      title: "Buscador Inteligente",
-      content: "No pierdas tiempo. Podés buscar al instante por Nombre, DNI, o filtrar por clientes activos o inactivos.",
-      placement: "bottom",
-    },
-    {
-      target: ".tour-asegurados-herramientas",
-      title: "Importar y Exportar",
-      content: "¿Tenés un Excel de otra plataforma? Importalo directo con este botón. También podés descargar toda tu base de datos cuando quieras.",
-      placement: "top",
-    },
-    {
-      target: ".tour-asegurados-tabla",
-      title: "Listado de Asegurados", 
-      content: "Acá vas a ver a todos tus clientes registrados con sus datos de contacto y estado. Para ver o administrar las pólizas específicas de cualquiera de ellos, simplemente hacé clic en su 'Escudo Verde'.",
-      placement: "top",
-    }
+    { target: "body", placement: "center", title: "Tu Cartera de Clientes 👥", content: "Acá vas a gestionar a todos tus asegurados. Vamos a ver rápidamente cómo funcionan las herramientas de esta pantalla.", disableBeacon: true },
+    { target: ".tour-asegurados-header button", title: "Alta de Clientes", content: "Con este botón vas a poder registrar clientes nuevos de forma manual ingresando sus datos personales o de empresa.", placement: "bottom", disableBeacon: true },
+    { target: ".tour-asegurados-filtros", title: "Buscador Inteligente", content: "No pierdas tiempo. Podés buscar al instante por Nombre, DNI, o filtrar por clientes activos o inactivos.", placement: "bottom", disableBeacon: true },
+    { target: ".tour-asegurados-herramientas", title: "Importar y Exportar", content: "¿Tenés un Excel de otra plataforma? Importalo directo con este botón. También podés descargar toda tu base de datos cuando quieras.", placement: "top", disableBeacon: true },
+    { target: ".tour-asegurados-tabla", title: "Listado de Asegurados", content: "Acá vas a ver a todos tus clientes registrados con sus datos de contacto y estado. Para ver o administrar las pólizas específicas de cualquiera de ellos, simplemente hacé clic en su 'Escudo Verde'.", placement: "top", disableBeacon: true }
   ];
 
   const handleJoyrideCallback = (data: any) => {
-    const { status } = data;
-    if (status === "finished" || status === "skipped") {
+    // 🔥 AGREGADO: CAPTURAMOS TAMBIÉN LA ACCIÓN DE "CLOSE"
+    const { status, action } = data;
+    if (status === "finished" || status === "skipped" || action === "close") {
       setRun(false);
     }
   };
+
+  if (!run) return null; // 🔥 DESTRUYE EL COMPONENTE SI SE OMITE
 
   return (
     <Joyride

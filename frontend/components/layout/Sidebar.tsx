@@ -61,17 +61,18 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
 
   return (
     <>
+      {/* 🔥 FIX: Aumentamos a z-[100] para que el fondo tape los banners */}
       {isOpen && (
         <div 
-          className="fixed inset-0 bg-black/60 z-40 lg:hidden backdrop-blur-sm transition-opacity"
+          className="fixed inset-0 bg-black/60 z-[100] lg:hidden backdrop-blur-sm transition-opacity"
           onClick={onClose}
         />
       )}
 
-      {/* 🔥 REGLA DE ANCHO CORREGIDA: lg:w-20 w-64 asegura que en móvil siempre mida 64 */}
+      {/* 🔥 FIX: Aumentamos a z-[110] para que el menú siempre esté por encima del fondo y los banners */}
       <aside className={`
         tour-sidebar
-        ${isCollapsed ? 'lg:w-20 w-64' : 'w-64'} h-screen bg-green-700 text-white flex flex-col fixed left-0 top-0 z-50 
+        ${isCollapsed ? 'lg:w-20 w-64' : 'w-64'} h-screen bg-green-700 text-white flex flex-col fixed left-0 top-0 z-[110] 
         transition-all duration-300 ease-in-out shadow-2xl lg:shadow-none
         ${isOpen ? 'translate-x-0' : '-translate-x-full'} 
         lg:translate-x-0 
@@ -80,7 +81,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
         {/* BOTÓN FLOTANTE PARA COLAPSAR */}
         <button 
           onClick={onToggleCollapse}
-          className="hidden lg:flex items-center justify-center absolute -right-3 top-8 bg-green-900 border-2 border-green-600 text-white h-7 w-7 rounded-full hover:bg-green-600 hover:scale-110 transition-all z-50 shadow-md"
+          className="hidden lg:flex items-center justify-center absolute -right-3 top-8 bg-green-900 border-2 border-green-600 text-white h-7 w-7 rounded-full hover:bg-green-600 hover:scale-110 transition-all shadow-md"
         >
           {isCollapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
         </button>
@@ -93,7 +94,6 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
             <X size={22} />
           </button>
           
-          {/* 🔥 EL NUEVO LOGO "AS" MUCHO MÁS PROFESIONAL */}
           {isCollapsed ? (
             <div 
               className="w-11 h-11 bg-white text-green-700 flex items-center justify-center rounded-xl shadow-lg font-black text-xl tracking-tighter cursor-default mt-2" 
