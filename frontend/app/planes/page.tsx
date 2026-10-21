@@ -1,14 +1,19 @@
 "use client";
 
 import { Suspense, useState } from "react";
+import { useSearchParams } from "next/navigation"; // 🔥 IMPORTANTE: Agregado para leer la URL
 import { Check, Shield, Users, Zap, Loader2, Sparkles } from "lucide-react";
 import Toast from "@/components/ui/Toast";
 import { useAuthStore } from "@/store/authStore"; 
-import Image from "next/image";
 
 function PlanesContent() {
   const user = useAuthStore((state: any) => state.user);
-  const userEmail = user?.email || "";
+  const searchParams = useSearchParams();
+  
+  // 🔥 FIX: Si no hay sesión, buscamos el email en la URL (?email=...)
+  const urlEmail = searchParams.get("email") || "";
+  const userEmail = user?.email || urlEmail; 
+  
   const planActual = user?.plan || null;
   
   const suscripcionEstado = user?.suscripcion?.estado;
@@ -21,7 +26,6 @@ function PlanesContent() {
   const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
   const [mpEmail, setMpEmail] = useState("");
 
-  // 🔥 PRECIOS ORIGINALES RESTAURADOS
   const planes = [
     {
       id: "GRATUITO",
@@ -91,15 +95,17 @@ function PlanesContent() {
   ];
 
   const handleSeleccionarPlan = (planId: string) => {
-    if (!userEmail) {
-      setMensajeToast("Error: Tu sesión expiró o no se detectó. Por favor, volvé a iniciar sesión.");
-      setShowToast(true);
-      return;
-    }
-
+    // Si elige el plan gratuito, lo mandamos directo al login.
     if (planId === "GRATUITO") {
       setLoadingPlan("GRATUITO");
       window.location.href = "/login?verified=true";
+      return;
+    }
+
+    // 🔥 AHORA SÍ PASA LA VALIDACIÓN, PORQUE LEE EL EMAIL DE LA URL
+    if (!userEmail) {
+      setMensajeToast("Error: Tu sesión expiró o no se detectó. Por favor, volvé a iniciar sesión.");
+      setShowToast(true);
       return;
     }
 
