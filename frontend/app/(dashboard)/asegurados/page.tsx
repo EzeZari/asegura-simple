@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Search, Download, UploadCloud } from "lucide-react"; 
+import { Search, UploadCloud } from "lucide-react"; 
 import dynamic from "next/dynamic";
 
 import NuevoAseguradoModal from "@/components/asegurados/NuevoAseguradoModal";
@@ -15,11 +15,14 @@ import SortableHeader from "@/components/ui/SortableHeader";
 import PageHeader from "@/components/ui/PageHeader";
 import AlertModal from "@/components/ui/AlertModal";
 import AseguradoTableRow from "@/components/asegurados/AseguradoTableRow";
-import AseguradoMobileCard from "@/components/asegurados/AseguradoMobileCard"; // 🔥 Importamos la tarjeta móvil
+import AseguradoMobileCard from "@/components/asegurados/AseguradoMobileCard"; 
 import SelectOrdenamiento from "@/components/ui/SelectOrdenamiento";
 import { apiFetch } from "@/services/api";
 import { useAuthStore } from "@/store/authStore"; 
 import { PERMISOS, tienePermiso } from "@/utils/roles";
+
+// 🔥 IMPORTAMOS NUESTRO COMPONENTE DE EXPORTACIÓN
+import ExportButton from "@/components/ui/ExportButton";
 
 import TutorialTourAsegurados from "@/components/ui/tours/TutorialTourAsegurados";
 
@@ -36,7 +39,7 @@ const OPCIONES_ORDEN = [
 export default function AseguradosPage() {
   const { user } = useAuthStore();
   const puedeModificar = tienePermiso(user, PERMISOS.PUEDE_MODIFICAR_DATOS);
-
+  
   const [searchTerm, setSearchTerm] = useState("");
   const [filtroTipo, setFiltroTipo] = useState("Todos");
   const [filtroEstado, setFiltroEstado] = useState("Todos");
@@ -229,15 +232,17 @@ export default function AseguradosPage() {
             </button>
           )}
           
-          <button onClick={() => { if(aseguradosOrdenados.length === 0) return alert("No hay datos para exportar."); setIsExportModalOpen(true); }} className="flex justify-center items-center gap-2 w-full sm:w-auto px-4 py-2.5 lg:py-2 bg-emerald-50 dark:bg-emerald-900/30 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 border border-emerald-200 dark:border-emerald-800/30 text-emerald-700 dark:text-emerald-400 rounded-xl text-sm font-bold transition-all active:scale-95 shadow-sm">
-            <Download size={16} /> Exportar a Excel
-          </button>
+          {/* 🔥 EL BOTÓN INTELIGENTE DE EXPORTACIÓN */}
+          <ExportButton 
+            onExport={() => setIsExportModalOpen(true)} 
+            datosVacios={aseguradosOrdenados.length === 0} 
+          />
         </div>
-      </div>
+      </div> {/* 🔥 ESTA ETIQUETA DE CIERRE FALTABA */}
 
       <div className="tour-asegurados-tabla w-full">
         
-        {/* 🔥 1. VISTA ESCRITORIO: La tabla original (Se oculta en celulares con "hidden lg:block") */}
+        {/* VISTA ESCRITORIO */}
         <div className="hidden lg:block">
           <Table columns={columnas} isLoading={isLoading} isEmpty={aseguradosOrdenados.length === 0} emptyContent={<div className="flex flex-col items-center justify-center text-gray-500 dark:text-gray-400 py-6 transition-colors"><Search size={32} className="text-gray-300 dark:text-gray-600 mb-3" /><p className="font-medium text-gray-900 dark:text-white transition-colors">No se encontraron clientes</p></div>}>
             {aseguradosOrdenados.map((cliente) => (
@@ -256,7 +261,7 @@ export default function AseguradosPage() {
           </Table>
         </div>
 
-        {/* 🔥 2. VISTA CELULAR: Tarjetas (Se oculta en PC con "block lg:hidden") */}
+        {/* VISTA CELULAR */}
         <div className="block lg:hidden">
           {isLoading ? (
              <div className="text-center py-8 text-gray-500 animate-pulse">Cargando clientes...</div>

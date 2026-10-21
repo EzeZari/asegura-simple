@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Edit, Trash2, Download, UploadCloud, Building2 } from "lucide-react"; 
+import { Edit, Trash2, UploadCloud, Building2 } from "lucide-react"; // 🔥 Quitamos Download
 import dynamic from "next/dynamic";
 import Table, { TableColumn } from "@/components/ui/Table";
 import Toast from "@/components/ui/Toast";
@@ -12,10 +12,12 @@ import PageHeader from "@/components/ui/PageHeader";
 import SearchBar from "@/components/ui/SearchBar";
 import { ActionMenu, ActionMenuItem } from "@/components/ui/ActionMenu";
 import SelectOrdenamiento from "@/components/ui/SelectOrdenamiento"; 
-import CompaniaMobileCard from "@/components/companias/CompaniaMobileCard"; // 🔥 Importamos la tarjeta
+import CompaniaMobileCard from "@/components/companias/CompaniaMobileCard"; 
 import { apiFetch } from "@/services/api"; 
 import { useAuthStore } from "@/store/authStore"; 
 import { PERMISOS, tienePermiso } from "@/utils/roles"; 
+// 🔥 IMPORTAMOS NUESTRO BOTÓN INTELIGENTE
+import ExportButton from "@/components/ui/ExportButton";
 
 const NuevaCompaniaModal = dynamic(() => import("@/components/companias/NuevaCompaniaModal"), { ssr: false });
 const ImportarCompaniasModal = dynamic(() => import("@/components/companias/ImportarCompaniasModal"), { ssr: false });
@@ -167,14 +169,16 @@ export default function CompaniasPage() {
             </button>
           )}
 
-          <button onClick={() => { if(companiasOrdenadas.length === 0) return alert("No hay datos para exportar."); setIsExportModalOpen(true); }} className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 bg-emerald-50 dark:bg-emerald-900/30 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 border border-emerald-200 dark:border-emerald-800/30 text-emerald-700 dark:text-emerald-400 rounded-xl text-sm font-bold transition-all active:scale-95 shadow-sm">
-            <Download size={16} /> Exportar a Excel
-          </button>
+          {/* 🔥 USAMOS NUESTRO BOTÓN COMPARTIDO */}
+          <ExportButton 
+            onExport={() => setIsExportModalOpen(true)} 
+            datosVacios={companiasOrdenadas.length === 0} 
+          />
         </div>
       </div>
 
       <div className="w-full">
-        {/* 🔥 VISTA ESCRITORIO Y TABLET */}
+        {/* VISTA ESCRITORIO Y TABLET */}
         <div className="hidden md:block">
           <Table columns={columnas} isLoading={isLoading} isEmpty={companiasOrdenadas.length === 0} emptyContent={<div className="text-gray-500 dark:text-gray-400 py-6"><p>No hay compañías registradas</p></div>}>
             {companiasOrdenadas.map((compania) => (
@@ -197,7 +201,7 @@ export default function CompaniasPage() {
           </Table>
         </div>
 
-        {/* 🔥 VISTA CELULAR: Tarjetas */}
+        {/* VISTA CELULAR: Tarjetas */}
         <div className="block md:hidden">
           {isLoading ? (
              <div className="text-center py-8 text-gray-500 animate-pulse">Cargando compañías...</div>
