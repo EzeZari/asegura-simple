@@ -33,21 +33,24 @@ const CustomTooltip = ({ index, step, backProps, closeProps, primaryProps, toolt
 export default function TutorialTourAsegurados() {
   const [run, setRun] = useState(false);
   const puedeMostrarTour = useAuthStore((state: any) => state.puedeMostrarTour);
+  const user = useAuthStore((state: any) => state.user);
 
   useEffect(() => {
-    if (!puedeMostrarTour) return;
+    if (!puedeMostrarTour || !user?.id) return;
 
-    const tutorialCompletado = localStorage.getItem("asegurasimple_tutorial_asegurados_completado");
+    // 🔥 CLAVE ÚNICA DE USUARIO
+    const keyTour = `asegurasimple_tutorial_asegurados_completado_${user.id}`;
+    const tutorialCompletado = localStorage.getItem(keyTour);
+    
     if (tutorialCompletado !== "true") {
       const timer = setTimeout(() => {
         setRun(true);
-        localStorage.setItem("asegurasimple_tutorial_asegurados_completado", "true");
+        localStorage.setItem(keyTour, "true");
       }, 500);
       return () => clearTimeout(timer);
     }
-  }, [puedeMostrarTour]);
+  }, [puedeMostrarTour, user?.id]);
 
-  // 🔥 AGREGADO: disableBeacon: true EN TODOS LOS PASOS
   const steps: any[] = [
     { target: "body", placement: "center", title: "Tu Cartera de Clientes 👥", content: "Acá vas a gestionar a todos tus asegurados. Vamos a ver rápidamente cómo funcionan las herramientas de esta pantalla.", disableBeacon: true },
     { target: ".tour-asegurados-header button", title: "Alta de Clientes", content: "Con este botón vas a poder registrar clientes nuevos de forma manual ingresando sus datos personales o de empresa.", placement: "bottom", disableBeacon: true },
@@ -57,14 +60,13 @@ export default function TutorialTourAsegurados() {
   ];
 
   const handleJoyrideCallback = (data: any) => {
-    // 🔥 AGREGADO: CAPTURAMOS TAMBIÉN LA ACCIÓN DE "CLOSE"
     const { status, action } = data;
     if (status === "finished" || status === "skipped" || action === "close") {
       setRun(false);
     }
   };
 
-  if (!run) return null; // 🔥 DESTRUYE EL COMPONENTE SI SE OMITE
+  if (!run) return null;
 
   return (
     <Joyride

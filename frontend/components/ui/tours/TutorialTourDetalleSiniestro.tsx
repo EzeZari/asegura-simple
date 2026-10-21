@@ -33,21 +33,24 @@ const CustomTooltip = ({ index, step, backProps, closeProps, primaryProps, toolt
 export default function TutorialTourDetalleSiniestro() {
   const [run, setRun] = useState(false);
   const puedeMostrarTour = useAuthStore((state: any) => state.puedeMostrarTour);
+  const user = useAuthStore((state: any) => state.user);
 
   useEffect(() => {
-    if (!puedeMostrarTour) return;
+    if (!puedeMostrarTour || !user?.id) return;
 
-    const tutorialCompletado = localStorage.getItem("asegurasimple_tutorial_detalle_siniestro_completado");
+    // 🔥 CLAVE ÚNICA DE USUARIO
+    const keyTour = `asegurasimple_tutorial_detalle_siniestro_completado_${user.id}`;
+    const tutorialCompletado = localStorage.getItem(keyTour);
+    
     if (tutorialCompletado !== "true") {
       const timer = setTimeout(() => {
         setRun(true);
-        localStorage.setItem("asegurasimple_tutorial_detalle_siniestro_completado", "true");
+        localStorage.setItem(keyTour, "true");
       }, 500);
       return () => clearTimeout(timer);
     }
-  }, [puedeMostrarTour]);
+  }, [puedeMostrarTour, user?.id]);
 
-  // 🔥 AGREGADO: disableBeacon: true EN TODOS LOS PASOS
   const steps: any[] = [
     { target: "body", placement: "center", title: "Expediente Digital 📂", content: "Bienvenido al panel técnico del siniestro. Acá está consolidada toda la información del caso y las herramientas para gestionarlo.", disableBeacon: true },
     { target: ".tour-detalle-estado", title: "Control de Trámite", content: "Desde este selector podés actualizar el estado del siniestro (En Análisis, Pagado, etc.) rápidamente sin entrar a configuraciones complejas.", placement: "bottom", disableBeacon: true },
@@ -58,13 +61,12 @@ export default function TutorialTourDetalleSiniestro() {
 
   const handleJoyrideCallback = (data: any) => {
     const { status, action } = data;
-    // 🔥 AGREGADO: CAPTURAMOS TAMBIÉN LA ACCIÓN DE "CLOSE"
     if (status === "finished" || status === "skipped" || action === "close") {
       setRun(false);
     }
   };
 
-  if (!run) return null; // 🔥 DESTRUYE EL COMPONENTE SI SE OMITE
+  if (!run) return null;
 
   return (
     <Joyride

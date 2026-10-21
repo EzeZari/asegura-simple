@@ -33,21 +33,24 @@ const CustomTooltip = ({ index, step, backProps, closeProps, primaryProps, toolt
 export default function TutorialTourSiniestros() {
   const [run, setRun] = useState(false);
   const puedeMostrarTour = useAuthStore((state: any) => state.puedeMostrarTour);
+  const user = useAuthStore((state: any) => state.user);
 
   useEffect(() => {
-    if (!puedeMostrarTour) return;
+    if (!puedeMostrarTour || !user?.id) return;
 
-    const tutorialCompletado = localStorage.getItem("asegurasimple_tutorial_siniestros_completado");
+    // 🔥 CLAVE ÚNICA DE USUARIO
+    const keyTour = `asegurasimple_tutorial_siniestros_completado_${user.id}`;
+    const tutorialCompletado = localStorage.getItem(keyTour);
+    
     if (tutorialCompletado !== "true") {
       const timer = setTimeout(() => {
         setRun(true);
-        localStorage.setItem("asegurasimple_tutorial_siniestros_completado", "true");
+        localStorage.setItem(keyTour, "true");
       }, 500);
       return () => clearTimeout(timer);
     }
-  }, [puedeMostrarTour]);
+  }, [puedeMostrarTour, user?.id]);
 
-  // 🔥 AGREGADO: disableBeacon: true EN TODOS LOS PASOS
   const steps: any[] = [
     { target: "body", placement: "center", title: "Seguimiento de Siniestros ⚠️", content: "Acá vas a controlar el estado de los reclamos, choques y eventos reportados por tus asegurados.", disableBeacon: true },
     { target: ".tour-siniestros-header button", title: "Reportar un Hecho", content: "Cuando un cliente sufra un accidente, hacé clic acá para abrir una nueva ficha de siniestro, asociarla a su póliza y detallar lo ocurrido.", placement: "bottom", disableBeacon: true },
@@ -57,13 +60,12 @@ export default function TutorialTourSiniestros() {
 
   const handleJoyrideCallback = (data: any) => {
     const { status, action } = data;
-    // 🔥 AGREGADO: CAPTURAMOS TAMBIÉN LA ACCIÓN DE "CLOSE"
     if (status === "finished" || status === "skipped" || action === "close") {
       setRun(false);
     }
   };
 
-  if (!run) return null; // 🔥 DESTRUYE EL COMPONENTE SI SE OMITE
+  if (!run) return null;
 
   return (
     <Joyride

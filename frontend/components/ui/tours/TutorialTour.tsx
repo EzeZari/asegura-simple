@@ -33,21 +33,26 @@ const CustomTooltip = ({ index, step, backProps, closeProps, primaryProps, toolt
 export default function TutorialTour() {
   const [run, setRun] = useState(false);
   const puedeMostrarTour = useAuthStore((state: any) => state.puedeMostrarTour);
+  // 🔥 AGREGAMOS AL USUARIO
+  const user = useAuthStore((state: any) => state.user);
 
   useEffect(() => {
-    if (!puedeMostrarTour) return;
+    // 🔥 SI NO HAY USUARIO AÚN O EL SEMÁFORO ESTÁ EN ROJO, ESPERAMOS
+    if (!puedeMostrarTour || !user?.id) return;
 
-    const tutorialCompletado = localStorage.getItem("asegurasimple_tutorial_completado");
+    // 🔥 LA CLAVE AHORA ES ÚNICA PARA CADA USUARIO
+    const keyTour = `asegurasimple_tutorial_completado_${user.id}`;
+    const tutorialCompletado = localStorage.getItem(keyTour);
+    
     if (tutorialCompletado !== "true") {
       const timer = setTimeout(() => {
         setRun(true);
-        localStorage.setItem("asegurasimple_tutorial_completado", "true");
+        localStorage.setItem(keyTour, "true");
       }, 500); 
       return () => clearTimeout(timer);
     }
-  }, [puedeMostrarTour]);
+  }, [puedeMostrarTour, user?.id]);
 
-  // 🔥 AGREGADO: disableBeacon: true EN TODOS LOS PASOS
   const steps: any[] = [
     { target: "body", placement: "center", title: "¡Te damos la bienvenida! 🎉", content: "Vamos a dar un paseo rápido de 1 minuto para mostrarte cómo dominar tu nueva plataforma de gestión.", disableBeacon: true },
     { target: ".tour-sidebar", title: "Tu Centro de Comando", content: "Desde este menú vas a poder navegar entre tus asegurados, administrar pólizas, cargar siniestros y ver tus alertas.", placement: "right", disableBeacon: true },
@@ -57,7 +62,6 @@ export default function TutorialTour() {
   ];
 
   const handleJoyrideCallback = (data: any) => {
-    // 🔥 AGREGADO: CAPTURAMOS TAMBIÉN LA ACCIÓN DE "CLOSE"
     const { status, action } = data;
     if (status === "finished" || status === "skipped" || action === "close") {
       setRun(false);
