@@ -72,20 +72,25 @@ export const updatePlan = async (req: Request, res: Response): Promise<void> => 
   }
 };
 
-// 4. ACTUALIZAR SUSCRIPCIÓN (COBRO MANUAL)
+// 4. ACTUALIZAR SUSCRIPCIÓN (COBRO MANUAL O EDICIÓN)
 export const updateSuscripcionManual = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
     const { estado, fechaVencimiento } = req.body;
 
-    if (!fechaVencimiento) {
-      res.status(400).json({ error: 'La fecha de vencimiento es obligatoria.' });
-      return;
-    }
+    // 🔥 FIX 1: Si no mandan fecha (muy raro que pase desde el modal, pero por las dudas), ponemos una por defecto
+    const fechaValida = fechaVencimiento 
+      ? new Date(fechaVencimiento) 
+      : new Date(new Date().setFullYear(new Date().getFullYear() + 1));
 
-    const estadosPermitidos = ['pendiente', 'autorizado', 'en_proceso', 'cancelado', 'trial'];
+    // 🔥 FIX 2: Agregamos todos los estados posibles que devuelve la API de Mercado Pago en inglés
+    const estadosPermitidos = [
+      'pendiente', 'autorizado', 'en_proceso', 'cancelado', 'trial',
+      'authorized', 'approved', 'in_process', 'cancelled', 'paused', 'rejected'
+    ];
+
     if (!estadosPermitidos.includes(estado)) {
-      res.status(400).json({ error: 'El estado enviado no coincide con las opciones de la base de datos.' });
+      res.status(400).json({ error: `El estado "${estado}" no es válido.` });
       return;
     }
 
@@ -96,7 +101,7 @@ export const updateSuscripcionManual = async (req: Request, res: Response): Prom
     if (suscripcionExistente) {
       await prisma.suscripcion.update({
         where: { id: suscripcionExistente.id },
-        data: { estado: estado, fechaVencimiento: new Date(fechaVencimiento) }
+        data: { estado: estado, fechaVencimiento: fechaValida }
       });
     } else {
       await prisma.suscripcion.create({
@@ -104,7 +109,7 @@ export const updateSuscripcionManual = async (req: Request, res: Response): Prom
           userId: Number(id),
           estado: estado,
           fechaInicio: new Date(),
-          fechaVencimiento: new Date(fechaVencimiento),
+          fechaVencimiento: fechaValida,
           mpPreapprovalId: `manual_${Date.now()}`
         }
       });
@@ -219,11 +224,12 @@ export const getEstadisticasAdmin = async (req: Request, res: Response): Promise
     const agenciasActivas = await prisma.user.findMany({
       where: {
         suscripcion: {
-          estado: { in: ['autorizado', 'trial'] }
+          estado: { in: ['autorizado', 'authorized', 'approved', 'trial'] }
         },
         jefeId: null, // Solo dueños
         email: {
-          notIn: ['fmgestionesyseguros@hotmail.com', 'ezequielzari@gmail.com'] // 🔥 ACÁ LAS EXCLUÍS
+          // 🔥 CORREGIDO: Excluimos tus dos correos reales de prueba
+          notIn: ['fmgestionesyseguros@hotmail.com', 'ezequielzari@gmail.com'] 
         }
       },
       select: {
@@ -244,10 +250,13 @@ export const getEstadisticasAdmin = async (req: Request, res: Response): Promise
     let usuariosTrial = 0;
 
     agenciasActivas.forEach(agencia => {
-      if (agencia.suscripcion?.estado === 'autorizado') {
+      const estadoSub = agencia.suscripcion?.estado;
+      
+      // Contamos como pagos tanto los manuales como los de MP
+      if (estadoSub === 'autorizado' || estadoSub === 'authorized' || estadoSub === 'approved') {
         mrr += PRECIOS[agencia.plan] || 0;
         usuariosPagos++;
-      } else if (agencia.suscripcion?.estado === 'trial') {
+      } else if (estadoSub === 'trial') {
         usuariosTrial++;
       }
     });
