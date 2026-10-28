@@ -6,10 +6,12 @@ const client = new MercadoPagoConfig({ accessToken: process.env.MERCADO_PAGO_ACC
 
 
 
+
 export const crearSuscripcion = async (req: any, res: any) => {
   try {
     const { plan, email, mpEmail } = req.body;
 
+    // 1. Validar los datos recibidos
     if (!email || typeof email !== "string") {
       return res.status(400).json({
         error: "El correo electrónico es obligatorio.",
@@ -42,6 +44,7 @@ export const crearSuscripcion = async (req: any, res: any) => {
       });
     }
 
+    // 2. Buscar al usuario
     const usuario = await prisma.user.findUnique({
       where: {
         email: email.trim().toLowerCase(),
@@ -54,12 +57,13 @@ export const crearSuscripcion = async (req: any, res: any) => {
       });
     }
 
+    // 3. Verificar el token de Mercado Pago
     const accessToken =
       process.env.MERCADO_PAGO_ACCESS_TOKEN;
 
     if (!accessToken) {
       console.error(
-        "Falta MERCADO_PAGO_ACCESS_TOKEN en Railway."
+        "Falta configurar MERCADO_PAGO_ACCESS_TOKEN."
       );
 
       return res.status(500).json({
@@ -67,6 +71,7 @@ export const crearSuscripcion = async (req: any, res: any) => {
       });
     }
 
+    // 4. Preparar los datos de la suscripción
     const frontendUrl = (
       process.env.FRONTEND_URL ||
       "https://www.asegurasimple.com"
@@ -89,22 +94,29 @@ export const crearSuscripcion = async (req: any, res: any) => {
         currency_id: "ARS",
       },
       back_url: `${frontendUrl}/login`,
-      external_reference: `${usuario.id}---${plan}`,
+
+      // Cambio para esta prueba:
+      // usamos solamente el ID del usuario.
+      external_reference: String(usuario.id),
+
       payer_email: correoPago,
     };
 
+    // 5. Mostrar los datos enviados sin revelar el correo
+    // ni el token de acceso.
     console.log(
-      "Enviando solicitud de suscripción a Mercado Pago:",
-      {
-        plan,
-        monto: planSeleccionado.price,
-        moneda: bodyMP.auto_recurring.currency_id,
-        frecuencia: bodyMP.auto_recurring.frequency_type,
-        backUrl: bodyMP.back_url,
-        tieneEmailPagador: Boolean(bodyMP.payer_email),
-      }
+      "=== BODY ENVIADO A MERCADO PAGO ===",
+      JSON.stringify(
+        {
+          ...bodyMP,
+          payer_email: "[OCULTO]",
+        },
+        null,
+        2
+      )
     );
 
+    // 6. Crear la suscripción mediante la API
     const respuestaMP = await fetch(
       "https://api.mercadopago.com/preapproval",
       {
@@ -124,12 +136,13 @@ export const crearSuscripcion = async (req: any, res: any) => {
     try {
       datosMP = JSON.parse(textoRespuesta);
     } catch {
-      datosMP = { respuestaOriginal: textoRespuesta };
+      datosMP = {
+        respuestaOriginal: textoRespuesta,
+      };
     }
 
+    // 7. Mostrar el error detallado si Mercado Pago rechaza
     if (!respuestaMP.ok) {
-      // La respuesta permite ver el código y el motivo
-      // que devuelve Mercado Pago, sin registrar el token.
       console.error(
         "=== RESPUESTA DETALLADA MERCADO PAGO ==="
       );
@@ -144,14 +157,22 @@ export const crearSuscripcion = async (req: any, res: any) => {
           "Mercado Pago rechazó la creación de la suscripción.",
         codigoMP: respuestaMP.status,
         detalle:
-          "Consultá los logs del backend para ver el motivo.",
+          "Consultá los logs del backend en Railway.",
       });
     }
 
+    // 8. Verificar que exista el enlace de pago
     if (!datosMP?.init_point) {
       console.error(
-        "Mercado Pago respondió sin init_point:",
-        JSON.stringify(datosMP, null, 2)
+        "Mercado Pago no devolvió init_point:",
+        JSON.stringify(
+          {
+            id: datosMP?.id,
+            status: datosMP?.status,
+          },
+          null,
+          2
+        )
       );
 
       return res.status(502).json({
@@ -160,12 +181,13 @@ export const crearSuscripcion = async (req: any, res: any) => {
       });
     }
 
-    console.log("Suscripción creada:", {
+    console.log("Suscripción creada correctamente:", {
       id: datosMP.id,
       status: datosMP.status,
       tieneInitPoint: true,
     });
 
+    // 9. Devolver el enlace al frontend
     return res.status(200).json({
       init_point: datosMP.init_point,
     });
@@ -174,7 +196,8 @@ export const crearSuscripcion = async (req: any, res: any) => {
     console.error("Mensaje:", error?.message);
 
     return res.status(500).json({
-      error: "No se pudo procesar la solicitud de pago.",
+      error:
+        "Ocurrió un error al crear la suscripción.",
     });
   }
 };
