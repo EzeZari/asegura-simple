@@ -5,15 +5,22 @@ import { prisma } from '../config/db';
 const client = new MercadoPagoConfig({ accessToken: process.env.MERCADO_PAGO_ACCESS_TOKEN || '' });
 
 export const crearSuscripcion = async (req: Request, res: Response): Promise<any> => {
-  const { plan, email } = req.body; // Ya no necesitamos forzar el mpEmail en el backend
+  const { plan, email, mpEmail } = req.body;
+
+  // 🔥 1. SÚPER DEBUGGER ACTIVADO (No lo sacamos más)
+  console.log("=== DEBUG MP SUPER DETALLADO ===");
+  console.log("Plan a comprar:", plan);
+  console.log("Email de la cuenta:", email);
+  console.log("Email para pagar (mpEmail):", mpEmail);
+  console.log("================================");
 
   if (!email) return res.status(400).json({ error: "Faltan datos obligatorios del usuario." });
 
-  // 🔥 1. Limpiamos cualquier caracter especial del título para evitar bloqueos
+  // Títulos ultra limpios sin tildes ni guiones por las dudas
   const planes = {
-    BASICO: { title: "AseguraSimple Plan Basico", price: 9990 }, 
-    PROFESIONAL: { title: "AseguraSimple Plan Profesional", price: 14990 },
-    AGENCIA: { title: "AseguraSimple Plan Agencia", price: 24990 }
+    BASICO: { title: "AseguraSimple Basico", price: 9990 }, 
+    PROFESIONAL: { title: "AseguraSimple Profesional", price: 14990 },
+    AGENCIA: { title: "AseguraSimple Agencia", price: 24990 }
   };
 
   const planSeleccionado = planes[plan as keyof typeof planes];
@@ -37,30 +44,49 @@ export const crearSuscripcion = async (req: Request, res: Response): Promise<any
     if (!frontendUrl.startsWith('http')) frontendUrl = `https://${frontendUrl}`; 
     if (frontendUrl.endsWith('/')) frontendUrl = frontendUrl.slice(0, -1);
 
-    // 🔥 2. Usamos el ID numérico en vez del Email para evadir el rechazo del @ y el punto
     const referenciaSegura = `${user.id}---${plan}`;
+    
+    // 🔥 MERCADO PAGO REQUIERE EL EMAIL DEL PAGADOR. LO VOLVEMOS A PONER.
+    const correoPago = (mpEmail || email).trim().toLowerCase();
+
+    const bodyMP = {
+      reason: planSeleccionado.title,
+      auto_recurring: {
+        frequency: 1,
+        frequency_type: 'months',
+        transaction_amount: planSeleccionado.price,
+        currency_id: 'ARS' 
+      },
+      back_url: `${frontendUrl}/login?exito=true`,
+      external_reference: referenciaSegura,
+      payer_email: correoPago
+    };
+
+    console.log("JSON enviado a Mercado Pago:", JSON.stringify(bodyMP, null, 2));
 
     const preapproval = new PreApproval(client);
-    
-    // 🔥 3. Eliminamos el "payer_email". Al no mandarlo, Mercado Pago lo pide en su pantalla y no nos tira error 400.
-    const result = await preapproval.create({
-      body: {
-        reason: planSeleccionado.title,
-        auto_recurring: {
-          frequency: 1,
-          frequency_type: 'months',
-          transaction_amount: planSeleccionado.price,
-          currency_id: 'ARS' 
-        },
-        back_url: `${frontendUrl}/login?exito=true`,
-        external_reference: referenciaSegura
-      }
-    });
+    const result = await preapproval.create({ body: bodyMP });
 
     res.json({ init_point: result.init_point });
   } catch (error: any) {
-    console.error("Error creando suscripción en MP:", error);
-    res.status(500).json({ error: "Mercado Pago rechazó temporalmente la operación. Intentá de nuevo." });
+    console.error("=== ERROR COMPLETO DE MERCADO PAGO ===");
+    
+    let detallesExcepcion = "Error general de conexión";
+    
+    // 🔥 2. EXTRACCIÓN MILIMÉTRICA DEL ERROR DE MERCADO PAGO
+    if (error.cause && Array.isArray(error.cause) && error.cause.length > 0) {
+        // Extraemos qué propiedad exactamente rechazó (ej. 'payer_email' o 'back_url')
+        detallesExcepcion = error.cause.map((c: any) => `Causa: ${c.description} (Código: ${c.code})`).join(' | ');
+    } else if (error.response && error.response.message) {
+        detallesExcepcion = error.response.message;
+    } else if (error.message) {
+        detallesExcepcion = error.message;
+    }
+    
+    console.error(detallesExcepcion);
+    
+    // Esto va a hacer que el cartel verde/rojo de tu página te diga EL MOTIVO EXACTO.
+    res.status(500).json({ error: `Rechazo MP: ${detallesExcepcion}` });
   }
 };
 
@@ -80,7 +106,6 @@ export const webhookMercadoPago = async (req: Request, res: Response) => {
       const planNombre = partesRef[1];
 
       if (refId && planNombre) {
-        // 🔥 4. Soportamos tanto el formato viejo (email) como el nuevo (ID numérico)
         let user = null;
         if (refId.includes('@')) {
           user = await prisma.user.findUnique({ where: { email: refId } });
@@ -121,7 +146,6 @@ export const webhookMercadoPago = async (req: Request, res: Response) => {
 
       let user = null;
       
-      // Buscamos al usuario según la referencia segura (vieja o nueva)
       if (infoPago.external_reference) {
         const refId = infoPago.external_reference.split("---")[0];
         if (refId.includes('@')) {
@@ -177,7 +201,6 @@ export const cancelarSuscripcion = async (req: any, res: Response): Promise<any>
     await prisma.suscripcion.update({ where: { userId: user.id }, data: { estado: 'cancelled' } });
     res.json({ success: true, message: "Suscripción cancelada correctamente." });
   } catch (error: any) {
-    console.error("Error al cancelar suscripción en MP:", error);
     res.status(500).json({ error: "Error interno al intentar cancelar la suscripción." });
   }
 };
