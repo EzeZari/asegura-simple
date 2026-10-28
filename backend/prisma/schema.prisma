@@ -360,3 +360,11 @@ model Sugerencia {
   
   createdAt   DateTime @default(now())
 }
+model Descuento {
+  id          Int      @id @default(autoincrement())
+  codigo      String   @unique
+  porcentaje  Float    // Guardará un decimal. Ej: 0.20 para 20%
+  activo      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}

@@ -1,7 +1,7 @@
 "use client";
 
 import { Suspense, useState } from "react";
-import { useSearchParams } from "next/navigation"; // 🔥 IMPORTANTE: Agregado para leer la URL
+import { useSearchParams } from "next/navigation";
 import { Check, Shield, Users, Zap, Loader2, Sparkles } from "lucide-react";
 import Toast from "@/components/ui/Toast";
 import { useAuthStore } from "@/store/authStore"; 
@@ -10,7 +10,6 @@ function PlanesContent() {
   const user = useAuthStore((state: any) => state.user);
   const searchParams = useSearchParams();
   
-  // 🔥 FIX: Si no hay sesión, buscamos el email en la URL (?email=...)
   const urlEmail = searchParams.get("email") || "";
   const userEmail = user?.email || urlEmail; 
   
@@ -25,6 +24,8 @@ function PlanesContent() {
   const [showMpModal, setShowMpModal] = useState(false);
   const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
   const [mpEmail, setMpEmail] = useState("");
+  // 🔥 NUEVO ESTADO: Código de descuento
+  const [codigoDescuento, setCodigoDescuento] = useState("");
 
   const planes = [
     {
@@ -95,14 +96,12 @@ function PlanesContent() {
   ];
 
   const handleSeleccionarPlan = (planId: string) => {
-    // Si elige el plan gratuito, lo mandamos directo al login.
     if (planId === "GRATUITO") {
       setLoadingPlan("GRATUITO");
       window.location.href = "/login?verified=true";
       return;
     }
 
-    // 🔥 AHORA SÍ PASA LA VALIDACIÓN, PORQUE LEE EL EMAIL DE LA URL
     if (!userEmail) {
       setMensajeToast("Error: Tu sesión expiró o no se detectó. Por favor, volvé a iniciar sesión.");
       setShowToast(true);
@@ -111,6 +110,7 @@ function PlanesContent() {
 
     setSelectedPlanId(planId);
     setMpEmail(userEmail);
+    setCodigoDescuento(""); // Reseteamos el código al abrir el modal
     setShowMpModal(true);
   };
 
@@ -128,7 +128,13 @@ function PlanesContent() {
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/pagos/create-subscription`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ plan: selectedPlanId, email: userEmail, mpEmail: mpEmail.trim().toLowerCase() })
+        // 🔥 NUEVO CAMPO: Enviamos el código de descuento al backend
+        body: JSON.stringify({ 
+          plan: selectedPlanId, 
+          email: userEmail, 
+          mpEmail: mpEmail.trim().toLowerCase(),
+          codigoDescuento: codigoDescuento.trim().toUpperCase()
+        })
       });
 
       const data = await res.json();
@@ -257,6 +263,18 @@ function PlanesContent() {
                  onChange={(e) => setMpEmail(e.target.value)}
                  className="w-full border-2 border-gray-200 rounded-xl px-4 py-3 text-gray-900 font-bold focus:ring-4 focus:ring-[#009EE3]/20 focus:border-[#009EE3] outline-none transition-all placeholder:font-medium placeholder:text-gray-400"
                  placeholder="tu-email@mercadopago.com"
+               />
+            </div>
+
+            {/* 🔥 NUEVO: Input de Código de Descuento */}
+            <div className="space-y-2 mt-4">
+               <label className="text-xs font-bold text-gray-500 uppercase tracking-wider ml-1">Código de Descuento (Opcional)</label>
+               <input 
+                 type="text" 
+                 value={codigoDescuento} 
+                 onChange={(e) => setCodigoDescuento(e.target.value.toUpperCase())}
+                 className="w-full border-2 border-gray-200 rounded-xl px-4 py-3 text-gray-900 font-bold focus:ring-4 focus:ring-green-500/20 focus:border-green-500 outline-none transition-all placeholder:font-medium placeholder:text-gray-400 uppercase"
+                 placeholder="Ej: ASEGURA20"
                />
             </div>
             

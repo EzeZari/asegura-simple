@@ -2,13 +2,14 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ShieldCheck, Users, CreditCard, Crown, Star, Zap } from "lucide-react";
+import { ShieldCheck, Users, CreditCard, Crown, Star, Zap, ChevronDown, ChevronUp } from "lucide-react";
 import Toast from "@/components/ui/Toast";
 import AdminHeader from "@/components/admin/AdminHeader";
 import FiltrosAgencias from "@/components/admin/FiltrosAgencias";
 import TablaAgencias from "@/components/admin/TablaAgencias";
 import EstadisticasMRR from "@/components/admin/EstadisticasMRR";
 import GestorComunicados from "@/components/admin/GestorComunicados";
+import GestorDescuentos from "@/components/admin/GestorDescuentos"; 
 import ModalEditarSuscripcion from "@/components/admin/ModalEditarSuscripcion";
 import ModalCambiarPlan from "@/components/admin/ModalCambiarPlan";
 import ModalEliminarCuenta from "@/components/admin/ModalEliminarCuenta";
@@ -27,6 +28,9 @@ export default function AdminDashboard() {
     mensajeModal: "", activoModal: false, tipoModal: "blue"
   });
   
+  // 🔥 ESTADO PARA COLAPSAR LA TABLA DE CUENTAS
+  const [isCuentasExpanded, setIsCuentasExpanded] = useState(true);
+
   // ESTADOS DE FILTROS
   const [searchTerm, setSearchTerm] = useState("");
   const [filtroPlan, setFiltroPlan] = useState("TODOS");
@@ -99,7 +103,6 @@ export default function AdminDashboard() {
     router.push("/admin/login");
   };
 
-  // FUNCIONES DE API
   const guardarComunicado = async () => {
     setIsSavingComunicado(true);
     try {
@@ -220,7 +223,7 @@ export default function AdminDashboard() {
     <div className="min-h-screen bg-gray-950 text-gray-200 selection:bg-green-500/30 font-sans relative pb-10">
       <AdminHeader onLogout={handleLogout} />
 
-      <main className="max-w-7xl mx-auto px-4 md:px-6 py-6 md:py-10 flex flex-col gap-10">
+      <main className="max-w-7xl mx-auto px-4 md:px-6 py-6 md:py-10 flex flex-col gap-6 md:gap-8">
         <EstadisticasMRR stats={stats} />
         
         <GestorComunicados 
@@ -230,36 +233,52 @@ export default function AdminDashboard() {
           isSaving={isSavingComunicado} 
         />
 
-        <div className="flex flex-col gap-4">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-2">
+        <GestorDescuentos />
+
+        {/* 🔥 TABLA DE CUENTAS (AHORA DENTRO DE UN CONTENEDOR COLAPSABLE OSCURO) */}
+        <div className="bg-gray-900 border border-gray-800 rounded-3xl p-6 md:p-8 shadow-2xl flex flex-col transition-all duration-300 mt-2">
+          <div 
+            className={`flex flex-col md:flex-row md:items-center justify-between gap-4 cursor-pointer select-none ${isCuentasExpanded ? 'border-b border-gray-800 pb-6 mb-6' : ''}`}
+            onClick={() => setIsCuentasExpanded(!isCuentasExpanded)}
+          >
             <div>
               <h2 className="text-xl md:text-2xl font-bold text-white flex items-center gap-2">
                 <Users className="text-gray-500 w-5 h-5 md:w-6 md:h-6" /> Cuentas Registradas
               </h2>
               <p className="text-sm md:text-base text-gray-400 mt-1">Radiografía completa de usuarios y suscripciones.</p>
             </div>
-            <div className="bg-gray-900 border border-gray-800 px-4 py-3 md:py-2 rounded-xl flex flex-col md:flex-row md:items-center gap-1 md:gap-3 shadow-lg w-full md:w-auto">
-              <span className="text-sm font-medium text-gray-400 text-center md:text-left">Usuarios Mostrados:</span>
-              <span className="text-lg font-black text-green-500 text-center md:text-left">
-                {agenciasFiltradas.length} <span className="text-sm font-normal text-gray-500">de {agencias.length}</span>
-              </span>
+            
+            <div className="flex items-center gap-3 self-end md:self-auto">
+              <div className="bg-gray-950 border border-gray-800 px-4 py-2 rounded-xl flex items-center gap-2 shadow-inner">
+                <span className="text-sm font-medium text-gray-400 hidden md:inline">Mostrados:</span>
+                <span className="text-lg font-black text-green-500">
+                  {agenciasFiltradas.length} <span className="text-sm font-normal text-gray-500">de {agencias.length}</span>
+                </span>
+              </div>
+              <button className="p-2 bg-gray-800 hover:bg-gray-700 text-gray-400 rounded-full transition-colors shrink-0">
+                {isCuentasExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+              </button>
             </div>
           </div>
 
-          <FiltrosAgencias searchTerm={searchTerm} setSearchTerm={setSearchTerm} filtroPlan={filtroPlan} setFiltroPlan={setFiltroPlan} />
+          {isCuentasExpanded && (
+            <div className="flex flex-col gap-4 animate-in fade-in slide-in-from-top-4 duration-300">
+              <FiltrosAgencias searchTerm={searchTerm} setSearchTerm={setSearchTerm} filtroPlan={filtroPlan} setFiltroPlan={setFiltroPlan} />
 
-          <TablaAgencias 
-            agenciasFiltradas={agenciasFiltradas} 
-            planesOptions={planesOptions}
-            onImpersonate={handleImpersonate}
-            onModificarPlan={(a) => { setAgenciaSeleccionada(a); setPlanSeleccionado(a.plan || "GRATUITO"); setModalOpen(true); }}
-            onEditarSuscripcion={(a) => {
-              setAgenciaSeleccionada(a);
-              setSubData({ estado: a.suscripcion?.estado || "pendiente", fechaVencimiento: a.suscripcion?.fechaVencimiento ? new Date(a.suscripcion.fechaVencimiento).toISOString().split('T')[0] : "" });
-              setEditSubModalOpen(true);
-            }}
-            onEliminarCuenta={(a) => { setAgenciaAEliminar(a); setDeleteModalOpen(true); }}
-          />
+              <TablaAgencias 
+                agenciasFiltradas={agenciasFiltradas} 
+                planesOptions={planesOptions}
+                onImpersonate={handleImpersonate}
+                onModificarPlan={(a) => { setAgenciaSeleccionada(a); setPlanSeleccionado(a.plan || "GRATUITO"); setModalOpen(true); }}
+                onEditarSuscripcion={(a) => {
+                  setAgenciaSeleccionada(a);
+                  setSubData({ estado: a.suscripcion?.estado || "pendiente", fechaVencimiento: a.suscripcion?.fechaVencimiento ? new Date(a.suscripcion.fechaVencimiento).toISOString().split('T')[0] : "" });
+                  setEditSubModalOpen(true);
+                }}
+                onEliminarCuenta={(a) => { setAgenciaAEliminar(a); setDeleteModalOpen(true); }}
+              />
+            </div>
+          )}
         </div>
       </main>
 
