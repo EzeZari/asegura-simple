@@ -5,24 +5,15 @@ import { prisma } from '../config/db';
 const client = new MercadoPagoConfig({ accessToken: process.env.MERCADO_PAGO_ACCESS_TOKEN || '' });
 
 export const crearSuscripcion = async (req: Request, res: Response): Promise<any> => {
-  const { plan, email, mpEmail } = req.body;
-
-   // 🔥 LOGS TEMPORALES DE DEBUG
-  console.log("=== DEBUG MP ===");
-  console.log("Plan:", plan);
-  console.log("Email usuario:", email);
-  console.log("Email MP:", mpEmail);
-  console.log("Access Token (primeros 20):", process.env.MERCADO_PAGO_ACCESS_TOKEN?.substring(0, 20));
-  console.log("Frontend URL:", process.env.FRONTEND_URL);
-  console.log("================");
+  const { plan, email } = req.body; // Ya no necesitamos forzar el mpEmail en el backend
 
   if (!email) return res.status(400).json({ error: "Faltan datos obligatorios del usuario." });
 
-  // 🔥 Quitamos tildes y caracteres raros para que Mercado Pago no rechace el texto (invalid_field_content)
+  // 🔥 1. Limpiamos cualquier caracter especial del título para evitar bloqueos
   const planes = {
-    BASICO: { title: "Plan Basico - AseguraSimple", price: 9990 }, 
-    PROFESIONAL: { title: "Plan Profesional - AseguraSimple", price: 14990 },
-    AGENCIA: { title: "Plan Agencia - AseguraSimple", price: 24990 }
+    BASICO: { title: "AseguraSimple Plan Basico", price: 9990 }, 
+    PROFESIONAL: { title: "AseguraSimple Plan Profesional", price: 14990 },
+    AGENCIA: { title: "AseguraSimple Plan Agencia", price: 24990 }
   };
 
   const planSeleccionado = planes[plan as keyof typeof planes];
@@ -34,27 +25,24 @@ export const crearSuscripcion = async (req: Request, res: Response): Promise<any
       include: { suscripcion: true }
     });
     
-    if (user && user.plan === plan && user.suscripcion?.estado === 'autorizado') {
+    if (!user) return res.status(404).json({ error: "Usuario no encontrado en la base de datos." });
+
+    if (user.plan === plan && user.suscripcion?.estado === 'autorizado') {
       return res.status(400).json({ 
-        error: `Ya tenés el ${planSeleccionado.title} activo. No es necesario que vuelvas a pagar.` 
+        error: `Ya tenés el plan activo. No es necesario que vuelvas a pagar.` 
       });
     }
 
-    // 🔥 Forzamos la URL de tu Railway por si te olvidaste de poner la variable de entorno
-    let frontendUrl = process.env.FRONTEND_URL || 'https://asegura-simple-production.up.railway.app';
-    if (!frontendUrl.startsWith('http')) {
-      frontendUrl = `https://${frontendUrl}`; 
-    }
-    if (frontendUrl.endsWith('/')) {
-      frontendUrl = frontendUrl.slice(0, -1);
-    }
+    let frontendUrl = process.env.FRONTEND_URL || 'https://www.asegurasimple.com';
+    if (!frontendUrl.startsWith('http')) frontendUrl = `https://${frontendUrl}`; 
+    if (frontendUrl.endsWith('/')) frontendUrl = frontendUrl.slice(0, -1);
 
-    // 🔥 Cambiamos el "|" por "---" porque algunos validadores de MP rechazan la barrita vertical
-    const referenciaSegura = `${email}---${plan}`;
-    const correoPago = (mpEmail || email).trim().toLowerCase();
+    // 🔥 2. Usamos el ID numérico en vez del Email para evadir el rechazo del @ y el punto
+    const referenciaSegura = `${user.id}---${plan}`;
 
     const preapproval = new PreApproval(client);
     
+    // 🔥 3. Eliminamos el "payer_email". Al no mandarlo, Mercado Pago lo pide en su pantalla y no nos tira error 400.
     const result = await preapproval.create({
       body: {
         reason: planSeleccionado.title,
@@ -65,23 +53,14 @@ export const crearSuscripcion = async (req: Request, res: Response): Promise<any
           currency_id: 'ARS' 
         },
         back_url: `${frontendUrl}/login?exito=true`,
-        external_reference: referenciaSegura,
-        payer_email: correoPago 
+        external_reference: referenciaSegura
       }
     });
 
     res.json({ init_point: result.init_point });
   } catch (error: any) {
     console.error("Error creando suscripción en MP:", error);
-    
-    let msgError = "Error al conectar con Mercado Pago. Verificá los datos.";
-    
-    // 🔥 Traducimos el error exacto que te estaba saltando para que se muestre en pantalla
-    if (error.message === 'Request contains invalid or disallowed content' || error.code === 'invalid_field_content') {
-       msgError = "Mercado Pago rechazó la operación de seguridad. Posibles causas: 1) Estás usando tu propio mail para pagarte a vos mismo. 2) Si usás un Token de PRUEBA (TEST-...), debés usar un mail de prueba oficial de MP (test_user_xxx@testuser.com).";
-    }
-
-    res.status(500).json({ error: msgError });
+    res.status(500).json({ error: "Mercado Pago rechazó temporalmente la operación. Intentá de nuevo." });
   }
 };
 
@@ -92,21 +71,22 @@ export const webhookMercadoPago = async (req: Request, res: Response) => {
     const { type, topic, data } = req.body;
     const evento = type || topic;
 
-    if (evento) {
-      console.log(`📩 Webhook MP recibido - Evento: ${evento} - ID: ${data?.id}`);
-    }
-
     if (evento === 'subscription_preapproval' && data?.id) {
       const preapproval = new PreApproval(client);
       const suscripcionMP = await preapproval.get({ id: data.id });
 
-      // 🔥 Separamos el email y el plan usando los tres guiones que armamos arriba
       const partesRef = (suscripcionMP.external_reference || "").split("---");
-      const email = partesRef[0];
+      const refId = partesRef[0];
       const planNombre = partesRef[1];
 
-      if (email && planNombre) {
-        const user = await prisma.user.findUnique({ where: { email } });
+      if (refId && planNombre) {
+        // 🔥 4. Soportamos tanto el formato viejo (email) como el nuevo (ID numérico)
+        let user = null;
+        if (refId.includes('@')) {
+          user = await prisma.user.findUnique({ where: { email: refId } });
+        } else {
+          user = await prisma.user.findUnique({ where: { id: Number(refId) } });
+        }
         
         if (user) {
           if (suscripcionMP.status === 'authorized') {
@@ -123,14 +103,13 @@ export const webhookMercadoPago = async (req: Request, res: Response) => {
               update: { mpPreapprovalId: suscripcionMP.id, estado: "autorizado", fechaVencimiento: fechaVencimiento },
               create: { userId: user.id, mpPreapprovalId: suscripcionMP.id, estado: "autorizado", fechaVencimiento: fechaVencimiento }
             });
-            console.log(`✅ ¡ÉXITO TOTAL! Suscripción ${planNombre} activada en DB para ${email}.`);
+            console.log(`✅ Éxito: Suscripción activada para el usuario ID ${user.id}.`);
           }
           else if (suscripcionMP.status === 'cancelled' || suscripcionMP.status === 'paused') {
             await prisma.suscripcion.update({
               where: { userId: user.id },
               data: { estado: suscripcionMP.status }
             });
-            console.log(`❌ Atención: Suscripción de ${email} cancelada/pausada.`);
           }
         }
       }
@@ -140,35 +119,38 @@ export const webhookMercadoPago = async (req: Request, res: Response) => {
       const payment = new Payment(client);
       const infoPago = await payment.get({ id: data.id });
 
-      let email = "";
+      let user = null;
+      
+      // Buscamos al usuario según la referencia segura (vieja o nueva)
       if (infoPago.external_reference) {
-        email = infoPago.external_reference.split("---")[0];
+        const refId = infoPago.external_reference.split("---")[0];
+        if (refId.includes('@')) {
+          user = await prisma.user.findUnique({ where: { email: refId } });
+        } else {
+          user = await prisma.user.findUnique({ where: { id: Number(refId) } });
+        }
       } else if (infoPago.payer?.email) {
-        email = infoPago.payer.email;
+        user = await prisma.user.findUnique({ where: { email: infoPago.payer.email } });
       }
 
-      if (email) {
-        const user = await prisma.user.findUnique({ where: { email } });
-        if (user) {
-          const pagoExistente = await prisma.pago.findUnique({ where: { mpPagoId: infoPago.id?.toString() } });
-          if (!pagoExistente) {
-            await prisma.pago.create({
-              data: {
-                userId: user.id,
-                mpPagoId: infoPago.id?.toString() || data.id.toString(),
-                monto: infoPago.transaction_amount || 0,
-                moneda: infoPago.currency_id || "ARS",
-                estado: infoPago.status || "desconocido",
-                metodoPago: infoPago.payment_type_id || "desconocido",
-              }
-            });
-            console.log(`💰 ¡Caja! Pago de $${infoPago.transaction_amount} registrado para ${email}`);
-          } else {
-            await prisma.pago.update({
-              where: { mpPagoId: infoPago.id?.toString() },
-              data: { estado: infoPago.status || pagoExistente.estado }
-            });
-          }
+      if (user) {
+        const pagoExistente = await prisma.pago.findUnique({ where: { mpPagoId: infoPago.id?.toString() } });
+        if (!pagoExistente) {
+          await prisma.pago.create({
+            data: {
+              userId: user.id,
+              mpPagoId: infoPago.id?.toString() || data.id.toString(),
+              monto: infoPago.transaction_amount || 0,
+              moneda: infoPago.currency_id || "ARS",
+              estado: infoPago.status || "desconocido",
+              metodoPago: infoPago.payment_type_id || "desconocido",
+            }
+          });
+        } else {
+          await prisma.pago.update({
+            where: { mpPagoId: infoPago.id?.toString() },
+            data: { estado: infoPago.status || pagoExistente.estado }
+          });
         }
       }
     }
@@ -208,7 +190,6 @@ export const obtenerHistorialPagos = async (req: any, res: Response): Promise<an
     const pagos = await prisma.pago.findMany({ where: { userId }, orderBy: { fechaPago: 'desc' } });
     res.json(pagos);
   } catch (error) {
-    console.error("Error al obtener historial de pagos:", error);
     res.status(500).json({ error: "Error interno al obtener pagos." });
   }
 };
