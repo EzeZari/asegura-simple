@@ -4,19 +4,14 @@ import { prisma } from '../config/db';
 
 const client = new MercadoPagoConfig({ accessToken: process.env.MERCADO_PAGO_ACCESS_TOKEN || '' });
 
-export const crearSuscripcion = async (req: Request, res: Response): Promise<any> => {
+export const crearSuscripcion = async (req: Request, res: Response): Promise<void> => {
   const { plan, email, mpEmail } = req.body;
 
-  // 🔥 1. SÚPER DEBUGGER ACTIVADO (No lo sacamos más)
-  console.log("=== DEBUG MP SUPER DETALLADO ===");
-  console.log("Plan a comprar:", plan);
-  console.log("Email de la cuenta:", email);
-  console.log("Email para pagar (mpEmail):", mpEmail);
-  console.log("================================");
+  if (!email) {
+    res.status(400).json({ error: "Faltan datos obligatorios del usuario." });
+    return;
+  }
 
-  if (!email) return res.status(400).json({ error: "Faltan datos obligatorios del usuario." });
-
-  // Títulos ultra limpios sin tildes ni guiones por las dudas
   const planes = {
     BASICO: { title: "AseguraSimple Basico", price: 9990 }, 
     PROFESIONAL: { title: "AseguraSimple Profesional", price: 14990 },
@@ -24,7 +19,10 @@ export const crearSuscripcion = async (req: Request, res: Response): Promise<any
   };
 
   const planSeleccionado = planes[plan as keyof typeof planes];
-  if (!planSeleccionado) return res.status(400).json({ error: "Plan no válido" });
+  if (!planSeleccionado) {
+    res.status(400).json({ error: "Plan no válido" });
+    return;
+  }
 
   try {
     const user = await prisma.user.findUnique({ 
@@ -32,23 +30,23 @@ export const crearSuscripcion = async (req: Request, res: Response): Promise<any
       include: { suscripcion: true }
     });
     
-    if (!user) return res.status(404).json({ error: "Usuario no encontrado en la base de datos." });
+    if (!user) {
+      res.status(404).json({ error: "Usuario no encontrado en la base de datos." });
+      return;
+    }
 
     if (user.plan === plan && user.suscripcion?.estado === 'autorizado') {
-      return res.status(400).json({ 
-        error: `Ya tenés el plan activo. No es necesario que vuelvas a pagar.` 
-      });
+      res.status(400).json({ error: `Ya tenés el plan activo. No es necesario que vuelvas a pagar.` });
+      return;
     }
 
     let frontendUrl = process.env.FRONTEND_URL || 'https://www.asegurasimple.com';
     if (!frontendUrl.startsWith('http')) frontendUrl = `https://${frontendUrl}`; 
     if (frontendUrl.endsWith('/')) frontendUrl = frontendUrl.slice(0, -1);
 
-    const referenciaSegura = `${user.id}---${plan}`;
-    
-    // 🔥 MERCADO PAGO REQUIERE EL EMAIL DEL PAGADOR. LO VOLVEMOS A PONER.
     const correoPago = (mpEmail || email).trim().toLowerCase();
 
+    // 🔥 JSON PRÍSTINO: Sin guiones medios, sin arrobas, sin query params en la URL.
     const bodyMP = {
       reason: planSeleccionado.title,
       auto_recurring: {
@@ -57,40 +55,27 @@ export const crearSuscripcion = async (req: Request, res: Response): Promise<any
         transaction_amount: planSeleccionado.price,
         currency_id: 'ARS' 
       },
-      back_url: `${frontendUrl}/login?exito=true`,
-      external_reference: referenciaSegura,
-      payer_email: correoPago
+      back_url: `${frontendUrl}/login`, 
+      external_reference: `user_${user.id}_plan_${plan}`,
+      payer_email: correoPago,
+      status: "pending"
     };
-
-    console.log("JSON enviado a Mercado Pago:", JSON.stringify(bodyMP, null, 2));
 
     const preapproval = new PreApproval(client);
     const result = await preapproval.create({ body: bodyMP });
 
     res.json({ init_point: result.init_point });
   } catch (error: any) {
-    console.error("=== ERROR COMPLETO DE MERCADO PAGO ===");
-    
-    let detallesExcepcion = "Error general de conexión";
-    
-    // 🔥 2. EXTRACCIÓN MILIMÉTRICA DEL ERROR DE MERCADO PAGO
-    if (error.cause && Array.isArray(error.cause) && error.cause.length > 0) {
-        // Extraemos qué propiedad exactamente rechazó (ej. 'payer_email' o 'back_url')
-        detallesExcepcion = error.cause.map((c: any) => `Causa: ${c.description} (Código: ${c.code})`).join(' | ');
-    } else if (error.response && error.response.message) {
-        detallesExcepcion = error.response.message;
-    } else if (error.message) {
-        detallesExcepcion = error.message;
+    console.error("=== ERROR MP ===", error.message);
+    let msg = error.message || "Error de conexión";
+    if (error.cause && error.cause.length > 0) {
+        msg = error.cause.map((c: any) => c.description).join(' | ');
     }
-    
-    console.error(detallesExcepcion);
-    
-    // Esto va a hacer que el cartel verde/rojo de tu página te diga EL MOTIVO EXACTO.
-    res.status(500).json({ error: `Rechazo MP: ${detallesExcepcion}` });
+    res.status(500).json({ error: `MP rechazó el pago: ${msg}.` });
   }
 };
 
-export const webhookMercadoPago = async (req: Request, res: Response) => {
+export const webhookMercadoPago = async (req: Request, res: Response): Promise<void> => {
   res.status(200).send("OK");
 
   try {
@@ -100,42 +85,45 @@ export const webhookMercadoPago = async (req: Request, res: Response) => {
     if (evento === 'subscription_preapproval' && data?.id) {
       const preapproval = new PreApproval(client);
       const suscripcionMP = await preapproval.get({ id: data.id });
+      
+      const refRaw = suscripcionMP.external_reference || "";
+      let user = null;
+      let planNombre = "";
 
-      const partesRef = (suscripcionMP.external_reference || "").split("---");
-      const refId = partesRef[0];
-      const planNombre = partesRef[1];
-
-      if (refId && planNombre) {
-        let user = null;
-        if (refId.includes('@')) {
-          user = await prisma.user.findUnique({ where: { email: refId } });
+      // 🔥 LÓGICA RETROCOMPATIBLE PARA LEER FORMATO VIEJO Y NUEVO
+      if (refRaw.includes("---")) {
+        const partes = refRaw.split("---");
+        planNombre = partes[1];
+        if (partes[0].includes('@')) {
+          user = await prisma.user.findUnique({ where: { email: partes[0] } });
         } else {
-          user = await prisma.user.findUnique({ where: { id: Number(refId) } });
+          user = await prisma.user.findUnique({ where: { id: Number(partes[0]) } });
         }
-        
-        if (user) {
-          if (suscripcionMP.status === 'authorized') {
-            await prisma.user.update({
-              where: { id: user.id },
-              data: { plan: planNombre as any }
-            });
+      } else if (refRaw.includes("_plan_")) {
+        const partes = refRaw.split("_plan_");
+        planNombre = partes[1];
+        const refId = partes[0].replace("user_", "");
+        user = await prisma.user.findUnique({ where: { id: Number(refId) } });
+      }
 
-            const fechaVencimiento = new Date();
-            fechaVencimiento.setDate(fechaVencimiento.getDate() + 30);
+      if (user && planNombre) {
+        if (suscripcionMP.status === 'authorized') {
+          await prisma.user.update({ where: { id: user.id }, data: { plan: planNombre as any } });
 
-            await prisma.suscripcion.upsert({
-              where: { userId: user.id },
-              update: { mpPreapprovalId: suscripcionMP.id, estado: "autorizado", fechaVencimiento: fechaVencimiento },
-              create: { userId: user.id, mpPreapprovalId: suscripcionMP.id, estado: "autorizado", fechaVencimiento: fechaVencimiento }
-            });
-            console.log(`✅ Éxito: Suscripción activada para el usuario ID ${user.id}.`);
-          }
-          else if (suscripcionMP.status === 'cancelled' || suscripcionMP.status === 'paused') {
-            await prisma.suscripcion.update({
-              where: { userId: user.id },
-              data: { estado: suscripcionMP.status }
-            });
-          }
+          const fechaVencimiento = new Date();
+          fechaVencimiento.setDate(fechaVencimiento.getDate() + 30);
+
+          await prisma.suscripcion.upsert({
+            where: { userId: user.id },
+            update: { mpPreapprovalId: suscripcionMP.id, estado: "autorizado", fechaVencimiento },
+            create: { userId: user.id, mpPreapprovalId: suscripcionMP.id, estado: "autorizado", fechaVencimiento }
+          });
+          console.log(`✅ Éxito: Suscripción activada para el usuario ID ${user.id}.`);
+        } else if (suscripcionMP.status === 'cancelled' || suscripcionMP.status === 'paused') {
+          await prisma.suscripcion.update({
+            where: { userId: user.id },
+            data: { estado: suscripcionMP.status }
+          });
         }
       }
     }
@@ -145,12 +133,15 @@ export const webhookMercadoPago = async (req: Request, res: Response) => {
       const infoPago = await payment.get({ id: data.id });
 
       let user = null;
-      
       if (infoPago.external_reference) {
-        const refId = infoPago.external_reference.split("---")[0];
-        if (refId.includes('@')) {
-          user = await prisma.user.findUnique({ where: { email: refId } });
-        } else {
+        const refRaw = infoPago.external_reference;
+        if (refRaw.includes("---")) {
+          const idStr = refRaw.split("---")[0];
+          user = idStr.includes('@') 
+            ? await prisma.user.findUnique({ where: { email: idStr } }) 
+            : await prisma.user.findUnique({ where: { id: Number(idStr) } });
+        } else if (refRaw.includes("_plan_")) {
+          const refId = refRaw.split("_plan_")[0].replace("user_", "");
           user = await prisma.user.findUnique({ where: { id: Number(refId) } });
         }
       } else if (infoPago.payer?.email) {
@@ -183,16 +174,20 @@ export const webhookMercadoPago = async (req: Request, res: Response) => {
   }
 };
 
-export const cancelarSuscripcion = async (req: any, res: Response): Promise<any> => {
+export const cancelarSuscripcion = async (req: any, res: Response): Promise<void> => {
   try {
     const idBruto = req.user?.userId || req.user?.id || req.usuario?.id || req.userId;
-    if (!idBruto) return res.status(401).json({ error: "No se pudo extraer el ID del usuario del token." });
+    if (!idBruto) {
+      res.status(401).json({ error: "No se pudo extraer el ID del usuario del token." });
+      return;
+    }
 
     const userId = Number(idBruto);
     const user = await prisma.user.findUnique({ where: { id: userId }, include: { suscripcion: true } });
 
     if (!user || !user.suscripcion || !user.suscripcion.mpPreapprovalId) {
-      return res.status(400).json({ error: "No se encontró una suscripción activa para cancelar." });
+      res.status(400).json({ error: "No se encontró una suscripción activa para cancelar." });
+      return;
     }
 
     const preapproval = new PreApproval(client);
@@ -205,10 +200,13 @@ export const cancelarSuscripcion = async (req: any, res: Response): Promise<any>
   }
 };
 
-export const obtenerHistorialPagos = async (req: any, res: Response): Promise<any> => {
+export const obtenerHistorialPagos = async (req: any, res: Response): Promise<void> => {
   try {
     const userId = Number(req.user?.userId || req.user?.id || req.usuario?.id || req.userId);
-    if (!userId) return res.status(401).json({ error: "No autorizado" });
+    if (!userId) {
+      res.status(401).json({ error: "No autorizado" });
+      return;
+    }
 
     const pagos = await prisma.pago.findMany({ where: { userId }, orderBy: { fechaPago: 'desc' } });
     res.json(pagos);
