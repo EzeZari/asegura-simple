@@ -6,7 +6,6 @@ const client = new MercadoPagoConfig({ accessToken: process.env.MERCADO_PAGO_ACC
 
 
 
-
 export const crearSuscripcion = async (req: any, res: any) => {
   try {
     const { plan, email, mpEmail } = req.body;
@@ -203,6 +202,7 @@ export const crearSuscripcion = async (req: any, res: any) => {
 };
 
 
+
 export const webhookMercadoPago = async (req: Request, res: Response): Promise<void> => {
   res.status(200).send("OK");
 
@@ -210,6 +210,7 @@ export const webhookMercadoPago = async (req: Request, res: Response): Promise<v
     const { type, topic, data } = req.body;
     const evento = type || topic;
 
+    // Para consultar los datos de MP, el SDK funciona bien (el problema era solo al crear)
     if (evento === 'subscription_preapproval' && data?.id) {
       const preapproval = new PreApproval(client);
       const suscripcionMP = await preapproval.get({ id: data.id });
@@ -218,19 +219,28 @@ export const webhookMercadoPago = async (req: Request, res: Response): Promise<v
       let user = null;
       let planNombre = "";
 
+      // 🔥 LÓGICA ULTRA-ROBUSTA: Soportamos formatos viejos y el nuevo formato (Solo ID)
       if (refRaw.includes("---")) {
         const partes = refRaw.split("---");
         planNombre = partes[1];
-        if (partes[0].includes('@')) {
-          user = await prisma.user.findUnique({ where: { email: partes[0] } });
-        } else {
-          user = await prisma.user.findUnique({ where: { id: Number(partes[0]) } });
-        }
+        const refId = partes[0];
+        user = refId.includes('@') 
+          ? await prisma.user.findUnique({ where: { email: refId } }) 
+          : await prisma.user.findUnique({ where: { id: Number(refId) } });
       } else if (refRaw.includes("_plan_")) {
         const partes = refRaw.split("_plan_");
         planNombre = partes[1];
         const refId = partes[0].replace("user_", "");
         user = await prisma.user.findUnique({ where: { id: Number(refId) } });
+      } else {
+        // 🔥 NUEVO FORMATO DIRECTO (fetch): refRaw es solamente el ID (ej: "18")
+        user = await prisma.user.findUnique({ where: { id: Number(refRaw) } });
+        
+        // Como no pasamos el plan en la referencia, lo deducimos del título (reason)
+        const reason = (suscripcionMP.reason || "").toUpperCase();
+        if (reason.includes("PROFESIONAL")) planNombre = "PROFESIONAL";
+        else if (reason.includes("AGENCIA")) planNombre = "AGENCIA";
+        else planNombre = "BASICO";
       }
 
       if (user && planNombre) {
@@ -245,6 +255,7 @@ export const webhookMercadoPago = async (req: Request, res: Response): Promise<v
             update: { mpPreapprovalId: suscripcionMP.id, estado: "autorizado", fechaVencimiento },
             create: { userId: user.id, mpPreapprovalId: suscripcionMP.id, estado: "autorizado", fechaVencimiento }
           });
+          console.log(`✅ Éxito: Suscripción ${planNombre} activada para el usuario ID ${user.id}.`);
         } else if (suscripcionMP.status === 'cancelled' || suscripcionMP.status === 'paused') {
           await prisma.suscripcion.update({
             where: { userId: user.id },
@@ -269,6 +280,9 @@ export const webhookMercadoPago = async (req: Request, res: Response): Promise<v
         } else if (refRaw.includes("_plan_")) {
           const refId = refRaw.split("_plan_")[0].replace("user_", "");
           user = await prisma.user.findUnique({ where: { id: Number(refId) } });
+        } else {
+          // 🔥 NUEVO FORMATO DIRECTO: Es el ID numérico limpio
+          user = await prisma.user.findUnique({ where: { id: Number(refRaw) } });
         }
       } else if (infoPago.payer?.email) {
         user = await prisma.user.findUnique({ where: { email: infoPago.payer.email } });
