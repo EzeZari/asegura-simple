@@ -5,14 +5,14 @@ import { prisma } from '../config/db';
 const client = new MercadoPagoConfig({ accessToken: process.env.MERCADO_PAGO_ACCESS_TOKEN || '' });
 
 
+
 export const crearSuscripcion = async (req: any, res: any) => {
   try {
     const { plan, email, mpEmail } = req.body;
 
-    // 1. Validar datos recibidos
     if (!email || typeof email !== "string") {
       return res.status(400).json({
-        error: "El correo electrónico del usuario es obligatorio.",
+        error: "El correo electrónico es obligatorio.",
       });
     }
 
@@ -42,7 +42,6 @@ export const crearSuscripcion = async (req: any, res: any) => {
       });
     }
 
-    // 2. Verificar que el usuario exista
     const usuario = await prisma.user.findUnique({
       where: {
         email: email.trim().toLowerCase(),
@@ -55,7 +54,19 @@ export const crearSuscripcion = async (req: any, res: any) => {
       });
     }
 
-    // 3. Preparar la solicitud a Mercado Pago
+    const accessToken =
+      process.env.MERCADO_PAGO_ACCESS_TOKEN;
+
+    if (!accessToken) {
+      console.error(
+        "Falta MERCADO_PAGO_ACCESS_TOKEN en Railway."
+      );
+
+      return res.status(500).json({
+        error: "La configuración de pagos está incompleta.",
+      });
+    }
+
     const frontendUrl = (
       process.env.FRONTEND_URL ||
       "https://www.asegurasimple.com"
@@ -68,16 +79,6 @@ export const crearSuscripcion = async (req: any, res: any) => {
     )
       .trim()
       .toLowerCase();
-
-    if (!process.env.MERCADO_PAGO_ACCESS_TOKEN) {
-      console.error(
-        "Falta configurar MERCADO_PAGO_ACCESS_TOKEN."
-      );
-
-      return res.status(500).json({
-        error: "La configuración de pagos está incompleta.",
-      });
-    }
 
     const bodyMP = {
       reason: planSeleccionado.title,
@@ -92,36 +93,65 @@ export const crearSuscripcion = async (req: any, res: any) => {
       payer_email: correoPago,
     };
 
-    // 4. Crear la suscripción
-    const client = new MercadoPagoConfig({
-      accessToken: process.env.MERCADO_PAGO_ACCESS_TOKEN,
-    });
+    console.log(
+      "Enviando solicitud de suscripción a Mercado Pago:",
+      {
+        plan,
+        monto: planSeleccionado.price,
+        moneda: bodyMP.auto_recurring.currency_id,
+        frecuencia: bodyMP.auto_recurring.frequency_type,
+        backUrl: bodyMP.back_url,
+        tieneEmailPagador: Boolean(bodyMP.payer_email),
+      }
+    );
 
-    const preapproval = new PreApproval(client);
+    const respuestaMP = await fetch(
+      "https://api.mercadopago.com/preapproval",
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(bodyMP),
+      }
+    );
 
-    const resultado = await preapproval.create({
-      body: bodyMP,
-    });
+    const textoRespuesta = await respuestaMP.text();
 
-    console.log("Suscripción creada correctamente:", {
-      usuarioId: usuario.id,
-      plan,
-      monto: planSeleccionado.price,
-      status: resultado.status,
-      tieneInitPoint: Boolean(resultado.init_point),
-    });
+    let datosMP: any;
 
-    if (!resultado.init_point) {
+    try {
+      datosMP = JSON.parse(textoRespuesta);
+    } catch {
+      datosMP = { respuestaOriginal: textoRespuesta };
+    }
+
+    if (!respuestaMP.ok) {
+      // La respuesta permite ver el código y el motivo
+      // que devuelve Mercado Pago, sin registrar el token.
       console.error(
-        "Mercado Pago no devolvió init_point:",
-        JSON.stringify(
-          {
-            id: resultado.id,
-            status: resultado.status,
-          },
-          null,
-          2
-        )
+        "=== RESPUESTA DETALLADA MERCADO PAGO ==="
+      );
+      console.error("HTTP:", respuestaMP.status);
+      console.error(
+        "Respuesta:",
+        JSON.stringify(datosMP, null, 2)
+      );
+
+      return res.status(502).json({
+        error:
+          "Mercado Pago rechazó la creación de la suscripción.",
+        codigoMP: respuestaMP.status,
+        detalle:
+          "Consultá los logs del backend para ver el motivo.",
+      });
+    }
+
+    if (!datosMP?.init_point) {
+      console.error(
+        "Mercado Pago respondió sin init_point:",
+        JSON.stringify(datosMP, null, 2)
       );
 
       return res.status(502).json({
@@ -130,56 +160,25 @@ export const crearSuscripcion = async (req: any, res: any) => {
       });
     }
 
+    console.log("Suscripción creada:", {
+      id: datosMP.id,
+      status: datosMP.status,
+      tieneInitPoint: true,
+    });
+
     return res.status(200).json({
-      init_point: resultado.init_point,
+      init_point: datosMP.init_point,
     });
   } catch (error: any) {
-    // 5. Registrar el error real sin exponer credenciales
-    console.error("=== ERROR REAL MERCADO PAGO ===");
+    console.error("=== ERROR EN CREAR SUSCRIPCION ===");
     console.error("Mensaje:", error?.message);
-    console.error("Status:", error?.status);
-    console.error("Status HTTP:", error?.statusCode);
 
-    console.error(
-      "Causa:",
-      JSON.stringify(error?.cause ?? null, null, 2)
-    );
-
-    console.error(
-      "Respuesta API:",
-      JSON.stringify(
-        error?.api_response?.body ?? null,
-        null,
-        2
-      )
-    );
-
-    console.error(
-      "Respuesta adicional:",
-      JSON.stringify(error?.response ?? null, null, 2)
-    );
-
-    console.error(
-      "Datos de la solicitud:",
-      JSON.stringify(
-        {
-          plan: req.body?.plan,
-          tieneEmail: Boolean(req.body?.email),
-          tieneEmailMP: Boolean(req.body?.mpEmail),
-        },
-        null,
-        2
-      )
-    );
-
-    return res.status(502).json({
-      error:
-        "Mercado Pago rechazó la creación de la suscripción.",
-      mensaje:
-        "Revisá los registros del backend para conocer la causa.",
+    return res.status(500).json({
+      error: "No se pudo procesar la solicitud de pago.",
     });
   }
 };
+
 
 export const webhookMercadoPago = async (req: Request, res: Response): Promise<void> => {
   res.status(200).send("OK");
