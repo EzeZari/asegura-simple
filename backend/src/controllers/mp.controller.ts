@@ -46,7 +46,6 @@ export const crearSuscripcion = async (req: Request, res: Response): Promise<voi
 
     const correoPago = (mpEmail || email).trim().toLowerCase();
 
-    // 🔥 JSON PRÍSTINO: Sin guiones medios, sin arrobas, sin query params en la URL.
     const bodyMP = {
       reason: planSeleccionado.title,
       auto_recurring: {
@@ -56,22 +55,27 @@ export const crearSuscripcion = async (req: Request, res: Response): Promise<voi
         currency_id: 'ARS' 
       },
       back_url: `${frontendUrl}/login`, 
-      external_reference: `user_${user.id}_plan_${plan}`,
-      payer_email: correoPago,
-      status: "pending"
+      external_reference: `${user.id}---${plan}`,
+      payer_email: correoPago
     };
 
     const preapproval = new PreApproval(client);
     const result = await preapproval.create({ body: bodyMP });
 
+    // ¡ÉXITO! Si pasa esto, te redirige a Mercado Pago
     res.json({ init_point: result.init_point });
   } catch (error: any) {
-    console.error("=== ERROR MP ===", error.message);
-    let msg = error.message || "Error de conexión";
-    if (error.cause && error.cause.length > 0) {
-        msg = error.cause.map((c: any) => c.description).join(' | ');
+    let errorExacto = error.message || "Error de conexión";
+    
+    // 🔥 EL SECRETO: Extraemos la causa exacta que el SDK de Mercado Pago oculta
+    if (error.api_response && error.api_response.body && error.api_response.body.cause && error.api_response.body.cause.length > 0) {
+      errorExacto = error.api_response.body.cause.map((c: any) => `Campo [${c.data}]: ${c.description}`).join(' | ');
+    } else if (error.response && error.response.cause && error.response.cause.length > 0) {
+      errorExacto = error.response.cause.map((c: any) => `Campo [${c.data}]: ${c.description}`).join(' | ');
     }
-    res.status(500).json({ error: `MP rechazó el pago: ${msg}.` });
+    
+    console.error("=== ERROR REAL MP ===", errorExacto);
+    res.status(500).json({ error: `MP rechazó el pago. Motivo exacto: ${errorExacto}` });
   }
 };
 
@@ -90,7 +94,6 @@ export const webhookMercadoPago = async (req: Request, res: Response): Promise<v
       let user = null;
       let planNombre = "";
 
-      // 🔥 LÓGICA RETROCOMPATIBLE PARA LEER FORMATO VIEJO Y NUEVO
       if (refRaw.includes("---")) {
         const partes = refRaw.split("---");
         planNombre = partes[1];
@@ -118,7 +121,6 @@ export const webhookMercadoPago = async (req: Request, res: Response): Promise<v
             update: { mpPreapprovalId: suscripcionMP.id, estado: "autorizado", fechaVencimiento },
             create: { userId: user.id, mpPreapprovalId: suscripcionMP.id, estado: "autorizado", fechaVencimiento }
           });
-          console.log(`✅ Éxito: Suscripción activada para el usuario ID ${user.id}.`);
         } else if (suscripcionMP.status === 'cancelled' || suscripcionMP.status === 'paused') {
           await prisma.suscripcion.update({
             where: { userId: user.id },
