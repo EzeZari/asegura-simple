@@ -4,78 +4,180 @@ import { prisma } from '../config/db';
 
 const client = new MercadoPagoConfig({ accessToken: process.env.MERCADO_PAGO_ACCESS_TOKEN || '' });
 
-export const crearSuscripcion = async (req: Request, res: Response): Promise<void> => {
-  const { plan, email, mpEmail } = req.body;
 
-  if (!email) {
-    res.status(400).json({ error: "Faltan datos obligatorios del usuario." });
-    return;
-  }
-
-  const planes = {
-    BASICO: { title: "AseguraSimple Basico", price: 9990 }, 
-    PROFESIONAL: { title: "AseguraSimple Profesional", price: 14990 },
-    AGENCIA: { title: "AseguraSimple Agencia", price: 24990 }
-  };
-
-  const planSeleccionado = planes[plan as keyof typeof planes];
-  if (!planSeleccionado) {
-    res.status(400).json({ error: "Plan no válido" });
-    return;
-  }
-
+export const crearSuscripcion = async (req: any, res: any) => {
   try {
-    const user = await prisma.user.findUnique({ 
-      where: { email },
-      include: { suscripcion: true }
+    const { plan, email, mpEmail } = req.body;
+
+    // 1. Validar datos recibidos
+    if (!email || typeof email !== "string") {
+      return res.status(400).json({
+        error: "El correo electrónico del usuario es obligatorio.",
+      });
+    }
+
+    const planes: Record<
+      string,
+      { title: string; price: number }
+    > = {
+      BASICO: {
+        title: "AseguraSimple - Plan Básico",
+        price: 9990,
+      },
+      PROFESIONAL: {
+        title: "AseguraSimple - Plan Profesional",
+        price: 14990,
+      },
+      AGENCIA: {
+        title: "AseguraSimple - Plan Agencia",
+        price: 24990,
+      },
+    };
+
+    const planSeleccionado = planes[plan];
+
+    if (!planSeleccionado) {
+      return res.status(400).json({
+        error: "El plan seleccionado no es válido.",
+      });
+    }
+
+    // 2. Verificar que el usuario exista
+    const usuario = await prisma.user.findUnique({
+      where: {
+        email: email.trim().toLowerCase(),
+      },
     });
-    
-    if (!user) {
-      res.status(404).json({ error: "Usuario no encontrado en la base de datos." });
-      return;
+
+    if (!usuario) {
+      return res.status(404).json({
+        error: "No se encontró el usuario.",
+      });
     }
 
-    if (user.plan === plan && user.suscripcion?.estado === 'autorizado') {
-      res.status(400).json({ error: `Ya tenés el plan activo. No es necesario que vuelvas a pagar.` });
-      return;
+    // 3. Preparar la solicitud a Mercado Pago
+    const frontendUrl = (
+      process.env.FRONTEND_URL ||
+      "https://www.asegurasimple.com"
+    ).replace(/\/+$/, "");
+
+    const correoPago = (
+      typeof mpEmail === "string" && mpEmail.trim()
+        ? mpEmail
+        : email
+    )
+      .trim()
+      .toLowerCase();
+
+    if (!process.env.MERCADO_PAGO_ACCESS_TOKEN) {
+      console.error(
+        "Falta configurar MERCADO_PAGO_ACCESS_TOKEN."
+      );
+
+      return res.status(500).json({
+        error: "La configuración de pagos está incompleta.",
+      });
     }
-
-    let frontendUrl = process.env.FRONTEND_URL || 'https://www.asegurasimple.com';
-    if (!frontendUrl.startsWith('http')) frontendUrl = `https://${frontendUrl}`; 
-    if (frontendUrl.endsWith('/')) frontendUrl = frontendUrl.slice(0, -1);
-
-    const correoPago = (mpEmail || email).trim().toLowerCase();
 
     const bodyMP = {
       reason: planSeleccionado.title,
       auto_recurring: {
         frequency: 1,
-        frequency_type: 'months',
+        frequency_type: "months",
         transaction_amount: planSeleccionado.price,
-        currency_id: 'ARS' 
+        currency_id: "ARS",
       },
-      back_url: `${frontendUrl}/login`, 
-      external_reference: `${user.id}---${plan}`,
-      payer_email: correoPago
+      back_url: `${frontendUrl}/login`,
+      external_reference: `${usuario.id}---${plan}`,
+      payer_email: correoPago,
     };
 
-    const preapproval = new PreApproval(client);
-    const result = await preapproval.create({ body: bodyMP });
+    // 4. Crear la suscripción
+    const client = new MercadoPagoConfig({
+      accessToken: process.env.MERCADO_PAGO_ACCESS_TOKEN,
+    });
 
-    // ¡ÉXITO! Si pasa esto, te redirige a Mercado Pago
-    res.json({ init_point: result.init_point });
-  } catch (error: any) {
-    let errorExacto = error.message || "Error de conexión";
-    
-    // 🔥 EL SECRETO: Extraemos la causa exacta que el SDK de Mercado Pago oculta
-    if (error.api_response && error.api_response.body && error.api_response.body.cause && error.api_response.body.cause.length > 0) {
-      errorExacto = error.api_response.body.cause.map((c: any) => `Campo [${c.data}]: ${c.description}`).join(' | ');
-    } else if (error.response && error.response.cause && error.response.cause.length > 0) {
-      errorExacto = error.response.cause.map((c: any) => `Campo [${c.data}]: ${c.description}`).join(' | ');
+    const preapproval = new PreApproval(client);
+
+    const resultado = await preapproval.create({
+      body: bodyMP,
+    });
+
+    console.log("Suscripción creada correctamente:", {
+      usuarioId: usuario.id,
+      plan,
+      monto: planSeleccionado.price,
+      status: resultado.status,
+      tieneInitPoint: Boolean(resultado.init_point),
+    });
+
+    if (!resultado.init_point) {
+      console.error(
+        "Mercado Pago no devolvió init_point:",
+        JSON.stringify(
+          {
+            id: resultado.id,
+            status: resultado.status,
+          },
+          null,
+          2
+        )
+      );
+
+      return res.status(502).json({
+        error:
+          "Mercado Pago no devolvió el enlace de pago.",
+      });
     }
-    
-    console.error("=== ERROR REAL MP ===", errorExacto);
-    res.status(500).json({ error: `MP rechazó el pago. Motivo exacto: ${errorExacto}` });
+
+    return res.status(200).json({
+      init_point: resultado.init_point,
+    });
+  } catch (error: any) {
+    // 5. Registrar el error real sin exponer credenciales
+    console.error("=== ERROR REAL MERCADO PAGO ===");
+    console.error("Mensaje:", error?.message);
+    console.error("Status:", error?.status);
+    console.error("Status HTTP:", error?.statusCode);
+
+    console.error(
+      "Causa:",
+      JSON.stringify(error?.cause ?? null, null, 2)
+    );
+
+    console.error(
+      "Respuesta API:",
+      JSON.stringify(
+        error?.api_response?.body ?? null,
+        null,
+        2
+      )
+    );
+
+    console.error(
+      "Respuesta adicional:",
+      JSON.stringify(error?.response ?? null, null, 2)
+    );
+
+    console.error(
+      "Datos de la solicitud:",
+      JSON.stringify(
+        {
+          plan: req.body?.plan,
+          tieneEmail: Boolean(req.body?.email),
+          tieneEmailMP: Boolean(req.body?.mpEmail),
+        },
+        null,
+        2
+      )
+    );
+
+    return res.status(502).json({
+      error:
+        "Mercado Pago rechazó la creación de la suscripción.",
+      mensaje:
+        "Revisá los registros del backend para conocer la causa.",
+    });
   }
 };
 
