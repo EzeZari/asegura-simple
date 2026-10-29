@@ -75,9 +75,13 @@ export default function LoginPage() {
       setUser(data.user);
       
       // 🔥 LA MAGIA ESTÁ ACÁ: Leemos la URL en el momento exacto del clic
+      
+      // Redirigir a una ruta interna permitida
       const currentParams = new URLSearchParams(window.location.search);
-      const finalRedirect = currentParams.get("redirect") || "/inicio";
-      router.push(finalRedirect);
+      const redirect = currentParams.get("redirect");
+      const finalRedirect = redirect === "/planes" ? "/planes" : "/inicio";
+
+      router.replace(finalRedirect);
 
     } catch (err) {
       setError("Error de conexión con el servidor.");
@@ -135,9 +139,13 @@ export default function LoginPage() {
       setUser(data.user);
       
       // 🔥 REPETIMOS LA LÓGICA ACÁ POR SI TIENEN 2FA
+      
+      // Redirigir a una ruta interna permitida después del 2FA
       const currentParams = new URLSearchParams(window.location.search);
-      const finalRedirect = currentParams.get("redirect") || "/inicio";
-      router.push(finalRedirect);
+      const redirect = currentParams.get("redirect");
+      const finalRedirect = redirect === "/planes" ? "/planes" : "/inicio";
+
+      router.replace(finalRedirect);
     } catch (err) {
       setError("Error de conexión con el servidor.");
       setIsLoading(false);
