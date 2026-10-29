@@ -24,8 +24,11 @@ router.get('/agencias', verifyAdminToken, getAgencias);
 router.put('/agencias/:id/plan', verifyAdminToken, updatePlan);
 router.put('/agencias/:id/suscripcion', verifyAdminToken, updateSuscripcionManual);
 router.delete('/agencias/:id', verifyAdminToken, deleteAgencia);
-router.get('/comunicados', getComunicadoGlobal);
-router.put('/comunicados', verifyAdminToken, updateComunicadoGlobal);
+
+// 🔥 ACÁ ESTÁ EL CAMBIO: Lo pasamos a SINGULAR para que coincida con tu frontend
+router.get('/comunicado', getComunicadoGlobal);
+router.put('/comunicado', verifyAdminToken, updateComunicadoGlobal);
+
 router.post('/impersonate/:id', verifyAdminToken, impersonateUser);
 router.get('/estadisticas', verifyAdminToken, getEstadisticasAdmin);
 
