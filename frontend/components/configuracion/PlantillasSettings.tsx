@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { Save, MessageSquare, Info, Smartphone, CheckCheck } from "lucide-react";
+import { Save, MessageSquare, Info, Smartphone, CheckCheck, HelpCircle, X, BellRing, Braces, Send, Eye } from "lucide-react";
 import Toast from "@/components/ui/Toast";
 import { apiFetch } from "@/services/api";
 
@@ -15,6 +15,7 @@ export default function PlantillasSettings() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [previewTab, setPreviewTab] = useState<"proxima" | "critica" | "vencida" | "bienvenida">("proxima");
+  const [showTutorial, setShowTutorial] = useState(false);
 
   const [agencia, setAgencia] = useState<any>({
     mensajeVencimiento: DEFAULT_PROXIMA,
@@ -129,31 +130,38 @@ export default function PlantillasSettings() {
   return (
     <div className="flex flex-col gap-6 animate-in fade-in duration-300">
       
-      <div className="bg-blue-50/60 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800/30 p-5 rounded-2xl flex gap-3.5 items-start transition-colors">
-        <Info size={20} className="text-blue-600 dark:text-blue-400 mt-0.5 shrink-0" />
-        <div className="flex flex-col gap-2">
-          <h4 className="text-sm font-bold text-blue-900 dark:text-blue-300">Variables dinámicas de personalización</h4>
-          <p className="text-xs text-blue-800/80 dark:text-blue-300/80 leading-relaxed">
-            Hacé clic en cualquiera de las siguientes etiquetas para insertarla automáticamente en el mensaje donde tengas el cursor. El sistema reemplazará los datos al abrir WhatsApp.
-          </p>
-          <div className="flex flex-wrap gap-2 mt-1">
-            {variablesDisponibles.map((v, i) => (
-              <span
-                key={i}
-                className="inline-flex items-center gap-1 bg-white dark:bg-gray-800 border border-blue-200/70 dark:border-gray-700 px-2.5 py-1 rounded-lg text-xs transition-all shadow-sm"
-                title={v.desc}
-              >
-                <code className="font-mono font-bold text-blue-700 dark:text-blue-400">{v.tag}</code>
-                <span className="text-[10px] text-gray-500 dark:text-gray-400 hidden sm:inline">• {v.desc}</span>
-              </span>
-            ))}
+      <div className="bg-blue-50/60 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800/30 p-5 rounded-2xl flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between transition-colors">
+        <div className="flex gap-3.5 items-start">
+          <Info size={20} className="text-blue-600 dark:text-blue-400 mt-0.5 shrink-0" />
+          <div className="flex flex-col gap-2">
+            <h4 className="text-sm font-bold text-blue-900 dark:text-blue-300">Personalización de Comunicaciones</h4>
+            <p className="text-xs text-blue-800/80 dark:text-blue-300/80 leading-relaxed">
+              Configurá los textos predeterminados para contactar a tus clientes. Hacé clic en <strong>Ver Guía de Uso</strong> para entender cómo funciona el sistema de alertas, envíos y variables.
+            </p>
+            <div className="flex flex-wrap gap-2 mt-1">
+              {variablesDisponibles.map((v, i) => (
+                <span
+                  key={i}
+                  className="inline-flex items-center gap-1 bg-white dark:bg-gray-800 border border-blue-200/70 dark:border-gray-700 px-2.5 py-1 rounded-lg text-xs transition-all shadow-sm"
+                  title={v.desc}
+                >
+                  <code className="font-mono font-bold text-blue-700 dark:text-blue-400">{v.tag}</code>
+                </span>
+              ))}
+            </div>
           </div>
         </div>
+        <button 
+          onClick={() => setShowTutorial(true)} 
+          className="shrink-0 flex items-center justify-center gap-2 w-full sm:w-auto px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold rounded-xl transition-all shadow-sm"
+        >
+          <HelpCircle size={16} /> Ver Guía de Uso
+        </button>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         
-        <div className="lg:col-span-7 bg-white dark:bg-gray-800 p-5 md:p-6 rounded-2xl border border-gray-200/80 dark:border-gray-700 shadow-sm flex flex-col gap-6 h-[800px] overflow-y-auto transition-colors">
+        <div className="lg:col-span-7 bg-white dark:bg-gray-800 p-5 md:p-6 rounded-2xl border border-gray-200/80 dark:border-gray-700 shadow-sm flex flex-col gap-6 h-[800px] overflow-y-auto transition-colors custom-scrollbar">
           <h3 className="text-lg font-bold text-gray-900 dark:text-white border-b border-gray-100 dark:border-gray-700 pb-3 flex items-center gap-2 sticky top-0 bg-white dark:bg-gray-800 z-10">
             <MessageSquare size={18} className="text-green-600 dark:text-green-500" /> Plantillas de Renovación
           </h3>
@@ -330,8 +338,97 @@ export default function PlantillasSettings() {
             </p>
           </div>
         </div>
-
       </div>
+
+      {showTutorial && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/60 dark:bg-gray-950/80 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 w-full max-w-2xl rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+            
+            <div className="px-5 md:px-6 py-4 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between bg-gray-50 dark:bg-gray-900/50 shrink-0">
+              <h3 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                <HelpCircle size={20} className="text-blue-600 dark:text-blue-500"/> Guía del Sistema de Plantillas
+              </h3>
+              <button onClick={() => setShowTutorial(false)} className="text-gray-500 hover:text-gray-900 dark:hover:text-white transition-colors bg-gray-200/50 dark:bg-gray-800/50 hover:bg-gray-200 dark:hover:bg-gray-800 p-2 rounded-full">
+                <X size={18} />
+              </button>
+            </div>
+            
+            <div className="p-5 md:p-6 space-y-8 overflow-y-auto custom-scrollbar text-sm text-gray-600 dark:text-gray-300">
+              
+              {/* Sección 1: Alertas */}
+              <section>
+                <h4 className="flex items-center gap-2 font-bold text-gray-900 dark:text-white mb-3 text-base">
+                  <BellRing size={18} className="text-amber-500" /> 1. ¿Cómo funcionan las Alertas de Renovación?
+                </h4>
+                <p className="mb-3">AseguraSimple lee las fechas de vigencia de tu cartera y clasifica las pólizas en 3 estados. Cada estado usa una plantilla distinta:</p>
+                <ul className="space-y-2 ml-1">
+                  <li className="flex items-start gap-2">
+                    <span className="w-2 h-2 rounded-full bg-amber-500 mt-1.5 shrink-0"></span>
+                    <p><strong>Próximas:</strong> Pólizas que vencen en más de 7 días. Ideal para un primer acercamiento.</p>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="w-2 h-2 rounded-full bg-orange-500 mt-1.5 shrink-0"></span>
+                    <p><strong>Críticas:</strong> Pólizas que vencen en 7 días o menos. El mensaje debe denotar urgencia.</p>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="w-2 h-2 rounded-full bg-rose-500 mt-1.5 shrink-0"></span>
+                    <p><strong>Vencidas:</strong> Pólizas cuya fecha final ya pasó. Se usan para alertar sobre la falta de cobertura.</p>
+                  </li>
+                </ul>
+              </section>
+
+              {/* Sección 2: Variables */}
+              <section>
+                <h4 className="flex items-center gap-2 font-bold text-gray-900 dark:text-white mb-3 text-base">
+                  <Braces size={18} className="text-blue-500" /> 2. ¿Qué son las Variables Dinámicas?
+                </h4>
+                <p className="mb-4">Son etiquetas (como <code className="bg-gray-100 dark:bg-gray-800 px-1 rounded font-mono text-xs text-blue-600 dark:text-blue-400">[Nombre]</code>) que funcionan como "comodines". Te ahorran el trabajo de escribir los datos de cada cliente a mano.</p>
+                
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  <div className="bg-gray-50 dark:bg-gray-950/50 p-3.5 rounded-xl border border-gray-100 dark:border-gray-800">
+                    <span className="flex items-center justify-center bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-400 font-black rounded-full w-6 h-6 mb-2 text-xs">1</span>
+                    <p className="text-xs">Hacé clic en la caja de texto justo donde querés insertar el dato.</p>
+                  </div>
+                  <div className="bg-gray-50 dark:bg-gray-950/50 p-3.5 rounded-xl border border-gray-100 dark:border-gray-800">
+                    <span className="flex items-center justify-center bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-400 font-black rounded-full w-6 h-6 mb-2 text-xs">2</span>
+                    <p className="text-xs">Tocá el botón de la variable (Ej: <code className="bg-gray-200 dark:bg-gray-800 px-1 rounded font-mono font-bold">+[Rama]</code>).</p>
+                  </div>
+                  <div className="bg-gray-50 dark:bg-gray-950/50 p-3.5 rounded-xl border border-gray-100 dark:border-gray-800">
+                    <span className="flex items-center justify-center bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-400 font-black rounded-full w-6 h-6 mb-2 text-xs">3</span>
+                    <p className="text-xs">Al abrir WhatsApp, el sistema pondrá "Auto" o "Hogar" automáticamente.</p>
+                  </div>
+                </div>
+              </section>
+
+              {/* Sección 3: Envío (Tranquilidad) */}
+              <section>
+                <h4 className="flex items-center gap-2 font-bold text-gray-900 dark:text-white mb-3 text-base">
+                  <Send size={18} className="text-green-500" /> 3. ¿Los mensajes se envían solos?
+                </h4>
+                <div className="bg-green-50 dark:bg-green-950/20 border border-green-100 dark:border-green-900/30 p-4 rounded-xl text-green-800 dark:text-green-300">
+                  <p><strong>No. Tú tienes el control total.</strong> AseguraSimple no hace envíos automáticos ni "spam".</p>
+                  <p className="mt-2">Cuando presiones el botón de WhatsApp en la tabla de pólizas, el sistema abrirá la aplicación en tu celular o computadora con el mensaje ya redactado. <strong>El mensaje solo se enviará cuando vos presiones el botón de enviar en WhatsApp.</strong></p>
+                </div>
+              </section>
+
+              {/* Sección 4: Vista previa */}
+              <section>
+                <h4 className="flex items-center gap-2 font-bold text-gray-900 dark:text-white mb-3 text-base">
+                  <Eye size={18} className="text-purple-500" /> 4. Simulador (Vista Previa en Vivo)
+                </h4>
+                <p>El recuadro de la derecha simula la pantalla de un celular. Mientras escribís o agregás variables, este simulador te muestra exactamente cómo quedará el mensaje final usando datos ficticios (ej. "Juan Pérez"). Esto te asegura que el texto tenga sentido antes de guardarlo.</p>
+              </section>
+
+            </div>
+
+            <div className="px-5 md:px-6 py-4 border-t border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-950/50 flex justify-end shrink-0">
+              <button onClick={() => setShowTutorial(false)} className="w-full sm:w-auto px-8 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl shadow-lg shadow-blue-900/20 transition-all">
+                ¡Entendido, a configurar!
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <Toast message="Plantillas guardadas con éxito" isVisible={showToast} onClose={() => setShowToast(false)} />
     </div>
