@@ -22,7 +22,6 @@ model Productor {
   userId           Int?     @unique
   user             User?    @relation(fields: [userId], references: [id])
 
-  // 🔥 ACÁ AGREGAMOS LAS DOS LÍNEAS QUE PRISMA ESTÁ PIDIENDO
   polizas            Poliza[]
   siniestros         Siniestro[]
 
@@ -44,7 +43,7 @@ model Asegurado {
   nombre          String    // Nombre o Razón Social
   apellido        String?   // Opcional por si es empresa
   tipo            String    @default("Individuo") 
-  dni             String    // 🔥 ¡ACÁ ESTABA EL ERROR! BORRÁ EL @unique QUE TENÍAS AL LADO
+  dni             String    
   fechaNacimiento DateTime?
   condicionIva    String    @default("Consumidor Final")
   email           String?
@@ -59,31 +58,31 @@ model Asegurado {
 
   polizas         Poliza[]
 
-  @@unique([productorId, dni]) // Esta regla sí la dejás, está perfecta
+  @@unique([productorId, dni]) 
 }
 
 model Compania {
   id                 Int      @id @default(autoincrement())
   nombre             String
-  cuit               String?  // <-- Agregamos CUIT
-  telefonoSiniestros String?  // <-- Agregamos Teléfono
+  cuit               String?  
+  telefonoSiniestros String?  
   email              String?
 
-  productorId        Int        // 🔥 ESTO FALTABA: Dueño de la compañía
-  productor          Productor  @relation(fields: [productorId], references: [id]) // 🔥 ESTO FALTABA
+  productorId        Int        
+  productor          Productor  @relation(fields: [productorId], references: [id]) 
 
   polizas            Poliza[]
 }
 
 model Poliza {
   id               Int      @id @default(autoincrement())
-  nroPoliza        String   // 🔥 1. BORRAMOS EL @unique
+  nroPoliza        String   
   tipoPoliza       String
   fechaInicio      DateTime
   fechaVencimiento DateTime
   estado           String
   cobertura        String?
-  formaPago          String?   // 🔥 ESTE ES EL CAMPO NUEVO
+  formaPago        String?   
 
   aseguradoId      Int
   asegurado        Asegurado @relation(fields: [aseguradoId], references: [id])
@@ -91,18 +90,25 @@ model Poliza {
   companiaId       Int
   compania         Compania  @relation(fields: [companiaId], references: [id])
 
-  // 🔥 2. AGREGAMOS EL DUEÑO DIRECTO DE LA PÓLIZA
   productorId      Int
   productor        Productor @relation(fields: [productorId], references: [id])
 
   siniestros       Siniestro[]
   alertas          Alerta[]
-  actividades      Actividad[] // 🔥 AGREGAMOS ESTA LÍNEA (La segunda mitad del puente)
+  actividades      Actividad[] 
 
-  // Datos específicos condicionales
+  // --- DATOS DEL VEHÍCULO Y COBERTURA ---
   patente           String?
   marca             String?
   modelo            String?
+  // 🔥 NUEVOS CAMPOS OPCIONALES
+  motor             String?
+  chasis            String?
+  anio              String?
+  color             String?
+  sumaAsegurada     String?
+  clausulaAjuste    String?
+
   ubicacionRiesgo   String?
   cantidadEmpleados String?
 
@@ -115,11 +121,10 @@ model Poliza {
 
   estadoCuotas   Json?
 
-  // 🔥 CAMPOS NUEVOS PARA GESTIÓN DE ALERTAS
   avisoGestionado    Boolean  @default(false)
   observacionesAviso String?  @db.Text
 
-  @@unique([productorId, nroPoliza]) // 🔥 3. LA REGLA MAESTRA MULTI-TENANT
+  @@unique([productorId, nroPoliza]) 
 }
 
 model Alerta {
@@ -138,7 +143,7 @@ model Alerta {
 
 model Siniestro {
   id                 Int      @id @default(autoincrement())
-  nroSiniestro       String   // 🔥 1. CHAU CANDADO GLOBAL (@unique)
+  nroSiniestro       String   
   fechaHecho         DateTime
   descripcionInicial String
   estadoSiniestro    String
@@ -148,7 +153,6 @@ model Siniestro {
   polizaId           Int
   poliza             Poliza   @relation(fields: [polizaId], references: [id])
 
-  // 🔥 2. LE AGREGAMOS EL DUEÑO DIRECTO
   productorId        Int
   productor          Productor @relation(fields: [productorId], references: [id])
 
@@ -157,7 +161,7 @@ model Siniestro {
   linksConsulta  LinkConsulta[]
   notificaciones Notificacion[]
 
-  @@unique([productorId, nroSiniestro]) // 🔥 3. EL NUEVO CANDADO MULTI-AGENCIA
+  @@unique([productorId, nroSiniestro]) 
 }
 
 model NotaSiniestro {
@@ -233,16 +237,15 @@ model User {
   resetPasswordExpires DateTime? 
   twoFactorEnabled     Boolean @default(false)
 
-  codigoVerificacion   String?  // Acá guardamos el código de 6 dígitos
-  emailPendiente       String?  // Acá guardamos el nuevo mail hasta que se verifique
+  codigoVerificacion   String?  
+  emailPendiente       String?  
 
   isVerified           Boolean  @default(false)
   verificationToken    String?  @unique
 
-  // 🔥 NUEVOS CAMPOS RELACIONADOS CON PLANES Y MONETIZACIÓN
-  plan                 Plan          @default(GRATUITO) // 🔥 Antes decía BASICO
+  plan                 Plan          @default(GRATUITO) 
   suscripcion          Suscripcion?
-  productor            Productor?    // 🔥 NUEVO
+  productor            Productor?    
 
   pagos         Pago[]
 
@@ -260,11 +263,9 @@ model Actividad {
   cliente     String?
   fecha       DateTime @default(now())
 
-  // Puente con el Productor (Dueño de la agencia)
   productorId Int?                                                    
   productor   Productor? @relation(fields: [productorId], references: [id])  
 
-  // Puente con la Póliza (El que acabamos de armar)
   polizaId    Int?
   poliza      Poliza?    @relation(fields: [polizaId], references: [id], onDelete: Cascade)
 }
@@ -277,17 +278,16 @@ model Agencia {
   telefono              String?
   firma                 String?
   logoUrl               String?  
-  mensajeVencimiento    String?  @db.Text  // Este ya lo tenías (Lo usaremos para el AMARILLO)
-  mensajePolizaCritica  String?  @db.Text  // 🔥 NUEVO: Para el NARANJA
-  mensajePolizaVencida  String?  @db.Text  // 🔥 NUEVO: Para el ROJO
-  mensajeBienvenida     String?  @db.Text  // Este ya lo tenías
+  mensajeVencimiento    String?  @db.Text  
+  mensajePolizaCritica  String?  @db.Text  
+  mensajePolizaVencida  String?  @db.Text  
+  mensajeBienvenida     String?  @db.Text  
   diasAlertaVencimiento Int      @default(30)
   diasAlertaCritica     Int      @default(7)  
 
-  // --- NUEVOS CAMPOS PARA AUTOMATIZACIÓN (CRON JOB) ---
-  envioAutomaticoActivo Boolean  @default(false) // Apagado por defecto por seguridad
-  horaEnvioAutomatico   String   @default("09:00") // Hora a la que el robot se despierta
-  diasAvisoAutomatico   Int      @default(15) // Exactamente cuántos días antes manda el mail
+  envioAutomaticoActivo Boolean  @default(false) 
+  horaEnvioAutomatico   String   @default("09:00") 
+  diasAvisoAutomatico   Int      @default(15) 
   
   enviarMailBienvenida  Boolean  @default(true)
 
@@ -295,23 +295,21 @@ model Agencia {
   usarFirma             Boolean  @default(false)
 }
 
-// 🔥 NUEVO: ENUM PARA CONTROL DE TRÁFICO Y LÍMITES EN EL SAAS
 enum Plan {
-  GRATUITO // 🔥 Nuevo plan inicial
+  GRATUITO 
   BASICO
   PROFESIONAL
   AGENCIA
 }
 
-// 🔥 NUEVO: MODELO DE SUSCRIPCIONES ASOCIADAS A MERCADO PAGO
 model Suscripcion {
   id              Int       @id @default(autoincrement())
   userId          Int       @unique
   user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   
-  mpPreapprovalId String?   @unique // ID de la suscripción recurrente (Plan mensual) en MP
-  mpCustomerId    String?   // ID del comprador registrado dentro de MP
-  estado          String    @default("pendiente") // pendiente, autorizado, en_proceso, cancelado
+  mpPreapprovalId String?   @unique 
+  mpCustomerId    String?   
+  estado          String    @default("pendiente") 
   
   fechaInicio      DateTime  @default(now())
   fechaVencimiento DateTime?
@@ -319,51 +317,50 @@ model Suscripcion {
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 }
-// 🔥 NUEVA TABLA: Historial de Pagos
+
 model Pago {
   id              Int      @id @default(autoincrement())
   userId          Int
   mpPagoId        String   @unique 
   monto           Float
   moneda          String   @default("ARS")
-  estado          String   // 'approved', 'rejected', etc.
-  metodoPago      String?  // 'credit_card', 'account_money', etc.
+  estado          String   
+  metodoPago      String?  
   fechaPago       DateTime @default(now())
   
   user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
-// 🔥 MODELO PARA COMUNICADOS GLOBALES DEL ADMIN (SEPARADOS)
+
 model ComunicadoAdmin {
   id             Int      @id @default(1)
   
-  // Datos del Banner Superior
   mensajeBanner  String?  @db.Text
   activoBanner   Boolean  @default(false)
   tipoBanner     String   @default("blue")
   
-  // Datos del Modal Pop-up
   mensajeModal   String?  @db.Text
   activoModal    Boolean  @default(false)
   tipoModal      String   @default("blue")
   
   updatedAt      DateTime @updatedAt
 }
+
 model Sugerencia {
   id          Int      @id @default(autoincrement())
   titulo      String
   descripcion String   @db.Text
-  estado      String   @default("Pendiente") // Puede ser: Pendiente, En Análisis, En Desarrollo, Implementado
+  estado      String   @default("Pendiente") 
   
-  // Relación con el usuario que la creó
   userId      Int
   user        User     @relation(fields: [userId], references: [id])
   
   createdAt   DateTime @default(now())
 }
+
 model Descuento {
   id          Int      @id @default(autoincrement())
   codigo      String   @unique
-  porcentaje  Float    // Guardará un decimal. Ej: 0.20 para 20%
+  porcentaje  Float    
   activo      Boolean  @default(true)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt

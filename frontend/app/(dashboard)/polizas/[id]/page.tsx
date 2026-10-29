@@ -211,10 +211,25 @@ export default function PolizaDetallePage() {
               
               <DataField label="Forma de Pago" value={poliza.formaPago || "No especificada"} />
 
+              {/* 🔥 NUEVOS CAMPOS: SUMA ASEGURADA Y CLÁUSULA */}
+              {(poliza.sumaAsegurada || poliza.clausulaAjuste) && (
+                <>
+                  {poliza.sumaAsegurada && <DataField label="Suma Asegurada" value={poliza.sumaAsegurada} />}
+                  {poliza.clausulaAjuste && <DataField label="Cláusula de Ajuste" value={poliza.clausulaAjuste} />}
+                </>
+              )}
+
               {(poliza.tipoPoliza === "Automotor" || poliza.tipoPoliza === "Motovehículo") && (
                 <>
                   <DataField label="Dominio / Patente" value={poliza.patente?.toUpperCase() || "-"} />
                   <DataField label="Marca y Modelo" value={`${poliza.marca || ""} ${poliza.modelo || ""}`.trim() || "-"} />
+                  
+                  {/* 🔥 NUEVOS CAMPOS: DATOS DEL VEHÍCULO */}
+                  {(poliza.anio || poliza.color) && (
+                    <DataField label="Año y Color" value={`${poliza.anio || ""} ${poliza.color || ""}`.trim()} />
+                  )}
+                  {poliza.motor && <DataField label="Nro. Motor" value={poliza.motor.toUpperCase()} />}
+                  {poliza.chasis && <DataField label="Nro. Chasis" value={poliza.chasis.toUpperCase()} />}
                 </>
               )}
 
@@ -228,7 +243,6 @@ export default function PolizaDetallePage() {
             </div>
           </div>
 
-          {/* 🔥 EL HISTORIAL QUEDÓ ACÁ: Entre el riesgo y los siniestros */}
           <PolizaHistorial actividades={poliza.actividades} />
 
           <PolizaSiniestros polizaId={poliza.id} />

@@ -17,6 +17,8 @@ const ESTADO_INICIAL = {
   nroPoliza: "", tipoPoliza: "Automotor", fechaInicio: "", fechaVencimiento: "",
   estado: "Vigente", formaPago: "", cobertura: "", aseguradoId: "", companiaId: "", 
   patente: "", marca: "", modelo: "", ubicacionRiesgo: "", cantidadEmpleados: "", enviarCuponera: false, 
+  // 🔥 NUEVOS CAMPOS
+  motor: "", chasis: "", anio: "", color: "", sumaAsegurada: "", clausulaAjuste: ""
 };
 
 const FORMAS_PAGO = [
@@ -69,7 +71,6 @@ export default function NuevaPolizaModal({ isOpen, onClose, onSuccess, polizaAEd
 
     if (polizaAEditar) {
       if (isRenovacion) {
-        // 🔥 CORRECCIÓN: Si no hay fecha, usamos la fecha de hoy por defecto para no romper el split
         const fechaInicioNueva = polizaAEditar.fechaVencimiento ? polizaAEditar.fechaVencimiento.split('T')[0] : new Date().toISOString().split('T')[0];
         const [año, mes, dia] = fechaInicioNueva.split('-');
         
@@ -92,18 +93,31 @@ export default function NuevaPolizaModal({ isOpen, onClose, onSuccess, polizaAEd
           companiaId: polizaAEditar.companiaId?.toString() || "",
           formaPago: polizaAEditar.formaPago || "",
           enviarCuponera: polizaAEditar.enviarCuponera || false, 
+          // 🔥 CARGAMOS NUEVOS DATOS SI EXISTEN
+          motor: polizaAEditar.motor || "",
+          chasis: polizaAEditar.chasis || "",
+          anio: polizaAEditar.anio || "",
+          color: polizaAEditar.color || "",
+          sumaAsegurada: polizaAEditar.sumaAsegurada || "",
+          clausulaAjuste: polizaAEditar.clausulaAjuste || "",
         });
       } else {
         setFormData({
           ...ESTADO_INICIAL,
           ...polizaAEditar,
-          // 🔥 CORRECCIÓN: Evita crashear si fechaInicio o fechaVencimiento vienen nulas
           fechaInicio: polizaAEditar.fechaInicio ? polizaAEditar.fechaInicio.split('T')[0] : "",
           fechaVencimiento: polizaAEditar.fechaVencimiento ? polizaAEditar.fechaVencimiento.split('T')[0] : "",
           aseguradoId: polizaAEditar.aseguradoId?.toString() || "",
           companiaId: polizaAEditar.companiaId?.toString() || "",
           formaPago: polizaAEditar.formaPago || "",
           enviarCuponera: polizaAEditar.enviarCuponera || false, 
+          // 🔥 CARGAMOS NUEVOS DATOS SI EXISTEN
+          motor: polizaAEditar.motor || "",
+          chasis: polizaAEditar.chasis || "",
+          anio: polizaAEditar.anio || "",
+          color: polizaAEditar.color || "",
+          sumaAsegurada: polizaAEditar.sumaAsegurada || "",
+          clausulaAjuste: polizaAEditar.clausulaAjuste || "",
         });
       }
     } else {
@@ -378,7 +392,7 @@ export default function NuevaPolizaModal({ isOpen, onClose, onSuccess, polizaAEd
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 transition-colors">Estado</label>
                 <select name="estado" value={formData.estado} onChange={handleChange} className="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-green-600 dark:focus:ring-green-500 outline-none bg-transparent text-gray-900 dark:text-white transition-colors">
@@ -400,9 +414,21 @@ export default function NuevaPolizaModal({ isOpen, onClose, onSuccess, polizaAEd
                   )}
                 </select>
               </div>
+            </div>
+
+            {/* 🔥 SECCIÓN MEJORADA DE COBERTURAS Y SUMAS */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 transition-colors">Cobertura</label>
-                <input type="text" name="cobertura" value={formData.cobertura} onChange={handleChange} placeholder="Ej: Terceros" className="w-full px-3 py-2 border bg-transparent text-gray-900 dark:text-white border-gray-200 dark:border-gray-700 placeholder-gray-400 dark:placeholder-gray-500 rounded-lg focus:ring-2 focus:ring-green-600 dark:focus:ring-green-500 outline-none transition-colors" />
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 transition-colors">Cobertura <span className="text-[10px] text-gray-400 font-normal ml-1">Ej: Terceros Completos</span></label>
+                <input type="text" name="cobertura" value={formData.cobertura} onChange={handleChange} placeholder="Detalle de cobertura" className="w-full px-3 py-2 border bg-transparent text-gray-900 dark:text-white border-gray-200 dark:border-gray-700 placeholder-gray-400 dark:placeholder-gray-500 rounded-lg focus:ring-2 focus:ring-green-600 dark:focus:ring-green-500 outline-none transition-colors" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 transition-colors">Suma Asegurada</label>
+                <input type="text" name="sumaAsegurada" value={formData.sumaAsegurada || ""} onChange={handleChange} placeholder="Ej: $ 15.000.000" className="w-full px-3 py-2 border bg-transparent text-gray-900 dark:text-white border-gray-200 dark:border-gray-700 placeholder-gray-400 dark:placeholder-gray-500 rounded-lg focus:ring-2 focus:ring-green-600 dark:focus:ring-green-500 outline-none transition-colors" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 transition-colors">Cláusula de Ajuste</label>
+                <input type="text" name="clausulaAjuste" value={formData.clausulaAjuste || ""} onChange={handleChange} placeholder="Ej: 20%" className="w-full px-3 py-2 border bg-transparent text-gray-900 dark:text-white border-gray-200 dark:border-gray-700 placeholder-gray-400 dark:placeholder-gray-500 rounded-lg focus:ring-2 focus:ring-green-600 dark:focus:ring-green-500 outline-none transition-colors" />
               </div>
             </div>
 
@@ -411,7 +437,7 @@ export default function NuevaPolizaModal({ isOpen, onClose, onSuccess, polizaAEd
                 <h3 className="text-sm font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider flex items-center gap-2 transition-colors">
                   Datos del Vehículo <span className="text-[10px] bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 px-2 py-0.5 rounded-full normal-case transition-colors">Opcional</span>
                 </h3>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 transition-colors">Patente</label>
                     <input type="text" name="patente" value={formData.patente || ""} onChange={handleChange} placeholder="Ej: AB123CD" 
@@ -423,9 +449,29 @@ export default function NuevaPolizaModal({ isOpen, onClose, onSuccess, polizaAEd
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 transition-colors">Marca</label>
                     <input type="text" name="marca" value={formData.marca || ""} onChange={handleChange} placeholder="Ej: Toyota" className="w-full px-3 py-2 border bg-transparent text-gray-900 dark:text-white border-gray-200 dark:border-gray-700 placeholder-gray-400 dark:placeholder-gray-500 rounded-lg focus:ring-2 focus:ring-green-600 dark:focus:ring-green-500 outline-none transition-colors" />
                   </div>
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 transition-colors">Modelo Detallado</label>
+                    <input type="text" name="modelo" value={formData.modelo || ""} onChange={handleChange} placeholder="Ej: Corolla 1.8 XEI CVT" className="w-full px-3 py-2 border bg-transparent text-gray-900 dark:text-white border-gray-200 dark:border-gray-700 placeholder-gray-400 dark:placeholder-gray-500 rounded-lg focus:ring-2 focus:ring-green-600 dark:focus:ring-green-500 outline-none transition-colors" />
+                  </div>
+                </div>
+
+                {/* 🔥 NUEVOS CAMPOS DEL VEHÍCULO (MOTOR, CHASIS, AÑO, COLOR) */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mt-2">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 transition-colors">Modelo</label>
-                    <input type="text" name="modelo" value={formData.modelo || ""} onChange={handleChange} placeholder="Ej: Corolla 2023" className="w-full px-3 py-2 border bg-transparent text-gray-900 dark:text-white border-gray-200 dark:border-gray-700 placeholder-gray-400 dark:placeholder-gray-500 rounded-lg focus:ring-2 focus:ring-green-600 dark:focus:ring-green-500 outline-none transition-colors" />
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 transition-colors">Año</label>
+                    <input type="text" name="anio" value={formData.anio || ""} onChange={handleChange} placeholder="Ej: 2023" className="w-full px-3 py-2 border bg-transparent text-gray-900 dark:text-white border-gray-200 dark:border-gray-700 placeholder-gray-400 dark:placeholder-gray-500 rounded-lg focus:ring-2 focus:ring-green-600 dark:focus:ring-green-500 outline-none transition-colors" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 transition-colors">Color</label>
+                    <input type="text" name="color" value={formData.color || ""} onChange={handleChange} placeholder="Ej: Blanco Perla" className="w-full px-3 py-2 border bg-transparent text-gray-900 dark:text-white border-gray-200 dark:border-gray-700 placeholder-gray-400 dark:placeholder-gray-500 rounded-lg focus:ring-2 focus:ring-green-600 dark:focus:ring-green-500 outline-none transition-colors" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 transition-colors">Nro. de Motor</label>
+                    <input type="text" name="motor" value={formData.motor || ""} onChange={handleChange} placeholder="Opcional" className="w-full px-3 py-2 border bg-transparent text-gray-900 dark:text-white border-gray-200 dark:border-gray-700 placeholder-gray-400 dark:placeholder-gray-500 rounded-lg focus:ring-2 focus:ring-green-600 dark:focus:ring-green-500 outline-none uppercase transition-colors" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 transition-colors">Nro. de Chasis</label>
+                    <input type="text" name="chasis" value={formData.chasis || ""} onChange={handleChange} placeholder="Opcional" className="w-full px-3 py-2 border bg-transparent text-gray-900 dark:text-white border-gray-200 dark:border-gray-700 placeholder-gray-400 dark:placeholder-gray-500 rounded-lg focus:ring-2 focus:ring-green-600 dark:focus:ring-green-500 outline-none uppercase transition-colors" />
                   </div>
                 </div>
               </div>

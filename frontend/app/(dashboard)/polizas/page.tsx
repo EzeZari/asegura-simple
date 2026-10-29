@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { FileText, UploadCloud } from "lucide-react"; // 🔥 Sacamos Download de acá
+import { FileText, UploadCloud } from "lucide-react"; 
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 
@@ -19,7 +19,6 @@ import SelectOrdenamiento from "@/components/ui/SelectOrdenamiento";
 import { apiFetch } from "@/services/api";
 import { useAuthStore } from "@/store/authStore"; 
 import { PERMISOS, tienePermiso } from "@/utils/roles"; 
-// 🔥 IMPORTAMOS NUESTRO NUEVO COMPONENTE INTELIGENTE
 import ExportButton from "@/components/ui/ExportButton";
 
 const ExportarExcelModal = dynamic(() => import("@/components/ui/ExportarExcelModal"), { ssr: false });
@@ -183,8 +182,15 @@ export default function PolizasPage() {
       "Compañía": p.compania?.nombre || "",
       "Rama / Riesgo": p.tipoPoliza || "",
       "Cobertura": p.cobertura || "",
+      // 🔥 ACÁ AGREGAMOS LOS DATOS NUEVOS A LA EXPORTACIÓN
+      "Suma Asegurada": p.sumaAsegurada || "",
+      "Cláusula Ajuste": p.clausulaAjuste || "",
       "Patente": p.patente?.toUpperCase() || "",
       "Marca / Modelo": `${p.marca || ""} ${p.modelo || ""}`.trim(),
+      "Año": p.anio || "",
+      "Color": p.color || "",
+      "Nro Motor": p.motor?.toUpperCase() || "",
+      "Nro Chasis": p.chasis?.toUpperCase() || "",
       "Ubicación": p.ubicacionRiesgo || "",
       "Empleados": p.cantidadEmpleados?.toString() || "",
       "Vigencia Desde": p.fechaInicio ? new Date(p.fechaInicio).toLocaleDateString("es-AR") : "",
@@ -233,7 +239,6 @@ export default function PolizasPage() {
             </button>
           )}
 
-          {/* 🔥 ACÁ USAMOS NUESTRO BOTÓN SUPERINTELIGENTE */}
           <ExportButton 
             onExport={() => setIsExportModalOpen(true)} 
             datosVacios={polizasOrdenadas.length === 0} 

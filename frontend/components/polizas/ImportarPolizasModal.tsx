@@ -6,7 +6,6 @@ import * as XLSX from "xlsx";
 import { apiFetch } from "@/services/api";
 import { descargarTemplatePolizas } from "@/utils/excelTemplates";
 
-// Subcomponentes modulares
 import PasoUpload from "./importar/PasoUpload";
 import PasoMapping from "./importar/PasoMapping";
 import PasoPreview from "./importar/PasoPreview";
@@ -94,7 +93,14 @@ export default function ImportarPolizasModal({ isOpen, onClose, onSuccess }: Pro
           ubicacionriesgo: String(getVal(['ubicacion', 'direccion', 'domicilio'])).trim(),
           cantidadempleados: String(getVal(['empleado', 'personal', 'capita'])).trim(),
           vigenciadesde: getVal(['desde', 'inicio', 'vigenciadesde']),
-          vigenciahasta: getVal(['hasta', 'vencimiento', 'fin', 'vigenciahasta'])
+          vigenciahasta: getVal(['hasta', 'vencimiento', 'fin', 'vigenciahasta']),
+          // 🔥 LECTURA DE LOS NUEVOS CAMPOS EN EXCEL
+          motor: String(getVal(['motor'])).trim(),
+          chasis: String(getVal(['chasis'])).trim(),
+          anio: String(getVal(['anio', 'año'])).trim(),
+          color: String(getVal(['color'])).trim(),
+          sumaasegurada: String(getVal(['suma', 'capital'])).trim(),
+          clausulaajuste: String(getVal(['clausula', 'ajuste'])).trim(),
         };
       });
 

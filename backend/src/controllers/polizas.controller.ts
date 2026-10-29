@@ -147,7 +147,7 @@ export const obtenerPorId = async (req: Request, res: Response): Promise<any> =>
       include: { 
         asegurado: true, 
         compania: true,
-        actividades: { orderBy: { fecha: 'desc' } } // 🔥 ESTA ES LA LÍNEA NUEVA
+        actividades: { orderBy: { fecha: 'desc' } }
       }
     });
 
@@ -161,10 +161,12 @@ export const obtenerPorId = async (req: Request, res: Response): Promise<any> =>
 export const crearPoliza = async (req: Request, res: Response): Promise<any> => {
   try {
     const productorId = await obtenerProductorId(req.userId!);
+    // 🔥 AGREGAMOS LOS NUEVOS CAMPOS AL DESTRUCTURING
     const { 
       nroPoliza, tipoPoliza, fechaInicio, fechaVencimiento, estado, 
       cobertura, aseguradoId, companiaId,
-      patente, marca, modelo, ubicacionRiesgo, cantidadEmpleados, formaPago, enviarCuponera 
+      patente, marca, modelo, ubicacionRiesgo, cantidadEmpleados, formaPago, enviarCuponera,
+      motor, chasis, anio, color, sumaAsegurada, clausulaAjuste
     } = req.body;
 
     const asegurado = await prisma.asegurado.findFirst({
@@ -188,6 +190,13 @@ export const crearPoliza = async (req: Request, res: Response): Promise<any> => 
         patente: patente || null,
         marca: marca || null,
         modelo: modelo || null,
+        // 🔥 GUARDAMOS LOS NUEVOS CAMPOS
+        motor: motor || null,
+        chasis: chasis || null,
+        anio: anio || null,
+        color: color || null,
+        sumaAsegurada: sumaAsegurada || null,
+        clausulaAjuste: clausulaAjuste || null,
         ubicacionRiesgo: ubicacionRiesgo || null,
         cantidadEmpleados: cantidadEmpleados || null,
         formaPago: formaPago || null,
@@ -252,6 +261,13 @@ export const actualizarPoliza = async (req: Request, res: Response): Promise<any
         patente: data.patente || null,
         marca: data.marca || null,
         modelo: data.modelo || null,
+        // 🔥 GUARDAMOS LOS NUEVOS CAMPOS AL EDITAR
+        motor: data.motor || null,
+        chasis: data.chasis || null,
+        anio: data.anio || null,
+        color: data.color || null,
+        sumaAsegurada: data.sumaAsegurada || null,
+        clausulaAjuste: data.clausulaAjuste || null,
         ubicacionRiesgo: data.ubicacionRiesgo || null,
         cantidadEmpleados: data.cantidadEmpleados || null,
         formaPago: data.formaPago || null, 
@@ -384,7 +400,6 @@ export const avisarVencimiento = async (req: Request, res: Response): Promise<an
       cuponeraParaEnviar 
     );
 
-    // 🔥 Automatización de tilde al enviar email exitosamente
     await prisma.poliza.update({
       where: { id: poliza.id },
       data: { ultimoAviso: new Date(), avisoGestionado: true }
@@ -626,10 +641,20 @@ export const importarPolizas = async (req: Request, res: Response): Promise<any>
         ? String(row.cantidadempleados || row.empleados || row.personal).trim()
         : null;
 
+      // 🔥 LECTURA DE LOS NUEVOS CAMPOS DESDE EL EXCEL
+      const motor = row.motor ? String(row.motor).trim().toUpperCase() : null;
+      const chasis = row.chasis ? String(row.chasis).trim().toUpperCase() : null;
+      const anio = row.anio || row.año ? String(row.anio || row.año).trim() : null;
+      const color = row.color ? String(row.color).trim() : null;
+      const sumaAsegurada = row.sumaasegurada || row.suma ? String(row.sumaasegurada || row.suma).trim() : null;
+      const clausulaAjuste = row.clausulaajuste || row.clausula ? String(row.clausulaajuste || row.clausula).trim() : null;
+
       datosParaInsertar.push({
         nroPoliza, aseguradoId, companiaId, tipoPoliza, estado,
         fechaInicio, fechaVencimiento, cobertura, patente, marca,          
-        modelo, ubicacionRiesgo, cantidadEmpleados, formaPago,      
+        modelo, ubicacionRiesgo, cantidadEmpleados, formaPago,
+        // 🔥 AGREGAMOS LOS DATOS A LA INSERCIÓN MASIVA
+        motor, chasis, anio, color, sumaAsegurada, clausulaAjuste,      
         enviarCuponera: false, productorId,
         estadoCuotas: generarCuotas(fechaInicio, fechaVencimiento),
       });
@@ -699,8 +724,8 @@ export const actualizarGestionAviso = async (req: Request, res: Response): Promi
        await prisma.actividad.create({
          data: {
            accion: "Edición",
-           entidad: "Gestion de Alerta", // 🔥 Más limpio que "Gestión de Alerta"
-           descripcion: observacionesAviso, // 🔥 ACÁ ESTÁ EL CAMBIO: Guarda solo tu mensaje directo
+           entidad: "Gestion de Alerta", 
+           descripcion: observacionesAviso, 
            cliente: `${polizaVieja.asegurado.nombre} ${polizaVieja.asegurado.apellido || ''}`.trim(),
            productorId: productorId,
            polizaId: polizaVieja.id 
