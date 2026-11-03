@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Megaphone, Layout, AppWindow, Loader2, Save, ChevronDown, ChevronUp } from "lucide-react";
 
 interface Comunicado {
@@ -18,14 +18,25 @@ interface GestorComunicadosProps {
 }
 
 export default function GestorComunicados({ comunicado, setComunicado, onGuardar, isSaving }: GestorComunicadosProps) {
-  // 🔥 ESTADO PARA COLAPSAR/EXPANDIR
   const [isExpanded, setIsExpanded] = useState(true);
+
+  // 🔥 MEMORIA DEL PANEL
+  useEffect(() => {
+    const guardado = localStorage.getItem("panel_comunicados");
+    if (guardado !== null) setIsExpanded(JSON.parse(guardado));
+  }, []);
+
+  const togglePanel = () => {
+    const nuevoEstado = !isExpanded;
+    setIsExpanded(nuevoEstado);
+    localStorage.setItem("panel_comunicados", JSON.stringify(nuevoEstado));
+  };
 
   return (
     <div className="bg-gray-900 border border-gray-800 rounded-3xl p-6 md:p-8 shadow-2xl flex flex-col transition-all duration-300">
       <div 
         className={`flex items-center justify-between cursor-pointer select-none ${isExpanded ? 'mb-8 border-b border-gray-800 pb-6' : ''}`}
-        onClick={() => setIsExpanded(!isExpanded)}
+        onClick={togglePanel}
       >
         <div>
           <h2 className="text-xl font-bold text-white flex items-center gap-2 mb-2">

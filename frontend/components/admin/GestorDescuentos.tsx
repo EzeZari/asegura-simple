@@ -8,10 +8,20 @@ export default function GestorDescuentos() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   
-  // 🔥 ESTADO PARA COLAPSAR/EXPANDIR
   const [isExpanded, setIsExpanded] = useState(true);
 
-  // Estado para el formulario (Crear o Editar)
+  // 🔥 MEMORIA DEL PANEL
+  useEffect(() => {
+    const guardado = localStorage.getItem("panel_descuentos");
+    if (guardado !== null) setIsExpanded(JSON.parse(guardado));
+  }, []);
+
+  const togglePanel = () => {
+    const nuevoEstado = !isExpanded;
+    setIsExpanded(nuevoEstado);
+    localStorage.setItem("panel_descuentos", JSON.stringify(nuevoEstado));
+  };
+
   const [isEditing, setIsEditing] = useState(false);
   const [currentId, setCurrentId] = useState<number | null>(null);
   const [formData, setFormData] = useState({ codigo: "", porcentaje: "20", activo: true });
@@ -139,7 +149,7 @@ export default function GestorDescuentos() {
     <div className="bg-gray-900 border border-gray-800 rounded-3xl p-6 md:p-8 shadow-2xl transition-all duration-300">
       <div 
         className={`flex flex-col md:flex-row md:items-center justify-between gap-4 cursor-pointer select-none ${isExpanded ? 'mb-8 border-b border-gray-800 pb-6' : ''}`}
-        onClick={() => setIsExpanded(!isExpanded)}
+        onClick={togglePanel}
       >
         <div>
           <h2 className="text-xl font-bold text-white flex items-center gap-2 mb-2">

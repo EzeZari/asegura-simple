@@ -10,7 +10,7 @@ import TablaAgencias from "@/components/admin/TablaAgencias";
 import EstadisticasMRR from "@/components/admin/EstadisticasMRR";
 import GestorComunicados from "@/components/admin/GestorComunicados";
 import GestorDescuentos from "@/components/admin/GestorDescuentos"; 
-import HistorialPagos from "@/components/admin/HistorialPagos"; // 🔥 NUEVO COMPONENTE DE PAGOS
+import HistorialPagos from "@/components/admin/HistorialPagos";
 import ModalEditarSuscripcion from "@/components/admin/ModalEditarSuscripcion";
 import ModalCambiarPlan from "@/components/admin/ModalCambiarPlan";
 import ModalEliminarCuenta from "@/components/admin/ModalEliminarCuenta";
@@ -20,7 +20,6 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL;
 export default function AdminDashboard() {
   const router = useRouter();
   
-  // ESTADOS PRINCIPALES
   const [loading, setLoading] = useState(true);
   const [agencias, setAgencias] = useState<any[]>([]);
   const [stats, setStats] = useState({ totalAgenciasActivas: 0, usuariosPagos: 0, usuariosTrial: 0, mrr: 0 });
@@ -29,14 +28,23 @@ export default function AdminDashboard() {
     mensajeModal: "", activoModal: false, tipoModal: "blue"
   });
   
-  // 🔥 ESTADO PARA COLAPSAR LA TABLA DE CUENTAS
   const [isCuentasExpanded, setIsCuentasExpanded] = useState(true);
 
-  // ESTADOS DE FILTROS
+  // 🔥 MEMORIA DEL PANEL DE CUENTAS
+  useEffect(() => {
+    const guardado = localStorage.getItem("panel_cuentas");
+    if (guardado !== null) setIsCuentasExpanded(JSON.parse(guardado));
+  }, []);
+
+  const toggleCuentas = () => {
+    const nuevoEstado = !isCuentasExpanded;
+    setIsCuentasExpanded(nuevoEstado);
+    localStorage.setItem("panel_cuentas", JSON.stringify(nuevoEstado));
+  };
+
   const [searchTerm, setSearchTerm] = useState("");
   const [filtroPlan, setFiltroPlan] = useState("TODOS");
 
-  // ESTADOS DE MODALES Y ACCIONES
   const [modalOpen, setModalOpen] = useState(false);
   const [editSubModalOpen, setEditSubModalOpen] = useState(false);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
@@ -60,7 +68,6 @@ export default function AdminDashboard() {
     { id: "AGENCIA", nombre: "Agencia Elite", icon: <Crown size={20} />, color: "text-amber-400", bg: "bg-amber-400/10", border: "border-amber-400/20" }
   ];
 
-  // FETCH INICIAL
   const fetchData = async () => {
     try {
       const token = localStorage.getItem("asegurasimple_admin_token");
@@ -236,14 +243,12 @@ export default function AdminDashboard() {
 
         <GestorDescuentos />
 
-        {/* 🔥 HISTORIAL DE PAGOS */}
         <HistorialPagos />
 
-        {/* TABLA DE CUENTAS */}
         <div className="bg-gray-900 border border-gray-800 rounded-3xl p-6 md:p-8 shadow-2xl flex flex-col transition-all duration-300 mt-2">
           <div 
             className={`flex flex-col md:flex-row md:items-center justify-between gap-4 cursor-pointer select-none ${isCuentasExpanded ? 'border-b border-gray-800 pb-6 mb-6' : ''}`}
-            onClick={() => setIsCuentasExpanded(!isCuentasExpanded)}
+            onClick={toggleCuentas}
           >
             <div>
               <h2 className="text-xl md:text-2xl font-bold text-white flex items-center gap-2">

@@ -15,6 +15,18 @@ export default function HistorialPagos() {
   const [searchTerm, setSearchTerm] = useState("");
   const [filtroTiempo, setFiltroTiempo] = useState<"todos" | "este_mes" | "mes_pasado">("este_mes");
 
+  // 🔥 MEMORIA DEL PANEL
+  useEffect(() => {
+    const guardado = localStorage.getItem("panel_pagos");
+    if (guardado !== null) setIsExpanded(JSON.parse(guardado));
+  }, []);
+
+  const togglePanel = () => {
+    const nuevoEstado = !isExpanded;
+    setIsExpanded(nuevoEstado);
+    localStorage.setItem("panel_pagos", JSON.stringify(nuevoEstado));
+  };
+
   useEffect(() => {
     if (isExpanded && pagos.length === 0) {
       fetchPagos();
@@ -69,7 +81,6 @@ export default function HistorialPagos() {
   const cobrosExitosos = pagosFiltrados.filter(p => ["approved", "autorizado"].includes(p.estado?.toLowerCase())).length;
   const cobrosFallidos = pagosFiltrados.filter(p => ["rejected", "cancelado"].includes(p.estado?.toLowerCase())).length;
 
-  // 🔥 LÓGICA DEL GRÁFICO LINEAL
   const datosGrafico = useMemo(() => {
     const pagosExitosos = pagosFiltrados.filter(p => ["approved", "autorizado"].includes(p.estado?.toLowerCase()));
     const diasAgrupados: Record<string, number> = {};
@@ -91,11 +102,10 @@ export default function HistorialPagos() {
     return ordenado.map(dia => ({
       dia,
       monto: diasAgrupados[dia],
-      porcentaje: (diasAgrupados[dia] / maxMonto) * 85 // Altura máxima al 85% para no chocar con el techo
+      porcentaje: (diasAgrupados[dia] / maxMonto) * 85
     }));
   }, [pagosFiltrados]);
 
-  // Construcción de la línea SVG
   const chartPoints = datosGrafico.map((item, i) => {
     const x = datosGrafico.length === 1 ? 50 : (i / (datosGrafico.length - 1)) * 100;
     const y = 100 - item.porcentaje;
@@ -144,7 +154,7 @@ export default function HistorialPagos() {
       
       <div 
         className={`flex flex-col md:flex-row md:items-center justify-between gap-4 cursor-pointer select-none ${isExpanded ? 'mb-6 border-b border-gray-800 pb-6' : ''}`}
-        onClick={() => setIsExpanded(!isExpanded)}
+        onClick={togglePanel}
       >
         <div>
           <h2 className="text-xl md:text-2xl font-bold text-white flex items-center gap-2">
@@ -170,7 +180,6 @@ export default function HistorialPagos() {
             </div>
           ) : (
             <>
-              {/* 1. KPIs */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="bg-gray-950 border border-gray-800 rounded-2xl p-5 flex items-center gap-4 relative overflow-hidden">
                   <div className="absolute -right-4 -bottom-4 opacity-5"><Wallet size={100} /></div>
@@ -198,7 +207,6 @@ export default function HistorialPagos() {
                 </div>
               </div>
 
-              {/* 2. FILTROS Y BÚSQUEDA */}
               <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 bg-gray-950 p-2 md:p-3 rounded-2xl border border-gray-800 mt-2">
                 <div className="relative w-full xl:w-96">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
@@ -233,55 +241,47 @@ export default function HistorialPagos() {
                 </div>
               </div>
 
-              {/* 3. TABLA DE RESULTADOS DETALLADOS */}
-              {pagosFiltrados.length === 0 ? (
-                <div className="py-12 text-center text-gray-500 font-medium bg-gray-950/30 rounded-2xl border border-gray-800">
-                  No se encontraron pagos con los filtros actuales.
-                </div>
-              ) : (
-                <div className="overflow-x-auto custom-scrollbar bg-gray-950 border border-gray-800 rounded-2xl shadow-inner">
-                  <table className="w-full text-left border-collapse min-w-[700px]">
-                    <thead>
-                      <tr className="bg-gray-900/50 text-gray-400 text-[10px] uppercase tracking-wider border-b border-gray-800">
-                        <th className="p-4 font-bold">Fecha y Hora</th>
-                        <th className="p-4 font-bold">Agencia / Usuario</th>
-                        <th className="p-4 font-bold">Monto Cobrado</th>
-                        <th className="p-4 font-bold">Método</th>
-                        <th className="p-4 font-bold text-right">Estado</th>
+              <div className="overflow-x-auto custom-scrollbar bg-gray-950 border border-gray-800 rounded-2xl shadow-inner">
+                <table className="w-full text-left border-collapse min-w-[700px]">
+                  <thead>
+                    <tr className="bg-gray-900/50 text-gray-400 text-[10px] uppercase tracking-wider border-b border-gray-800">
+                      <th className="p-4 font-bold">Fecha y Hora</th>
+                      <th className="p-4 font-bold">Agencia / Usuario</th>
+                      <th className="p-4 font-bold">Monto Cobrado</th>
+                      <th className="p-4 font-bold">Método</th>
+                      <th className="p-4 font-bold text-right">Estado</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-800/50">
+                    {pagosFiltrados.map((pago) => (
+                      <tr key={pago.id} className="hover:bg-gray-800/40 transition-colors group">
+                        <td className="p-4 text-sm text-gray-400 font-mono flex items-center gap-2">
+                          <Clock size={14} className="text-gray-600 group-hover:text-emerald-500 transition-colors"/>
+                          {formatearFechaHora(pago.fechaPago)}
+                        </td>
+                        <td className="p-4">
+                          <span className="block text-sm font-bold text-gray-200">{pago.user?.nombre || "Usuario Eliminado"}</span>
+                          <span className="block text-xs font-medium text-gray-500 mt-0.5">{pago.user?.email || "Sin email"}</span>
+                        </td>
+                        <td className="p-4">
+                          <span className="text-base font-black text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-lg border border-emerald-500/20">
+                            ${Number(pago.monto).toLocaleString('es-AR')}
+                          </span>
+                        </td>
+                        <td className="p-4">
+                          <span className="text-xs text-gray-400 capitalize bg-gray-800 px-2 py-1 rounded-md border border-gray-700">
+                            {pago.metodoPago?.replace(/_/g, ' ') || "Manual"}
+                          </span>
+                        </td>
+                        <td className="p-4 flex justify-end">
+                          {getEstadoBadge(pago.estado)}
+                        </td>
                       </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-800/50">
-                      {pagosFiltrados.map((pago) => (
-                        <tr key={pago.id} className="hover:bg-gray-800/40 transition-colors group">
-                          <td className="p-4 text-sm text-gray-400 font-mono flex items-center gap-2">
-                            <Clock size={14} className="text-gray-600 group-hover:text-emerald-500 transition-colors"/>
-                            {formatearFechaHora(pago.fechaPago)}
-                          </td>
-                          <td className="p-4">
-                            <span className="block text-sm font-bold text-gray-200">{pago.user?.nombre || "Usuario Eliminado"}</span>
-                            <span className="block text-xs font-medium text-gray-500 mt-0.5">{pago.user?.email || "Sin email"}</span>
-                          </td>
-                          <td className="p-4">
-                            <span className="text-base font-black text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-lg border border-emerald-500/20">
-                              ${Number(pago.monto).toLocaleString('es-AR')}
-                            </span>
-                          </td>
-                          <td className="p-4">
-                            <span className="text-xs text-gray-400 capitalize bg-gray-800 px-2 py-1 rounded-md border border-gray-700">
-                              {pago.metodoPago?.replace(/_/g, ' ') || "Manual"}
-                            </span>
-                          </td>
-                          <td className="p-4 flex justify-end">
-                            {getEstadoBadge(pago.estado)}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
+                    ))}
+                  </tbody>
+                </table>
+              </div>
 
-              {/* 4. GRÁFICO LINEAL DE TENDENCIA (AHORA ABAJO) */}
               {datosGrafico.length > 0 && (
                 <div className="bg-gray-950 border border-gray-800 rounded-2xl p-6 md:p-8 flex flex-col gap-6 shadow-inner mt-2">
                   <div className="flex items-center justify-between">
@@ -292,10 +292,7 @@ export default function HistorialPagos() {
                     <span className="text-xs font-bold text-emerald-500/80 bg-emerald-500/10 px-2 py-1 rounded-md uppercase tracking-wider">Línea de Tiempo</span>
                   </div>
                   
-                  {/* Contenedor relativo para el SVG y los puntos HTML */}
                   <div className="relative h-56 w-full mt-4 mb-2">
-                    
-                    {/* SVG nativo para trazar la línea y el degradado */}
                     <svg className="absolute inset-0 h-full w-full overflow-visible" preserveAspectRatio="none" viewBox="0 0 100 100">
                       <defs>
                         <linearGradient id="gradient-emerald" x1="0" y1="0" x2="0" y2="1">
@@ -303,13 +300,10 @@ export default function HistorialPagos() {
                           <stop offset="100%" stopColor="#10b981" stopOpacity="0" />
                         </linearGradient>
                       </defs>
-                      {/* Sombra debajo de la línea */}
                       {areaPoints && <polygon points={areaPoints} fill="url(#gradient-emerald)" />}
-                      {/* Línea principal */}
                       <polyline points={chartPoints} fill="none" stroke="#10b981" strokeWidth="2.5" vectorEffect="non-scaling-stroke" />
                     </svg>
                     
-                    {/* Puntos de datos renderizados como divs absolutos para mejor interactividad (Tooltips) */}
                     {datosGrafico.map((item, index) => {
                       const x = datosGrafico.length === 1 ? 50 : (index / (datosGrafico.length - 1)) * 100;
                       const y = 100 - item.porcentaje;
@@ -324,14 +318,12 @@ export default function HistorialPagos() {
                             ${item.monto.toLocaleString('es-AR')}
                             <span className="block text-[10px] text-gray-400 font-normal mt-0.5">{item.dia}</span>
                           </div>
-                          {/* El circulito visible en la línea */}
                           <div className="w-3.5 h-3.5 bg-gray-900 border-[2.5px] border-emerald-500 rounded-full group-hover:bg-emerald-400 group-hover:scale-125 transition-all shadow-[0_0_12px_rgba(16,185,129,0.5)]"></div>
                         </div>
                       );
                     })}
                   </div>
 
-                  {/* Etiquetas del eje X (Solo renderizamos algunas si hay muchos días para no empastar) */}
                   <div className="flex justify-between w-full mt-2 text-[10px] text-gray-500 font-mono relative">
                     {datosGrafico.map((item, index) => {
                       const mostrarEtiqueta = datosGrafico.length <= 12 || index % Math.ceil(datosGrafico.length / 10) === 0;
