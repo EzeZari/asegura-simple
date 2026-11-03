@@ -223,4 +223,20 @@ export const deleteDescuento = async (req: Request, res: Response): Promise<void
   } catch (error) {
     res.status(500).json({ error: 'Error al eliminar el descuento.' });
   }
+};// 🔥 HISTORIAL DE PAGOS
+export const getUltimosPagos = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const pagos = await prisma.pago.findMany({
+      include: {
+        user: {
+          select: { nombre: true, email: true }
+        }
+      },
+      orderBy: { fechaPago: 'desc' },
+      take: 50 // Trae los últimos 50 cobros
+    });
+    res.json(pagos);
+  } catch (error) {
+    res.status(500).json({ error: 'Error al obtener el historial de pagos.' });
+  }
 };

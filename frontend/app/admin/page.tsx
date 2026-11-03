@@ -10,6 +10,7 @@ import TablaAgencias from "@/components/admin/TablaAgencias";
 import EstadisticasMRR from "@/components/admin/EstadisticasMRR";
 import GestorComunicados from "@/components/admin/GestorComunicados";
 import GestorDescuentos from "@/components/admin/GestorDescuentos"; 
+import HistorialPagos from "@/components/admin/HistorialPagos"; // 🔥 NUEVO COMPONENTE DE PAGOS
 import ModalEditarSuscripcion from "@/components/admin/ModalEditarSuscripcion";
 import ModalCambiarPlan from "@/components/admin/ModalCambiarPlan";
 import ModalEliminarCuenta from "@/components/admin/ModalEliminarCuenta";
@@ -235,7 +236,10 @@ export default function AdminDashboard() {
 
         <GestorDescuentos />
 
-        {/* 🔥 TABLA DE CUENTAS (AHORA DENTRO DE UN CONTENEDOR COLAPSABLE OSCURO) */}
+        {/* 🔥 HISTORIAL DE PAGOS */}
+        <HistorialPagos />
+
+        {/* TABLA DE CUENTAS */}
         <div className="bg-gray-900 border border-gray-800 rounded-3xl p-6 md:p-8 shadow-2xl flex flex-col transition-all duration-300 mt-2">
           <div 
             className={`flex flex-col md:flex-row md:items-center justify-between gap-4 cursor-pointer select-none ${isCuentasExpanded ? 'border-b border-gray-800 pb-6 mb-6' : ''}`}
