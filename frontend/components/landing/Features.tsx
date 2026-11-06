@@ -1,8 +1,7 @@
 "use client";
 
 import { motion } from 'framer-motion';
-import { CalendarDays, MessageCircle, BarChart3, Mail, FileText } from 'lucide-react';
-// 🔥 IMPORTAMOS EL NUEVO COMPONENTE
+import { CalendarDays, MessageCircle, BarChart3, Mail, FileText, Wallet } from 'lucide-react';
 import ZoomableImage from '@/components/ui/ZoomableImage';
 
 export default function Features() {
@@ -21,16 +20,64 @@ export default function Features() {
             Todo lo que necesitás para escalar tu cartera de seguros
           </h2>
           <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-            Herramientas diseñadas específicamente para que los productores de seguros ahorren tiempo y aumenten sus renovaciones.
+            Herramientas diseñadas específicamente para que los productores de seguros ahorren tiempo, cobren más rápido y aumenten sus renovaciones.
           </p>
         </motion.div>
 
         <div className="space-y-24">
           
-          {/* Feature 1: Calendario */}
+          {/* 🔥 FEATURE 1 (NUEVO): REFACTURACIÓN (Texto Izquierda, Imagen Derecha) */}
           <div className="flex flex-col lg:flex-row items-center gap-12 lg:gap-20">
             <motion.div 
               initial={{ opacity: 0, x: -50 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6 }}
+              className="lg:w-1/2"
+            >
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 font-bold text-[10px] mb-5 uppercase tracking-widest shadow-sm">
+                ⭐ Función Destacada
+              </div>
+              <div className="w-14 h-14 bg-emerald-100 text-emerald-600 rounded-2xl flex items-center justify-center mb-6 shadow-sm">
+                <Wallet size={28} />
+              </div>
+              <h3 className="text-3xl font-bold text-gray-900 mb-4">
+                Módulo de Refacturación y Cobranzas
+              </h3>
+              <p className="text-lg text-gray-600 mb-6 leading-relaxed">
+                Separamos la gestión de cobranzas de tus renovaciones para que no se te escape ni un pago. Llevá el control exacto de las cuotas mensuales de tu cartera y detectá la mora al instante.
+              </p>
+              <ul className="space-y-3">
+                <li className="flex items-center gap-3 text-gray-700 font-medium">
+                  <div className="w-2 h-2 rounded-full bg-emerald-500"></div> Monitoreo automático de morosos en tiempo real.
+                </li>
+                <li className="flex items-center gap-3 text-gray-700 font-medium">
+                  <div className="w-2 h-2 rounded-full bg-emerald-500"></div> Reclamos de deuda por WhatsApp con 1 clic.
+                </li>
+              </ul>
+            </motion.div>
+            
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9 }}
+              whileInView={{ opacity: 1, scale: 1 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6 }}
+              className="lg:w-1/2 relative w-full"
+            >
+              <div className="absolute inset-0 bg-emerald-50 rounded-[2rem] transform translate-x-4 translate-y-4 -z-10"></div>
+              {/* Sugerencia: Captura de la pestaña de Cobranzas en el Centro de Alertas */}
+              <ZoomableImage 
+                src="/cobranzas.png" 
+                alt="Módulo de Refacturación AseguraSimple" 
+                className="rounded-2xl shadow-2xl border border-gray-100 w-full object-cover" 
+              />
+            </motion.div>
+          </div>
+
+          {/* FEATURE 2: CALENDARIO (Texto Derecha, Imagen Izquierda) */}
+          <div className="flex flex-col lg:flex-row-reverse items-center gap-12 lg:gap-20">
+            <motion.div 
+              initial={{ opacity: 0, x: 50 }}
               whileInView={{ opacity: 1, x: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.6 }}
@@ -43,14 +90,14 @@ export default function Features() {
                 Calendario inteligente de alertas
               </h3>
               <p className="text-lg text-gray-600 mb-6 leading-relaxed">
-                Visualizá tus próximos vencimientos con nuestro sistema de semáforo. Navegá por mes o agenda y detectá al instante qué pólizas están vencidas (rojo), cuáles son críticas (naranja) y cuáles están próximas a vencer (verde).
+                Visualizá tus próximos vencimientos con nuestro sistema de semáforo. Navegá por mes o agenda y detectá al instante qué pólizas de renovación están vencidas (rojo), críticas (naranja) o próximas (verde).
               </p>
               <ul className="space-y-3">
                 <li className="flex items-center gap-3 text-gray-700 font-medium">
                   <div className="w-2 h-2 rounded-full bg-orange-500"></div> Filtros rápidos por compañía y ramo.
                 </li>
                 <li className="flex items-center gap-3 text-gray-700 font-medium">
-                  <div className="w-2 h-2 rounded-full bg-orange-500"></div> Toda la info de la póliza al pasar el mouse.
+                  <div className="w-2 h-2 rounded-full bg-orange-500"></div> Toda la info del riesgo al pasar el mouse.
                 </li>
               </ul>
             </motion.div>
@@ -62,8 +109,7 @@ export default function Features() {
               transition={{ duration: 0.6 }}
               className="lg:w-1/2 relative w-full"
             >
-              <div className="absolute inset-0 bg-orange-50 rounded-[2rem] transform translate-x-4 translate-y-4 -z-10"></div>
-              {/* 🔥 REEMPLAZO POR COMPONENTE ZOOMABLE */}
+              <div className="absolute inset-0 bg-orange-50 rounded-[2rem] transform -translate-x-4 translate-y-4 -z-10"></div>
               <ZoomableImage 
                 src="/calendario.png" 
                 alt="Calendario de vencimientos de pólizas para PAS" 
@@ -72,10 +118,10 @@ export default function Features() {
             </motion.div>
           </div>
 
-          {/* Feature 2: Estadísticas */}
-          <div className="flex flex-col lg:flex-row-reverse items-center gap-12 lg:gap-20">
+          {/* FEATURE 3: ESTADÍSTICAS (Texto Izquierda, Imagen Derecha) */}
+          <div className="flex flex-col lg:flex-row items-center gap-12 lg:gap-20">
             <motion.div 
-              initial={{ opacity: 0, x: 50 }}
+              initial={{ opacity: 0, x: -50 }}
               whileInView={{ opacity: 1, x: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.6 }}
@@ -88,7 +134,7 @@ export default function Features() {
                 Control total de tu negocio en tiempo real
               </h3>
               <p className="text-lg text-gray-600 mb-6 leading-relaxed">
-                Olvidate de las planillas desactualizadas. Tu panel principal te da una radiografía exacta de cuántas pólizas tenés activas, qué vencimientos requieren atención inmediata y cómo se compone tu cartera.
+                Olvidate de las planillas desactualizadas. Tu panel principal te da una radiografía exacta de cuántas pólizas tenés activas, tu dinero en la calle (mora) y cómo se compone tu cartera.
               </p>
               <ul className="space-y-3">
                 <li className="flex items-center gap-3 text-gray-700 font-medium">
@@ -107,8 +153,7 @@ export default function Features() {
               transition={{ duration: 0.6 }}
               className="lg:w-1/2 relative w-full"
             >
-              <div className="absolute inset-0 bg-green-50 rounded-[2rem] transform -translate-x-4 translate-y-4 -z-10"></div>
-              {/* 🔥 REEMPLAZO POR COMPONENTE ZOOMABLE */}
+              <div className="absolute inset-0 bg-green-50 rounded-[2rem] transform translate-x-4 translate-y-4 -z-10"></div>
               <ZoomableImage 
                 src="/estadisticas.png" 
                 alt="Métricas y Estadísticas de AseguraSimple" 
@@ -117,10 +162,10 @@ export default function Features() {
             </motion.div>
           </div>
 
-          {/* Feature 3: Detalle de Póliza */}
-          <div className="flex flex-col lg:flex-row items-center gap-12 lg:gap-20">
+          {/* FEATURE 4: FICHA DE PÓLIZA (Texto Derecha, Imagen Izquierda) */}
+          <div className="flex flex-col lg:flex-row-reverse items-center gap-12 lg:gap-20">
             <motion.div 
-              initial={{ opacity: 0, x: -50 }}
+              initial={{ opacity: 0, x: 50 }}
               whileInView={{ opacity: 1, x: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.6 }}
@@ -133,7 +178,7 @@ export default function Features() {
                 Ficha 360º de cada póliza
               </h3>
               <p className="text-lg text-gray-600 mb-6 leading-relaxed">
-                Se acabó buscar PDFs en carpetas perdidas o revisar contactos en el celular. Accedé al detalle completo de cada riesgo, historial de siniestros y documentación digital en una sola pantalla.
+                Se acabó buscar PDFs en carpetas perdidas o revisar contactos en el celular. Accedé al detalle completo de cada riesgo, historial de siniestros, cuotas y documentación digital en una sola pantalla.
               </p>
               <ul className="space-y-3">
                 <li className="flex items-center gap-3 text-gray-700 font-medium">
@@ -152,8 +197,7 @@ export default function Features() {
               transition={{ duration: 0.6 }}
               className="lg:w-1/2 relative w-full"
             >
-              <div className="absolute inset-0 bg-blue-50 rounded-[2rem] transform translate-x-4 translate-y-4 -z-10"></div>
-              {/* 🔥 REEMPLAZO POR COMPONENTE ZOOMABLE */}
+              <div className="absolute inset-0 bg-blue-50 rounded-[2rem] transform -translate-x-4 translate-y-4 -z-10"></div>
               <ZoomableImage 
                 src="/poliza.png" 
                 alt="Detalle de Póliza en AseguraSimple" 
@@ -162,7 +206,7 @@ export default function Features() {
             </motion.div>
           </div>
 
-          {/* Feature 4: Comunicación */}
+          {/* FEATURE 5: COMUNICACIÓN RÁPIDA (Grid inferior de 2 tarjetas) */}
           <motion.div 
             initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -183,7 +227,7 @@ export default function Features() {
                 </div>
                 <h4 className="text-2xl font-bold text-gray-900 mb-3">WhatsApp en 1 Clic</h4>
                 <p className="text-gray-600 leading-relaxed">
-                  No pierdas tiempo tipeando. Al presionar el botón, generamos un mensaje pre-armado con el nombre del cliente, la compañía y la fecha exacta de vencimiento, listo para que lo envíes desde tu celular o WhatsApp Web.
+                  No pierdas tiempo tipeando. Al presionar el botón de aviso, generamos un mensaje pre-armado contextualizado (mora o renovación) con los datos del cliente, listo para que lo envíes.
                 </p>
               </div>
               
@@ -191,9 +235,9 @@ export default function Features() {
                 <div className="w-14 h-14 bg-blue-50 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
                   <Mail size={28} className="text-blue-600" />
                 </div>
-                <h4 className="text-2xl font-bold text-gray-900 mb-3">Robot de Correos</h4>
+                <h4 className="text-2xl font-bold text-gray-900 mb-3">Correos Electrónicos Integrados</h4>
                 <p className="text-gray-600 leading-relaxed">
-                  Dejá que el sistema trabaje por vos. AseguraSimple detecta todos los días las pólizas que están por vencer y envía avisos preventivos por correo electrónico a tus clientes de forma 100% automática.
+                  Dejá que el sistema trabaje por vos. Enviá correos corporativos formateados con plantillas HTML profesionales directamente desde la plataforma para avisar vencimientos o saldos deudores.
                 </p>
               </div>
             </div>
