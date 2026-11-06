@@ -3,6 +3,7 @@ import { prisma } from '../config/db';
 import { 
   templateBienvenida, 
   templateVencimiento, 
+  templateCobranza, // 🔥 IMPORTAMOS LA NUEVA PLANTILLA
   templateSiniestro,
   templateInvitacionEquipo,
   templateContacto,
@@ -85,6 +86,43 @@ export const enviarAvisoVencimiento = async (
   }
 };
 
+// 🔥 NUEVA FUNCIÓN: Enviar el correo de Mora / Cobranza
+export const enviarAvisoCobranza = async (
+    email: string, nombre: string, nroPoliza: string, compania: string, 
+    tipoPoliza: string, fechaVencimientoCuota: string, mesCuota: string,
+    patente?: string | null, cuponeraUrl?: string | null 
+  ) => {
+    if (!email || !email.includes('@')) return;
+  
+    try {
+      const agencia = await prisma.agencia.findUnique({ where: { id: 1 } });
+  
+      let attachments = [];
+      if (cuponeraUrl) {
+        attachments.push({
+          filename: `Cupon_de_Pago_Poliza_${nroPoliza}.pdf`,
+          path: cuponeraUrl 
+        });
+      }
+  
+      await sendMail({
+        to: email,
+        subject: `Aviso de Pago Pendiente - Póliza #${nroPoliza}`,
+        html: templateCobranza(
+          nombre, nroPoliza, compania, tipoPoliza, fechaVencimientoCuota, mesCuota, patente, agencia 
+        ),
+        attachments: attachments.length > 0 ? attachments : undefined 
+      });
+    } catch (error: any) {
+      console.error("Error al enviar email de cobranza:", error);
+      await enviarAlertaErrorSistema(
+        'enviarAvisoCobranza', 
+        error.message || error, 
+        `Póliza: #${nroPoliza} | Cliente: ${nombre} | Email: ${email}`
+      );
+    }
+  };
+
 export const enviarNotificacionSiniestro = async (
   email: string, nombre: string, nroSiniestro: string, nroPoliza: string, 
   compania: string, tipoPoliza: string, patente: string | null, 
@@ -146,10 +184,6 @@ export const enviarCorreoContacto = async (nombre: string, email: string, mensaj
   }
 };
 
-// ============================================================================
-// CORREOS DEL ROBOT COBRADOR (SaaS)
-// ============================================================================
-
 export const enviarRecordatorioSuscripcion = async (email: string, nombre: string, fechaVencimiento: Date) => {
   if (!email || !email.includes('@')) return;
 
@@ -188,10 +222,11 @@ export const enviarAvisoCuentaSuspendida = async (email: string, nombre: string)
     await enviarAlertaErrorSistema('enviarAvisoCuentaSuspendida', error.message || error, `Cliente: ${nombre} | Email: ${email}`);
   }
 };
+
 export const enviarAlertaSugerencia = async (nombreCliente: string, emailCliente: string, plan: string, titulo: string, descripcion: string) => {
   try {
     await sendMail({
-      to: 'asegurasimple@gmail.com', // Te llega a vos
+      to: 'asegurasimple@gmail.com', 
       subject: `💡 Nueva Mejora Sugerida por ${nombreCliente}`,
       html: `
         <div style="font-family: Arial, sans-serif; padding: 20px; color: #333;">
@@ -208,7 +243,6 @@ export const enviarAlertaSugerencia = async (nombreCliente: string, emailCliente
         </div>
       `
     });
-    console.log(`📧 Alerta de sugerencia enviada a admin (Idea de: ${nombreCliente})`);
   } catch (error: any) {
     console.error("Error al enviar la alerta de sugerencia:", error);
   }

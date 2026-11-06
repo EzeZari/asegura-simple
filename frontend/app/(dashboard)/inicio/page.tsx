@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation"; 
 import { useAuthStore } from "@/store/authStore";
-import { Users, FileText, AlertCircle, Building, CalendarClock, ShieldAlert, ChevronLeft, ChevronRight, PhoneForwarded, Activity, Bell } from "lucide-react";
+import { Users, FileText, AlertCircle, Building, ShieldAlert, ChevronLeft, ChevronRight, PhoneForwarded, Activity, Bell, CalendarDays, Wallet } from "lucide-react";
 import StatCard from "@/components/dashboard/StatCard";
 import RecentActivity from "@/components/dashboard/RecentActivity";
 import { apiFetch } from "@/services/api";
@@ -18,7 +18,6 @@ export default function DashboardPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [dashboardData, setDashboardData] = useState<any>(null);
 
-  // 🔥 AHORA GUARDAMOS LAS TRES PLANTILLAS EN EL DASHBOARD TAMBIÉN
   const [plantillas, setPlantillas] = useState({
     proxima: "Hola [Nombre], te avisamos que tu póliza de [Rama] ([NroPoliza]) en [Compania] vence el próximo [Vencimiento]. ¿Avanzamos con la renovación?",
     critica: "Hola [Nombre], te recuerdo que tu póliza de [Rama] ([NroPoliza]) vence en unos días ([Vencimiento]). Avisame así la renovamos a tiempo.",
@@ -26,21 +25,37 @@ export default function DashboardPage() {
   });
 
   const [ordenVista, setOrdenVista] = useState<"actividad" | "alertas">("alertas");
+  
+  // 🔥 ESTADO DE PESTAÑA PARA LA TABLA DEL DASHBOARD
+  const [pestanaAlertas, setPestanaAlertas] = useState<"RENOVACION" | "COBRANZA">("RENOVACION");
 
   const ITEMS_POR_PAGINA = 5;
   const [paginaRenovaciones, setPaginaRenovaciones] = useState(1);
   const [paginaSiniestros, setPaginaSiniestros] = useState(1);
 
+  // 🔥 MEMORIA DEL DASHBOARD (Se ejecuta al cargar la página)
   useEffect(() => {
     const ordenGuardado = localStorage.getItem("asegurasimple_orden_dashboard");
     if (ordenGuardado === "actividad" || ordenGuardado === "alertas") {
       setOrdenVista(ordenGuardado);
+    }
+
+    // Recuperamos si estaba viendo Renovaciones o Cobranzas
+    const pestanaGuardada = localStorage.getItem("asegurasimple_dashboard_pestana_alertas");
+    if (pestanaGuardada === "RENOVACION" || pestanaGuardada === "COBRANZA") {
+      setPestanaAlertas(pestanaGuardada);
     }
   }, []);
 
   const cambiarOrden = (nuevoOrden: "actividad" | "alertas") => {
     setOrdenVista(nuevoOrden);
     localStorage.setItem("asegurasimple_orden_dashboard", nuevoOrden);
+  };
+
+  // 🔥 FUNCIÓN CON MEMORIA PARA CAMBIAR LA PESTAÑA
+  const cambiarPestanaAlertas = (nuevaPestana: "RENOVACION" | "COBRANZA") => {
+    setPestanaAlertas(nuevaPestana);
+    localStorage.setItem("asegurasimple_dashboard_pestana_alertas", nuevaPestana);
   };
 
   useEffect(() => {
@@ -56,7 +71,6 @@ export default function DashboardPage() {
       })
       .catch(() => setIsLoading(false));
 
-    // 🔥 BUSCAMOS LAS TRES PLANTILLAS Y LAS CARGAMOS
     apiFetch('/api/agencia')
       .then((res) => res.json())
       .then((data) => {
@@ -72,11 +86,43 @@ export default function DashboardPage() {
 
   }, [accessToken]);
 
+  // 🔥 LÓGICA INTELIGENTE PARA COBRANZAS PENDIENTES
+  const totalCobranzas = dashboardData?.cobranzasPendientes?.length || 0;
+  const hayMorosos = dashboardData?.cobranzasPendientes?.some((p: any) => p.cuotaAlarma?.diffDias < 0) || false;
+
   const statsReales = [
-    { title: "Total Asegurados", value: isLoading ? "..." : dashboardData?.totalAsegurados?.toString() || "0", description: "Clientes activos", icon: Users, trend: "neutral" as const, href: "/asegurados" },
-    { title: "Pólizas Activas", value: isLoading ? "..." : dashboardData?.polizasActivas?.toString() || "0", description: "Coberturas vigentes", icon: FileText, trend: "neutral" as const, href: "/polizas" },
-    { title: "Vencimientos (30 días)", value: isLoading ? "..." : dashboardData?.vencimientos?.toString() || "0", description: "Requieren atención", icon: AlertCircle, trend: dashboardData?.vencimientos > 0 ? "down" : "neutral", href: "/alertas" },
-    { title: "Aseguradoras", value: isLoading ? "..." : dashboardData?.totalCompanias?.toString() || "0", description: "Compañías conectadas", icon: Building, trend: "neutral" as const, href: "/companias" },
+    { 
+      title: "Total Asegurados", 
+      value: isLoading ? "..." : dashboardData?.totalAsegurados?.toString() || "0", 
+      description: "Clientes activos", 
+      icon: Users, 
+      trend: "neutral" as const, 
+      href: "/asegurados" 
+    },
+    { 
+      title: "Pólizas Activas", 
+      value: isLoading ? "..." : dashboardData?.polizasActivas?.toString() || "0", 
+      description: "Coberturas vigentes", 
+      icon: FileText, 
+      trend: "neutral" as const, 
+      href: "/polizas" 
+    },
+    { 
+      title: "Renovaciones (30d)", 
+      value: isLoading ? "..." : dashboardData?.vencimientos?.toString() || "0", 
+      description: "Contratos a vencer", 
+      icon: AlertCircle, 
+      trend: dashboardData?.vencimientos > 0 ? "down" : "neutral", 
+      href: "/alertas" 
+    },
+    { 
+      title: "Cobranzas Pendientes", 
+      value: isLoading ? "..." : totalCobranzas.toString(), 
+      description: hayMorosos ? "¡Atención! Hay cuotas vencidas" : "Cuotas a gestionar", 
+      icon: Wallet, 
+      trend: hayMorosos ? "down" : "neutral" as const, 
+      href: "/alertas" 
+    },
   ];
 
   const actividadSegura = dashboardData?.actividadReciente?.map((item: any) => ({
@@ -85,11 +131,10 @@ export default function DashboardPage() {
     tipo: item.tipo || item.type || item.accion || ""
   })) || [];
 
-  // 🔥 LÓGICA INTELIGENTE: Calcula los días, asigna el color y ELIGE LA PLANTILLA
-  const calcularUrgencia = (fechaVencimiento: string) => {
+  const calcularUrgencia = (fechaCalculo: string) => {
     const hoy = new Date();
     hoy.setHours(0, 0, 0, 0);
-    const vto = new Date(fechaVencimiento);
+    const vto = new Date(fechaCalculo);
     vto.setHours(0, 0, 0, 0);
     
     const diffTime = vto.getTime() - hoy.getTime();
@@ -97,14 +142,14 @@ export default function DashboardPage() {
     
     if (diffDays < 0) {
       return { 
-        text: `Venció hace ${Math.abs(diffDays)} días`, 
+        text: `Hace ${Math.abs(diffDays)} días`, 
         color: "bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400 border-rose-200", 
         plantillaSeleccionada: plantillas.vencida 
       };
     }
     if (diffDays === 0) {
       return { 
-        text: "Vence HOY", 
+        text: "Hoy", 
         color: "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400 border-orange-200", 
         plantillaSeleccionada: plantillas.critica 
       };
@@ -123,13 +168,21 @@ export default function DashboardPage() {
     };
   };
 
-  const renovacionesTotales = dashboardData?.renovacionesProximas || [];
-  const totalPaginasRen = Math.max(1, Math.ceil(renovacionesTotales.length / ITEMS_POR_PAGINA));
-  const renovacionesPaginadas = renovacionesTotales.slice((paginaRenovaciones - 1) * ITEMS_POR_PAGINA, paginaRenovaciones * ITEMS_POR_PAGINA);
+  const listaAlertasPaginables = pestanaAlertas === "RENOVACION" 
+    ? (dashboardData?.renovacionesProximas || [])
+    : (dashboardData?.cobranzasPendientes || []);
+
+  const totalPaginasAlertas = Math.max(1, Math.ceil(listaAlertasPaginables.length / ITEMS_POR_PAGINA));
+  const alertasPaginadas = listaAlertasPaginables.slice((paginaRenovaciones - 1) * ITEMS_POR_PAGINA, paginaRenovaciones * ITEMS_POR_PAGINA);
 
   const siniestrosTotales = dashboardData?.siniestrosActivos || [];
   const totalPaginasSin = Math.max(1, Math.ceil(siniestrosTotales.length / ITEMS_POR_PAGINA));
   const siniestrosPaginados = siniestrosTotales.slice((paginaSiniestros - 1) * ITEMS_POR_PAGINA, paginaSiniestros * ITEMS_POR_PAGINA);
+
+  // Reiniciar paginación si se cambia de pestaña
+  useEffect(() => {
+    setPaginaRenovaciones(1);
+  }, [pestanaAlertas]);
 
   const SeccionActividad = (
     <div className={`tour-actividad ${ordenVista === "alertas" ? "pb-10" : "mt-2"}`}>
@@ -140,15 +193,38 @@ export default function DashboardPage() {
   const SeccionAlertas = !isLoading && (
     <div className={`grid grid-cols-1 lg:grid-cols-3 gap-5 lg:gap-6 w-full ${ordenVista === "actividad" ? "pb-10" : "mt-2"}`}>
       <div className="lg:col-span-2 bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden transition-colors flex flex-col">
-        <div className="p-4 lg:p-6 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between">
+        
+        {/* 🔥 HEADER Y PESTAÑAS */}
+        <div className="p-4 lg:p-5 border-b border-gray-100 dark:border-gray-700 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-blue-50 dark:bg-blue-900/30 rounded-lg text-blue-600 dark:text-blue-400">
-              <CalendarClock size={20} />
+            {/* 🔥 EL ÍCONO CAMBIA DE COLOR SEGÚN LA PESTAÑA */}
+            <div className={`p-2 rounded-lg transition-colors ${pestanaAlertas === 'RENOVACION' ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400' : 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400'}`}>
+              <Bell size={20} />
             </div>
             <div>
-              <h2 className="text-base lg:text-lg font-bold text-gray-900 dark:text-white">Renovaciones Próximas</h2>
-              <p className="text-xs text-gray-500 dark:text-gray-400">Seguimiento comercial de carteras por vencer (Próx. 30 días)</p>
+              <h2 className="text-base lg:text-lg font-bold text-gray-900 dark:text-white">Seguimiento (30 días)</h2>
+              {/* 🔥 EL SUBTÍTULO TE EXPLICA QUÉ ESTÁS VIENDO */}
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                {pestanaAlertas === "RENOVACION" 
+                  ? "Pólizas que pierden cobertura técnica o deben renovarse." 
+                  : "Cuotas mensuales pendientes de cobro o ya vencidas (morosos)."}
+              </p>
             </div>
+          </div>
+          
+          <div className="flex bg-gray-100 dark:bg-gray-900/50 p-1 rounded-xl w-full lg:w-auto shrink-0">
+            <button 
+              onClick={() => cambiarPestanaAlertas("RENOVACION")} 
+              className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${pestanaAlertas === "RENOVACION" ? "bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 shadow-sm" : "text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"}`}
+            >
+              <CalendarDays size={14} /> Renovaciones
+            </button>
+            <button 
+              onClick={() => cambiarPestanaAlertas("COBRANZA")} 
+              className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${pestanaAlertas === "COBRANZA" ? "bg-white dark:bg-gray-700 text-emerald-600 dark:text-emerald-400 shadow-sm" : "text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"}`}
+            >
+              <Wallet size={14} /> Cobranzas
+            </button>
           </div>
         </div>
         
@@ -163,13 +239,14 @@ export default function DashboardPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
-              {renovacionesPaginadas.length > 0 ? (
-                renovacionesPaginadas.map((poliza: any, i: number) => {
-                  // Calculamos la urgencia y extraemos la plantilla correspondiente
-                  const urgencia = calcularUrgencia(poliza.fechaVencimiento);
+              {alertasPaginadas.length > 0 ? (
+                alertasPaginadas.map((poliza: any, i: number) => {
+                  const fechaBase = pestanaAlertas === "COBRANZA" ? poliza.cuotaAlarma.fechaVencimiento : poliza.fechaVencimiento;
+                  const urgencia = calcularUrgencia(fechaBase);
+
                   return (
                     <tr key={i} onClick={() => router.push(`/polizas/${poliza.id}`)} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors cursor-pointer group">
-                      <td className="p-4 font-medium text-gray-900 dark:text-white group-hover:text-green-600 dark:group-hover:text-green-400 transition-colors">
+                      <td className="p-4 font-medium text-gray-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
                         {poliza.asegurado?.nombre} {poliza.asegurado?.apellido}
                       </td>
                       <td className="p-4">
@@ -179,12 +256,11 @@ export default function DashboardPage() {
                         {poliza.compania?.nombre} • {poliza.nroPoliza}
                       </td>
                       <td className="p-4 text-right">
-                        {/* 🔥 LE PASAMOS AL AYUDANTE LA PLANTILLA QUE CORRESPONDE A SUS DÍAS */}
                         <a 
                           onClick={(e) => e.stopPropagation()} 
                           href={generarLinkWhatsApp(poliza, urgencia.plantillaSeleccionada)}
                           target="_blank" rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-50 hover:bg-green-100 dark:bg-green-900/20 dark:hover:bg-green-900/40 text-green-700 dark:text-green-400 border border-green-200 dark:border-green-800/30 rounded-lg text-xs font-bold transition-colors"
+                          className={`inline-flex items-center gap-1.5 px-3 py-1.5 border rounded-lg text-xs font-bold transition-colors ${!poliza.asegurado.telefono ? 'opacity-50 pointer-events-none bg-gray-50 text-gray-400 border-gray-200' : 'bg-green-50 hover:bg-green-100 dark:bg-green-900/20 dark:hover:bg-green-900/40 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800/30'}`}
                         >
                           <PhoneForwarded size={14} /> Avisar
                         </a>
@@ -195,7 +271,7 @@ export default function DashboardPage() {
               ) : (
                 <tr>
                   <td colSpan={4} className="p-8 text-center text-gray-500 dark:text-gray-400">
-                    No hay renovaciones pendientes para los próximos 30 días. ¡Cartera al día!
+                    No hay alertas urgentes pendientes. ¡Cartera al día!
                   </td>
                 </tr>
               )}
@@ -203,11 +279,11 @@ export default function DashboardPage() {
           </table>
         </div>
 
-        {renovacionesTotales.length > ITEMS_POR_PAGINA && (
+        {listaAlertasPaginables.length > ITEMS_POR_PAGINA && (
           <div className="flex items-center justify-center gap-4 p-3 border-t border-gray-100 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900/30">
             <button onClick={() => setPaginaRenovaciones(p => Math.max(1, p - 1))} disabled={paginaRenovaciones === 1} className="p-1 text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-white hover:bg-gray-200 dark:hover:bg-gray-700 rounded-md transition-all disabled:opacity-30 disabled:pointer-events-none"><ChevronLeft size={18} /></button>
-            <span className="text-xs font-bold text-gray-600 dark:text-gray-400 min-w-[70px] text-center">Pág {paginaRenovaciones} de {totalPaginasRen}</span>
-            <button onClick={() => setPaginaRenovaciones(p => Math.min(totalPaginasRen, p + 1))} disabled={paginaRenovaciones === totalPaginasRen} className="p-1 text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-white hover:bg-gray-200 dark:hover:bg-gray-700 rounded-md transition-all disabled:opacity-30 disabled:pointer-events-none"><ChevronRight size={18} /></button>
+            <span className="text-xs font-bold text-gray-600 dark:text-gray-400 min-w-[70px] text-center">Pág {paginaRenovaciones} de {totalPaginasAlertas}</span>
+            <button onClick={() => setPaginaRenovaciones(p => Math.min(totalPaginasAlertas, p + 1))} disabled={paginaRenovaciones === totalPaginasAlertas} className="p-1 text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-white hover:bg-gray-200 dark:hover:bg-gray-700 rounded-md transition-all disabled:opacity-30 disabled:pointer-events-none"><ChevronRight size={18} /></button>
           </div>
         )}
       </div>

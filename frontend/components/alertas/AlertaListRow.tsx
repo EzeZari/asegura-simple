@@ -1,6 +1,6 @@
 "use client";
 
-import { MessageCircle, Shield, Trash2, RefreshCcw, MapPin, Users, CarFront, Loader2 } from "lucide-react";
+import { MessageCircle, Shield, Trash2, RefreshCcw, MapPin, Users, CarFront, Loader2, Mail } from "lucide-react";
 import { useState } from "react";
 import { useRouter } from "next/navigation"; 
 import ConfirmModal from "../ui/ConfirmModal"; 
@@ -18,10 +18,12 @@ interface Props {
   onToggleMenu: (id: number | null) => void;
   isSelected: boolean;
   onSelect: () => void;
-  plantillas: { proxima: string; critica: string; vencida: string };
+  plantillas: { proxima: string; critica: string; vencida: string; cobranza?: string }; // 🔥 Aseguramos que tipado acepte cobranza
+  tipoAlerta?: "RENOVACION" | "COBRANZA";
+  onUpdate: () => void;
 }
 
-export default function AlertaListRow({ poliza, nivel, menuAbiertoId, onToggleMenu, isSelected, onSelect, plantillas }: Props) {
+export default function AlertaListRow({ poliza, nivel, menuAbiertoId, onToggleMenu, isSelected, onSelect, plantillas, tipoAlerta = "RENOVACION", onUpdate }: Props) {
   const router = useRouter(); 
   const { user } = useAuthStore();
   const puedeModificar = tienePermiso(user, PERMISOS.PUEDE_MODIFICAR_DATOS);
@@ -35,6 +37,8 @@ export default function AlertaListRow({ poliza, nivel, menuAbiertoId, onToggleMe
   const [isSavingNota, setIsSavingNota] = useState(false);
   const [isEditingNota, setIsEditingNota] = useState(false);
 
+  const fechaBaseCalculo = tipoAlerta === "COBRANZA" && poliza.cuotaAlarma ? poliza.cuotaAlarma.fechaVencimiento : poliza.fechaVencimiento;
+
   const handleSaveGestion = async (nuevoEstado: boolean, nuevaObs: string) => {
     setIsSavingNota(true);
     try {
@@ -42,6 +46,7 @@ export default function AlertaListRow({ poliza, nivel, menuAbiertoId, onToggleMe
         method: "PATCH",
         body: JSON.stringify({ avisoGestionado: nuevoEstado, observacionesAviso: nuevaObs }),
       });
+      onUpdate();
     } catch (error) {
       console.error("Error al guardar nota", error);
     } finally {
@@ -49,23 +54,54 @@ export default function AlertaListRow({ poliza, nivel, menuAbiertoId, onToggleMe
     }
   };
 
-  const calcularDiasCorto = (fechaVencimiento: string) => {
+  const calcularDiasCorto = (fechaParam: string) => {
     const hoy = new Date().getTime();
-    const venc = new Date(fechaVencimiento).getTime();
+    const venc = new Date(fechaParam).getTime();
     const diff = Math.ceil((venc - hoy) / (1000 * 60 * 60 * 24));
     if (diff < 0) return "Venció";
     if (diff === 0) return "Hoy";
     return `${diff} días`;
   };
 
+  // 🔥 SOLUCIÓN AL BUG: Elegimos la plantilla según la pestaña (tipoAlerta)
   const enviarWsp = () => {
-    const url = generarLinkWhatsApp(poliza, plantillas[nivel]);
+    const textoMensaje = tipoAlerta === "COBRANZA" && plantillas.cobranza 
+      ? plantillas.cobranza 
+      : plantillas[nivel];
+      
+    const url = generarLinkWhatsApp(poliza, textoMensaje);
     window.open(url, '_blank');
-    
-    // 🔥 IDEA 3: Automatización. Si no estaba gestionado, lo tilda y guarda.
     if (!gestionado) {
       setGestionado(true);
       handleSaveGestion(true, observacion);
+    }
+  };
+
+  const enviarAvisoEmail = async () => {
+    if (!poliza.asegurado?.email) {
+      alert("El cliente no tiene un email registrado.");
+      return;
+    }
+    try {
+      const res = await apiFetch(`/api/polizas/${poliza.id}/aviso`, { 
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tipo: tipoAlerta }) 
+      });
+      
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || "Error al enviar el correo");
+      }
+      
+      alert("Correo enviado con éxito.");
+      
+      if (!gestionado) {
+        setGestionado(true);
+        handleSaveGestion(true, observacion);
+      }
+    } catch (error: any) {
+      alert(error.message || "Error al enviar el correo."); 
     }
   };
 
@@ -123,11 +159,11 @@ export default function AlertaListRow({ poliza, nivel, menuAbiertoId, onToggleMe
           {poliza.ubicacionRiesgo && <span className="flex items-center gap-1 mt-1 text-xs"><MapPin size={12}/> {poliza.ubicacionRiesgo}</span>}
         </td>
         <td className="p-3 md:p-4 whitespace-nowrap text-sm font-medium text-gray-800 dark:text-gray-200">
-          {new Date(poliza.fechaVencimiento).toLocaleDateString("es-AR")}
+          {new Date(fechaBaseCalculo).toLocaleDateString("es-AR")}
         </td>
         <td className="p-3 md:p-4 whitespace-nowrap">
           <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-black uppercase tracking-wider ${estilos.fondo} ${estilos.texto}`}>
-            {calcularDiasCorto(poliza.fechaVencimiento)}
+            {calcularDiasCorto(fechaBaseCalculo)}
           </span>
         </td>
         
@@ -136,7 +172,7 @@ export default function AlertaListRow({ poliza, nivel, menuAbiertoId, onToggleMe
             <div className="flex items-center gap-2">
               <input 
                 type="checkbox" 
-                id={`gestion-row-${poliza.id}`} 
+                id={`gestion-row-${poliza.id}-${tipoAlerta}`}
                 checked={gestionado} 
                 onChange={(e) => { 
                   setGestionado(e.target.checked); 
@@ -144,7 +180,7 @@ export default function AlertaListRow({ poliza, nivel, menuAbiertoId, onToggleMe
                 }} 
                 className="w-4 h-4 text-green-600 border-gray-300 rounded cursor-pointer" 
               />
-              <label htmlFor={`gestion-row-${poliza.id}`} className="text-[10px] font-bold text-gray-500 uppercase tracking-wider cursor-pointer">
+              <label htmlFor={`gestion-row-${poliza.id}-${tipoAlerta}`} className="text-[10px] font-bold text-gray-500 uppercase tracking-wider cursor-pointer">
                 Ya contactado
               </label>
               {isSavingNota && <Loader2 size={12} className="animate-spin text-gray-400 ml-auto" />}
@@ -192,6 +228,7 @@ export default function AlertaListRow({ poliza, nivel, menuAbiertoId, onToggleMe
           {puedeModificar && (
             <ActionMenu isOpen={menuAbiertoId === poliza.id} onToggle={() => onToggleMenu(menuAbiertoId === poliza.id ? null : poliza.id)}>
               <ActionMenuItem icon={MessageCircle} label={poliza.asegurado.telefono ? "Enviar WhatsApp" : "Cliente sin teléfono"} onClick={enviarWsp} />
+              <ActionMenuItem icon={Mail} label="Enviar Mail" onClick={enviarAvisoEmail} /> 
               <ActionMenuDivider />
               {nivel === "vencida" ? (
                 <ActionMenuItem icon={Trash2} label="Anular Póliza" color="red" onClick={() => setShowConfirmModal(true)} />

@@ -6,11 +6,9 @@ const router = Router();
 
 router.use(verificarToken);
 
-// 🔥 HELPER ACTUALIZADO: Sincroniza al equipo con la base de datos del Dueño
 const obtenerProductorId = async (userId: number): Promise<number> => {
   const usuarioActual = await prisma.user.findUnique({ where: { id: userId } });
   
-  // Si tiene jefe, usamos el ID del jefe (dueño de la agencia). Si no, usa su propio ID.
   const idAgencia = usuarioActual?.jefeId ? usuarioActual.jefeId : userId;
 
   let productor = await prisma.productor.findUnique({ where: { userId: idAgencia } });
@@ -46,16 +44,14 @@ const obtenerProductorId = async (userId: number): Promise<number> => {
 router.get('/', async (req, res) => {
   try {
     const hoy = new Date();
-    // 🔥 Ahora sí: el Lector o Productor obtendrán el productorId de su jefe
+    hoy.setHours(0, 0, 0, 0); 
     const productorId = await obtenerProductorId(req.userId!); 
 
-    // 1. LEER CONFIGURACIÓN DINÁMICA DE LA AGENCIA
     const agencia = await prisma.agencia.findUnique({ where: { id: 1 } });
     const diasCritica = agencia?.diasAlertaCritica || 7;      
     const diasMax = agencia?.diasAlertaVencimiento || 30;     
 
-    // --- MAGIA 1: LIMPIEZA AUTOMÁTICA ---
-    const hace30Dias = new Date();
+    const hace30Dias = new Date(hoy);
     hace30Dias.setDate(hoy.getDate() - 30);
 
     const polizasCaducadas = await prisma.poliza.findMany({
@@ -78,53 +74,99 @@ router.get('/', async (req, res) => {
           data: {
             accion: "Edición",
             entidad: "Póliza",
-            descripcion: `Anulada automáticamente (> 30 días vencida)`,
+            descripcion: `Anulada automáticamente (> 30 días vencida de vigencia técnica)`,
             cliente: `${poliza.asegurado.nombre} ${poliza.asegurado.apellido || ''}`.trim(),
             productorId 
           }
         });
       }
     }
-    // --- FIN LIMPIEZA AUTOMÁTICA ---
 
-    // --- LÓGICA DINÁMICA DE ALERTAS ---
-    const enXDias = new Date();
-    enXDias.setDate(hoy.getDate() + diasMax);
-
-    const polizasPorVencer = await prisma.poliza.findMany({
+    const polizasActivas = await prisma.poliza.findMany({
       where: {
         estado: { in: ['Vigente', 'Pendiente de Pago'] },
-        fechaVencimiento: { lte: enXDias },
         asegurado: { productorId: productorId } 
       },
       include: { asegurado: true, compania: true },
-      orderBy: { fechaVencimiento: 'asc' }
     });
 
     const hoyMs = hoy.getTime();
-    
-    // Filtrar Vencidas
-    const vencidas = polizasPorVencer.filter(p => {
-      const diffDias = Math.ceil((new Date(p.fechaVencimiento).getTime() - hoyMs) / (1000 * 60 * 60 * 24));
-      return diffDias < 0;
-    });
 
-    // Filtrar Críticas
-    const criticas = polizasPorVencer.filter(p => {
-      const diffDias = Math.ceil((new Date(p.fechaVencimiento).getTime() - hoyMs) / (1000 * 60 * 60 * 24));
-      return diffDias >= 0 && diffDias <= diasCritica;
-    });
+    const renovaciones_vencidas: any[] = [];
+    const renovaciones_criticas: any[] = [];
+    const renovaciones_proximas: any[] = [];
 
-    // Filtrar Próximas
-    const proximas = polizasPorVencer.filter(p => {
-      const diffDias = Math.ceil((new Date(p.fechaVencimiento).getTime() - hoyMs) / (1000 * 60 * 60 * 24));
-      return diffDias > diasCritica && diffDias <= diasMax;
-    });
+    const cobranzas_vencidas: any[] = [];
+    const cobranzas_criticas: any[] = [];
+    const cobranzas_proximas: any[] = [];
+
+    for (const p of polizasActivas) {
+      if (p.fechaVencimiento) {
+        const diffDiasReno = Math.ceil((new Date(p.fechaVencimiento).getTime() - hoyMs) / (1000 * 60 * 60 * 24));
+        
+        if (diffDiasReno < 0 && diffDiasReno >= -30) {
+          renovaciones_vencidas.push(p);
+        } else if (diffDiasReno >= 0 && diffDiasReno <= diasCritica) {
+          renovaciones_criticas.push(p);
+        } else if (diffDiasReno > diasCritica && diffDiasReno <= diasMax) {
+          renovaciones_proximas.push(p);
+        }
+      }
+
+      if (p.estadoCuotas && Array.isArray(p.estadoCuotas)) {
+        let cuotaMasUrgente: any = null;
+        let menorDiff = Infinity;
+
+        // 🔥 CORRECCIÓN TYPESCRIPT APLICADA ACÁ
+        const cuotasArray = p.estadoCuotas as any[];
+
+        for (const cuota of cuotasArray) {
+          if (!cuota || typeof cuota !== 'object') continue;
+
+          const isPagado = cuota.estado === 'Pagado' || cuota.estado === 'Al día' || cuota.pagado === true;
+          
+          if (!isPagado && cuota.fechaVencimiento) {
+            const fechaVencCuota = new Date(cuota.fechaVencimiento);
+            fechaVencCuota.setHours(0, 0, 0, 0);
+            
+            const diffDiasCuota = Math.ceil((fechaVencCuota.getTime() - hoyMs) / (1000 * 60 * 60 * 24));
+            
+            if (diffDiasCuota < menorDiff) {
+              menorDiff = diffDiasCuota;
+              cuotaMasUrgente = { ...cuota, diffDias: diffDiasCuota };
+            }
+          } else if (cuota.estado === 'Vencido') {
+             menorDiff = -1;
+             cuotaMasUrgente = { ...cuota, diffDias: -1 };
+          }
+        }
+
+        if (cuotaMasUrgente) {
+          const polizaConAlarma = { ...p, cuotaAlarma: cuotaMasUrgente };
+
+          if (cuotaMasUrgente.diffDias < 0) {
+            cobranzas_vencidas.push(polizaConAlarma);
+          } else if (cuotaMasUrgente.diffDias >= 0 && cuotaMasUrgente.diffDias <= 7) {
+            cobranzas_criticas.push(polizaConAlarma);
+          } else if (cuotaMasUrgente.diffDias > 7 && cuotaMasUrgente.diffDias <= 15) {
+            cobranzas_proximas.push(polizaConAlarma);
+          }
+        }
+      }
+    }
+
+    const sortByReno = (a: any, b: any) => new Date(a.fechaVencimiento).getTime() - new Date(b.fechaVencimiento).getTime();
+    const sortByCobra = (a: any, b: any) => new Date(a.cuotaAlarma.fechaVencimiento).getTime() - new Date(b.cuotaAlarma.fechaVencimiento).getTime();
 
     res.json({ 
-      vencidas, 
-      criticas, 
-      proximas,
+      vencidas: renovaciones_vencidas.sort(sortByReno), 
+      criticas: renovaciones_criticas.sort(sortByReno), 
+      proximas: renovaciones_proximas.sort(sortByReno),
+      cobranzas: {
+        vencidas: cobranzas_vencidas.sort(sortByCobra),
+        criticas: cobranzas_criticas.sort(sortByCobra),
+        proximas: cobranzas_proximas.sort(sortByCobra),
+      },
       config: { diasCritica, diasMax } 
     });
 

@@ -29,7 +29,7 @@ export default function PolizaMobileCard({
 
   const getEstadoInteligente = (p: any) => {
     if (p.estado === "Anulada" || p.estado === "Renovada") return p.estado;
-    if (!p.fechaVencimiento) return p.estado; // 🔥 ESCUDO AGREGADO
+    if (!p.fechaVencimiento) return p.estado; 
 
     const hoy = new Date();
     hoy.setHours(0, 0, 0, 0); 
@@ -45,7 +45,6 @@ export default function PolizaMobileCard({
 
   const estadoInteligente = getEstadoInteligente(poliza);
 
-  // Colores del borde izquierdo según el estado
   const getBorderColor = (estado: string) => {
     switch (estado) {
       case "Vigente":
@@ -73,10 +72,8 @@ export default function PolizaMobileCard({
   return (
     <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm relative overflow-hidden transition-colors">
       
-      {/* 🔥 Indicador lateral dinámico */}
       <div className={`absolute left-0 top-0 bottom-0 w-1.5 ${getBorderColor(estadoInteligente)}`}></div>
 
-      {/* 1. Encabezado: Rama y Menú */}
       <div className="pl-5 pr-4 py-3 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center bg-gray-50/30 dark:bg-gray-800/30">
         <div className="flex flex-col">
           <span className="font-bold text-gray-900 dark:text-gray-100 text-base">{poliza.tipoPoliza}</span>
@@ -98,10 +95,8 @@ export default function PolizaMobileCard({
         )}
       </div>
 
-      {/* 2. Cuerpo: Datos estructurados tipo lista/ticket */}
       <div className="pl-5 pr-4 flex flex-col divide-y divide-gray-100 dark:divide-gray-700/60">
         
-        {/* Titular */}
         <div className="py-3 flex justify-between items-center">
           <span className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Titular</span>
           <div className="text-right">
@@ -110,7 +105,6 @@ export default function PolizaMobileCard({
           </div>
         </div>
         
-        {/* Compañía y Cobertura */}
         <div className="py-3 flex justify-between items-center">
           <span className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Compañía</span>
           <div className="text-right">
@@ -119,13 +113,19 @@ export default function PolizaMobileCard({
           </div>
         </div>
 
-        {/* Dato Específico (Patente, Riesgo, etc) */}
         <div className="py-3 flex justify-between items-center">
           <span className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Detalle</span>
           {(() => {
             const rama = (poliza.tipoPoliza || "").toLowerCase();
             if (rama.includes("auto") || rama.includes("moto")) {
-              return <span className="text-sm font-bold font-mono text-gray-900 dark:text-gray-200 tracking-wider bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded">{poliza.patente?.toUpperCase() || "-"}</span>;
+              return (
+                <div className="text-right flex flex-col items-end">
+                  <span className="text-sm font-bold font-mono text-gray-900 dark:text-gray-200 tracking-wider bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded w-fit">{poliza.patente?.toUpperCase() || "-"}</span>
+                  {(poliza.marca || poliza.modelo) && (
+                    <span className="text-xs text-gray-500 dark:text-gray-400 mt-1">{poliza.marca} {poliza.modelo}</span>
+                  )}
+                </div>
+              );
             }
             if (rama.includes("combinado") || rama.includes("integral") || rama.includes("incendio") || rama.includes("robo")) {
               return <span className="text-sm font-medium text-gray-900 dark:text-gray-200 truncate max-w-[150px]">{poliza.ubicacionRiesgo || "-"}</span>;
@@ -137,7 +137,6 @@ export default function PolizaMobileCard({
           })()}
         </div>
 
-        {/* Vencimiento */}
         <div className="py-3 flex justify-between items-center">
           <span className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Vencimiento</span>
           <span className="font-medium text-sm text-gray-900 dark:text-gray-200">{getFechaLocal(poliza.fechaVencimiento)}</span>
@@ -145,11 +144,21 @@ export default function PolizaMobileCard({
 
       </div>
 
-      {/* 3. Pie: Estado y Botón de Ver Detalles */}
-      <div className="pl-5 pr-4 py-3 bg-gray-50 dark:bg-gray-800/80 border-t border-gray-100 dark:border-gray-700 flex justify-between items-center">
-        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold ${getEstadoBadge(estadoInteligente)}`}>
-          {estadoInteligente}
-        </span>
+      <div className="pl-5 pr-4 py-3 bg-gray-50 dark:bg-gray-800/80 border-t border-gray-100 dark:border-gray-700 flex justify-between items-center flex-wrap gap-2">
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] uppercase font-bold ${getEstadoBadge(estadoInteligente)}`}>
+            {estadoInteligente}
+          </span>
+          {poliza.estadoPago && poliza.estadoPago !== "Sin información" && (
+            <span className={`inline-flex items-center justify-center px-2 py-0.5 rounded-full text-[10px] uppercase font-bold shadow-sm transition-colors border ${
+              poliza.estadoPago === "Al día" ? "bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800/30" :
+              poliza.estadoPago === "Pendiente" ? "bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800/30" :
+              "bg-red-100 text-red-800 border-red-200 dark:bg-red-900/30 dark:text-red-400 dark:border-red-800/30"
+            }`}>
+              $ {poliza.estadoPago}
+            </span>
+          )}
+        </div>
         
         <button
           onClick={() => onClickDetalle(poliza.id)}

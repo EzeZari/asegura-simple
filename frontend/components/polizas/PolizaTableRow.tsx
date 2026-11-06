@@ -30,7 +30,7 @@ export default function PolizaTableRow({
 
   const getEstadoInteligente = (p: any) => {
     if (p.estado === "Anulada" || p.estado === "Renovada") return p.estado;
-    if (!p.fechaVencimiento) return p.estado; // 🔥 ESCUDO AGREGADO
+    if (!p.fechaVencimiento) return p.estado; 
 
     const hoy = new Date();
     hoy.setHours(0, 0, 0, 0); 
@@ -60,7 +60,6 @@ export default function PolizaTableRow({
   };
 
   return (
-    // 🔥 Hover de la fila adaptado
     <tr className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors group">
       <td className="px-4 lg:px-6 py-4 font-mono font-medium text-green-700 dark:text-green-500 cursor-pointer hover:underline hover:text-green-800 dark:hover:text-green-400 whitespace-nowrap transition-colors" onClick={() => onClickDetalle(poliza.id)}>
         #{poliza.nroPoliza}
@@ -80,7 +79,19 @@ export default function PolizaTableRow({
           const rama = (poliza.tipoPoliza || "").toLowerCase();
           
           if (rama.includes("auto") || rama.includes("moto")) {
-            return <div className="text-sm text-gray-900 dark:text-gray-300 font-medium">{poliza.patente?.toUpperCase() || "-"}</div>;
+            return (
+              <div className="flex flex-col gap-1">
+                <div className="text-sm font-bold font-mono tracking-wider text-gray-900 dark:text-gray-200 uppercase bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded w-fit">
+                  {poliza.patente || "-"}
+                </div>
+                {/* 🔥 AGREGAMOS MARCA Y MODELO AQUÍ */}
+                {(poliza.marca || poliza.modelo) && (
+                  <div className="text-xs text-gray-600 dark:text-gray-400 font-medium mt-1 truncate max-w-[160px]">
+                    {poliza.marca} {poliza.modelo}
+                  </div>
+                )}
+              </div>
+            );
           }
           
           if (rama.includes("combinado") || rama.includes("integral") || rama.includes("incendio") || rama.includes("robo")) {
@@ -107,9 +118,21 @@ export default function PolizaTableRow({
       </td>
 
       <td className="px-4 lg:px-6 py-4 whitespace-nowrap">
-        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold shadow-sm transition-colors ${getEstadoBadge(getEstadoInteligente(poliza))}`}>
-          {getEstadoInteligente(poliza)}
-        </span>
+        <div className="flex flex-col gap-1.5">
+          <span className={`inline-flex items-center justify-center px-2 py-0.5 rounded-full text-[10px] font-bold shadow-sm transition-colors ${getEstadoBadge(getEstadoInteligente(poliza))}`}>
+            {getEstadoInteligente(poliza)}
+          </span>
+          {/* 🔥 AGREGAMOS EL ESTADO FINANCIERO (Si está disponible) */}
+          {poliza.estadoPago && poliza.estadoPago !== "Sin información" && (
+            <span className={`inline-flex items-center justify-center px-2 py-0.5 rounded-full text-[10px] font-bold shadow-sm transition-colors ${
+              poliza.estadoPago === "Al día" ? "bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800/30 border" :
+              poliza.estadoPago === "Pendiente" ? "bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800/30 border" :
+              "bg-red-100 text-red-800 border-red-200 dark:bg-red-900/30 dark:text-red-400 dark:border-red-800/30 border"
+            }`}>
+              $ {poliza.estadoPago}
+            </span>
+          )}
+        </div>
       </td>
       
       {puedeModificar && (

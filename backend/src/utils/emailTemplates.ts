@@ -64,7 +64,7 @@ export const templateBienvenida = (nombre: string, apellido: string, dni: string
   </div>
 `;
 
-// Plantilla para Aviso de Vencimiento
+// Plantilla para Aviso de Vencimiento de Contrato (Renovación)
 export const templateVencimiento = (
   nombre: string, nroPoliza: string, compania: string, tipoPoliza: string, 
   cobertura: string, fechaVencimiento: string, patente?: string | null, 
@@ -99,12 +99,12 @@ export const templateVencimiento = (
   return `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 25px; border: 1px solid #e5e7eb; border-radius: 16px; border-top: 6px solid #ea580c;">
       <div style="text-align: center; margin-bottom: 25px;">
-        <h2 style="color: #ea580c; margin: 0; font-size: 22px;">Recordatorio de Vencimiento</h2>
+        <h2 style="color: #ea580c; margin: 0; font-size: 22px;">Aviso de Renovación</h2>
         <p style="color: #6b7280; font-size: 14px; margin-top: 5px;">Evitá quedarte sin cobertura en tus bienes</p>
       </div>
       
       <p style="color: #374151; font-size: 16px; line-height: 1.6;">Hola <strong>${nombre}</strong>,</p>
-      <p style="color: #374151; font-size: 16px; line-height: 1.6;">Te contactamos desde nuestra agencia para informarte que tu póliza de seguro está próxima a finalizar su vigencia de cobertura. A continuación, te detallamos los datos técnicos del riesgo:</p>
+      <p style="color: #374151; font-size: 16px; line-height: 1.6;">Te contactamos desde nuestra agencia para informarte que tu contrato de seguro está próximo a finalizar su vigencia. A continuación, detallamos los datos del riesgo:</p>
       
       <div style="background-color: #fff7ed; border: 1px solid #ffedd5; padding: 20px; border-radius: 12px; margin: 24px 0;">
         <table style="width: 100%; font-size: 14px; color: #4b5563; border-collapse: collapse;">
@@ -128,7 +128,7 @@ export const templateVencimiento = (
             <td style="padding: 6px 0; color: #1f2937;">${cobertura || 'Detalle según condiciones generales'}</td>
           </tr>
           <tr>
-            <td style="padding: 8px 0; font-weight: bold; color: #c2410c; font-size: 15px; border-top: 1px dashed #fed7aa;">FECHA FIN:</td>
+            <td style="padding: 8px 0; font-weight: bold; color: #c2410c; font-size: 15px; border-top: 1px dashed #fed7aa;">VENCIMIENTO:</td>
             <td style="padding: 8px 0; color: #9a3412; font-size: 16px; font-weight: bold; border-top: 1px dashed #fed7aa;">${fechaVencimiento} a las 12:00 hs</td>
           </tr>
         </table>
@@ -140,6 +140,69 @@ export const templateVencimiento = (
     </div>
   `;
 };
+
+// 🔥 NUEVA PLANTILLA: Aviso de Cuota Vencida (Cobranzas)
+export const templateCobranza = (
+    nombre: string, nroPoliza: string, compania: string, tipoPoliza: string,
+    fechaVencimientoCuota: string, mesCuota: string, patente?: string | null,
+    agencia?: any
+  ) => {
+    
+    let filaVehiculo = '';
+    if ((tipoPoliza === "Automotor" || tipoPoliza === "Motovehículo") && patente) {
+      filaVehiculo = `
+        <tr>
+          <td style="padding: 6px 0; font-weight: bold; color: #991b1b;">Vehículo:</td>
+          <td style="padding: 6px 0; color: #1f2937;"><span style="background-color: #fef2f2; padding: 2px 6px; border-radius: 4px; border: 1px solid #fecaca; font-family: monospace; font-weight: bold; font-size: 12px;">${patente.toUpperCase()}</span></td>
+        </tr>
+      `;
+    }
+  
+    return `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 25px; border: 1px solid #e5e7eb; border-radius: 16px; border-top: 6px solid #dc2626;">
+        <div style="text-align: center; margin-bottom: 25px;">
+          <h2 style="color: #dc2626; margin: 0; font-size: 22px;">Aviso de Cuota Vencida</h2>
+          <p style="color: #6b7280; font-size: 14px; margin-top: 5px;">Tu cobertura podría encontrarse suspendida</p>
+        </div>
+        
+        <p style="color: #374151; font-size: 16px; line-height: 1.6;">Hola <strong>${nombre}</strong>,</p>
+        <p style="color: #374151; font-size: 16px; line-height: 1.6;">Nos comunicamos para informarte que registramos un atraso en el pago de la cuota de tu seguro. Es vital regularizar esta situación a la brevedad para no perder la cobertura ante un eventual siniestro.</p>
+        
+        <div style="background-color: #fef2f2; border: 1px solid #fecaca; padding: 20px; border-radius: 12px; margin: 24px 0;">
+          <table style="width: 100%; font-size: 14px; color: #4b5563; border-collapse: collapse;">
+            <tr>
+              <td style="padding: 6px 0; font-weight: bold; color: #991b1b; width: 35%;">Póliza Nro:</td>
+              <td style="padding: 6px 0; color: #1f2937; font-family: monospace; font-size: 15px;">#${nroPoliza}</td>
+            </tr>
+            <tr>
+              <td style="padding: 6px 0; font-weight: bold; color: #991b1b;">Compañía:</td>
+              <td style="padding: 6px 0; color: #1f2937; font-weight: 600;">${compania}</td>
+            </tr>
+            <tr>
+              <td style="padding: 6px 0; font-weight: bold; color: #991b1b;">Ramo:</td>
+              <td style="padding: 6px 0; color: #1f2937;">${tipoPoliza}</td>
+            </tr>
+            
+            ${filaVehiculo}
+            
+            <tr>
+              <td style="padding: 8px 0; font-weight: bold; color: #b91c1c; font-size: 15px; border-top: 1px dashed #fca5a5;">PERÍODO IMPAGO:</td>
+              <td style="padding: 8px 0; color: #991b1b; font-size: 16px; font-weight: bold; border-top: 1px dashed #fca5a5;">${mesCuota}</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 0; font-weight: bold; color: #b91c1c; font-size: 15px;">VENCIDA DESDE:</td>
+              <td style="padding: 8px 0; color: #991b1b; font-size: 16px; font-weight: bold;">${fechaVencimientoCuota}</td>
+            </tr>
+          </table>
+        </div>
+  
+        <p style="color: #374151; font-size: 16px; line-height: 1.6;"><strong>Por favor, envianos el comprobante de pago o comunicate con nosotros a la brevedad para regularizar tu cuenta.</strong></p>
+        <p style="color: #6b7280; font-size: 14px; font-style: italic;">Si realizaste el pago en las últimas 48hs hábiles, te pedimos disculpas y podés desestimar este mensaje.</p>
+        
+        ${generarFooter(agencia)}
+      </div>
+    `;
+  };
 
 // Plantilla para Notificación de Siniestro
 export const templateSiniestro = (
@@ -190,7 +253,6 @@ export const templateSiniestro = (
     ${generarFooter(agencia)}
   </div>
 `;
-
 
 // ============================================================================
 // PLANTILLAS DEL SISTEMA INTERNO (ESTAS QUEDAN EXACTAMENTE IGUAL)
@@ -333,6 +395,7 @@ export const templateAlertaError = (funcion: string, detalleError: any, datosExt
     </div>
   </div>
 `;
+
 // Plantilla para Aviso de Vencimiento de Suscripción (SaaS)
 export const templateAvisoSuscripcion = (nombre: string, fechaVencimiento: string, linkPago: string) => `
   <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 25px; border: 1px solid #e5e7eb; border-radius: 16px; border-top: 6px solid #ea580c; background-color: #ffffff;">
@@ -358,6 +421,7 @@ export const templateAvisoSuscripcion = (nombre: string, fechaVencimiento: strin
     </div>
   </div>
 `;
+
 // Plantilla para Aviso de Suscripción Vencida (Día 0)
 export const templateSuscripcionVencida = (nombre: string, linkPago: string) => `
   <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 25px; border: 1px solid #e5e7eb; border-radius: 16px; border-top: 6px solid #dc2626; background-color: #ffffff;">

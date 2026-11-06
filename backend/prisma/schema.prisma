@@ -84,6 +84,13 @@ model Poliza {
   cobertura        String?
   formaPago        String?   
 
+  // 🔥 NUEVOS CAMPOS: CONFIGURACIÓN DE REFACTURACIÓN Y COBRO
+  tieneRefacturacion      Boolean   @default(false)
+  frecuenciaRefacturacion String?   // Mensual, Bimestral, Trimestral, Semestral, Anual, Personalizada
+  fechaRefacturacion      DateTime? // Próxima fecha de refacturación
+  diaHabitualPago         Int?      // Día habitual del mes
+  estadoPago              String?   // "Al día", "Pendiente", "Vencido"
+
   aseguradoId      Int
   asegurado        Asegurado @relation(fields: [aseguradoId], references: [id])
   
@@ -97,11 +104,9 @@ model Poliza {
   alertas          Alerta[]
   actividades      Actividad[] 
 
-  // --- DATOS DEL VEHÍCULO Y COBERTURA ---
   patente           String?
   marca             String?
   modelo            String?
-  // 🔥 NUEVOS CAMPOS OPCIONALES
   motor             String?
   chasis            String?
   anio              String?
@@ -113,14 +118,10 @@ model Poliza {
   cantidadEmpleados String?
 
   ultimoAviso DateTime?
-
   pdfUrl        String?
-
   cuponeraUrl    String?
   enviarCuponera Boolean  @default(false)
-
   estadoCuotas   Json?
-
   avisoGestionado    Boolean  @default(false)
   observacionesAviso String?  @db.Text
 

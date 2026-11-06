@@ -1,9 +1,8 @@
 import { Request, Response } from 'express';
 import { prisma } from '../config/db';
-import { enviarAvisoVencimiento } from '../services/email.service';
+import { enviarAvisoVencimiento, enviarAvisoCobranza } from '../services/email.service';
 import { supabase } from '../config/supabase';
 
-// 🔥 NORMALIZADORES INTELIGENTES PARA EXCEL
 const normalizarFormaPago = (valor: any) => {
   if (!valor) return null;
   const v = String(valor).toLowerCase().trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
@@ -94,28 +93,137 @@ const obtenerProductorId = async (userId: number): Promise<number> => {
   return productor.id;
 };
 
-const generarCuotas = (inicio: Date, fin: Date) => {
-  const cuotas = [];
-  const startYear = inicio.getUTCFullYear();
-  const startMonth = inicio.getUTCMonth();
-  const endYear = fin.getUTCFullYear();
-  const endMonth = fin.getUTCMonth();
-  
-  let mesesDiff = (endYear - startYear) * 12 + (endMonth - startMonth);
-  if (mesesDiff <= 0) mesesDiff = 1; 
-  
-  let actual = new Date(Date.UTC(startYear, startMonth, 15)); 
-  const mesesNombres = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+// 🔥 GENERADOR INTELIGENTE DE CUOTAS (CON EL FIX DEFINITIVO)
+const generarCuotas = (
+  fechaInicio: Date,
+  fechaVencimientoContrato: Date,
+  tieneRefacturacion: boolean = false,
+  frecuenciaRefacturacion: string = 'Mensual',
+  fechaRefacturacion: Date | null = null,
+  diaHabitualPago: number | null = null
+) => {
+  if (!tieneRefacturacion) return [];
 
-  for (let i = 0; i < mesesDiff; i++) {
+  const cuotas = [];
+  
+  // 1. Usar la fecha de refacturación inicial, o la fecha de inicio por defecto
+  let fechaBase = fechaRefacturacion ? new Date(fechaRefacturacion) : new Date(fechaInicio);
+
+  // 2. Si el usuario puso un "Día Habitual", forzamos que el día sea ESE número
+  let diaFijo = diaHabitualPago ? diaHabitualPago : fechaBase.getUTCDate();
+
+  // 3. MAGIA CONTRA HUSOS HORARIOS: Clavamos la hora a las 12:00 PM UTC. 
+  fechaBase.setUTCHours(12, 0, 0, 0);
+
+  // 4. Calcular los pasos de la frecuencia
+  let step = 1;
+  if (frecuenciaRefacturacion === 'Bimestral') step = 2;
+  else if (frecuenciaRefacturacion === 'Trimestral') step = 3;
+  else if (frecuenciaRefacturacion === 'Semestral') step = 6;
+  else if (frecuenciaRefacturacion === 'Anual') step = 12;
+
+  // 5. Calcular la cantidad total de cuotas en base a los meses de diferencia
+  let mesesTotales = (fechaVencimientoContrato.getUTCFullYear() - fechaBase.getUTCFullYear()) * 12;
+  mesesTotales -= fechaBase.getUTCMonth();
+  mesesTotales += fechaVencimientoContrato.getUTCMonth();
+  
+  // Sumamos un margen de 15 días por si el vencimiento final no coincide exacto con el día 30
+  if (fechaVencimientoContrato.getUTCDate() > 15) {
+      mesesTotales++;
+  }
+
+  const cantidadCuotas = mesesTotales > 0 ? Math.ceil(mesesTotales / step) : 12;
+
+  let mesActual = fechaBase.getUTCMonth();
+  let anioActual = fechaBase.getUTCFullYear();
+
+  for (let i = 0; i < cantidadCuotas; i++) {
+    // Clavamos el DÍA FIJO y solo aumentamos el número del MES usando UTC
+    let mesObjetivo = mesActual + (i * step);
+    
+    // Si el mes objetivo tiene menos días que el diaFijo (Ej: Febrero 30), JavaScript se pasa al mes siguiente automáticamente.
+    // Para evitar que "Día Habitual 31" genere 2 cuotas en marzo en lugar de febrero, le decimos:
+    // "El día máximo de este mes es X. Elegí el menor entre DíaHabitual y el Máximo".
+    let maxDiasMesObjetivo = new Date(Date.UTC(anioActual, mesObjetivo + 1, 0)).getUTCDate();
+    let diaRealParaEstaCuota = Math.min(diaFijo, maxDiasMesObjetivo);
+    
+    let fechaCuota = new Date(Date.UTC(anioActual, mesObjetivo, diaRealParaEstaCuota, 12, 0, 0, 0));
+
+    // Si la cuota ya superó el vencimiento del contrato (con el margen de 15 días), cortamos
+    let vtoConMargen = new Date(fechaVencimientoContrato);
+    vtoConMargen.setUTCDate(vtoConMargen.getUTCDate() + 15);
+    if (fechaCuota > vtoConMargen) break;
+
+    const nombreMes = fechaCuota.toLocaleDateString('es-AR', { month: 'long', year: 'numeric', timeZone: 'UTC' });
+    
     cuotas.push({
-      id: i + 1,
-      mes: `${mesesNombres[actual.getUTCMonth()]} ${actual.getUTCFullYear()}`,
+      id: Date.now() + i + Math.floor(Math.random() * 1000), 
+      mes: nombreMes.charAt(0).toUpperCase() + nombreMes.slice(1),
+      fechaVencimiento: fechaCuota.toISOString(),
+      estado: 'Pendiente',
       pagado: false
     });
-    actual.setUTCMonth(actual.getUTCMonth() + 1);
   }
+
+  // Backup por si es muy corto
+  if (cuotas.length === 0) {
+    const nombreMes = fechaBase.toLocaleDateString('es-AR', { month: 'long', year: 'numeric', timeZone: 'UTC' });
+    cuotas.push({
+      id: 1,
+      mes: nombreMes.charAt(0).toUpperCase() + nombreMes.slice(1),
+      fechaVencimiento: fechaBase.toISOString(),
+      estado: "Pendiente",
+      pagado: false
+    });
+  }
+
   return cuotas;
+};
+
+const calcularEstadoPagoGeneral = (cuotas: any[]) => {
+  if (!cuotas || !Array.isArray(cuotas) || cuotas.length === 0) return "Sin información";
+  
+  const hoy = new Date();
+  hoy.setHours(0, 0, 0, 0);
+
+  let tieneVencidas = false;
+  let tienePendientes = false;
+
+  for (const c of cuotas) {
+    const isPagado = c.estado === 'Pagado' || c.estado === 'Al día' || c.pagado === true;
+    if (isPagado) continue;
+
+    if (c.estado === 'Vencido') {
+      tieneVencidas = true;
+      break;
+    }
+
+    if (c.fechaVencimiento) {
+      const fechaVenc = new Date(c.fechaVencimiento);
+      fechaVenc.setHours(0, 0, 0, 0);
+
+      if (fechaVenc < hoy) {
+        tieneVencidas = true; 
+        break;
+      } else {
+        const diffTime = fechaVenc.getTime() - hoy.getTime();
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        
+        if (diffDays <= 15) {
+           tienePendientes = true; 
+        }
+      }
+    } else {
+      if (c.estado === 'Pendiente' || c.pagado === false) {
+        tienePendientes = true;
+      }
+    }
+  }
+
+  if (tieneVencidas) return "Vencido";
+  if (tienePendientes) return "Pendiente";
+  
+  return "Al día";
 };
 
 export const obtenerTodas = async (req: Request, res: Response): Promise<any> => {
@@ -161,12 +269,13 @@ export const obtenerPorId = async (req: Request, res: Response): Promise<any> =>
 export const crearPoliza = async (req: Request, res: Response): Promise<any> => {
   try {
     const productorId = await obtenerProductorId(req.userId!);
-    // 🔥 AGREGAMOS LOS NUEVOS CAMPOS AL DESTRUCTURING
+    
     const { 
       nroPoliza, tipoPoliza, fechaInicio, fechaVencimiento, estado, 
       cobertura, aseguradoId, companiaId,
       patente, marca, modelo, ubicacionRiesgo, cantidadEmpleados, formaPago, enviarCuponera,
-      motor, chasis, anio, color, sumaAsegurada, clausulaAjuste
+      motor, chasis, anio, color, sumaAsegurada, clausulaAjuste,
+      tieneRefacturacion, frecuenciaRefacturacion, fechaRefacturacion, diaHabitualPago
     } = req.body;
 
     const asegurado = await prisma.asegurado.findFirst({
@@ -177,6 +286,20 @@ export const crearPoliza = async (req: Request, res: Response): Promise<any> => 
 
     const fechaInicioParseada = parsearFechaSegura(fechaInicio)!;
     const fechaVencimientoParseada = parsearFechaSegura(fechaVencimiento)!;
+    const refacturacionParseada = fechaRefacturacion ? parsearFechaSegura(fechaRefacturacion) : null;
+    const esRefacturada = tieneRefacturacion === true || tieneRefacturacion === 'true';
+    const diaParseado = diaHabitualPago ? parseInt(diaHabitualPago) : null;
+
+    const cuotasGeneradas = generarCuotas(
+      fechaInicioParseada, 
+      fechaVencimientoParseada, 
+      esRefacturada,
+      frecuenciaRefacturacion,
+      refacturacionParseada,
+      diaParseado
+    );
+
+    const estadoPagoCalculado = calcularEstadoPagoGeneral(cuotasGeneradas);
 
     const nuevaPoliza = await prisma.poliza.create({
       data: {
@@ -190,7 +313,6 @@ export const crearPoliza = async (req: Request, res: Response): Promise<any> => 
         patente: patente || null,
         marca: marca || null,
         modelo: modelo || null,
-        // 🔥 GUARDAMOS LOS NUEVOS CAMPOS
         motor: motor || null,
         chasis: chasis || null,
         anio: anio || null,
@@ -201,7 +323,14 @@ export const crearPoliza = async (req: Request, res: Response): Promise<any> => 
         cantidadEmpleados: cantidadEmpleados || null,
         formaPago: formaPago || null,
         enviarCuponera: enviarCuponera === true || enviarCuponera === 'true', 
-        estadoCuotas: generarCuotas(fechaInicioParseada, fechaVencimientoParseada),
+        
+        tieneRefacturacion: esRefacturada,
+        frecuenciaRefacturacion: frecuenciaRefacturacion || null,
+        fechaRefacturacion: refacturacionParseada,
+        diaHabitualPago: diaParseado,
+        
+        estadoPago: estadoPagoCalculado,
+        estadoCuotas: cuotasGeneradas,
       },
       include: { asegurado: true }
     });
@@ -239,39 +368,67 @@ export const actualizarPoliza = async (req: Request, res: Response): Promise<any
 
     if (!vieja) return res.status(404).json({ error: 'Póliza no encontrada o no autorizada.' });
 
-    let nuevasCuotas = data.estadoCuotas !== undefined ? data.estadoCuotas : undefined;
+    // 🔥 SMART MERGE: Diferenciamos si el cambio viene de tildar una cuota o de editar la póliza entera
+    let nuevasCuotas = data.estadoCuotas;
     
-    if (data.estadoCuotas === undefined && (!vieja.estadoCuotas || (Array.isArray(vieja.estadoCuotas) && vieja.estadoCuotas.length === 0))) {
+    // Si data.estadoCuotas es undefined, significa que venimos del modal de edición general.
+    // En ese caso, RECALCULAMOS las cuotas usando las nuevas fechas, pero SALVAMOS los pagos previos.
+    if (nuevasCuotas === undefined) {
       const fInicio = data.fechaInicio ? parsearFechaSegura(data.fechaInicio)! : vieja.fechaInicio;
       const fVenc = data.fechaVencimiento ? parsearFechaSegura(data.fechaVencimiento)! : vieja.fechaVencimiento;
-      nuevasCuotas = generarCuotas(fInicio, fVenc);
+      const fRefact = data.fechaRefacturacion ? parsearFechaSegura(data.fechaRefacturacion) : vieja.fechaRefacturacion;
+      const tieneRef = data.tieneRefacturacion !== undefined ? (data.tieneRefacturacion === true || data.tieneRefacturacion === 'true') : vieja.tieneRefacturacion;
+      const frec = data.frecuenciaRefacturacion || vieja.frecuenciaRefacturacion;
+      const diaHab = data.diaHabitualPago !== undefined ? (data.diaHabitualPago ? parseInt(data.diaHabitualPago) : null) : vieja.diaHabitualPago;
+      
+      const cuotasGeneradas = generarCuotas(fInicio, fVenc, tieneRef, frec, fRefact, diaHab);
+      
+      const cuotasViejas = (vieja.estadoCuotas as any[]) || [];
+      
+      nuevasCuotas = cuotasGeneradas.map((cg: any) => {
+          const pagoPrevio = cuotasViejas.find(cv => cv.mes === cg.mes);
+          // Si el cliente ya había pagado ese mes, se lo respetamos en el nuevo cálculo
+          if (pagoPrevio && (pagoPrevio.estado === 'Pagado' || pagoPrevio.estado === 'Al día' || pagoPrevio.pagado)) {
+              return { ...cg, estado: 'Pagado', pagado: true };
+          }
+          return cg;
+      });
     }
+
+    const estadoPagoSincronizado = calcularEstadoPagoGeneral(nuevasCuotas);
 
     const actualizada = await prisma.poliza.update({
       where: { id: parseInt(id) },
       data: {
-        nroPoliza: data.nroPoliza,
-        tipoPoliza: data.tipoPoliza,
+        nroPoliza: data.nroPoliza !== undefined ? data.nroPoliza : undefined,
+        tipoPoliza: data.tipoPoliza !== undefined ? data.tipoPoliza : undefined,
         fechaInicio: data.fechaInicio ? parsearFechaSegura(data.fechaInicio)! : undefined, 
         fechaVencimiento: data.fechaVencimiento ? parsearFechaSegura(data.fechaVencimiento)! : undefined, 
-        estado: data.estado,
-        cobertura: data.cobertura,
+        estado: data.estado !== undefined ? data.estado : undefined,
+        cobertura: data.cobertura !== undefined ? data.cobertura : undefined,
         aseguradoId: data.aseguradoId ? parseInt(data.aseguradoId) : undefined,
         companiaId: data.companiaId ? parseInt(data.companiaId) : undefined,
-        patente: data.patente || null,
-        marca: data.marca || null,
-        modelo: data.modelo || null,
-        // 🔥 GUARDAMOS LOS NUEVOS CAMPOS AL EDITAR
-        motor: data.motor || null,
-        chasis: data.chasis || null,
-        anio: data.anio || null,
-        color: data.color || null,
-        sumaAsegurada: data.sumaAsegurada || null,
-        clausulaAjuste: data.clausulaAjuste || null,
-        ubicacionRiesgo: data.ubicacionRiesgo || null,
-        cantidadEmpleados: data.cantidadEmpleados || null,
-        formaPago: data.formaPago || null, 
+        
+        patente: data.patente !== undefined ? (data.patente || null) : undefined,
+        marca: data.marca !== undefined ? (data.marca || null) : undefined,
+        modelo: data.modelo !== undefined ? (data.modelo || null) : undefined,
+        motor: data.motor !== undefined ? (data.motor || null) : undefined,
+        chasis: data.chasis !== undefined ? (data.chasis || null) : undefined,
+        anio: data.anio !== undefined ? (data.anio || null) : undefined,
+        color: data.color !== undefined ? (data.color || null) : undefined,
+        sumaAsegurada: data.sumaAsegurada !== undefined ? (data.sumaAsegurada || null) : undefined,
+        clausulaAjuste: data.clausulaAjuste !== undefined ? (data.clausulaAjuste || null) : undefined,
+        ubicacionRiesgo: data.ubicacionRiesgo !== undefined ? (data.ubicacionRiesgo || null) : undefined,
+        cantidadEmpleados: data.cantidadEmpleados !== undefined ? (data.cantidadEmpleados || null) : undefined,
+        formaPago: data.formaPago !== undefined ? (data.formaPago || null) : undefined, 
+        
         enviarCuponera: data.enviarCuponera !== undefined ? (data.enviarCuponera === true || data.enviarCuponera === 'true') : undefined,
+        tieneRefacturacion: data.tieneRefacturacion !== undefined ? (data.tieneRefacturacion === true || data.tieneRefacturacion === 'true') : undefined,
+        frecuenciaRefacturacion: data.frecuenciaRefacturacion !== undefined ? data.frecuenciaRefacturacion : undefined,
+        fechaRefacturacion: data.fechaRefacturacion ? parsearFechaSegura(data.fechaRefacturacion) : undefined,
+        diaHabitualPago: data.diaHabitualPago ? parseInt(data.diaHabitualPago) : undefined,
+        
+        estadoPago: estadoPagoSincronizado, 
         estadoCuotas: nuevasCuotas, 
       },
       include: { asegurado: true, compania: true }
@@ -280,14 +437,11 @@ export const actualizarPoliza = async (req: Request, res: Response): Promise<any
     let cambios = [];
     if (vieja.estado !== data.estado && data.estado) cambios.push(`Estado: ${vieja.estado} -> ${data.estado}`);
     if (vieja.nroPoliza !== data.nroPoliza && data.nroPoliza) cambios.push(`Nro: ${vieja.nroPoliza} -> ${data.nroPoliza}`);
-    if (data.companiaId && vieja.companiaId !== parseInt(data.companiaId)) cambios.push(`Compañía actualizada`);
     
-    let textoDetalle = cambios.length > 0 ? cambios.join(" | ") : "Actualización de datos técnicos";
+    let textoDetalle = cambios.length > 0 ? cambios.join(" | ") : "Actualización de datos";
 
     if (data.estadoCuotas && Object.keys(data).length === 1) {
        textoDetalle = "Se actualizó el control de pagos / cuotas.";
-    } else if (nuevasCuotas && (!vieja.estadoCuotas || (Array.isArray(vieja.estadoCuotas) && vieja.estadoCuotas.length === 0))) {
-       textoDetalle += " (Se generó el control de cuotas retroactivamente).";
     }
 
     await prisma.actividad.create({
@@ -355,6 +509,11 @@ export const eliminarPoliza = async (req: Request, res: Response): Promise<any> 
 export const avisarVencimiento = async (req: Request, res: Response): Promise<any> => {
   try {
     const id = req.params.id as string;
+    
+    // 🔥 1. RECIBIMOS LA ORDEN DEL FRONTEND (Opcional)
+    // Nos puede llegar { tipo: "COBRANZA" } o { tipo: "RENOVACION" }
+    const tipoSolicitado = req.body?.tipo; 
+    
     const productorId = await obtenerProductorId(req.userId!);
     
     const poliza = await prisma.poliza.findFirst({
@@ -372,51 +531,87 @@ export const avisarVencimiento = async (req: Request, res: Response): Promise<an
     const hoy = new Date();
     hoy.setHours(0, 0, 0, 0); 
 
-    if (poliza.ultimoAviso) {
-      const fechaUltimoAviso = new Date(poliza.ultimoAviso);
-      fechaUltimoAviso.setHours(0, 0, 0, 0);
-
-      if (fechaUltimoAviso.getTime() === hoy.getTime()) {
-        return res.status(400).json({ error: 'Ya se envió un correo de aviso para esta póliza el día de hoy.' });
-      }
+    // 🔥 2. LÓGICA INTELIGENTE: ¿Qué correo debemos mandar?
+    let tipoAEnviar = "Renovación";
+    
+    if (tipoSolicitado === "COBRANZA") {
+        tipoAEnviar = "Cobranza";
+    } else if (tipoSolicitado === "RENOVACION") {
+        tipoAEnviar = "Renovación";
+    } else if (poliza.estadoPago === 'Vencido') {
+        // Si el frontend no nos dice nada, deducimos por el estado
+        tipoAEnviar = "Cobranza";
     }
 
-    const fechaVencimientoFormateada = new Date(poliza.fechaVencimiento).toLocaleDateString("es-AR");
-    const cuponeraParaEnviar = (poliza.enviarCuponera && poliza.cuponeraUrl) ? poliza.cuponeraUrl : null;
-
-    await enviarAvisoVencimiento(
-      poliza.asegurado.email, 
-      `${poliza.asegurado.nombre} ${poliza.asegurado.apellido || ''}`.trim(), 
-      poliza.nroPoliza, 
-      poliza.compania?.nombre || "Sin Compañía", 
-      poliza.tipoPoliza, 
-      poliza.cobertura || "", 
-      fechaVencimientoFormateada,
-      poliza.patente,
-      poliza.marca,
-      poliza.modelo,
-      poliza.ubicacionRiesgo,
-      poliza.cantidadEmpleados,
-      cuponeraParaEnviar 
-    );
-
-    await prisma.poliza.update({
-      where: { id: poliza.id },
-      data: { ultimoAviso: new Date(), avisoGestionado: true }
+    // 🔥 3. NUEVO CONTROL ANTI-SPAM SEPARADO
+    // Buscamos en la tabla de Actividades si HOY ya mandaste un correo de ESTE TIPO
+    const envioPrevioHoy = await prisma.actividad.findFirst({
+        where: {
+            polizaId: poliza.id,
+            fecha: { gte: hoy },
+            descripcion: { contains: `Tipo: ${tipoAEnviar}` }
+        }
     });
 
+    if (envioPrevioHoy) {
+        return res.status(400).json({ error: `Ya enviaste un aviso de ${tipoAEnviar} hoy para esta póliza. Podés enviar el otro si querés.` });
+    }
+
+    const cuponeraParaEnviar = (poliza.enviarCuponera && poliza.cuponeraUrl) ? poliza.cuponeraUrl : null;
+    const nombreCliente = `${poliza.asegurado.nombre} ${poliza.asegurado.apellido || ''}`.trim();
+
+    // 🔥 4. DESPACHO DEL CORREO
+    if (tipoAEnviar === 'Cobranza') {
+      const cuotas = poliza.estadoCuotas as any[] || [];
+      const cuotaEnMora = cuotas.find(c => c.estado === 'Vencido' || (new Date(c.fechaVencimiento) < hoy && c.estado !== 'Pagado' && c.pagado !== true));
+
+      const mesCuota = cuotaEnMora ? cuotaEnMora.mes : "Período actual";
+      const fechaVencCuota = cuotaEnMora ? new Date(cuotaEnMora.fechaVencimiento).toLocaleDateString("es-AR") : "Recientemente";
+
+      await enviarAvisoCobranza(
+        poliza.asegurado.email, 
+        nombreCliente, 
+        poliza.nroPoliza, 
+        poliza.compania?.nombre || "Sin Compañía", 
+        poliza.tipoPoliza, 
+        fechaVencCuota,
+        mesCuota,
+        poliza.patente,
+        cuponeraParaEnviar 
+      );
+    } else {
+      const fechaVencimientoFormateada = new Date(poliza.fechaVencimiento).toLocaleDateString("es-AR");
+
+      await enviarAvisoVencimiento(
+        poliza.asegurado.email, 
+        nombreCliente, 
+        poliza.nroPoliza, 
+        poliza.compania?.nombre || "Sin Compañía", 
+        poliza.tipoPoliza, 
+        poliza.cobertura || "", 
+        fechaVencimientoFormateada,
+        poliza.patente,
+        poliza.marca,
+        poliza.modelo,
+        poliza.ubicacionRiesgo,
+        poliza.cantidadEmpleados,
+        cuponeraParaEnviar 
+      );
+    }
+
+    // Registramos en el historial qué tipo de correo mandamos (esto alimenta al anti-spam de mañana)
     await prisma.actividad.create({
       data: {
         accion: "Edición",
         entidad: "Póliza",
-        descripcion: `Aviso de vencimiento enviado por correo (Póliza #${poliza.nroPoliza}). Se marcó como contactado.`,
-        cliente: `${poliza.asegurado.nombre} ${poliza.asegurado.apellido || ''}`.trim(),
+        descripcion: `Aviso enviado por correo (Póliza #${poliza.nroPoliza}). Tipo: ${tipoAEnviar}`,
+        cliente: nombreCliente,
         productorId,
         polizaId: poliza.id
       }
     });
 
-    return res.json({ message: 'Aviso enviado correctamente.' });
+    return res.json({ message: `Aviso de ${tipoAEnviar} enviado correctamente.` });
   } catch (error) {
     console.error("Error en el endpoint de aviso:", error);
     return res.status(500).json({ error: 'Error interno al enviar el aviso.' });
@@ -623,6 +818,7 @@ export const importarPolizas = async (req: Request, res: Response): Promise<any>
 
       let fechaInicio = parsearFecha(row.vigenciadesde || row.desde || row.fechainicio || row.inicio);
       let fechaVencimiento = parsearFecha(row.vigenciahasta || row.hasta || row.fechavencimiento || row.vencimiento);
+      let fechaRefacturacion = parsearFecha(row.fecharefacturacion || row.refacturacion || row.vencimientocuota);
 
       if (!fechaInicio) fechaInicio = new Date();
       if (!fechaVencimiento) {
@@ -641,22 +837,37 @@ export const importarPolizas = async (req: Request, res: Response): Promise<any>
         ? String(row.cantidadempleados || row.empleados || row.personal).trim()
         : null;
 
-      // 🔥 LECTURA DE LOS NUEVOS CAMPOS DESDE EL EXCEL
       const motor = row.motor ? String(row.motor).trim().toUpperCase() : null;
       const chasis = row.chasis ? String(row.chasis).trim().toUpperCase() : null;
       const anio = row.anio || row.año ? String(row.anio || row.año).trim() : null;
       const color = row.color ? String(row.color).trim() : null;
       const sumaAsegurada = row.sumaasegurada || row.suma ? String(row.sumaasegurada || row.suma).trim() : null;
       const clausulaAjuste = row.clausulaajuste || row.clausula ? String(row.clausulaajuste || row.clausula).trim() : null;
+      
+      const tieneRefacturacion = row.tienerefacturacion ? String(row.tienerefacturacion).toLowerCase().includes('si') : false;
+      const frecuenciaRefacturacion = row.frecuenciarefacturacion ? String(row.frecuenciarefacturacion).trim() : 'Mensual';
+      const diaHabitualPago = row.diahabitual ? parseInt(row.diahabitual) : null;
+
+      const cuotasParaGuardar = generarCuotas(
+        fechaInicio, 
+        fechaVencimiento, 
+        tieneRefacturacion, 
+        frecuenciaRefacturacion, 
+        fechaRefacturacion, 
+        diaHabitualPago
+      );
+
+      const estadoPagoDefinitivo = calcularEstadoPagoGeneral(cuotasParaGuardar);
 
       datosParaInsertar.push({
         nroPoliza, aseguradoId, companiaId, tipoPoliza, estado,
         fechaInicio, fechaVencimiento, cobertura, patente, marca,          
         modelo, ubicacionRiesgo, cantidadEmpleados, formaPago,
-        // 🔥 AGREGAMOS LOS DATOS A LA INSERCIÓN MASIVA
-        motor, chasis, anio, color, sumaAsegurada, clausulaAjuste,      
+        motor, chasis, anio, color, sumaAsegurada, clausulaAjuste,
+        tieneRefacturacion, frecuenciaRefacturacion, fechaRefacturacion, diaHabitualPago,      
+        estadoPago: estadoPagoDefinitivo,
         enviarCuponera: false, productorId,
-        estadoCuotas: generarCuotas(fechaInicio, fechaVencimiento),
+        estadoCuotas: cuotasParaGuardar,
       });
 
       creados++;

@@ -110,6 +110,13 @@ export default function PolizaDetallePage() {
     }
   };
 
+  const getEstadoPagoStyle = (estadoPago: string) => {
+    if (estadoPago === "Al día") return "text-blue-700 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 border-blue-200 dark:border-blue-800/50";
+    if (estadoPago === "Pendiente") return "text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/30 border-amber-200 dark:border-amber-800/50";
+    if (estadoPago === "Vencido") return "text-red-700 dark:text-red-400 bg-red-50 dark:bg-red-900/30 border-red-200 dark:border-red-800/50";
+    return "text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-900/50 border-gray-200 dark:border-gray-700";
+  };
+
   return (
     <div className="flex flex-col p-4 md:p-8 w-full gap-6 md:gap-8 min-h-screen overflow-x-hidden transition-colors duration-300">
       
@@ -130,9 +137,17 @@ export default function PolizaDetallePage() {
             <div className="min-w-0 flex-1">
               <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
                 <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white tracking-tight truncate transition-colors">Póliza #{poliza.nroPoliza}</h1>
-                <span className={`w-fit px-3 py-1 rounded-full text-[10px] md:text-xs font-bold border transition-colors ${getStatusStyle(poliza.estado)}`}>
-                  {poliza.estado.toUpperCase()}
-                </span>
+                <div className="flex gap-2">
+                  <span className={`w-fit px-3 py-1 rounded-full text-[10px] md:text-xs font-bold border transition-colors ${getStatusStyle(poliza.estado)}`}>
+                    {poliza.estado.toUpperCase()}
+                  </span>
+                  
+                  {poliza.estadoPago && (
+                    <span className={`w-fit px-3 py-1 rounded-full text-[10px] md:text-xs font-bold border transition-colors ${getEstadoPagoStyle(poliza.estadoPago)}`}>
+                      $ {poliza.estadoPago.toUpperCase()}
+                    </span>
+                  )}
+                </div>
               </div>
               <p className="text-xs md:text-sm text-gray-400 dark:text-gray-400 mt-1 flex items-center gap-2 font-medium transition-colors">
                 Registrada el {new Date(poliza.fechaInicio).toLocaleDateString("es-AR")}
@@ -194,6 +209,8 @@ export default function PolizaDetallePage() {
         
         {/* Columna Principal */}
         <div className="lg:col-span-2 flex flex-col gap-6 md:gap-8">
+          
+          {/* 1. Especificaciones del Riesgo */}
           <div className="p-5 md:p-8 border border-gray-100 dark:border-gray-700 rounded-3xl bg-white dark:bg-gray-800 shadow-sm relative overflow-hidden transition-colors">
             <div className="absolute top-0 right-0 p-8 opacity-5 dark:opacity-10 text-gray-900 dark:text-white transition-opacity">
               <Shield size={120} />
@@ -211,11 +228,19 @@ export default function PolizaDetallePage() {
               
               <DataField label="Forma de Pago" value={poliza.formaPago || "No especificada"} />
 
-              {/* 🔥 NUEVOS CAMPOS: SUMA ASEGURADA Y CLÁUSULA */}
               {(poliza.sumaAsegurada || poliza.clausulaAjuste) && (
                 <>
                   {poliza.sumaAsegurada && <DataField label="Suma Asegurada" value={poliza.sumaAsegurada} />}
                   {poliza.clausulaAjuste && <DataField label="Cláusula de Ajuste" value={poliza.clausulaAjuste} />}
+                </>
+              )}
+
+              {poliza.tieneRefacturacion && (
+                <>
+                  <DataField label="Frecuencia Refacturación" value={poliza.frecuenciaRefacturacion || "-"} />
+                  {poliza.fechaRefacturacion && (
+                    <DataField label="Próxima Refacturación" value={new Date(poliza.fechaRefacturacion).toLocaleDateString("es-AR")} />
+                  )}
                 </>
               )}
 
@@ -224,12 +249,11 @@ export default function PolizaDetallePage() {
                   <DataField label="Dominio / Patente" value={poliza.patente?.toUpperCase() || "-"} />
                   <DataField label="Marca y Modelo" value={`${poliza.marca || ""} ${poliza.modelo || ""}`.trim() || "-"} />
                   
-                  {/* 🔥 NUEVOS CAMPOS: DATOS DEL VEHÍCULO */}
                   {(poliza.anio || poliza.color) && (
                     <DataField label="Año y Color" value={`${poliza.anio || ""} ${poliza.color || ""}`.trim()} />
                   )}
-                  {poliza.motor && <DataField label="Nro. Motor" value={poliza.motor.toUpperCase()} />}
-                  {poliza.chasis && <DataField label="Nro. Chasis" value={poliza.chasis.toUpperCase()} />}
+                  {poliza.motor && <DataField label="Nro. Motor" value={poliza.motor?.toUpperCase()} />}
+                  {poliza.chasis && <DataField label="Nro. Chasis" value={poliza.chasis?.toUpperCase()} />}
                 </>
               )}
 
@@ -243,15 +267,22 @@ export default function PolizaDetallePage() {
             </div>
           </div>
 
-          <PolizaHistorial actividades={poliza.actividades} />
+          {/* 🔥 2. CONTROL DE PAGOS / CUOTAS (Sube arriba por importancia operativa) */}
+          <PolizaCuotas 
+            poliza={poliza} 
+            puedeModificar={puedeModificar} 
+            onUpdate={fetchPoliza} 
+          />
 
+          {/* 3. Siniestros (Importante, pero se toca menos que las cuotas) */}
           <PolizaSiniestros polizaId={poliza.id} />
 
-          <PolizaCuotas poliza={poliza} puedeModificar={puedeModificar} />
+          {/* 4. Historial (Bitácora al final) */}
+          <PolizaHistorial actividades={poliza.actividades} />
 
         </div>
 
-        {/* Columna Lateral */}
+        {/* Columna Lateral (Documentos y Datos Rápidos) */}
         <div className="flex flex-col gap-6">
           
           <PolizaDocumentos 

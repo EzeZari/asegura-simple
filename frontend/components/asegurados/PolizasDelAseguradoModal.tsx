@@ -28,7 +28,6 @@ export default function PolizasDelAseguradoModal({ isOpen, onClose, asegurado }:
           if (Array.isArray(data)) {
             setPolizas(data);
           } else {
-            console.error("Formato inválido devuelto por el servidor", data);
             setPolizas([]);
           }
         })
@@ -55,7 +54,6 @@ export default function PolizasDelAseguradoModal({ isOpen, onClose, asegurado }:
     return poliza.estado; 
   };
 
-  // 🔥 Badges adaptados al modo oscuro con /30 de opacidad en el fondo
   const getEstadoBadge = (estado: string) => {
     switch (estado) {
       case "Vigente":
@@ -151,10 +149,19 @@ export default function PolizasDelAseguradoModal({ isOpen, onClose, asegurado }:
                       </div>
                     </div>
                     
-                    <div className="flex items-center sm:justify-end shrink-0">
-                      <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-bold shadow-sm transition-colors ${getEstadoBadge(estadoActual)}`}>
+                    <div className="flex flex-col items-end gap-1.5 sm:justify-end shrink-0">
+                      <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-bold shadow-sm transition-colors border ${getEstadoBadge(estadoActual)}`}>
                         {estadoActual}
                       </span>
+                      {poliza.estadoPago && poliza.estadoPago !== "Sin información" && (
+                        <span className={`inline-flex items-center justify-center px-3 py-1 rounded-full text-[10px] font-bold shadow-sm transition-colors border ${
+                          poliza.estadoPago === "Al día" ? "bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800/30" :
+                          poliza.estadoPago === "Pendiente" ? "bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800/30" :
+                          "bg-red-100 text-red-800 border-red-200 dark:bg-red-900/30 dark:text-red-400 dark:border-red-800/30"
+                        }`}>
+                          $ {poliza.estadoPago.toUpperCase()}
+                        </span>
+                      )}
                     </div>
                   </div>
                 );

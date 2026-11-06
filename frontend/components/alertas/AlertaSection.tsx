@@ -14,11 +14,13 @@ interface Props {
   selectedIds: number[];
   onToggleSelect: (id: number) => void;
   onToggleSelectAll: (ids: number[], isSelecting: boolean) => void;
-  // 🔥 AGREGAMOS LA PROP PARA RECIBIR LAS PLANTILLAS
-  plantillas: { proxima: string; critica: string; vencida: string }; 
+  // 🔥 Tipado actualizado
+  plantillas: { proxima: string; critica: string; vencida: string; cobranza?: string }; 
+  tipoAlerta?: "RENOVACION" | "COBRANZA";
+  onUpdate: () => void; 
 }
 
-export default function AlertaSection({ titulo, Icono, nivel, alertas = [], mensajeVacio, vista, selectedIds, onToggleSelect, onToggleSelectAll, plantillas }: Props) {
+export default function AlertaSection({ titulo, Icono, nivel, alertas = [], mensajeVacio, vista, selectedIds, onToggleSelect, onToggleSelectAll, plantillas, tipoAlerta = "RENOVACION", onUpdate }: Props) {
   const [menuAbiertoId, setMenuAbiertoId] = useState<number | null>(null);
 
   const estilos = {
@@ -51,7 +53,9 @@ export default function AlertaSection({ titulo, Icono, nivel, alertas = [], mens
               nivel={nivel} 
               isSelected={selectedIds.includes(poliza.id)} 
               onSelect={() => onToggleSelect(poliza.id)} 
-              plantillas={plantillas} // 🔥 SE LAS PASAMOS A LA TARJETA
+              plantillas={plantillas} 
+              tipoAlerta={tipoAlerta}
+              onUpdate={onUpdate} 
             />
           ))}
         </div>
@@ -74,7 +78,6 @@ export default function AlertaSection({ titulo, Icono, nivel, alertas = [], mens
                 <th className="p-4 font-bold whitespace-nowrap">Vehículo / Detalles</th>
                 <th className="p-4 font-bold whitespace-nowrap">Vence el</th>
                 <th className="p-4 font-bold whitespace-nowrap">Días restantes</th>
-                {/* 🔥 COLUMNA NUEVA AGREGADA AQUÍ */}
                 <th className="p-4 font-bold whitespace-nowrap">Gestión / Notas</th>
                 <th className="p-4 font-bold text-right whitespace-nowrap">Acciones</th>
               </tr>
@@ -89,7 +92,9 @@ export default function AlertaSection({ titulo, Icono, nivel, alertas = [], mens
                   onToggleMenu={setMenuAbiertoId}
                   isSelected={selectedIds.includes(poliza.id)}
                   onSelect={() => onToggleSelect(poliza.id)}
-                  plantillas={plantillas} // 🔥 SE LAS PASAMOS A LA FILA
+                  plantillas={plantillas} 
+                  tipoAlerta={tipoAlerta}
+                  onUpdate={onUpdate} 
                 />
               ))}
             </tbody>

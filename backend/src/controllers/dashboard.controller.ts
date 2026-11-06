@@ -62,9 +62,10 @@ export const getDashboardStats = async (req: Request, res: Response): Promise<an
       where: { productorId: productorId }
     });
 
+    // 🔥 ACÁ ESTÁ EL CAMBIO: Pasamos el 'take' de 10 a 50 para tener más páginas de historial
     const historial = await prisma.actividad.findMany({
       where: { productorId: productorId },
-      take: 10,
+      take: 50, 
       orderBy: { fecha: 'desc' }
     });
 
@@ -76,7 +77,6 @@ export const getDashboardStats = async (req: Request, res: Response): Promise<an
       date: h.fecha.toLocaleString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires', hour: '2-digit', minute:'2-digit', day: '2-digit', month: '2-digit' })
     }));
 
-    // 🔥 AHORA TRAEMOS TODOS LOS VENCIMIENTOS DEL MES (Sin el 'take: 7')
     const renovacionesProximas = await prisma.poliza.findMany({
       where: {
         productorId: productorId,
@@ -84,13 +84,67 @@ export const getDashboardStats = async (req: Request, res: Response): Promise<an
         fechaVencimiento: { gte: hoy, lte: en30Dias }
       },
       include: {
-        asegurado: { select: { nombre: true, apellido: true } },
+        asegurado: { select: { nombre: true, apellido: true, telefono: true } },
         compania: { select: { nombre: true } }
       },
       orderBy: { fechaVencimiento: 'asc' }
     });
 
-    // 🔥 AHORA TRAEMOS TODOS LOS SINIESTROS ACTIVOS (Sin el 'take: 5')
+    const todasActivas = await prisma.poliza.findMany({
+      where: {
+        productorId: productorId,
+        estado: { in: ['Vigente', 'Pendiente de Pago'] }
+      },
+      include: {
+        asegurado: { select: { nombre: true, apellido: true, telefono: true } },
+        compania: { select: { nombre: true } }
+      }
+    });
+
+    const cobranzasPendientes = [];
+    const hoyMs = hoy.getTime();
+
+    for (const p of todasActivas) {
+      if (p.estadoCuotas && Array.isArray(p.estadoCuotas)) {
+        let cuotaMasUrgente: any = null;
+        let menorDiff = Infinity;
+        
+        const cuotasArray = p.estadoCuotas as any[];
+
+        for (const cuota of cuotasArray) {
+          if (!cuota || typeof cuota !== 'object') continue;
+          
+          const isPagado = cuota.estado === 'Pagado' || cuota.estado === 'Al día' || cuota.pagado === true;
+          
+          if (!isPagado && cuota.fechaVencimiento) {
+            const fechaVencCuota = new Date(cuota.fechaVencimiento);
+            fechaVencCuota.setHours(0, 0, 0, 0);
+            
+            const diffDiasCuota = Math.ceil((fechaVencCuota.getTime() - hoyMs) / (1000 * 60 * 60 * 24));
+            
+            if (diffDiasCuota <= 30) {
+              if (diffDiasCuota < menorDiff) {
+                menorDiff = diffDiasCuota;
+                cuotaMasUrgente = { ...cuota, diffDias: diffDiasCuota };
+              }
+            }
+          } else if (cuota.estado === 'Vencido') {
+             menorDiff = -1;
+             cuotaMasUrgente = { ...cuota, diffDias: -1 };
+          }
+        }
+
+        if (cuotaMasUrgente) {
+          cobranzasPendientes.push({
+            ...p,
+            cuotaAlarma: cuotaMasUrgente 
+          });
+        }
+      }
+    }
+
+    cobranzasPendientes.sort((a, b) => a.cuotaAlarma.diffDias - b.cuotaAlarma.diffDias);
+
     const siniestrosActivosRaw = await prisma.siniestro.findMany({
       where: {
         productorId: productorId,
@@ -122,6 +176,7 @@ export const getDashboardStats = async (req: Request, res: Response): Promise<an
       totalCompanias,
       actividadReciente,
       renovacionesProximas,
+      cobranzasPendientes, 
       siniestrosActivos,
       actividadRobots
     });

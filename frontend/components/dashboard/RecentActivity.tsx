@@ -1,31 +1,40 @@
 "use client";
 
-import { Activity, User } from "lucide-react";
+import { Activity, User, ChevronLeft, ChevronRight } from "lucide-react";
+import { useState } from "react";
 
 export default function RecentActivity({ data }: { data: any[] }) {
+  // 🔥 ESTADOS DE PAGINACIÓN SIMÉTRICOS CON EL RESTO DEL DASHBOARD
+  const ITEMS_POR_PAGINA = 5;
+  const [paginaActual, setPaginaActual] = useState(1);
+
   if (!data || data.length === 0) return null;
 
-  // 🔥 Estilos para la tabla en PC
+  // Lógica de Paginación
+  const totalPaginas = Math.max(1, Math.ceil(data.length / ITEMS_POR_PAGINA));
+  const dataPaginada = data.slice((paginaActual - 1) * ITEMS_POR_PAGINA, paginaActual * ITEMS_POR_PAGINA);
+
+  // Estilos para la tabla en PC
   const getBadgeStylePC = (type: string) => {
     const t = type.toLowerCase();
     if (t.includes("alta")) return "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/30";
-    if (t.includes("baja")) return "bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-400 border border-red-200 dark:border-red-800/30";
+    if (t.includes("baja") || t.includes("elimin")) return "bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-400 border border-red-200 dark:border-red-800/30";
     if (t.includes("desactivación")) return "bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-400 border border-amber-200 dark:border-amber-800/30";
-    if (t.includes("edición")) return "bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-400 border border-blue-200 dark:border-blue-800/30";
+    if (t.includes("edición") || t.includes("modific")) return "bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-400 border border-blue-200 dark:border-blue-800/30";
     return "bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700"; 
   };
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden transition-colors duration-300">
+    <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 flex flex-col flex-1 overflow-hidden transition-colors duration-300">
       
-      {/* Encabezado del componente */}
+      {/* Encabezado */}
       <div className="p-4 lg:p-6 border-b border-gray-100 dark:border-gray-700 flex items-center gap-3 transition-colors bg-white dark:bg-gray-800 relative z-10">
         <Activity className="text-green-700 dark:text-green-500 w-5 h-5 lg:w-6 lg:h-6 transition-colors" />
         <h2 className="text-base lg:text-lg font-bold text-gray-900 dark:text-white transition-colors">Actividad Reciente</h2>
       </div>
       
-      {/* 🔥 VISTA ESCRITORIO Y TABLET: Tabla original */}
-      <div className="hidden md:block overflow-x-auto">
+      {/* 🔥 VISTA ESCRITORIO Y TABLET */}
+      <div className="hidden md:flex flex-col flex-1 overflow-x-auto min-h-[300px]">
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="bg-gray-50/50 dark:bg-gray-900/50 text-gray-500 dark:text-gray-400 text-[10px] lg:text-xs uppercase tracking-wider transition-colors">
@@ -36,7 +45,7 @@ export default function RecentActivity({ data }: { data: any[] }) {
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100 dark:divide-gray-700 transition-colors">
-            {data.map((item, i) => (
+            {dataPaginada.map((item, i) => (
               <tr key={i} className="hover:bg-gray-50/50 dark:hover:bg-gray-700/50 transition-colors">
                 <td className="p-3 lg:p-4 whitespace-nowrap">
                   <span className={`inline-flex items-center px-2 py-1 rounded-md text-[10px] lg:text-xs font-bold transition-colors ${getBadgeStylePC(item.type)}`}>
@@ -65,12 +74,9 @@ export default function RecentActivity({ data }: { data: any[] }) {
       </div>
 
       {/* 🔥 VISTA CELULAR: Estilo Timeline minimalista */}
-      <div className="block md:hidden p-5 pb-8">
-        {/* Línea vertical principal */}
+      <div className="md:hidden p-5 flex-1 min-h-[300px]">
         <div className="relative border-l-2 border-gray-100 dark:border-gray-700 ml-2 space-y-7">
-          {data.map((item, i) => {
-            
-            // Lógica para pintar el puntito y el texto según la acción en el Timeline
+          {dataPaginada.map((item, i) => {
             let colorDot = "bg-gray-400";
             let colorText = "text-gray-600 dark:text-gray-400";
             
@@ -82,11 +88,7 @@ export default function RecentActivity({ data }: { data: any[] }) {
 
             return (
               <div key={i} className="relative pl-6">
-                
-                {/* Puntito del Timeline (Superpuesto a la línea vertical) */}
                 <div className={`absolute -left-[5px] top-1.5 w-2.5 h-2.5 rounded-full ring-4 ring-white dark:ring-gray-800 ${colorDot}`}></div>
-                
-                {/* Contenido de la acción */}
                 <div className="flex flex-col gap-1">
                   <div className="flex justify-between items-start gap-2">
                     <span className={`text-[10px] font-bold uppercase tracking-widest ${colorText}`}>
@@ -96,11 +98,9 @@ export default function RecentActivity({ data }: { data: any[] }) {
                       {item.date}
                     </span>
                   </div>
-                  
                   <p className="text-sm font-medium text-gray-900 dark:text-gray-100 leading-snug">
                     {item.detail}
                   </p>
-
                   {item.client && (
                     <div className="flex items-center gap-1.5 mt-1">
                       <User size={12} className="text-gray-400 dark:text-gray-500 shrink-0" />
@@ -110,12 +110,34 @@ export default function RecentActivity({ data }: { data: any[] }) {
                     </div>
                   )}
                 </div>
-                
               </div>
             );
           })}
         </div>
       </div>
+
+      {/* 🔥 PAGINADOR INFERIOR (Igual que Alertas y Siniestros) */}
+      {data.length > ITEMS_POR_PAGINA && (
+        <div className="mt-auto flex items-center justify-center gap-4 p-3 border-t border-gray-100 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900/30">
+          <button 
+            onClick={() => setPaginaActual(p => Math.max(1, p - 1))} 
+            disabled={paginaActual === 1} 
+            className="p-1 text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-white hover:bg-gray-200 dark:hover:bg-gray-700 rounded-md transition-all disabled:opacity-30 disabled:pointer-events-none"
+          >
+            <ChevronLeft size={18} />
+          </button>
+          <span className="text-xs font-bold text-gray-600 dark:text-gray-400 min-w-[70px] text-center">
+            Pág {paginaActual} de {totalPaginas}
+          </span>
+          <button 
+            onClick={() => setPaginaActual(p => Math.min(totalPaginas, p + 1))} 
+            disabled={paginaActual === totalPaginas} 
+            className="p-1 text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-white hover:bg-gray-200 dark:hover:bg-gray-700 rounded-md transition-all disabled:opacity-30 disabled:pointer-events-none"
+          >
+            <ChevronRight size={18} />
+          </button>
+        </div>
+      )}
 
     </div>
   );

@@ -15,10 +15,13 @@ interface Props {
   nivel: "vencida" | "critica" | "proxima";
   isSelected?: boolean;
   onSelect?: () => void;
-  plantillas: { proxima: string; critica: string; vencida: string };
+  // 🔥 Aseguramos que acepte cobranza
+  plantillas: { proxima: string; critica: string; vencida: string; cobranza?: string };
+  tipoAlerta?: "RENOVACION" | "COBRANZA";
+  onUpdate: () => void;
 }
 
-export default function AlertaCard({ poliza, nivel, isSelected, onSelect, plantillas }: Props) {
+export default function AlertaCard({ poliza, nivel, isSelected, onSelect, plantillas, tipoAlerta = "RENOVACION", onUpdate }: Props) {
   const router = useRouter();
   const { user } = useAuthStore();
   const puedeModificar = tienePermiso(user, PERMISOS.PUEDE_MODIFICAR_DATOS);
@@ -33,6 +36,8 @@ export default function AlertaCard({ poliza, nivel, isSelected, onSelect, planti
   const [isSavingNota, setIsSavingNota] = useState(false);
   const [isEditingNota, setIsEditingNota] = useState(false);
 
+  const fechaBaseCalculo = tipoAlerta === "COBRANZA" && poliza.cuotaAlarma ? poliza.cuotaAlarma.fechaVencimiento : poliza.fechaVencimiento;
+
   const handleSaveGestion = async (nuevoEstado: boolean, nuevaObs: string) => {
     setIsSavingNota(true);
     try {
@@ -40,6 +45,7 @@ export default function AlertaCard({ poliza, nivel, isSelected, onSelect, planti
         method: "PATCH",
         body: JSON.stringify({ avisoGestionado: nuevoEstado, observacionesAviso: nuevaObs }),
       });
+      onUpdate();
     } catch (error) {
       console.error("Error al guardar nota", error);
     } finally {
@@ -47,9 +53,9 @@ export default function AlertaCard({ poliza, nivel, isSelected, onSelect, planti
     }
   };
 
-  const calcularDias = (fechaVencimiento: string) => {
+  const calcularDias = (fechaParam: string) => {
     const hoy = new Date().getTime();
-    const venc = new Date(fechaVencimiento).getTime();
+    const venc = new Date(fechaParam).getTime();
     const diff = Math.ceil((venc - hoy) / (1000 * 60 * 60 * 24));
     if (diff < 0) return `Venció hace ${Math.abs(diff)} días`;
     if (diff === 0) return "Vence HOY";
@@ -68,18 +74,14 @@ export default function AlertaCard({ poliza, nivel, isSelected, onSelect, planti
     }
   };
 
-  const yaAvisadoHoy = () => {
-    if (!poliza.ultimoAviso) return false;
-    const hoy = new Date().toLocaleDateString("es-AR");
-    const ultimoAviso = new Date(poliza.ultimoAviso).toLocaleDateString("es-AR");
-    return hoy === ultimoAviso;
-  };
-
+  // 🔥 SOLUCIÓN AL BUG EN LA VISTA DE TARJETAS
   const enviarWsp = () => {
-    const url = generarLinkWhatsApp(poliza, plantillas[nivel]);
+    const textoMensaje = tipoAlerta === "COBRANZA" && plantillas.cobranza 
+      ? plantillas.cobranza 
+      : plantillas[nivel];
+
+    const url = generarLinkWhatsApp(poliza, textoMensaje);
     window.open(url, '_blank');
-    
-    // 🔥 IDEA 3: Automatización. Si no estaba gestionado, lo tilda y guarda.
     if (!gestionado) {
       setGestionado(true);
       handleSaveGestion(true, observacion);
@@ -87,20 +89,28 @@ export default function AlertaCard({ poliza, nivel, isSelected, onSelect, planti
   };
 
   const enviarAvisoEmail = async () => {
-    if (!poliza.asegurado?.email || yaAvisadoHoy() || estadoEmail !== "idle") return;
+    if (!poliza.asegurado?.email || estadoEmail !== "idle") return;
+    
     setEstadoEmail("loading");
     try {
-      await apiFetch(`/api/polizas/${poliza.id}/aviso`, { method: "POST" });
-      setEstadoEmail("success");
-      poliza.ultimoAviso = new Date().toISOString(); 
+      const res = await apiFetch(`/api/polizas/${poliza.id}/aviso`, { 
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tipo: tipoAlerta })
+      });
       
-      // 🔥 IDEA 3: Automatizamos visualmente el tilde al mandar el mail (el backend ya lo hizo en DB)
-      setGestionado(true);
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || "Error al enviar el correo");
+      }
 
+      setEstadoEmail("success");
+      setGestionado(true);
       setTimeout(() => setEstadoEmail("idle"), 3000);
     } catch (error: any) {
       setEstadoEmail("error");
       setTimeout(() => setEstadoEmail("idle"), 3000);
+      alert(error.message || "Error al enviar el correo."); 
     }
   };
 
@@ -110,7 +120,7 @@ export default function AlertaCard({ poliza, nivel, isSelected, onSelect, planti
     proxima: { borde: "border-amber-200 dark:border-amber-900/50", fondo: "bg-amber-50 dark:bg-amber-900/30", texto: "text-amber-700 dark:text-amber-400", linea: "bg-amber-400" }
   }[nivel];
 
-  const fechaFormat = new Date(poliza.fechaVencimiento).toLocaleDateString("es-AR");
+  const fechaFormat = new Date(fechaBaseCalculo).toLocaleDateString("es-AR");
 
   return (
     <>
@@ -124,7 +134,7 @@ export default function AlertaCard({ poliza, nivel, isSelected, onSelect, planti
         )}
 
         <div className="flex justify-between items-start mb-3 ml-2 pr-6">
-          <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-black uppercase tracking-wider ${estilos.fondo} ${estilos.texto}`}>{calcularDias(poliza.fechaVencimiento)}</span>
+          <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-black uppercase tracking-wider ${estilos.fondo} ${estilos.texto}`}>{calcularDias(fechaBaseCalculo)}</span>
           <span onClick={() => router.push(`/polizas/${poliza.id}`)} className="text-xs font-mono text-gray-400 cursor-pointer hover:underline">#{poliza.nroPoliza}</span>
         </div>
 
@@ -152,7 +162,7 @@ export default function AlertaCard({ poliza, nivel, isSelected, onSelect, planti
           <div className="flex items-center gap-2 mb-2">
             <input 
               type="checkbox" 
-              id={`gestion-card-${poliza.id}`} 
+              id={`gestion-card-${poliza.id}-${tipoAlerta}`}
               checked={gestionado} 
               onChange={(e) => { 
                 setGestionado(e.target.checked); 
@@ -160,7 +170,7 @@ export default function AlertaCard({ poliza, nivel, isSelected, onSelect, planti
               }} 
               className="w-4 h-4 text-green-600 border-gray-300 rounded cursor-pointer" 
             />
-            <label htmlFor={`gestion-card-${poliza.id}`} className="text-xs font-bold text-gray-500 uppercase cursor-pointer">
+            <label htmlFor={`gestion-card-${poliza.id}-${tipoAlerta}`} className="text-xs font-bold text-gray-500 uppercase cursor-pointer">
               Ya contactado
             </label>
             {isSavingNota && <Loader2 size={12} className="animate-spin text-gray-400 ml-auto" />}
@@ -211,15 +221,12 @@ export default function AlertaCard({ poliza, nivel, isSelected, onSelect, planti
               <button onClick={() => setShowRenovarModal(true)} className="flex-1 flex justify-center items-center gap-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 py-2 rounded-xl text-sm font-bold"><RefreshCcw size={16} /> <span className="hidden sm:inline">Renovar</span></button>
             )
           )}
-
-          {/* 🔥 IDEA 3: CAMBIAMOS EL <A> POR BUTTON PARA QUE PUEDA AUTO-TILDAR */}
           <button onClick={enviarWsp} disabled={!poliza.asegurado.telefono} className={`flex-1 flex justify-center items-center gap-1.5 bg-green-50 hover:bg-green-100 text-green-700 py-2 rounded-xl text-sm font-bold ${!poliza.asegurado.telefono ? 'opacity-50 pointer-events-none' : ''}`}>
             <MessageCircle size={16} /> <span className="hidden sm:inline">Wsp</span>
           </button>
-
-          <button onClick={enviarAvisoEmail} disabled={estadoEmail !== "idle" || !poliza.asegurado.email || yaAvisadoHoy()} className={`flex-1 flex justify-center items-center gap-1.5 py-2 rounded-xl text-sm font-bold ${yaAvisadoHoy() ? "bg-gray-100 text-gray-400 cursor-not-allowed" : estadoEmail === "success" ? "bg-emerald-500 text-white" : estadoEmail === "error" ? "bg-red-500 text-white" : !poliza.asegurado.email ? "bg-gray-50 text-gray-400 cursor-not-allowed" : "bg-blue-50 hover:bg-blue-100 text-blue-700"}`}>
+          <button onClick={enviarAvisoEmail} disabled={estadoEmail !== "idle" || !poliza.asegurado.email} className={`flex-1 flex justify-center items-center gap-1.5 py-2 rounded-xl text-sm font-bold ${estadoEmail === "success" ? "bg-emerald-500 text-white" : estadoEmail === "error" ? "bg-red-500 text-white" : !poliza.asegurado.email ? "bg-gray-50 text-gray-400 cursor-not-allowed" : "bg-blue-50 hover:bg-blue-100 text-blue-700"}`}>
             {estadoEmail === "loading" ? <Loader2 size={16} className="animate-spin" /> : estadoEmail === "success" ? <CheckCircle2 size={16} /> : <Mail size={16} />}
-             <span className="hidden sm:inline">{yaAvisadoHoy() ? "Avisado" : estadoEmail === "success" ? "Enviado" : "Mail"}</span>
+             <span className="hidden sm:inline">{estadoEmail === "success" ? "Enviado" : "Mail"}</span>
           </button>
         </div>
       </div>
