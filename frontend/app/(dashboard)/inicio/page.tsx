@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect, useState } from "react";
@@ -22,6 +21,8 @@ import RecentActivity from "@/components/dashboard/RecentActivity";
 import { apiFetch } from "@/services/api";
 import TutorialTour from "@/components/ui/tours/TutorialTour";
 import { generarLinkWhatsApp } from "@/utils/whatsapp";
+// 🔥 IMPORTAMOS EL WIDGET DE CUMPLEAÑOS
+import WidgetCumpleanos from "@/components/dashboard/WidgetCumpleanos";
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -37,11 +38,11 @@ export default function DashboardPage() {
     proxima: "Hola [Nombre], te avisamos que tu póliza de [Rama] ([NroPoliza]) en [Compania] vence el próximo [Vencimiento]. ¿Avanzamos con la renovación?",
     critica: "Hola [Nombre], te recuerdo que tu póliza de [Rama] ([NroPoliza]) vence en unos días ([Vencimiento]). Avisame así la renovamos a tiempo.",
     vencida: "Hola [Nombre], te escribo urgente porque tu póliza de [Rama] ([NroPoliza]) venció el [Vencimiento]. Avisame si la renovamos para no dejarte sin cobertura.",
-    cobranza: "Hola [Nombre], te escribimos porque registramos un atraso en el pago de tu cuota de [Rama] ([NroPoliza]). Por favor regularizá el saldo para evitar perder la cobertura."
+    cobranza: "Hola [Nombre], te escribimos porque registramos un atraso en el pago de tu cuota de [Rama] ([NroPoliza]). Por favor regularizá el saldo para evitar perder la cobertura.",
+    cumpleanos: "¡Feliz cumpleaños [Nombre]! 🎂 De parte de toda la agencia te deseamos un excelente día. Gracias por confiar en nosotros." // 🔥 NUEVA PLANTILLA
   });
 
   const [ordenVista, setOrdenVista] = useState<"actividad" | "alertas">("alertas");
-
   const [pestanaAlertas, setPestanaAlertas] = useState<"RENOVACION" | "COBRANZA">("RENOVACION");
 
   const ITEMS_POR_PAGINA = 5;
@@ -96,9 +97,8 @@ export default function DashboardPage() {
             proxima: data.mensajeVencimiento || prev.proxima,
             critica: data.mensajePolizaCritica || prev.critica,
             vencida: data.mensajePolizaVencida || prev.vencida,
-
-            // IMPORTANTE: mismo nombre utilizado en PlantillasSettings.tsx
-            cobranza: data.mensajeCobranza || prev.cobranza
+            cobranza: data.mensajeCobranza || prev.cobranza,
+            cumpleanos: data.mensajeCumpleanos || prev.cumpleanos // 🔥 CARGAMOS DESDE BD
           }));
         }
       })
@@ -502,6 +502,15 @@ export default function DashboardPage() {
         </>
       )}
 
+      {/* 🔥 WIDGET DE CUMPLEAÑOS INYECTADO AL FINAL EN EL FLUJO NORMAL */}
+      {dashboardData?.cumpleanerosDelDia && dashboardData.cumpleanerosDelDia.length > 0 && (
+        <div className="flex justify-end mt-4">
+          <WidgetCumpleanos 
+            cumpleanerosDelDia={dashboardData.cumpleanerosDelDia} 
+            plantillaMensaje={plantillas.cumpleanos} 
+          />
+        </div>
+      )}
     </div>
   );
 }

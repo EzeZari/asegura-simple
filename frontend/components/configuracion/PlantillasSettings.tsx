@@ -10,6 +10,7 @@ const DEFAULT_CRITICA = "Hola [Nombre], te recuerdo que tu póliza de [Rama] ([N
 const DEFAULT_VENCIDA = "Hola [Nombre], te escribo urgente porque tu póliza de [Rama] ([NroPoliza]) venció el [Vencimiento]. Avisame si la renovamos para no dejarte sin cobertura.";
 const DEFAULT_BIENVENIDA = "¡Hola [Nombre]! Bienvenido/a. Te confirmamos que ya emitimos tu nueva póliza de [Rama] con [Compania]. Tu número de póliza es [NroPoliza].";
 const DEFAULT_COBRANZA = "Hola [Nombre], te escribimos porque registramos un atraso en el pago de tu cuota de [Rama] ([NroPoliza]). Por favor regularizá el saldo para evitar perder la cobertura.";
+const DEFAULT_CUMPLEANOS = "¡Feliz cumpleaños [Nombre]! 🎂 De parte de toda la agencia te deseamos un excelente día. Gracias por confiar en nosotros.";
 
 export default function PlantillasSettings() {
   const [showToast, setShowToast] = useState(false);
@@ -20,7 +21,7 @@ export default function PlantillasSettings() {
   const [diasConfig, setDiasConfig] = useState({ diasCritica: 7, diasMax: 30 });
   
   const [mainTab, setMainTab] = useState<"renovaciones" | "cobranzas" | "generales">("renovaciones");
-  const [previewTab, setPreviewTab] = useState<"proxima" | "critica" | "vencida" | "bienvenida" | "cobranza">("proxima");
+  const [previewTab, setPreviewTab] = useState<"proxima" | "critica" | "vencida" | "bienvenida" | "cobranza" | "cumpleanos">("proxima");
   const [showTutorial, setShowTutorial] = useState(false);
 
   const [agencia, setAgencia] = useState<any>({
@@ -29,6 +30,7 @@ export default function PlantillasSettings() {
     mensajePolizaVencida: DEFAULT_VENCIDA,
     mensajeCobranza: DEFAULT_COBRANZA,
     mensajeBienvenida: DEFAULT_BIENVENIDA,
+    mensajeCumpleanos: DEFAULT_CUMPLEANOS,
   });
 
   const refs = {
@@ -37,6 +39,7 @@ export default function PlantillasSettings() {
     mensajePolizaVencida: useRef<HTMLTextAreaElement>(null),
     mensajeCobranza: useRef<HTMLTextAreaElement>(null),
     mensajeBienvenida: useRef<HTMLTextAreaElement>(null),
+    mensajeCumpleanos: useRef<HTMLTextAreaElement>(null),
   };
 
   useEffect(() => {
@@ -60,6 +63,7 @@ export default function PlantillasSettings() {
           mensajePolizaVencida: data.mensajePolizaVencida || DEFAULT_VENCIDA,
           mensajeCobranza: data.mensajeCobranza || DEFAULT_COBRANZA,
           mensajeBienvenida: data.mensajeBienvenida || DEFAULT_BIENVENIDA,
+          mensajeCumpleanos: data.mensajeCumpleanos || DEFAULT_CUMPLEANOS,
         });
       } catch (error) {
         console.error("Error al cargar las plantillas:", error);
@@ -137,6 +141,7 @@ export default function PlantillasSettings() {
     else if (previewTab === "critica") raw = agencia.mensajePolizaCritica;
     else if (previewTab === "vencida") raw = agencia.mensajePolizaVencida;
     else if (previewTab === "cobranza") raw = agencia.mensajeCobranza;
+    else if (previewTab === "cumpleanos") raw = agencia.mensajeCumpleanos;
     else raw = agencia.mensajeBienvenida;
 
     return (raw || "")
@@ -316,6 +321,23 @@ export default function PlantillasSettings() {
                     ))}
                   </div>
                 </div>
+
+                <div className="flex flex-col gap-2 pt-4 border-t border-gray-100 dark:border-gray-700">
+                  <div className="flex justify-between items-center">
+                    <label className="text-sm font-bold text-pink-600 dark:text-pink-500">Saludo de Cumpleaños</label>
+                    <span className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold">FIDELIZACIÓN</span>
+                  </div>
+                  <textarea
+                    ref={refs.mensajeCumpleanos} name="mensajeCumpleanos" rows={3} value={agencia.mensajeCumpleanos} onChange={handleChange} onFocus={() => setPreviewTab("cumpleanos")}
+                    className="w-full p-3.5 bg-gray-50/50 dark:bg-gray-900/50 border border-pink-200 dark:border-pink-900/50 rounded-xl outline-none focus:ring-2 focus:ring-pink-500 text-sm text-gray-900 dark:text-white resize-none leading-relaxed transition-colors font-sans"
+                  />
+                  <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                    <span className="text-[11px] text-gray-400 mr-1 font-medium">Insertar:</span>
+                    <button type="button" onClick={() => insertarVariable("mensajeCumpleanos", "[Nombre]")} className="px-2 py-0.5 bg-gray-100 dark:bg-gray-700 hover:bg-pink-100 dark:hover:bg-pink-900/40 text-gray-700 dark:text-gray-300 hover:text-pink-700 dark:hover:text-pink-400 rounded-md text-[11px] font-mono font-medium transition-colors">
+                      +[Nombre]
+                    </button>
+                  </div>
+                </div>
               </div>
             )}
 
@@ -344,7 +366,10 @@ export default function PlantillasSettings() {
               <button onClick={() => setPreviewTab("cobranza")} className={`flex-1 px-2 py-1.5 rounded-lg text-[10px] font-bold transition-colors ${previewTab === "cobranza" ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-400" : "text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-700"}`}>Aviso de Cobranza</button>
             )}
             {mainTab === "generales" && (
-              <button onClick={() => setPreviewTab("bienvenida")} className={`flex-1 px-2 py-1.5 rounded-lg text-[10px] font-bold transition-colors ${previewTab === "bienvenida" ? "bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-400" : "text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-700"}`}>Bienvenida</button>
+              <>
+                <button onClick={() => setPreviewTab("bienvenida")} className={`flex-1 px-2 py-1.5 rounded-lg text-[10px] font-bold transition-colors ${previewTab === "bienvenida" ? "bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-400" : "text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-700"}`}>Bienvenida</button>
+                <button onClick={() => setPreviewTab("cumpleanos")} className={`flex-1 px-2 py-1.5 rounded-lg text-[10px] font-bold transition-colors ${previewTab === "cumpleanos" ? "bg-pink-100 text-pink-800 dark:bg-pink-900/40 dark:text-pink-400" : "text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-700"}`}>Cumpleaños</button>
+              </>
             )}
           </div>
 

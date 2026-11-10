@@ -62,7 +62,6 @@ export const getDashboardStats = async (req: Request, res: Response): Promise<an
       where: { productorId: productorId }
     });
 
-    // 🔥 ACÁ ESTÁ EL CAMBIO: Pasamos el 'take' de 10 a 50 para tener más páginas de historial
     const historial = await prisma.actividad.findMany({
       where: { productorId: productorId },
       take: 50, 
@@ -169,6 +168,27 @@ export const getDashboardStats = async (req: Request, res: Response): Promise<an
       take: 5
     });
 
+    // 🔥 ACÁ BUSCAMOS LOS CUMPLEAÑEROS DEL DÍA
+    const diaActual = new Date().getDate();
+    const mesActual = new Date().getMonth() + 1;
+
+    const aseguradosConFecha = await prisma.asegurado.findMany({
+      where: { 
+        productorId: productorId, 
+        activo: true, 
+        fechaNacimiento: { not: null } 
+      },
+      select: { id: true, nombre: true, apellido: true, telefono: true, fechaNacimiento: true }
+    });
+
+    const cumpleanerosDelDia = aseguradosConFecha.filter(cliente => {
+      if (!cliente.fechaNacimiento) return false;
+      const fechaNac = new Date(cliente.fechaNacimiento);
+      // Evitamos problemas de zonas horarias sumando el offset
+      fechaNac.setMinutes(fechaNac.getMinutes() + fechaNac.getTimezoneOffset());
+      return fechaNac.getDate() === diaActual && (fechaNac.getMonth() + 1) === mesActual;
+    });
+
     res.json({
       totalAsegurados,
       polizasActivas,
@@ -178,7 +198,8 @@ export const getDashboardStats = async (req: Request, res: Response): Promise<an
       renovacionesProximas,
       cobranzasPendientes, 
       siniestrosActivos,
-      actividadRobots
+      actividadRobots,
+      cumpleanerosDelDia // 🔥 AGREGAMOS ESTO A LA RESPUESTA
     });
   } catch (error: any) {
     console.error("Error al obtener estadísticas del dashboard:", error);
