@@ -240,3 +240,80 @@ export const getUltimosPagos = async (req: Request, res: Response): Promise<void
     res.status(500).json({ error: 'Error al obtener el historial de pagos.' });
   }
 };
+// 🔥 NUEVA FUNCIÓN: Obtener próximos vencimientos de suscripción
+export const getProximosVencimientos = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const agencias = await prisma.user.findMany({
+      where: {
+        // Solo traemos usuarios que sean los dueños de la cuenta (no empleados)
+        // y que no sean cuentas gratuitas
+        jefeId: null,
+        plan: { not: 'GRATUITO' },
+        suscripcion: { isNot: null },
+        // 🔥 EXCLUIMOS ESTOS DOS CORREOS:
+        email: { notIn: ['fmgestionesyseguros@hotmail.com', 'ezequielzari@gmail.com'] }
+      },
+      include: {
+        suscripcion: true,
+      },
+    });
+
+    // Filtramos y calculamos los días restantes
+    const hoy = new Date();
+    const hoyMs = hoy.getTime();
+
+    // 1. Mapeamos y calculamos los días
+    let proximosPagos = agencias.map(agencia => {
+      let diasRestantes = null;
+      let fechaVenc = null;
+      let estadoSuscripcion = agencia.suscripcion?.estado || 'desconocido';
+
+      if (agencia.suscripcion?.fechaVencimiento) {
+        let fecha = new Date(agencia.suscripcion.fechaVencimiento);
+        
+        // 🔥 CORRECCIÓN DE FALSOS "VENCIDOS":
+        // Si la suscripción está aprobada/autorizada o en trial, pero la fecha de vencimiento
+        // ya pasó (MercadoPago no la actualizó), le sumamos meses hasta que quede en el futuro.
+        const estadosAlDia = ["approved", "autorizado", "authorized", "trial"];
+        if (estadosAlDia.includes(estadoSuscripcion.toLowerCase())) {
+           while (fecha.getTime() < hoyMs) {
+             // Si está aprobado pero vencido en fecha, le sumamos 1 mes virtualmente
+             fecha.setMonth(fecha.getMonth() + 1);
+           }
+        }
+        
+        fechaVenc = fecha.toISOString();
+        // Calculamos la diferencia en días (negativo = días vencidos, positivo = días faltantes)
+        diasRestantes = Math.ceil((fecha.getTime() - hoyMs) / (1000 * 60 * 60 * 24));
+      }
+
+      return {
+        id: agencia.id,
+        nombre: agencia.nombre,
+        email: agencia.email,
+        plan: agencia.plan,
+        estadoSuscripcion: estadoSuscripcion,
+        fechaVencimiento: fechaVenc,
+        diasRestantes: diasRestantes,
+        mpPreapprovalId: agencia.suscripcion?.mpPreapprovalId 
+      };
+    });
+
+    // 🔥 2. FILTRAMOS A LOS QUE LLEVAN MÁS DE 60 DÍAS VENCIDOS
+    // Solo dejamos pasar a los que les faltan días (> 0) o están vencidos hace 60 días o menos (>= -60)
+    proximosPagos = proximosPagos.filter(pago => pago.diasRestantes === null || pago.diasRestantes >= -60);
+
+    // 3. Ordenamos: los que vencen antes (menor cantidad de días, incluyendo los negativos) van primero
+    // Ponemos al final los que no tienen fecha
+    proximosPagos.sort((a, b) => {
+      if (a.diasRestantes === null) return 1;
+      if (b.diasRestantes === null) return -1;
+      return a.diasRestantes - b.diasRestantes;
+    });
+
+    res.json(proximosPagos);
+  } catch (error) {
+    console.error("Error al obtener próximos vencimientos:", error);
+    res.status(500).json({ error: 'Error al obtener los próximos vencimientos.' });
+  }
+};

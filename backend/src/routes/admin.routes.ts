@@ -13,7 +13,8 @@ import {
   createDescuento,
   updateDescuento,
   deleteDescuento,
-  getUltimosPagos // 🔥 AGREGADO
+  getUltimosPagos,
+  getProximosVencimientos // 🔥 AGREGADO
 } from '../controllers/admin.controller';
 import { verifyAdminToken } from '../middlewares/adminAuth.middleware';
 
@@ -30,6 +31,7 @@ router.delete('/agencias/:id', verifyAdminToken, deleteAgencia);
 router.get('/comunicado', getComunicadoGlobal);
 router.put('/comunicado', verifyAdminToken, updateComunicadoGlobal);
 
+// Impersonate & Stats
 router.post('/impersonate/:id', verifyAdminToken, impersonateUser);
 router.get('/estadisticas', verifyAdminToken, getEstadisticasAdmin);
 
@@ -39,7 +41,8 @@ router.post('/descuentos', verifyAdminToken, createDescuento);
 router.put('/descuentos/:id', verifyAdminToken, updateDescuento);
 router.delete('/descuentos/:id', verifyAdminToken, deleteDescuento);
 
-// 🔥 NUEVA RUTA: Historial de pagos
+// Finanzas y Pagos
 router.get('/pagos', verifyAdminToken, getUltimosPagos);
+router.get('/vencimientos', verifyAdminToken, getProximosVencimientos); // 🔥 NUEVA RUTA DE VENCIMIENTOS
 
 export default router;
