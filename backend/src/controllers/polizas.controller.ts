@@ -2,6 +2,8 @@ import { Request, Response } from 'express';
 import { prisma } from '../config/db';
 import { enviarAvisoVencimiento, enviarAvisoCobranza } from '../services/email.service';
 import { supabase } from '../config/supabase';
+import { GoogleGenerativeAI } from '@google/generative-ai';
+import { verificarLimiteEscaneosPdf } from '../utils/verificarLimites';
 
 const normalizarFormaPago = (valor: any) => {
   if (!valor) return null;
@@ -948,5 +950,240 @@ export const actualizarGestionAviso = async (req: Request, res: Response): Promi
   } catch (error) {
     console.error("Error al guardar gestión:", error);
     return res.status(500).json({ error: 'Error al actualizar la gestión del aviso.' });
+  }
+};
+
+// 🔥 NUEVA FUNCIÓN: Lector inteligente de PDF de pólizas con autodetección de modelo Gemini
+export const escanearPolizaPdf = async (req: Request, res: Response): Promise<any> => {
+  try {
+    if (!req.userId) return res.status(401).json({ error: 'No autorizado' });
+    const archivo = req.file;
+
+    if (!archivo || !archivo.buffer) {
+      return res.status(400).json({ error: 'No se subió ningún archivo PDF.' });
+    }
+
+    const apiKey = (process.env.GEMINI_API_KEY || '').trim();
+    if (!apiKey) {
+      return res.status(500).json({ 
+        error: 'No se encontró GEMINI_API_KEY en el archivo .env del backend. Verificá que el archivo .env esté guardado en la carpeta backend.' 
+      });
+    }
+
+    // 1. Obtener cuenta titular (dueño de agencia) y productorId
+    const usuarioActual = await prisma.user.findUnique({ where: { id: req.userId } });
+    if (!usuarioActual) return res.status(404).json({ error: 'Usuario no encontrado.' });
+
+    const idTitular = usuarioActual.jefeId ? usuarioActual.jefeId : usuarioActual.id;
+    const productorId = await obtenerProductorId(req.userId);
+
+    // 🔥 2. Usar el Verificador Central de Límites
+    const verificacion = await verificarLimiteEscaneosPdf(idTitular);
+    
+    if (verificacion.superado) {
+      return res.status(403).json({
+        error: verificacion.mensaje,
+        codigo: 'LIMITE_ESCANEO_ALCANZADO',
+        escaneosUsados: verificacion.usosActuales,
+        limitePlan: verificacion.limite,
+        plan: verificacion.plan
+      });
+    }
+
+    // 3. Autodetectar los modelos disponibles en la cuenta de Google AI Studio
+    let modelosAProbar = [
+      'gemini-3.8-flash',
+      'gemini-2.5-flash',
+      'gemini-2.0-flash',
+      'gemini-flash-latest',
+      'gemini-2.5-pro'
+    ];
+
+    try {
+      const listRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`);
+      if (listRes.ok) {
+        const listData: any = await listRes.json();
+        const modelosValidos = (listData.models || [])
+          .filter((m: any) => 
+            Array.isArray(m.supportedGenerationMethods) && 
+            m.supportedGenerationMethods.includes('generateContent') &&
+            m.name.includes('gemini') &&
+            !m.name.includes('tts') &&
+            !m.name.includes('image') &&
+            !m.name.includes('embedding')
+          )
+          .map((m: any) => m.name.replace('models/', ''));
+
+        // Priorizamos los modelos "flash" porque son los más rápidos y económicos para leer PDFs
+        const modelosFlash = modelosValidos.filter((m: string) => m.includes('flash'));
+        if (modelosFlash.length > 0) {
+          modelosAProbar = [...modelosFlash, ...modelosValidos.filter((m: string) => !m.includes('flash'))];
+        } else if (modelosValidos.length > 0) {
+          modelosAProbar = modelosValidos;
+        }
+      }
+    } catch (e) {
+      console.warn("No se pudo listar modelos dinámicamente, usando lista por defecto.");
+    }
+
+    // 4. Procesar el PDF directamente con Gemini AI
+    const genAI = new GoogleGenerativeAI(apiKey);
+    const pdfPart = {
+      inlineData: {
+        data: archivo.buffer.toString("base64"),
+        mimeType: "application/pdf",
+      },
+    };
+
+    // 🔥 PROMPT ACTUALIZADO: Solicita los datos de refacturación
+    const prompt = `
+      Sos un asistente experto en seguros de Argentina. Analizá este documento PDF de una póliza de seguro y devolvé ÚNICAMENTE un objeto JSON válido con la siguiente estructura exacta (si un dato no existe o no figura, dejalo como string vacío ""):
+      {
+        "nroPoliza": "número de póliza limpio",
+        "companiaNombre": "nombre comercial de la aseguradora (ej: San Cristóbal, Sancor, Federación Patronal, Rivadavia, Mercantil Andina, Triunfo, ATM, Paraná, Río Uruguay, etc.)",
+        "tipoPoliza": "Automotor, Motovehículo, ART, Vida simple, Combinado familiar, Integral para comercio, Caución, Transporte, Seguro técnico, Robo, Incendio, Responsabilidad civil, Cascos, o Ecomovilidad",
+        "fechaInicio": "YYYY-MM-DD",
+        "fechaVencimiento": "YYYY-MM-DD",
+        "cobertura": "descripción de la cobertura o plan (ej: Todo Riesgo, Terceros Completo, RC, etc.)",
+        "formaPago": "Tarjeta de Crédito, Tarjeta de Débito, CBU / Débito Automático, Efectivo / Pago Fácil, o Transferencia Bancaria",
+        "patente": "dominio/patente en mayúsculas sin espacios ni guiones",
+        "marca": "marca del vehículo",
+        "modelo": "modelo del vehículo",
+        "anio": "año de fabricación en 4 dígitos",
+        "motor": "número de motor",
+        "chasis": "número de chasis",
+        "color": "color del vehículo",
+        "sumaAsegurada": "suma asegurada numérica",
+        "clausulaAjuste": "porcentaje de cláusula de ajuste (ej: 20%)",
+        "ubicacionRiesgo": "dirección del riesgo asegurado si es hogar/comercio",
+        "tieneRefacturacion": true,
+        "frecuenciaRefacturacion": "Mensual, Bimestral, Trimestral, Semestral o Anual (según el plan de pagos; si hay cuotas mensuales, poné Mensual)",
+        "fechaRefacturacion": "YYYY-MM-DD (fecha de vencimiento de la primera cuota; si no figura, usá la fechaInicio)",
+        "diaHabitualPago": "número del 1 al 31 que indica el día del mes en que vencen las cuotas (ej: si vencen el 15, poner 15)",
+        "asegurado": {
+          "nombre": "nombre o razón social",
+          "apellido": "apellido (vacío si es persona jurídica)",
+          "dni": "DNI o CUIT solo números sin puntos ni guiones",
+          "telefono": "teléfono si figura",
+          "email": "email si figura",
+          "direccion": "domicilio del asegurado"
+        }
+      }
+    `;
+
+    let respuestaTexto = '';
+    let ultimoError: any = null;
+
+    for (const nombreModelo of modelosAProbar) {
+      try {
+        const model = genAI.getGenerativeModel({
+          model: nombreModelo,
+          generationConfig: { responseMimeType: 'application/json' }
+        });
+        const result = await model.generateContent([prompt, pdfPart]);
+        respuestaTexto = result.response.text();
+        if (respuestaTexto) {
+          console.log(`✅ PDF leído correctamente usando el modelo: ${nombreModelo}`);
+          break;
+        }
+      } catch (err: any) {
+        console.warn(`⚠️ Intento fallido con modelo ${nombreModelo}:`, err?.message || err);
+        ultimoError = err;
+      }
+    }
+
+    if (!respuestaTexto) {
+      throw ultimoError || new Error('No se obtuvo respuesta de ningún modelo de IA.');
+    }
+
+    const textoLimpio = respuestaTexto.replace(/```json/gi, '').replace(/```/g, '').trim();
+    const datosCrudos = JSON.parse(textoLimpio);
+
+    // 5. Normalizar campos y buscar coincidencias de Asegurado y Compañía en la BD del productor
+    const dniLimpio = String(datosCrudos.asegurado?.dni || '').replace(/[^0-9]/g, '');
+    let aseguradoEncontrado = null;
+    
+    // Búsqueda por DNI original
+    if (dniLimpio) {
+      aseguradoEncontrado = await prisma.asegurado.findFirst({
+        where: { productorId, dni: { contains: dniLimpio } }
+      });
+    }
+
+    // Búsqueda de Backup por Nombre y Apellido si no lo encontró por DNI
+    if (!aseguradoEncontrado && (datosCrudos.asegurado?.nombre || datosCrudos.asegurado?.apellido)) {
+      const todosAsegurados = await prisma.asegurado.findMany({ where: { productorId, activo: true } });
+      const normalizarTxt = (t: string) => t.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+      const nombrePdfCompleto = normalizarTxt(`${datosCrudos.asegurado?.nombre || ''} ${datosCrudos.asegurado?.apellido || ''}`);
+      
+      aseguradoEncontrado = todosAsegurados.find(a => {
+        const nombreBase = normalizarTxt(a.nombre || '');
+        const apellidoBase = normalizarTxt(a.apellido || '');
+        return nombreBase && apellidoBase && nombrePdfCompleto.includes(nombreBase) && nombrePdfCompleto.includes(apellidoBase);
+      }) || null;
+    }
+
+    const companiaBuscada = String(datosCrudos.companiaNombre || '').trim();
+    let companiaEncontrada = null;
+    if (companiaBuscada) {
+      const todasCompanias = await prisma.compania.findMany({ where: { productorId } });
+      companiaEncontrada = todasCompanias.find(c =>
+        c.nombre.toLowerCase().includes(companiaBuscada.toLowerCase()) ||
+        companiaBuscada.toLowerCase().includes(c.nombre.toLowerCase())
+      ) || null;
+    }
+
+    // 🔥 MAPEO DE LA REFACTURACIÓN: Agregamos los datos al objeto final que va al frontend
+    const frecuenciasValidas = ['Mensual', 'Bimestral', 'Trimestral', 'Semestral', 'Anual', 'Personalizada'];
+    const frecExtraida = frecuenciasValidas.find(
+      f => f.toLowerCase() === String(datosCrudos.frecuenciaRefacturacion || '').toLowerCase().trim()
+    ) || 'Mensual';
+
+    const diaExtraido = parseInt(String(datosCrudos.diaHabitualPago || '').replace(/[^0-9]/g, ''));
+    const diaHabitualValido = !isNaN(diaExtraido) && diaExtraido >= 1 && diaExtraido <= 31 
+      ? String(diaExtraido) 
+      : (datosCrudos.fechaRefacturacion ? String(Number(datosCrudos.fechaRefacturacion.split('-')[2])) : '');
+
+    const datosNormalizados = {
+      ...datosCrudos,
+      tipoPoliza: normalizarRama(datosCrudos.tipoPoliza),
+      formaPago: normalizarFormaPago(datosCrudos.formaPago) || '',
+      patente: datosCrudos.patente ? String(datosCrudos.patente).toUpperCase().replace(/[^A-Z0-9]/g, '') : '',
+      tieneRefacturacion: datosCrudos.tieneRefacturacion !== false, // Por defecto true para activar el panel
+      frecuenciaRefacturacion: frecExtraida,
+      fechaRefacturacion: datosCrudos.fechaRefacturacion || datosCrudos.fechaInicio || '',
+      diaHabitualPago: diaHabitualValido,
+      aseguradoId: aseguradoEncontrado ? aseguradoEncontrado.id : null,
+      aseguradoExistente: aseguradoEncontrado,
+      companiaId: companiaEncontrada ? companiaEncontrada.id : null,
+      companiaExistente: companiaEncontrada
+    };
+
+    // 6. Descontar 1 crédito de escaneo al titular de la agencia actualizando la base
+    const hoy = new Date();
+    const mesActualStr = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}`;
+    
+    await (prisma.user as any).update({
+      where: { id: idTitular },
+      data: {
+        escaneosMesActual: verificacion.usosActuales + 1,
+        mesUltimoEscaneo: mesActualStr
+      }
+    });
+
+    return res.json({
+      message: 'Póliza escaneada con éxito',
+      datos: datosNormalizados,
+      uso: {
+        escaneosUsados: verificacion.usosActuales + 1,
+        limitePlan: verificacion.limite,
+        restantes: Math.max(0, verificacion.limite - (verificacion.usosActuales + 1)),
+        plan: verificacion.plan
+      }
+    });
+
+  } catch (error: any) {
+    console.error("Error al escanear PDF de póliza:", error);
+    return res.status(500).json({ error: 'Error al procesar el PDF con IA. Verificá el archivo e intentá nuevamente.' });
   }
 };

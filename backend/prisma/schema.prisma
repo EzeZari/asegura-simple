@@ -254,6 +254,9 @@ model User {
   jefe                 User?         @relation("Equipo", fields: [jefeId], references: [id])
   empleados            User[]        @relation("Equipo")
   sugerencias   Sugerencia[]
+
+  escaneosMesActual Int    @default(0)
+  mesUltimoEscaneo  String @default("") // Guardará formato "YYYY-MM", ej: "2026-11"
 }
 
 model Actividad {

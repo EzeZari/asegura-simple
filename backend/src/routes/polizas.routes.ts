@@ -2,7 +2,8 @@ import { Router } from 'express';
 import { 
   obtenerTodas, obtenerPorId, crearPoliza, 
   actualizarPoliza, eliminarPoliza, avisarVencimiento, 
-  subirPdf, importarPolizas, actualizarGestionAviso 
+  subirPdf, importarPolizas, actualizarGestionAviso,
+  escanearPolizaPdf
 } from '../controllers/polizas.controller';
 import { verificarToken } from '../middlewares/auth.middleware';
 import { verificarRol } from '../middlewares/role.middleware';
@@ -12,6 +13,10 @@ const router = Router();
 
 // 🟢 LECTURA: Todos los autenticados (Dueño, Admin Secundario y Empleado)
 router.get('/', verificarToken, obtenerTodas);
+
+// 🔥 NUEVA RUTA: Lector inteligente de PDF de pólizas con IA
+router.post('/escanear-pdf', verificarToken, verificarRol(['DUENO', 'PRODUCTOR']), upload.single('pdf'), escanearPolizaPdf);
+
 router.get('/:id', verificarToken, obtenerPorId);
 
 // 🔴 ESCRITURA/MODIFICACIÓN: Solo Dueño y Admin Secundario ('PRODUCTOR')

@@ -54,7 +54,8 @@ export const verificarSuscripcionActiva = async (req: Request, res: Response, ne
     }
 
     // --- 🔥 3B. LÓGICA PARA LOS PLANES PAGOS (BASICO, PROFESIONAL, AGENCIA) ---
-    const pagoAutorizado = suscripcion?.estado === 'autorizado';
+    const estadosValidos = ['autorizado', 'authorized', 'approved', 'trial'];
+    const pagoAutorizado = suscripcion?.estado ? estadosValidos.includes(suscripcion.estado.toLowerCase()) : false;
     const fechaVencimiento = suscripcion?.fechaVencimiento ? new Date(suscripcion.fechaVencimiento) : new Date(0);
 
     const tieneDiasAFavor = fechaVencimiento > hoy;
