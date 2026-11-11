@@ -95,7 +95,10 @@ export default function GestorComunicados({ comunicado, setComunicado, onGuardar
                   placeholder="Escribí la noticia del modal acá..."
                   className="w-full bg-gray-900/80 border border-gray-800 rounded-xl p-5 text-gray-200 outline-none focus:border-purple-500 transition-colors resize-y min-h-[180px] text-base leading-relaxed custom-scrollbar"
                 />
-                <p className="text-[11px] text-gray-500 font-medium px-1">💡 <strong>Tip:</strong> Usá <code className="text-gray-400"># </code> para títulos grandes, y encerrá palabras en <code className="text-gray-400">**asteriscos**</code> para <strong>negritas</strong>.</p>
+                <p className="text-[11px] text-gray-500 font-medium px-1 mt-1 leading-relaxed">
+                  💡 <strong>Tip:</strong> Usá <code className="text-gray-400"># </code> para títulos y <code className="text-gray-400">**asteriscos**</code> para <strong>negritas</strong>.<br />
+                  Podés usar estos iconos: <code className="text-blue-400">[icon:rocket]</code> <code className="text-amber-400">[icon:sparkles]</code> <code className="text-green-400">[icon:check]</code> <code className="text-yellow-400">[icon:tip]</code> <code className="text-emerald-400">[icon:money]</code> <code className="text-indigo-400">[icon:chart]</code> <code className="text-purple-400">[icon:mail]</code> <code className="text-red-400">[icon:alert]</code>.
+                </p>
               </div>
               <div className="flex gap-2">
                 <button onClick={() => setComunicado({...comunicado, tipoModal: 'blue'})} className={`w-6 h-6 rounded-full bg-blue-600 border-2 ${comunicado.tipoModal === 'blue' ? 'border-white' : 'border-transparent opacity-50'}`} />
