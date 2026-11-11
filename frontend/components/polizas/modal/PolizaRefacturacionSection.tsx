@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { HelpCircle, CheckCircle2, X } from "lucide-react";
-import { PolizaFormData } from "../polizaModal.types";
+import { PolizaFormData } from "./polizaModal.types";
 
 interface Props {
   formData: PolizaFormData;

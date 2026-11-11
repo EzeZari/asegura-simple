@@ -1,6 +1,6 @@
 "use client";
 
-import { PolizaFormData } from "../polizaModal.types";
+import { PolizaFormData } from "./polizaModal.types";
 
 interface Props {
   formData: PolizaFormData;
