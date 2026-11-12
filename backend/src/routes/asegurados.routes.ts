@@ -132,7 +132,7 @@ router.post('/', verificarRol(['DUENO', 'PRODUCTOR']), async (req, res): Promise
       }
     });
 
-    const agencia = await prisma.agencia.findUnique({ where: { id: 1 } });
+    const agencia = await prisma.agencia.findUnique({ where: { productorId } });
     if ((agencia?.enviarMailBienvenida ?? true) && data.email) {
       enviarCorreoBienvenida(data.email, data.nombre, data.apellido, data.dni, data.telefono);
     }

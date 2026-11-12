@@ -22,6 +22,9 @@ model Productor {
   userId           Int?     @unique
   user             User?    @relation(fields: [userId], references: [id])
 
+  // 🔥 NUEVA RELACIÓN: Cada productor tiene su propia agencia
+  agencia            Agencia? 
+
   polizas            Poliza[]
   siniestros         Siniestro[]
 
@@ -84,12 +87,12 @@ model Poliza {
   cobertura        String?
   formaPago        String?   
 
-  // 🔥 NUEVOS CAMPOS: CONFIGURACIÓN DE REFACTURACIÓN Y COBRO
+  // CONFIGURACIÓN DE REFACTURACIÓN Y COBRO
   tieneRefacturacion      Boolean   @default(false)
-  frecuenciaRefacturacion String?   // Mensual, Bimestral, Trimestral, Semestral, Anual, Personalizada
-  fechaRefacturacion      DateTime? // Próxima fecha de refacturación
-  diaHabitualPago         Int?      // Día habitual del mes
-  estadoPago              String?   // "Al día", "Pendiente", "Vencido"
+  frecuenciaRefacturacion String?   
+  fechaRefacturacion      DateTime? 
+  diaHabitualPago         Int?      
+  estadoPago              String?   
 
   aseguradoId      Int
   asegurado        Asegurado @relation(fields: [aseguradoId], references: [id])
@@ -256,7 +259,7 @@ model User {
   sugerencias   Sugerencia[]
 
   escaneosMesActual Int    @default(0)
-  mesUltimoEscaneo  String @default("") // Guardará formato "YYYY-MM", ej: "2026-11"
+  mesUltimoEscaneo  String @default("") 
 }
 
 model Actividad {
@@ -274,8 +277,13 @@ model Actividad {
   poliza      Poliza?    @relation(fields: [polizaId], references: [id], onDelete: Cascade)
 }
 
+// 🔥 ARREGLO CRÍTICO: La agencia ahora pertenece a UN único productor
 model Agencia {
-  id                    Int      @id @default(1)
+  id                    Int      @id @default(autoincrement())
+  
+  productorId           Int      @unique
+  productor             Productor @relation(fields: [productorId], references: [id], onDelete: Cascade)
+  
   nombre                String   @default("AseguraSimple")
   cuit                  String?
   email                 String?
@@ -335,6 +343,7 @@ model Pago {
   user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
+// Este sí mantiene @default(1) porque son los comunicados que VOS emitís para toda la plataforma
 model ComunicadoAdmin {
   id             Int      @id @default(1)
   
