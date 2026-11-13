@@ -1,10 +1,11 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { AlertTriangle, Search } from "lucide-react";
+// 🔥 Agregamos Info, X, CheckCircle2 y Mail para el modal de ayuda
+import { AlertTriangle, Search, Info, X, LayoutList, CheckCircle2, Mail } from "lucide-react";
 import NuevoSiniestroModal from "@/components/siniestros/NuevoSiniestroModal";
 import SiniestroTableRow from "@/components/siniestros/SiniestroTableRow";
-import SiniestroMobileCard from "@/components/siniestros/SiniestroMobileCard"; // 🔥 Importamos la tarjeta móvil
+import SiniestroMobileCard from "@/components/siniestros/SiniestroMobileCard"; 
 import Toast from "@/components/ui/Toast";
 import Table, { TableColumn } from "@/components/ui/Table";
 import ConfirmModal from "@/components/ui/ConfirmModal";
@@ -33,6 +34,9 @@ export default function SiniestrosPage() {
   const [siniestros, setSiniestros] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   
+  // 🔥 Estado para el modal de ayuda rápida
+  const [showInstrucciones, setShowInstrucciones] = useState(false);
+
   const [searchTerm, setSearchTerm] = useState("");
   const [filtroEstado, setFiltroEstado] = useState("Todos");
   const [ordenActual, setOrdenActual] = useState("mas_recientes");
@@ -172,6 +176,14 @@ export default function SiniestrosPage() {
         <div className="w-full md:w-auto">
           <SelectOrdenamiento opciones={OPCIONES_ORDEN} valorActual={ordenActual} onChange={setOrdenActual} />
         </div>
+        
+        {/* 🔥 Botón de información adaptado de alertas */}
+        <button 
+          onClick={() => setShowInstrucciones(true)}
+          className="flex items-center gap-1.5 px-3 py-2 text-sm font-bold text-gray-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-lg transition-colors sm:ml-auto w-full sm:w-auto justify-center"
+        >
+          <Info size={16} /> 
+        </button>
       </div>
 
       <div className="tour-siniestros-tabla w-full">
@@ -242,6 +254,68 @@ export default function SiniestrosPage() {
         </>
       )}
       
+      {/* 🔥 MODAL DE INSTRUCCIONES ESTILO ALERTAS */}
+      {showInstrucciones && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[200] p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-3xl p-6 md:p-8 w-full max-w-2xl shadow-xl relative animate-in fade-in zoom-in duration-200 max-h-[85vh] overflow-y-auto custom-scrollbar">
+            <button onClick={() => setShowInstrucciones(false)} className="absolute top-4 right-4 text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"><X size={20} /></button>
+            
+            <div className="flex items-center gap-3 mb-6">
+              <div className="p-3 bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 rounded-2xl shrink-0"><Info size={24} /></div>
+              <div>
+                <h2 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-white leading-tight">¿Cómo funciona Gestión de Siniestros?</h2>
+                <p className="text-sm text-gray-500 dark:text-gray-400">Guía rápida paso a paso para el seguimiento de reclamos.</p>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <div className="bg-gray-50 dark:bg-gray-900/50 p-4 md:p-5 rounded-2xl border border-gray-100 dark:border-gray-700">
+                <h3 className="font-bold text-gray-800 dark:text-gray-200 mb-2 flex items-center gap-2 text-sm">
+                  <div className="w-5 h-5 rounded-full bg-orange-100 dark:bg-orange-900/40 text-orange-600 dark:text-orange-400 flex items-center justify-center font-black text-xs border border-orange-200 dark:border-orange-800/50">1</div>
+                  Reportá el Hecho
+                </h3>
+                <p className="text-sm text-gray-500 dark:text-gray-400 ml-7">
+                  Usá el botón "Reportar Siniestro" arriba a la derecha. Vas a poder cargar la descripción del evento y asociarlo rápidamente a cualquier póliza vigente de tu cartera.
+                </p>
+              </div>
+              <div className="bg-gray-50 dark:bg-gray-900/50 p-4 md:p-5 rounded-2xl border border-gray-100 dark:border-gray-700">
+                <h3 className="font-bold text-gray-800 dark:text-gray-200 mb-2 flex items-center gap-2 text-sm">
+                  <div className="w-5 h-5 rounded-full bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 flex items-center justify-center font-black text-xs border border-blue-200 dark:border-blue-800/50">2</div>
+                  Llevá el Expediente
+                </h3>
+                <p className="text-sm text-gray-500 dark:text-gray-400 ml-7">
+                  Una vez creado, entrá a <b>"Ver Expediente"</b> en la columna de Acciones (ícono de ojito). Ahí podés cargar notas privadas (peritaje, documentación faltante) y actualizar el estado general del trámite.
+                </p>
+              </div>
+              <div className="bg-gray-50 dark:bg-gray-900/50 p-4 md:p-5 rounded-2xl border border-gray-100 dark:border-gray-700">
+                <h3 className="font-bold text-gray-800 dark:text-gray-200 mb-2 flex items-center gap-2 text-sm">
+                  <div className="w-5 h-5 rounded-full bg-green-100 dark:bg-green-900/40 text-green-600 dark:text-green-400 flex items-center justify-center font-black text-xs border border-green-200 dark:border-green-800/50">3</div>
+                  Compartí el Enlace
+                </h3>
+                <p className="text-sm text-gray-500 dark:text-gray-400 ml-7">
+                  Dentro del expediente, tenés una tarjeta para generar un <b>link público</b>. Enviaselo al cliente por WhatsApp para que él mismo vea en tiempo real cómo avanza su caso sin tener que consultarte.
+                </p>
+              </div>
+              <div className="bg-gray-50 dark:bg-gray-900/50 p-4 md:p-5 rounded-2xl border border-gray-100 dark:border-gray-700">
+                <h3 className="font-bold text-gray-800 dark:text-gray-200 mb-2 flex items-center gap-2 text-sm">
+                  <div className="w-5 h-5 rounded-full bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 flex items-center justify-center font-black text-xs border border-gray-300 dark:border-gray-600">4</div>
+                  Cerrá el Caso
+                </h3>
+                <p className="text-sm text-gray-500 dark:text-gray-400 ml-7">
+                  Cuando la compañía pague o rechace el siniestro, actualizá el estado final a <b>Cerrado</b> para mantener tu métrica de siniestralidad activa real y limpia.
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-8 flex justify-end">
+              <button onClick={() => setShowInstrucciones(false)} className="px-6 py-2.5 bg-gray-900 hover:bg-gray-800 dark:bg-gray-100 dark:hover:bg-white text-white dark:text-gray-900 rounded-xl font-bold transition-all text-sm active:scale-95">
+                Entendido
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <AlertModal
         isOpen={!!errorModalMsg}
         onClose={() => setErrorModalMsg("")}

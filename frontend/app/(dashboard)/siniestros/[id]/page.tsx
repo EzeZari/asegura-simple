@@ -5,7 +5,8 @@ import { useParams, useRouter } from "next/navigation";
 import { 
   ArrowLeft, AlertTriangle, User, Building, 
   Clock, CheckCircle, MessageSquare, Send, 
-  FileText, Calendar, ShieldCheck, MessageCircle
+  FileText, Calendar, ShieldCheck, MessageCircle,
+  Info, X, LayoutList // 🔥 Iconos para el modal de uso
 } from "lucide-react";
 import Toast from "@/components/ui/Toast";
 import { apiFetch } from "@/services/api"; 
@@ -37,6 +38,9 @@ export default function SiniestroDetallePage() {
 
   const [linkGenerado, setLinkGenerado] = useState("");
   const [isGenerandoLink, setIsGenerandoLink] = useState(false);
+
+  // 🔥 Estado para controlar la vista de ayuda rápida
+  const [showInstrucciones, setShowInstrucciones] = useState(false);
 
   const fetchSiniestro = async () => {
     try {
@@ -175,13 +179,24 @@ export default function SiniestroDetallePage() {
       <TutorialTourDetalleSiniestro />
 
       <div className="flex flex-col gap-6">
-        <button 
-          onClick={() => router.back()}
-          className="flex items-center gap-2 text-gray-400 dark:text-gray-500 hover:text-orange-600 dark:hover:text-orange-500 transition-all w-fit font-medium group text-sm md:text-base"
-        >
-          <ArrowLeft size={18} className="group-hover:-translate-x-1 transition-transform" /> 
-          Volver a Siniestros
-        </button>
+        <div className="flex justify-between items-center w-full">
+          <button 
+            onClick={() => router.back()}
+            className="flex items-center gap-2 text-gray-400 dark:text-gray-500 hover:text-orange-600 dark:hover:text-orange-500 transition-all w-fit font-medium group text-sm md:text-base"
+          >
+            <ArrowLeft size={18} className="group-hover:-translate-x-1 transition-transform" /> 
+            Volver a Siniestros
+          </button>
+
+          {/* 🔥 Botón de información de Uso */}
+          <button 
+            onClick={() => setShowInstrucciones(true)}
+            className="flex items-center gap-1.5 px-3 py-2 text-sm font-bold text-gray-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-lg transition-colors active:scale-95"
+            title="¿Cómo usar el expediente?"
+          >
+            <Info size={18} /> 
+          </button>
+        </div>
         
         <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 bg-gray-50/40 dark:bg-gray-800/40 p-4 md:p-6 rounded-2xl border border-gray-100 dark:border-gray-700/50 transition-colors">
           
@@ -222,7 +237,6 @@ export default function SiniestroDetallePage() {
               </select>
             </div>
 
-            {/* 🔥 INYECTAMOS LA NUEVA BOTONERA (WSP, MAIL, EDITAR) */}
             <SiniestroBotonera 
               siniestro={siniestro} 
               puedeModificar={puedeModificar} 
@@ -297,7 +311,6 @@ export default function SiniestroDetallePage() {
 
         <div className="flex flex-col gap-6 tour-detalle-informacion">
           
-          {/* 🔥 INYECTAMOS EL NUEVO COMPONENTE DE RIESGO */}
           <SiniestroRiesgoCard poliza={poliza} />
 
           <div className="p-5 md:p-6 border border-gray-100 dark:border-gray-700 rounded-3xl bg-white dark:bg-gray-800 shadow-sm flex flex-col gap-4 transition-colors">
@@ -402,6 +415,68 @@ export default function SiniestroDetallePage() {
           }} 
           siniestroAEditar={siniestro} 
         />
+      )}
+
+      {/* 🔥 MODAL DE INSTRUCCIONES PARA EL EXPEDIENTE */}
+      {showInstrucciones && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[200] p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-3xl p-6 md:p-8 w-full max-w-2xl shadow-xl relative animate-in fade-in zoom-in duration-200 max-h-[85vh] overflow-y-auto custom-scrollbar">
+            <button onClick={() => setShowInstrucciones(false)} className="absolute top-4 right-4 text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"><X size={20} /></button>
+            
+            <div className="flex items-center gap-3 mb-6">
+              <div className="p-3 bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 rounded-2xl shrink-0"><Info size={24} /></div>
+              <div>
+                <h2 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-white leading-tight">¿Qué hacer en el Expediente?</h2>
+                <p className="text-sm text-gray-500 dark:text-gray-400">Todo lo que necesitás saber sobre la vista detallada.</p>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <div className="bg-gray-50 dark:bg-gray-900/50 p-4 md:p-5 rounded-2xl border border-gray-100 dark:border-gray-700">
+                <h3 className="font-bold text-gray-800 dark:text-gray-200 mb-2 flex items-center gap-2 text-sm">
+                  <div className="w-5 h-5 rounded-full bg-orange-100 dark:bg-orange-900/40 text-orange-600 dark:text-orange-400 flex items-center justify-center font-black text-xs border border-orange-200 dark:border-orange-800/50">1</div>
+                  Actualizar el Estado General
+                </h3>
+                <p className="text-sm text-gray-500 dark:text-gray-400 ml-7">
+                  El menú desplegable de arriba a la derecha te permite cambiar rápidamente en qué etapa está el reclamo (Ej: de "En Análisis" a "Pagado"). Esto actualiza automáticamente las métricas de tu dashboard.
+                </p>
+              </div>
+              <div className="bg-gray-50 dark:bg-gray-900/50 p-4 md:p-5 rounded-2xl border border-gray-100 dark:border-gray-700">
+                <h3 className="font-bold text-gray-800 dark:text-gray-200 mb-2 flex items-center gap-2 text-sm">
+                  <div className="w-5 h-5 rounded-full bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 flex items-center justify-center font-black text-xs border border-blue-200 dark:border-blue-800/50">2</div>
+                  Comunicación con el Cliente
+                </h3>
+                <p className="text-sm text-gray-500 dark:text-gray-400 ml-7">
+                  Usá los botones verdes y azules superiores para mandar un mensaje automático por WhatsApp o Mail al titular informando que hubo un cambio en el estado del siniestro.
+                </p>
+              </div>
+              <div className="bg-gray-50 dark:bg-gray-900/50 p-4 md:p-5 rounded-2xl border border-gray-100 dark:border-gray-700">
+                <h3 className="font-bold text-gray-800 dark:text-gray-200 mb-2 flex items-center gap-2 text-sm">
+                  <div className="w-5 h-5 rounded-full bg-green-100 dark:bg-green-900/40 text-green-600 dark:text-green-400 flex items-center justify-center font-black text-xs border border-green-200 dark:border-green-800/50">3</div>
+                  Historial de Notas Internas
+                </h3>
+                <p className="text-sm text-gray-500 dark:text-gray-400 ml-7">
+                  La caja de texto del medio te permite registrar cada avance (ej: "Perito cotizó arreglos", "Falta subir registro de conducir"). Estas notas <b>no</b> las ve el cliente, son para vos.
+                </p>
+              </div>
+              <div className="bg-gray-50 dark:bg-gray-900/50 p-4 md:p-5 rounded-2xl border border-gray-100 dark:border-gray-700">
+                <h3 className="font-bold text-gray-800 dark:text-gray-200 mb-2 flex items-center gap-2 text-sm">
+                  <div className="w-5 h-5 rounded-full bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 flex items-center justify-center font-black text-xs border border-gray-300 dark:border-gray-600">4</div>
+                  Enlace de Autoconsulta
+                </h3>
+                <p className="text-sm text-gray-500 dark:text-gray-400 ml-7">
+                  En la columna de la derecha, si generás el Link y se lo mandás por WhatsApp, el cliente entrará a una página tuya donde verá un semáforo con el estado de su reclamo.
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-8 flex justify-end">
+              <button onClick={() => setShowInstrucciones(false)} className="px-6 py-2.5 bg-gray-900 hover:bg-gray-800 dark:bg-gray-100 dark:hover:bg-white text-white dark:text-gray-900 rounded-xl font-bold transition-all text-sm active:scale-95">
+                Entendido
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       <Toast message={mensajeToast} isVisible={showToast} onClose={() => setShowToast(false)} />
