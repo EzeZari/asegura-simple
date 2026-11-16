@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Search, UploadCloud } from "lucide-react"; 
+import { Search, UploadCloud, ChevronLeft, ChevronRight } from "lucide-react"; 
 import dynamic from "next/dynamic";
 
 import NuevoAseguradoModal from "@/components/asegurados/NuevoAseguradoModal";
@@ -21,9 +21,7 @@ import { apiFetch } from "@/services/api";
 import { useAuthStore } from "@/store/authStore"; 
 import { PERMISOS, tienePermiso } from "@/utils/roles";
 
-// 🔥 IMPORTAMOS NUESTRO COMPONENTE DE EXPORTACIÓN
 import ExportButton from "@/components/ui/ExportButton";
-
 import TutorialTourAsegurados from "@/components/ui/tours/TutorialTourAsegurados";
 
 const ExportarExcelModal = dynamic(() => import("@/components/ui/ExportarExcelModal"), { ssr: false });
@@ -45,6 +43,10 @@ export default function AseguradosPage() {
   const [filtroEstado, setFiltroEstado] = useState("Todos");
   
   const [ordenActual, setOrdenActual] = useState("mas_recientes");
+
+  // 🔥 ESTADOS PARA PAGINACIÓN
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
   
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false); 
@@ -64,6 +66,11 @@ export default function AseguradosPage() {
 
   const [isAlertModalOpen, setIsAlertModalOpen] = useState(false);
   const [alertModalInfo, setAlertModalInfo] = useState({ title: "", message: "" });
+
+  // Reiniciar a la página 1 cada vez que cambiamos un filtro
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, filtroTipo, filtroEstado, ordenActual, itemsPerPage]);
 
   const fetchAsegurados = async () => {
     setIsLoading(true);
@@ -171,6 +178,12 @@ export default function AseguradosPage() {
 
   const { items: aseguradosOrdenados, requestSort, sortConfig } = useTableSort(aseguradosFiltrados);
 
+  // 🔥 LÓGICA DE PAGINACIÓN APLICADA
+  const totalItems = aseguradosOrdenados.length;
+  const totalPages = Math.ceil(totalItems / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedAsegurados = aseguradosOrdenados.slice(startIndex, startIndex + itemsPerPage);
+
   const prepararDatosParaExcel = () => {
     return aseguradosOrdenados.map((cliente) => ({
       "Nombre / Razón Social": `${cliente.nombre || ""} ${cliente.apellido || ""}`.trim(),
@@ -185,7 +198,8 @@ export default function AseguradosPage() {
   };
 
   const columnasBase: TableColumn[] = [
-    { label: <SortableHeader label="Nombre / Razón Social" sortKey="nombre" currentSort={sortConfig} requestSort={(key) => requestSort(key as any)} /> },
+    // 🔥 isStickyLeft para anclar columnas a los costados
+    { label: <SortableHeader label="Nombre / Razón Social" sortKey="nombre" currentSort={sortConfig} requestSort={(key) => requestSort(key as any)} />, isStickyLeft: true },
     { label: <SortableHeader label="DNI / CUIT" sortKey="dni" currentSort={sortConfig} requestSort={(key) => requestSort(key as any)} /> },
     { label: "Contacto" },
     { label: <SortableHeader label="Tipo" sortKey="tipo" currentSort={sortConfig} requestSort={(key) => requestSort(key as any)} /> },
@@ -195,7 +209,8 @@ export default function AseguradosPage() {
   ];
 
   const columnas = puedeModificar 
-    ? [...columnasBase, { label: "Acciones", align: "right" as const }]
+    // 🔥 isStickyRight para la columna de acciones
+    ? [...columnasBase, { label: "Acciones", align: "right" as const, isStickyRight: true }]
     : columnasBase;
 
   return (
@@ -232,20 +247,19 @@ export default function AseguradosPage() {
             </button>
           )}
           
-          {/* 🔥 EL BOTÓN INTELIGENTE DE EXPORTACIÓN */}
           <ExportButton 
             onExport={() => setIsExportModalOpen(true)} 
             datosVacios={aseguradosOrdenados.length === 0} 
           />
         </div>
-      </div> {/* 🔥 ESTA ETIQUETA DE CIERRE FALTABA */}
+      </div>
 
-      <div className="tour-asegurados-tabla w-full">
+      <div className="tour-asegurados-tabla w-full flex flex-col gap-4">
         
         {/* VISTA ESCRITORIO */}
         <div className="hidden lg:block">
-          <Table columns={columnas} isLoading={isLoading} isEmpty={aseguradosOrdenados.length === 0} emptyContent={<div className="flex flex-col items-center justify-center text-gray-500 dark:text-gray-400 py-6 transition-colors"><Search size={32} className="text-gray-300 dark:text-gray-600 mb-3" /><p className="font-medium text-gray-900 dark:text-white transition-colors">No se encontraron clientes</p></div>}>
-            {aseguradosOrdenados.map((cliente) => (
+          <Table columns={columnas} isLoading={isLoading} isEmpty={paginatedAsegurados.length === 0} emptyContent={<div className="flex flex-col items-center justify-center text-gray-500 dark:text-gray-400 py-6 transition-colors"><Search size={32} className="text-gray-300 dark:text-gray-600 mb-3" /><p className="font-medium text-gray-900 dark:text-white transition-colors">No se encontraron clientes</p></div>}>
+            {paginatedAsegurados.map((cliente) => (
               <AseguradoTableRow 
                 key={cliente.id}
                 cliente={cliente}
@@ -265,14 +279,14 @@ export default function AseguradosPage() {
         <div className="block lg:hidden">
           {isLoading ? (
              <div className="text-center py-8 text-gray-500 animate-pulse">Cargando clientes...</div>
-          ) : aseguradosOrdenados.length === 0 ? (
+          ) : paginatedAsegurados.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-gray-500 bg-gray-50 dark:bg-gray-800/50 rounded-2xl border border-gray-100 dark:border-gray-800">
               <Search size={32} className="text-gray-300 dark:text-gray-600 mb-3" />
               <p className="font-medium text-gray-900 dark:text-white">No se encontraron clientes</p>
             </div>
           ) : (
-            <div className="flex flex-col gap-4 pb-12">
-              {aseguradosOrdenados.map((cliente) => (
+            <div className="flex flex-col gap-4">
+              {paginatedAsegurados.map((cliente) => (
                 <AseguradoMobileCard 
                   key={cliente.id}
                   cliente={cliente}
@@ -289,6 +303,55 @@ export default function AseguradosPage() {
           )}
         </div>
 
+        {/* 🔥 PAGINACIÓN UI (Con el pr-16 para esquivar el chat) */}
+        {!isLoading && totalItems > 0 && (
+          <div className="flex flex-col sm:flex-row justify-between items-center gap-4 bg-white dark:bg-gray-800 p-4 md:pr-16 rounded-xl border border-gray-100 dark:border-gray-700 shadow-sm transition-colors mt-2">
+            
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-gray-500 dark:text-gray-400">Mostrar</span>
+              <select
+                value={itemsPerPage}
+                onChange={(e) => setItemsPerPage(Number(e.target.value))}
+                className="bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 text-sm rounded-lg focus:ring-emerald-500 outline-none transition-colors px-2 py-1.5 cursor-pointer font-medium"
+              >
+                <option value={10}>10</option>
+                <option value={20}>20</option>
+                <option value={50}>50</option>
+                <option value={100}>100</option>
+              </select>
+              <span className="text-sm text-gray-500 dark:text-gray-400">filas</span>
+            </div>
+
+            <div className="flex flex-col sm:flex-row items-center gap-4">
+              <span className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                Mostrando del <strong className="text-gray-900 dark:text-gray-100">{startIndex + 1}</strong> al <strong className="text-gray-900 dark:text-gray-100">{Math.min(startIndex + itemsPerPage, totalItems)}</strong> de <strong className="text-gray-900 dark:text-gray-100">{totalItems}</strong>
+              </span>
+              
+              <div className="flex gap-1.5">
+                <button
+                  onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                  disabled={currentPage === 1}
+                  className="flex items-center justify-center p-1.5 text-gray-600 dark:text-gray-300 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                  title="Anterior"
+                >
+                  <ChevronLeft size={20} />
+                </button>
+                <div className="flex items-center justify-center px-3 text-sm font-bold text-gray-700 dark:text-gray-300">
+                  {currentPage} / {totalPages}
+                </div>
+                <button
+                  onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                  disabled={currentPage === totalPages || totalPages === 0}
+                  className="flex items-center justify-center p-1.5 text-gray-600 dark:text-gray-300 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                  title="Siguiente"
+                >
+                  <ChevronRight size={20} />
+                </button>
+              </div>
+            </div>
+
+          </div>
+        )}
       </div>
 
       {puedeModificar && (

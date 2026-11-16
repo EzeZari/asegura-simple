@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { FileText, UploadCloud } from "lucide-react"; 
+import { FileText, UploadCloud, ChevronLeft, ChevronRight } from "lucide-react"; 
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 
@@ -40,6 +40,11 @@ export default function PolizasPage() {
   const [filtroRama, setFiltroRama] = useState("Todas");
   const [filtroEstado, setFiltroEstado] = useState("Todos");
   const [ordenActual, setOrdenActual] = useState("mas_recientes");
+  
+  // 🔥 ESTADOS PARA PAGINACIÓN
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false); 
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
@@ -52,6 +57,11 @@ export default function PolizasPage() {
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [polizaAEliminar, setPolizaAEliminar] = useState<any>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // Reiniciar a la página 1 cada vez que cambiamos un filtro
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, filtroRama, filtroEstado, ordenActual, itemsPerPage]);
 
   const fetchPolizas = async () => {
     setIsLoading(true);
@@ -174,6 +184,12 @@ export default function PolizasPage() {
 
   const { items: polizasOrdenadas, requestSort, sortConfig } = useTableSort(polizasFiltradas);
 
+  // 🔥 LÓGICA DE PAGINACIÓN APLICADA
+  const totalItems = polizasOrdenadas.length;
+  const totalPages = Math.ceil(totalItems / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedPolizas = polizasOrdenadas.slice(startIndex, startIndex + itemsPerPage);
+
   const prepararDatosParaExcel = () => {
     return polizasOrdenadas.map((p) => ({
       "Nro Póliza": p.nroPoliza || "",
@@ -182,7 +198,6 @@ export default function PolizasPage() {
       "Compañía": p.compania?.nombre || "",
       "Rama / Riesgo": p.tipoPoliza || "",
       "Cobertura": p.cobertura || "",
-      // 🔥 ACÁ AGREGAMOS LOS DATOS NUEVOS A LA EXPORTACIÓN
       "Suma Asegurada": p.sumaAsegurada || "",
       "Cláusula Ajuste": p.clausulaAjuste || "",
       "Patente": p.patente?.toUpperCase() || "",
@@ -201,7 +216,7 @@ export default function PolizasPage() {
   };
 
   const columnasBase: TableColumn[] = [
-    { label: <SortableHeader label="Nro Póliza" sortKey="nroPoliza" currentSort={sortConfig} requestSort={(key) => requestSort(key as any)} /> },
+    { label: <SortableHeader label="Nro Póliza" sortKey="nroPoliza" currentSort={sortConfig} requestSort={(key) => requestSort(key as any)} />, isStickyLeft: true },
     { label: "Titular" },
     { label: "Compañía" },
     { label: <SortableHeader label="Rama / Cobertura" sortKey="tipoPoliza" currentSort={sortConfig} requestSort={(key) => requestSort(key as any)} /> },
@@ -212,11 +227,12 @@ export default function PolizasPage() {
   ];
 
   const columnas = puedeModificar 
-    ? [...columnasBase, { label: "Acciones", align: "right" as const }]
+    ? [...columnasBase, { label: "Acciones", align: "right" as const, isStickyRight: true }]
     : columnasBase;
 
   return (
-    <div className="flex flex-col p-4 lg:p-8 w-full min-w-0 max-w-full gap-5 lg:gap-8 min-h-screen transition-colors duration-300">
+    // 🔥 AJUSTE 1: Se quitó el margen inferior gigante (pb-24 lg:pb-32)
+    <div className="flex flex-col p-4 lg:p-8 w-full min-w-0 max-w-full gap-5 lg:gap-8 min-h-[calc(100vh-2rem)] transition-colors duration-300">
       
       <PageHeader 
         titulo="Pólizas" 
@@ -246,11 +262,12 @@ export default function PolizasPage() {
         </div>
       </div>
 
-      <div className="w-full">
+      <div className="w-full flex flex-col gap-4">
         
+        {/* 🔥 VISTA ESCRITORIO */}
         <div className="hidden md:block">
-          <Table columns={columnas} isLoading={isLoading} isEmpty={polizasOrdenadas.length === 0} emptyContent={<div className="flex flex-col items-center justify-center text-gray-500 dark:text-gray-400 py-6 transition-colors"><FileText size={32} className="text-gray-300 dark:text-gray-600 mb-3" /><p className="font-medium text-gray-900 dark:text-white">No se encontraron pólizas</p></div>}>
-            {polizasOrdenadas.map((poliza) => (
+          <Table columns={columnas} isLoading={isLoading} isEmpty={paginatedPolizas.length === 0} emptyContent={<div className="flex flex-col items-center justify-center text-gray-500 dark:text-gray-400 py-6 transition-colors"><FileText size={32} className="text-gray-300 dark:text-gray-600 mb-3" /><p className="font-medium text-gray-900 dark:text-white">No se encontraron pólizas</p></div>}>
+            {paginatedPolizas.map((poliza) => (
               <PolizaTableRow 
                 key={poliza.id} 
                 poliza={poliza} 
@@ -267,17 +284,18 @@ export default function PolizasPage() {
           </Table>
         </div>
 
+        {/* 🔥 VISTA CELULAR */}
         <div className="block md:hidden">
           {isLoading ? (
              <div className="text-center py-8 text-gray-500 animate-pulse">Cargando pólizas...</div>
-          ) : polizasOrdenadas.length === 0 ? (
+          ) : paginatedPolizas.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-gray-500 bg-gray-50 dark:bg-gray-800/50 rounded-2xl border border-gray-100 dark:border-gray-800">
               <FileText size={32} className="text-gray-300 dark:text-gray-600 mb-3" />
               <p className="font-medium text-gray-900 dark:text-white">No se encontraron pólizas</p>
             </div>
           ) : (
-            <div className="flex flex-col gap-3 pb-12">
-              {polizasOrdenadas.map((poliza) => (
+            <div className="flex flex-col gap-3">
+              {paginatedPolizas.map((poliza) => (
                 <PolizaMobileCard 
                   key={poliza.id}
                   poliza={poliza}
@@ -294,6 +312,57 @@ export default function PolizasPage() {
             </div>
           )}
         </div>
+
+        {/* 🔥 PAGINACIÓN UI */}
+        {!isLoading && totalItems > 0 && (
+          // 🔥 AJUSTE 2: Se ajustó el pr-16 (padding-right) para mover los botones más a la derecha esquivando el chat.
+          <div className="flex flex-col sm:flex-row justify-between items-center gap-4 bg-white dark:bg-gray-800 p-4 md:pr-16 rounded-xl border border-gray-100 dark:border-gray-700 shadow-sm transition-colors mt-2">
+            
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-gray-500 dark:text-gray-400">Mostrar</span>
+              <select
+                value={itemsPerPage}
+                onChange={(e) => setItemsPerPage(Number(e.target.value))}
+                className="bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 text-sm rounded-lg focus:ring-emerald-500 outline-none transition-colors px-2 py-1.5 cursor-pointer font-medium"
+              >
+                <option value={10}>10</option>
+                <option value={20}>20</option>
+                <option value={50}>50</option>
+                <option value={100}>100</option>
+              </select>
+              <span className="text-sm text-gray-500 dark:text-gray-400">filas</span>
+            </div>
+
+            <div className="flex flex-col sm:flex-row items-center gap-4">
+              <span className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                Mostrando del <strong className="text-gray-900 dark:text-gray-100">{startIndex + 1}</strong> al <strong className="text-gray-900 dark:text-gray-100">{Math.min(startIndex + itemsPerPage, totalItems)}</strong> de <strong className="text-gray-900 dark:text-gray-100">{totalItems}</strong>
+              </span>
+              
+              <div className="flex gap-1.5">
+                <button
+                  onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                  disabled={currentPage === 1}
+                  className="flex items-center justify-center p-1.5 text-gray-600 dark:text-gray-300 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                  title="Anterior"
+                >
+                  <ChevronLeft size={20} />
+                </button>
+                <div className="flex items-center justify-center px-3 text-sm font-bold text-gray-700 dark:text-gray-300">
+                  {currentPage} / {totalPages}
+                </div>
+                <button
+                  onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                  disabled={currentPage === totalPages || totalPages === 0}
+                  className="flex items-center justify-center p-1.5 text-gray-600 dark:text-gray-300 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                  title="Siguiente"
+                >
+                  <ChevronRight size={20} />
+                </button>
+              </div>
+            </div>
+
+          </div>
+        )}
 
       </div>
 

@@ -18,9 +18,15 @@ export default function AseguradoTableRow({
   cliente, onClickPolizas, menuAbiertoId, onToggleMenu, puedeModificar, onEdit, onToggleEstado, onEliminar 
 }: Props) {
   return (
-    // 🔥 Adaptado hover
-    <tr className="hover:bg-gray-50/50 dark:hover:bg-gray-800/50 transition-colors group">
-      <td className="px-4 lg:px-6 py-4 font-medium text-gray-900 dark:text-gray-100 whitespace-nowrap">{cliente.nombre} {cliente.apellido}</td>
+    <tr className="hover:bg-gray-50/80 dark:hover:bg-gray-800/80 transition-colors group">
+      
+      {/* 🔥 CELDA 1: ANCLADA A LA IZQUIERDA */}
+      <td className="px-4 lg:px-6 py-4 font-medium text-gray-900 dark:text-gray-100 whitespace-nowrap 
+        sticky left-0 z-10 bg-white group-hover:bg-gray-50 dark:bg-gray-800 dark:group-hover:bg-gray-800/80 
+        shadow-[1px_0_0_0_rgba(243,244,246,1)] dark:shadow-[1px_0_0_0_rgba(55,65,81,1)]">
+        {cliente.nombre} {cliente.apellido}
+      </td>
+      
       <td className="px-4 lg:px-6 py-4 text-gray-600 dark:text-gray-400 font-mono text-xs whitespace-nowrap">{cliente.dni}</td>
       <td className="px-4 lg:px-6 py-4 whitespace-nowrap">
         <div className="flex flex-col">
@@ -36,7 +42,6 @@ export default function AseguradoTableRow({
       </td>
       <td className="px-4 lg:px-6 py-4 text-gray-500 dark:text-gray-500 italic whitespace-nowrap">{new Date(cliente.fechaRegistro).toLocaleDateString("es-AR")}</td>
       <td className="px-4 lg:px-6 py-4 text-center whitespace-nowrap">
-        {/* 🔥 Botón pólizas */}
         <button
           onClick={() => onClickPolizas(cliente)}
           className="inline-flex items-center justify-center bg-green-50 dark:bg-green-900/30 hover:bg-green-100 dark:hover:bg-green-900/50 text-green-700 dark:text-green-400 px-3 py-1 rounded-full font-bold gap-1.5 border border-green-100 dark:border-green-800/30 hover:border-green-200 dark:hover:border-green-700/50 text-xs transition-colors cursor-pointer"
@@ -45,14 +50,16 @@ export default function AseguradoTableRow({
         </button>
       </td>
       <td className="px-4 lg:px-6 py-4 whitespace-nowrap">
-        {/* 🔥 Badges estado */}
         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${cliente.activo ? "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-400" : "bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-400"}`}>
           {cliente.activo ? "Activo" : "Inactivo"}
         </span>
       </td>
 
+      {/* 🔥 CELDA FINAL: ANCLADA A LA DERECHA */}
       {puedeModificar && (
-        <td className="px-4 lg:px-6 py-4 text-right relative whitespace-nowrap">
+        <td className="px-4 lg:px-6 py-4 text-right relative whitespace-nowrap
+          sticky right-0 z-10 bg-white group-hover:bg-gray-50 dark:bg-gray-800 dark:group-hover:bg-gray-800/80 
+          shadow-[-1px_0_0_0_rgba(243,244,246,1)] dark:shadow-[-1px_0_0_0_rgba(55,65,81,1)]">
           <ActionMenu isOpen={menuAbiertoId === cliente.id} onToggle={() => onToggleMenu(menuAbiertoId === cliente.id ? null : cliente.id)}>
             <ActionMenuItem icon={Edit} label="Editar" onClick={() => onEdit?.(cliente)} />
             <ActionMenuItem

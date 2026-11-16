@@ -46,7 +46,6 @@ export default function PolizaTableRow({
     return p.estado; 
   };
 
-  // 🔥 Badges adaptados
   const getEstadoBadge = (estado: string) => {
     switch (estado) {
       case "Vigente":
@@ -60,15 +59,25 @@ export default function PolizaTableRow({
   };
 
   return (
-    <tr className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors group">
-      <td className="px-4 lg:px-6 py-4 font-mono font-medium text-green-700 dark:text-green-500 cursor-pointer hover:underline hover:text-green-800 dark:hover:text-green-400 whitespace-nowrap transition-colors" onClick={() => onClickDetalle(poliza.id)}>
+    <tr className="hover:bg-gray-50/80 dark:hover:bg-gray-800/80 transition-colors group">
+      
+      {/* 🔥 CELDA 1: ANCLADA A LA IZQUIERDA */}
+      <td 
+        className="px-4 lg:px-6 py-4 font-mono font-medium text-green-700 dark:text-green-500 cursor-pointer hover:underline hover:text-green-800 dark:hover:text-green-400 whitespace-nowrap transition-colors
+        sticky left-0 z-10 bg-white group-hover:bg-gray-50 dark:bg-gray-800 dark:group-hover:bg-gray-800/80 
+        shadow-[1px_0_0_0_rgba(243,244,246,1)] dark:shadow-[1px_0_0_0_rgba(55,65,81,1)]" 
+        onClick={() => onClickDetalle(poliza.id)}
+      >
         #{poliza.nroPoliza}
       </td>
+      
       <td className="px-4 lg:px-6 py-4 whitespace-nowrap">
         <div className="font-medium text-gray-900 dark:text-gray-100 transition-colors">{poliza.asegurado?.nombre} {poliza.asegurado?.apellido}</div>
         <div className="text-xs text-gray-500 dark:text-gray-400 transition-colors">DNI: {poliza.asegurado?.dni}</div>
       </td>
+      
       <td className="px-4 lg:px-6 py-4 text-gray-700 dark:text-gray-300 whitespace-nowrap transition-colors">{poliza.compania?.nombre || "-"}</td>
+      
       <td className="px-4 lg:px-6 py-4 whitespace-nowrap">
         <div className="font-medium text-gray-900 dark:text-gray-100 transition-colors">{poliza.tipoPoliza}</div>
         <div className="text-xs text-gray-500 dark:text-gray-400 truncate max-w-[150px] transition-colors">{poliza.cobertura || "Sin detalle"}</div>
@@ -84,7 +93,6 @@ export default function PolizaTableRow({
                 <div className="text-sm font-bold font-mono tracking-wider text-gray-900 dark:text-gray-200 uppercase bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded w-fit">
                   {poliza.patente || "-"}
                 </div>
-                {/* 🔥 AGREGAMOS MARCA Y MODELO AQUÍ */}
                 {(poliza.marca || poliza.modelo) && (
                   <div className="text-xs text-gray-600 dark:text-gray-400 font-medium mt-1 truncate max-w-[160px]">
                     {poliza.marca} {poliza.modelo}
@@ -122,7 +130,6 @@ export default function PolizaTableRow({
           <span className={`inline-flex items-center justify-center px-2 py-0.5 rounded-full text-[10px] font-bold shadow-sm transition-colors ${getEstadoBadge(getEstadoInteligente(poliza))}`}>
             {getEstadoInteligente(poliza)}
           </span>
-          {/* 🔥 AGREGAMOS EL ESTADO FINANCIERO (Si está disponible) */}
           {poliza.estadoPago && poliza.estadoPago !== "Sin información" && (
             <span className={`inline-flex items-center justify-center px-2 py-0.5 rounded-full text-[10px] font-bold shadow-sm transition-colors ${
               poliza.estadoPago === "Al día" ? "bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800/30 border" :
@@ -135,8 +142,11 @@ export default function PolizaTableRow({
         </div>
       </td>
       
+      {/* 🔥 CELDA FINAL: ANCLADA A LA DERECHA */}
       {puedeModificar && (
-        <td className="px-4 lg:px-6 py-4 text-right relative whitespace-nowrap">
+        <td className="px-4 lg:px-6 py-4 text-right whitespace-nowrap 
+          sticky right-0 z-10 bg-white group-hover:bg-gray-50 dark:bg-gray-800 dark:group-hover:bg-gray-800/80 
+          shadow-[-1px_0_0_0_rgba(243,244,246,1)] dark:shadow-[-1px_0_0_0_rgba(55,65,81,1)]">
           <ActionMenu isOpen={menuAbiertoId === poliza.id} onToggle={() => onToggleMenu(menuAbiertoId === poliza.id ? null : poliza.id)}>
             <ActionMenuItem icon={Edit} label="Editar" onClick={() => { onEdit?.(poliza); onToggleMenu(null); }} />
             {poliza.asegurado?.email && getEstadoInteligente(poliza) !== "Anulada" && (
