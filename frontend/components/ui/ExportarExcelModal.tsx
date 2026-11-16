@@ -80,8 +80,8 @@ export default function ExportarExcelModal({ isOpen, onClose, datos, nombreArchi
         // Empujamos el inicio (tl) un poco más a la derecha y el final (br) más a la izquierda 
         // para que quede centrado en el bloque de 2 columnas.
         worksheet.addImage(logoId, {
-          tl: { col: 0.4, row: 0.15 }, 
-          br: { col: 1.6, row: 0.85 }, 
+          tl: { col: 0.4, row: 0.15 } as any, 
+          br: { col: 1.6, row: 0.85 } as any, 
           editAs: 'oneCell' 
         });
       } catch (e) {
