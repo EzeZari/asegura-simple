@@ -48,6 +48,14 @@ export default function AseguradosPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   
+  // 🔥 RECUPERAR MEMORIA DE FILAS
+  useEffect(() => {
+    const filasGuardadas = localStorage.getItem("asegura_filas_preferidas");
+    if (filasGuardadas) {
+      setItemsPerPage(Number(filasGuardadas));
+    }
+  }, []);
+  
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false); 
   const [isImportModalOpen, setIsImportModalOpen] = useState(false); 
@@ -178,7 +186,7 @@ export default function AseguradosPage() {
 
   const { items: aseguradosOrdenados, requestSort, sortConfig } = useTableSort(aseguradosFiltrados);
 
-  // 🔥 LÓGICA DE PAGINACIÓN APLICADA
+  // LÓGICA DE PAGINACIÓN APLICADA
   const totalItems = aseguradosOrdenados.length;
   const totalPages = Math.ceil(totalItems / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
@@ -198,7 +206,6 @@ export default function AseguradosPage() {
   };
 
   const columnasBase: TableColumn[] = [
-    // 🔥 isStickyLeft para anclar columnas a los costados
     { label: <SortableHeader label="Nombre / Razón Social" sortKey="nombre" currentSort={sortConfig} requestSort={(key) => requestSort(key as any)} />, isStickyLeft: true },
     { label: <SortableHeader label="DNI / CUIT" sortKey="dni" currentSort={sortConfig} requestSort={(key) => requestSort(key as any)} /> },
     { label: "Contacto" },
@@ -209,7 +216,6 @@ export default function AseguradosPage() {
   ];
 
   const columnas = puedeModificar 
-    // 🔥 isStickyRight para la columna de acciones
     ? [...columnasBase, { label: "Acciones", align: "right" as const, isStickyRight: true }]
     : columnasBase;
 
@@ -303,7 +309,7 @@ export default function AseguradosPage() {
           )}
         </div>
 
-        {/* 🔥 PAGINACIÓN UI (Con el pr-16 para esquivar el chat) */}
+        {/* PAGINACIÓN UI */}
         {!isLoading && totalItems > 0 && (
           <div className="flex flex-col sm:flex-row justify-between items-center gap-4 bg-white dark:bg-gray-800 p-4 md:pr-16 rounded-xl border border-gray-100 dark:border-gray-700 shadow-sm transition-colors mt-2">
             
@@ -311,7 +317,11 @@ export default function AseguradosPage() {
               <span className="text-sm text-gray-500 dark:text-gray-400">Mostrar</span>
               <select
                 value={itemsPerPage}
-                onChange={(e) => setItemsPerPage(Number(e.target.value))}
+                onChange={(e) => {
+                  const valor = Number(e.target.value);
+                  setItemsPerPage(valor);
+                  localStorage.setItem("asegura_filas_preferidas", valor.toString()); // 🔥 GUARDA EN MEMORIA
+                }}
                 className="bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 text-sm rounded-lg focus:ring-emerald-500 outline-none transition-colors px-2 py-1.5 cursor-pointer font-medium"
               >
                 <option value={10}>10</option>

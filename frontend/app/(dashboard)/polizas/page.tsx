@@ -45,6 +45,14 @@ export default function PolizasPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
 
+  // 🔥 RECUPERAR MEMORIA DE FILAS
+  useEffect(() => {
+    const filasGuardadas = localStorage.getItem("asegura_filas_preferidas");
+    if (filasGuardadas) {
+      setItemsPerPage(Number(filasGuardadas));
+    }
+  }, []);
+
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false); 
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
@@ -184,7 +192,7 @@ export default function PolizasPage() {
 
   const { items: polizasOrdenadas, requestSort, sortConfig } = useTableSort(polizasFiltradas);
 
-  // 🔥 LÓGICA DE PAGINACIÓN APLICADA
+  // LÓGICA DE PAGINACIÓN APLICADA
   const totalItems = polizasOrdenadas.length;
   const totalPages = Math.ceil(totalItems / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
@@ -231,7 +239,6 @@ export default function PolizasPage() {
     : columnasBase;
 
   return (
-    // 🔥 AJUSTE 1: Se quitó el margen inferior gigante (pb-24 lg:pb-32)
     <div className="flex flex-col p-4 lg:p-8 w-full min-w-0 max-w-full gap-5 lg:gap-8 min-h-[calc(100vh-2rem)] transition-colors duration-300">
       
       <PageHeader 
@@ -264,7 +271,7 @@ export default function PolizasPage() {
 
       <div className="w-full flex flex-col gap-4">
         
-        {/* 🔥 VISTA ESCRITORIO */}
+        {/* VISTA ESCRITORIO */}
         <div className="hidden md:block">
           <Table columns={columnas} isLoading={isLoading} isEmpty={paginatedPolizas.length === 0} emptyContent={<div className="flex flex-col items-center justify-center text-gray-500 dark:text-gray-400 py-6 transition-colors"><FileText size={32} className="text-gray-300 dark:text-gray-600 mb-3" /><p className="font-medium text-gray-900 dark:text-white">No se encontraron pólizas</p></div>}>
             {paginatedPolizas.map((poliza) => (
@@ -284,7 +291,7 @@ export default function PolizasPage() {
           </Table>
         </div>
 
-        {/* 🔥 VISTA CELULAR */}
+        {/* VISTA CELULAR */}
         <div className="block md:hidden">
           {isLoading ? (
              <div className="text-center py-8 text-gray-500 animate-pulse">Cargando pólizas...</div>
@@ -313,16 +320,19 @@ export default function PolizasPage() {
           )}
         </div>
 
-        {/* 🔥 PAGINACIÓN UI */}
+        {/* PAGINACIÓN UI */}
         {!isLoading && totalItems > 0 && (
-          // 🔥 AJUSTE 2: Se ajustó el pr-16 (padding-right) para mover los botones más a la derecha esquivando el chat.
           <div className="flex flex-col sm:flex-row justify-between items-center gap-4 bg-white dark:bg-gray-800 p-4 md:pr-16 rounded-xl border border-gray-100 dark:border-gray-700 shadow-sm transition-colors mt-2">
             
             <div className="flex items-center gap-2">
               <span className="text-sm text-gray-500 dark:text-gray-400">Mostrar</span>
               <select
                 value={itemsPerPage}
-                onChange={(e) => setItemsPerPage(Number(e.target.value))}
+                onChange={(e) => {
+                  const valor = Number(e.target.value);
+                  setItemsPerPage(valor);
+                  localStorage.setItem("asegura_filas_preferidas", valor.toString()); // 🔥 GUARDA EN MEMORIA
+                }}
                 className="bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 text-sm rounded-lg focus:ring-emerald-500 outline-none transition-colors px-2 py-1.5 cursor-pointer font-medium"
               >
                 <option value={10}>10</option>
