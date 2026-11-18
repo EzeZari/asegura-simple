@@ -1,0 +1,16 @@
+# AseguraSimple
+
+> AseguraSimple es un sistema de gestión en la nube para productores asesores de seguros (PAS) de Argentina. Centraliza la cartera de clientes y pólizas, controla vencimientos con un calendario de semáforo, gestiona cobranzas y mora, y envía alertas por WhatsApp y correo. Permite cargar pólizas desde un PDF con inteligencia artificial e importar la cartera desde Excel. Incluye 14 días de prueba gratis sin tarjeta de crédito.
+
+## Producto
+- [Funcionalidades](https://www.asegurasimple.com/#funcionalidades): carga de pólizas con IA, módulo de refacturación y cobranzas, calendario de vencimientos, panel de métricas, ficha 360º de cada póliza, WhatsApp en 1 clic y correos con plantillas.
+- [Precios](https://www.asegurasimple.com/#precios): plan Prueba (gratis, 14 días, hasta 10 asegurados), Básico ($9.990/mes, hasta 100 asegurados), Profesional ($14.990/mes, hasta 300 asegurados y 3 usuarios) y Agencia ($24.990/mes, asegurados ilimitados y hasta 10 usuarios).
+- [Preguntas frecuentes](https://www.asegurasimple.com/#faq): seguridad de los datos, importación desde Excel, soporte, uso desde el celular y cancelación.
+
+## Empezar
+- [Crear cuenta gratis](https://www.asegurasimple.com/registro)
+- [Contacto](https://www.asegurasimple.com/contacto)
+
+## Legal
+- [Términos y Condiciones](https://www.asegurasimple.com/terminos)
+- [Política de Privacidad](https://www.asegurasimple.com/privacidad)

@@ -20,8 +20,7 @@ export default function FAQ() {
             <li className="flex items-start gap-2"><CheckCircle2 size={18} className="text-green-600 shrink-0 mt-0.5" /> La información es 100% tuya. Podés exportarla o eliminarla en cualquier momento.</li>
           </ul>
         </>
-      ),
-      textOnly: "Absolutamente. Usamos servidores de alta seguridad y cifrado de datos..." // Para el Schema JSON-LD
+      )
     },
     {
       q: "¿Puedo importar mi cartera actual desde un Excel?",
@@ -29,8 +28,7 @@ export default function FAQ() {
         <p>
           Sí, por supuesto. Desarrollamos una herramienta de <strong>importación masiva inteligente</strong>. Solo tenés que subir tu archivo Excel y el sistema se encarga de crear las fichas de los clientes y ordenar la información de forma automática. En menos de 5 minutos tenés todo el sistema listo para operar.
         </p>
-      ),
-      textOnly: "Sí. Tenemos una herramienta de importación masiva inteligente..."
+      )
     },
     {
       q: "¿Tienen soporte técnico si no entiendo algo?",
@@ -38,8 +36,7 @@ export default function FAQ() {
         <p>
           Sí, y es uno de los beneficios mejor valorados por nuestros usuarios. A diferencia de otros sistemas, no te dejamos solo. Tendrás acceso a un <strong>Chat de Soporte Integrado</strong> directamente dentro de la plataforma para resolver cualquier duda al instante con nuestro equipo.
         </p>
-      ),
-      textOnly: "Sí, todos nuestros usuarios cuentan con acceso a un chat de soporte integrado..."
+      )
     },
     {
       q: "¿Funciona correctamente desde el celular?",
@@ -47,8 +44,7 @@ export default function FAQ() {
         <p>
           Sí, AseguraSimple es una plataforma responsiva. Esto significa que la interfaz se adapta automáticamente y de manera perfecta a la pantalla de cualquier dispositivo móvil o tablet. Podés consultar una póliza, agendar un vencimiento o cargar un siniestro desde tu celular mientras estás en la calle visitando a un cliente.
         </p>
-      ),
-      textOnly: "Sí, AseguraSimple está diseñado para adaptarse perfectamente a cualquier pantalla..."
+      )
     },
     {
       q: "¿Qué pasa si decido cancelar mi suscripción?",
@@ -56,33 +52,12 @@ export default function FAQ() {
         <p>
           Creemos en la libertad de nuestros usuarios. <strong>No hay contratos a largo plazo, cláusulas de permanencia ni letras chicas.</strong> Si en algún momento decidís dejar de usar el sistema premium, tu cuenta pasará automáticamente al plan gratuito, o bien, podés darla de baja por completo (te recomendamos exportar tu información en Excel antes de hacerlo).
         </p>
-      ),
-      textOnly: "No hay contratos a largo plazo. Podés cancelar cuando quieras y exportar tu información..."
+      )
     }
   ];
 
-  // 🔥 JSON-LD para rich snippets de FAQ en Google (Usando el texto plano)
-  const faqSchema = {
-    "@context": "https://schema.org",
-    "@type": "FAQPage",
-    "mainEntity": faqs.map((faq) => ({
-      "@type": "Question",
-      "name": faq.q,
-      "acceptedAnswer": {
-        "@type": "Answer",
-        "text": faq.textOnly
-      }
-    }))
-  };
-
   return (
     <section id="faq" className="py-24 bg-gradient-to-b from-gray-50 to-white relative overflow-hidden">
-      {/* Schema FAQPage — habilita rich snippets */}
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }}
-      />
-
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         
         <motion.div 

@@ -10,6 +10,9 @@ import FAQ from '@/components/landing/FAQ';
 import CtaFinal from '@/components/landing/CtaFinal';
 import Footer from '@/components/landing/Footer';
 
+// 🔥 3. Importamos el nuevo componente JSON-LD unificado
+import JsonLd from '@/components/JsonLd';
+
 export const metadata: Metadata = {
   title: 'AseguraSimple | Sistema de Gestión para PAS',
   description: 'Olvidate del Excel. Centralizá tu cartera, controlá vencimientos y enviá alertas automáticas por WhatsApp a tus clientes. Probá 14 días gratis.',
@@ -22,6 +25,9 @@ export const metadata: Metadata = {
 export default function LandingPage() {
   return (
     <div className="min-h-screen bg-white font-sans text-gray-900 selection:bg-green-200">
+      {/* 🔥 4. Lo inyectamos al inicio de la página para que lo lean los bots de IA */}
+      <JsonLd />
+      
       <Navbar />
       <Hero />
       <Problems />
