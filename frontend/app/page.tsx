@@ -14,11 +14,27 @@ import Footer from '@/components/landing/Footer';
 import JsonLd from '@/components/JsonLd';
 
 export const metadata: Metadata = {
-  title: 'AseguraSimple | Sistema de Gestión para PAS',
+  title: 'AseguraSimple | Sistema de Gestión para Productores de Seguros (PAS)',
   description: 'Olvidate del Excel. Centralizá tu cartera, controlá vencimientos y enviá alertas automáticas por WhatsApp a tus clientes. Probá 14 días gratis.',
   keywords: ['sistema para productores de seguros', 'sistema para PAS', 'gestión de seguros', 'AseguraSimple', 'productores asesores de seguros'],
   alternates: {
     canonical: 'https://www.asegurasimple.com', 
+  },
+  openGraph: {
+    title: 'AseguraSimple | Sistema para Productores de Seguros (PAS)',
+    description: 'Centralizá tu cartera, controlá vencimientos y enviá alertas automáticas por WhatsApp a tus clientes.',
+    url: 'https://www.asegurasimple.com',
+    siteName: 'AseguraSimple',
+    images: [
+      {
+        url: '/og-image.png',
+        width: 1200,
+        height: 630,
+        alt: 'AseguraSimple - Sistema de Gestión',
+      },
+    ],
+    locale: 'es_AR',
+    type: 'website',
   },
 };
 

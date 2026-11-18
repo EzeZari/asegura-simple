@@ -88,7 +88,7 @@ export default function JsonLd() {
             "name": "¿Mis datos y los de mis clientes están seguros?",
             "acceptedAnswer": {
               "@type": "Answer",
-              "text": "La seguridad de tu cartera es nuestra prioridad absoluta. Operamos bajo estándares bancarios para proteger tu información: servidores encriptados de alta seguridad y backups diarios automáticos. La información es 100% tuya: podés exportarla o eliminarla en cualquier momento."
+              "text": "La seguridad de tu cartera es nuestra prioridad absoluta. Operamos bajo estándares bancarios para proteger tu información: Servidores encriptados de alta seguridad. Backups diarios automáticos. La información es 100% tuya. Podés exportarla o eliminarla en cualquier momento."
             }
           },
           {
@@ -96,7 +96,7 @@ export default function JsonLd() {
             "name": "¿Puedo importar mi cartera actual desde un Excel?",
             "acceptedAnswer": {
               "@type": "Answer",
-              "text": "Sí. Desarrollamos una herramienta de importación masiva inteligente. Solo tenés que subir tu archivo Excel y el sistema crea las fichas de los clientes y ordena la información de forma automática. En menos de 5 minutos tenés todo el sistema listo para operar."
+              "text": "Sí, por supuesto. Desarrollamos una herramienta de importación masiva inteligente. Solo tenés que subir tu archivo Excel y el sistema se encarga de crear las fichas de los clientes y ordenar la información de forma automática. En menos de 5 minutos tenés todo el sistema listo para operar."
             }
           },
           {
@@ -104,7 +104,7 @@ export default function JsonLd() {
             "name": "¿Tienen soporte técnico si no entiendo algo?",
             "acceptedAnswer": {
               "@type": "Answer",
-              "text": "Sí. Tendrás acceso a un Chat de Soporte Integrado directamente dentro de la plataforma para resolver cualquier duda al instante con nuestro equipo."
+              "text": "Sí, y es uno de los beneficios mejor valorados por nuestros usuarios. A diferencia de otros sistemas, no te dejamos solo. Tendrás acceso a un Chat de Soporte Integrado directamente dentro de la plataforma para resolver cualquier duda al instante con nuestro equipo."
             }
           },
           {
@@ -112,7 +112,7 @@ export default function JsonLd() {
             "name": "¿Funciona correctamente desde el celular?",
             "acceptedAnswer": {
               "@type": "Answer",
-              "text": "Sí, AseguraSimple es una plataforma responsiva: la interfaz se adapta a la pantalla de cualquier dispositivo móvil o tablet. Podés consultar una póliza, agendar un vencimiento o cargar un siniestro desde tu celular mientras estás en la calle visitando a un cliente."
+              "text": "Sí, AseguraSimple es una plataforma responsiva. Esto significa que la interfaz se adapta automáticamente y de manera perfecta a la pantalla de cualquier dispositivo móvil o tablet. Podés consultar una póliza, agendar un vencimiento o cargar un siniestro desde tu celular mientras estás en la calle visitando a un cliente."
             }
           },
           {
@@ -120,7 +120,7 @@ export default function JsonLd() {
             "name": "¿Qué pasa si decido cancelar mi suscripción?",
             "acceptedAnswer": {
               "@type": "Answer",
-              "text": "No hay contratos a largo plazo, cláusulas de permanencia ni letras chicas. Si dejás de usar el sistema premium, tu cuenta pasa automáticamente al plan gratuito, o podés darla de baja por completo. Te recomendamos exportar tu información en Excel antes de hacerlo."
+              "text": "Creemos en la libertad de nuestros usuarios. No hay contratos a largo plazo, cláusulas de permanencia ni letras chicas. Si en algún momento decidís dejar de usar el sistema premium, tu cuenta pasará automáticamente al plan gratuito, o bien, podés darla de baja por completo (te recomendamos exportar tu información en Excel antes de hacerlo)."
             }
           }
         ]
