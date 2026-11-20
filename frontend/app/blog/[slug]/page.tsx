@@ -93,6 +93,7 @@ export default async function BlogPost({
                   day: '2-digit',
                   month: 'short',
                   year: 'numeric',
+                  timeZone: 'UTC',
                 })}
               </span>
               <span className="flex items-center gap-1">
@@ -110,7 +111,7 @@ export default async function BlogPost({
           </header>
 
           <div
-            className="prose prose-lg prose-green max-w-none text-gray-700 mb-16 [&>h2]:text-2xl [&>h2]:font-bold [&>h2]:text-gray-900 [&>h2]:mt-10 [&>h2]:mb-4 [&>p]:mb-6 [&>p]:leading-relaxed [&>ul]:list-disc [&>ul]:pl-6 [&>ul>li]:mb-2 [&>ul>li]:text-gray-700"
+            className="prose prose-lg prose-green max-w-none text-gray-700 mb-16 [&>h2]:text-2xl [&>h2]:font-bold [&>h2]:text-gray-900 [&>h2]:mt-10 [&>h2]:mb-4 [&>h3]:text-xl [&>h3]:font-bold [&>h3]:text-gray-900 [&>h3]:mt-8 [&>h3]:mb-3 [&>p]:mb-6 [&>p]:leading-relaxed [&>ul]:list-disc [&>ul]:pl-6 [&>ul]:mb-6 [&>ul>li]:mb-2 [&>ul>li]:text-gray-700 [&>figure]:my-8 [&>figure]:overflow-hidden [&>figure]:rounded-2xl [&>figure]:border [&>figure]:border-gray-200 [&>figure]:bg-white [&>figure]:p-2 [&>figure]:sm:p-3 [&>figure]:shadow-md [&>figure>img]:w-full [&>figure>img]:h-auto [&>figure>img]:rounded-xl [&>figure>img]:block [&>figure>figcaption]:mt-3 [&>figure>figcaption]:px-2 [&>figure>figcaption]:pb-1 [&>figure>figcaption]:text-center [&>figure>figcaption]:text-sm [&>figure>figcaption]:text-gray-500"
             dangerouslySetInnerHTML={{ __html: post.content }}
           />
 

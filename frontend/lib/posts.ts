@@ -17,6 +17,76 @@ export interface BlogPost {
 
 export const posts: BlogPost[] = [
   {
+    slug: 'como-cargar-polizas-anuales-con-refacturacion-trimestral',
+    title: 'Cómo cargar pólizas anuales con refacturación trimestral (y pagos mensuales o bimestrales)',
+    description: 'Guía paso a paso para cargar pólizas anuales con refacturaciones trimestrales y cuotas mensuales o bimestrales en AseguraSimple sin perder continuidad ni duplicar registros.',
+    excerpt: 'Aprendé a configurar vigencia anual, refacturaciones trimestrales y cuotas mensuales o bimestrales en una sola ficha, sin duplicar pólizas ni perder el historial de pagos.',
+    content: `
+      <p>En el mercado asegurador argentino es moneda corriente trabajar con <strong>pólizas de vigencia anual</strong> que las compañías <strong>refacturan cada 3 meses</strong> (para actualizar suma asegurada y premio) y que el cliente abona en <strong>cuotas mensuales o bimestrales</strong>. La duda más frecuente al digitalizar la cartera es cómo cargar estos tres plazos sin duplicar pólizas ni perder la continuidad del historial.</p>
+
+      <h2>Regla de oro: una sola ficha por todo el año de vigencia</h2>
+      <p>El error más común es crear una póliza nueva cada vez que llega una refacturación trimestral. Eso ensucia la cartera, multiplica registros del mismo vehículo o riesgo y corta la trazabilidad. En <strong>AseguraSimple</strong>, una póliza anual vive en <strong>un único registro durante los 12 meses</strong>.</p>
+
+      <h2>Paso 1: Cargá la vigencia anual completa</h2>
+      <p>Dentro del formulario de <strong>Nueva Póliza</strong>, en la sección <strong>A. Vigencia de la póliza</strong>:</p>
+      <ul>
+        <li><strong>Fecha Desde:</strong> colocá el inicio real del contrato anual.</li>
+        <li><strong>Fecha Hasta (Renovación):</strong> colocá la fecha de finalización del año completo.</li>
+      </ul>
+      <p>De esta forma, el sistema reserva las alertas de renovación anual para cuando realmente corresponde emitir una póliza nueva, y el botón <strong>Renovar</strong> lo usás recién al cierre del año.</p>
+
+      <h2>Paso 2: Configurá la refacturación según lo que necesitás controlar</h2>
+      <p>En la sección <strong>B. Configuración de refacturación</strong>, activá la casilla <em>¿Tiene refacturación?</em>. Como el sistema arma una única grilla de seguimiento por póliza, elegí la frecuencia según qué te resulte más útil controlar mes a mes:</p>
+      <ul>
+        <li><strong>Para controlar pagos mensuales o bimestrales (recomendado):</strong> elegí frecuencia <strong>Mensual</strong> o <strong>Bimestral</strong>, cargá la <strong>Próxima Fecha</strong> (el primer vencimiento a seguir) y el <strong>Día Habitual</strong> (ej: 10 o 16) para que el día no se corra en meses de 30 o 31 días.</li>
+        <li><strong>Para marcar solo los hitos de refacturación cada 3 meses:</strong> elegí frecuencia <strong>Trimestral</strong>. El sistema te va a generar los 4 cortes del año para revisar premio, suma asegurada y documentación en cada trimestre.</li>
+      </ul>
+
+      <figure>
+        <div style="overflow: hidden; border-radius: 0.75rem;">
+          <img
+            src="/blog/refacturacion-carga.png"
+            alt="Configuración de vigencia anual y refacturación mensual en Nueva Póliza de AseguraSimple"
+            loading="lazy"
+            style="width: 105.5%; max-width: none; height: auto; margin: -1.5% 0 -1.8% -1.3%; display: block;"
+          />
+        </div>
+        <figcaption>Ejemplo de carga: vigencia anual de 12 meses en la sección A y seguimiento mensual fijo los días 10 en la sección B.</figcaption>
+      </figure>
+
+      <h3>Tip si usás Lectura IA de PDF</h3>
+      <p>Si subís el frente de póliza con el escáner automático, verificá siempre que <strong>Fecha Hasta</strong> tome el vencimiento anual del contrato y que en <strong>B. Configuración de refacturación</strong> quede seleccionada la frecuencia de pago real del cliente (Mensual o Bimestral) antes de guardar.</p>
+
+      <p>Al guardar, dentro de la ficha de la póliza vas a ver el panel de <strong>Seguimiento de Refacturación</strong> con todos los períodos del año listos para tildar a medida que el cliente paga y con barra de progreso automática:</p>
+
+      <figure>
+        <img src="/blog/refacturacion-cuotas.png" alt="Panel de Seguimiento de Refacturación con 12 cuotas mensuales y progreso de pagos en AseguraSimple" loading="lazy" />
+        <figcaption>Seguimiento de Refacturación: los 12 períodos del año unificados en la misma ficha, con el primer trimestre ya marcado como pago.</figcaption>
+      </figure>
+
+      <h2>Paso 3: Qué hacer cuando llega la refacturación trimestral</h2>
+      <p>Cuando pasan los 3 meses y la compañía emite el endoso o refacturación del nuevo trimestre, <strong>no crees una póliza nueva ni uses el botón Renovar</strong>. Actualizá la misma ficha en segundos:</p>
+      <ul>
+        <li>Entrá a la póliza y hacé clic en <strong>Editar</strong>.</li>
+        <li>Actualizá la <strong>Suma Asegurada</strong>, la <strong>Cobertura</strong> o el <strong>Número de Póliza</strong> si cambió el endoso.</li>
+        <li><strong>Importante:</strong> dejá intacta la <strong>Próxima Fecha</strong> original para que el sistema conserve visibles todos los meses anteriores que ya tildaste como pagados.</li>
+        <li>En <strong>Documentación Digital</strong>, subí el nuevo PDF de la póliza y/o la <strong>Cuponera de Pago</strong> vigente (el sistema reemplaza el archivo anterior por el actual y deja el movimiento registrado en el <strong>Registro de Actividad</strong>).</li>
+      </ul>
+
+      <h2>Paso 4: Renovación al finalizar el año</h2>
+      <p>Recién cuando termina la vigencia anual (a los 12 meses), usás el botón verde <strong>Renovar</strong> dentro del detalle de la póliza. AseguraSimple marca automáticamente el ciclo anterior como <em>Renovada</em> (conservando todo su historial, cuotas y PDFs) y te precarga la nueva ficha. Verificá que <strong>Fecha Hasta</strong> quede seteada a 12 meses para el nuevo año y guardá.</p>
+
+      <p>Con este flujo mantenés tu cartera limpia, sin pólizas duplicadas y con el control de cobranzas al día durante todo el año. <strong><a href="/registro" class="cta-link">Probá AseguraSimple gratis por 14 días</a> y ordená tus refacturaciones sin planillas.</strong></p>
+    `,
+    date: '2026-11-19',
+    readTime: '4 min',
+    category: 'Organización',
+    bgColor: 'bg-blue-50 border border-blue-100',
+    iconColor: 'text-blue-700',
+    icon: 'BookOpen',
+    published: true,
+  },
+  {
     slug: 'como-organizar-cartera-seguros-sin-excel',
     title: 'Cómo gestionar una cartera de seguros sin Excel (y dejar de perder comisiones)',
     description: 'Descubrí por qué usar planillas de cálculo para gestionar pólizas te hace perder dinero. Conocé el software para PAS que automatiza tus vencimientos.',

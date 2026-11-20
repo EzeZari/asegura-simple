@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { HelpCircle, CheckCircle2, X } from "lucide-react";
+import { HelpCircle, CheckCircle2, X, ExternalLink } from "lucide-react";
 import { PolizaFormData } from "./polizaModal.types";
 
 interface Props {
@@ -20,6 +20,7 @@ export default function PolizaRefacturacionSection({ formData, onChange }: Props
           <button
             type="button"
             onClick={() => setShowAyuda(!showAyuda)}
+            title="Ver guía de carga"
             className="text-blue-500 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 dark:bg-blue-900/30 dark:hover:bg-blue-900/50 p-1 rounded-full transition-colors"
           >
             <HelpCircle size={16} />
@@ -57,17 +58,30 @@ export default function PolizaRefacturacionSection({ formData, onChange }: Props
           </p>
           <ul className="list-disc pl-5 space-y-1.5 text-xs opacity-90">
             <li>
-              <strong className="font-bold">Próxima Fecha (Mes):</strong> Le dice al sistema a partir de qué mes empezar a calcular las cuotas. Si el cliente ya pagó meses anteriores, poné la fecha de la primera cuota impaga.
+              <strong className="font-bold">Póliza anual con refacturación trimestral y cuotas:</strong> cargá en <i>A. Vigencia</i> el año completo. Acá elegí la frecuencia real de pago del cliente (<b>Mensual</b> o <b>Bimestral</b>) si querés controlar cada cuota, o <b>Trimestral</b> si solo seguís cada refacturación. Cuando llega el nuevo trimestre, <b>editá esta misma póliza</b> (sin duplicarla): tus cuotas ya pagadas se conservan.
             </li>
             <li>
-              <strong className="font-bold">Día Habitual (Día):</strong> Fuerza a que <i>todas</i> las cuotas venzan exactamente ese día (Ej: 16), evitando que se corran en meses de 31 días.
+              <strong className="font-bold">Próxima Fecha (Mes):</strong> le indica al sistema desde qué mes calcular las cuotas. Si el cliente ya pagó meses anteriores, poné la fecha de la primera cuota pendiente.
             </li>
             <li>
-              <strong className="font-bold">Ejemplo:</strong> Si querés que le venza todos los 16 empezando desde Noviembre, ponés{" "}
-              <code className="bg-white/50 px-1 rounded">Próxima Fecha: 15/11/2026</code> y{" "}
-              <code className="bg-white/50 px-1 rounded">Día Habitual: 16</code>.
+              <strong className="font-bold">Día Habitual (Día):</strong> fija que <i>todas</i> las cuotas venzan ese día exacto (Ej: 16), evitando corrimientos en meses de 30 o 31 días.
+            </li>
+            <li>
+              <strong className="font-bold">Ejemplo:</strong> para vencimientos los días 16 empezando en Noviembre, ponés{" "}
+              <code className="bg-white/50 dark:bg-gray-800 px-1 rounded">Próxima Fecha: 15/11/2026</code> y{" "}
+              <code className="bg-white/50 dark:bg-gray-800 px-1 rounded">Día Habitual: 16</code>.
             </li>
           </ul>
+          <div className="mt-3 pt-2.5 border-t border-blue-200/70 dark:border-blue-800/50">
+            <a
+              href="/blog/como-cargar-polizas-anuales-con-refacturacion-trimestral"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 text-xs font-bold text-blue-700 dark:text-blue-300 hover:underline"
+            >
+              Ver guía paso a paso completa <ExternalLink size={13} />
+            </a>
+          </div>
         </div>
       )}
 
@@ -86,7 +100,9 @@ export default function PolizaRefacturacionSection({ formData, onChange }: Props
               <option value="Trimestral">Trimestral</option>
               <option value="Semestral">Semestral</option>
               <option value="Anual">Anual</option>
-              <option value="Personalizada">Personalizada</option>
+              {formData.frecuenciaRefacturacion === "Personalizada" && (
+                <option value="Personalizada">Personalizada</option>
+              )}
             </select>
           </div>
 

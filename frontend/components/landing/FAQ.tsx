@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { ChevronDown, CheckCircle2, MessageCircleQuestion } from 'lucide-react';
 import Link from 'next/link';
 
@@ -20,6 +20,21 @@ export default function FAQ() {
             <li className="flex items-start gap-2"><CheckCircle2 size={18} className="text-green-600 shrink-0 mt-0.5" /> La información es 100% tuya. Podés exportarla o eliminarla en cualquier momento.</li>
           </ul>
         </>
+      )
+    },
+    {
+      q: "¿Puedo cargar pólizas anuales con refacturaciones trimestrales y pagos mensuales o bimestrales?",
+      a: (
+        <p>
+          Sí. Cargás una sola póliza con su <strong>vigencia anual completa</strong> y activás el módulo de <strong>refacturación</strong> con la frecuencia de pagos del cliente (mensual, bimestral o trimestral) y su día habitual de vencimiento. Cada vez que llega una refacturación trimestral, editás esa misma ficha para actualizar suma asegurada o PDF sin duplicar registros ni perder las cuotas ya pagadas.{" "}
+          <Link
+            href="/blog/como-cargar-polizas-anuales-con-refacturacion-trimestral"
+            className="font-bold text-green-700 hover:text-green-800 hover:underline"
+          >
+            Ver guía paso a paso
+          </Link>
+          .
+        </p>
       )
     },
     {
