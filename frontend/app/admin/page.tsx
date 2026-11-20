@@ -14,6 +14,7 @@ import HistorialPagos from "@/components/admin/HistorialPagos";
 import ModalEditarSuscripcion from "@/components/admin/ModalEditarSuscripcion";
 import ModalCambiarPlan from "@/components/admin/ModalCambiarPlan";
 import ModalEliminarCuenta from "@/components/admin/ModalEliminarCuenta";
+import { useAuthStore } from "@/store/authStore";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
@@ -129,25 +130,53 @@ export default function AdminDashboard() {
     }
   };
 
+  // 🔥 IMPERSONATE CORREGIDO: ruta correcta, apertura síncrona sin bloqueo de pop-up y estado completo en Zustand
   const handleImpersonate = async (agencia: any) => {
+    const nuevaPestana = window.open("", "_blank");
+    if (nuevaPestana) {
+      nuevaPestana.document.write(`
+        <html>
+          <head><title>Ingresando a cuenta...</title></head>
+          <body style="background:#030712;color:#e5e7eb;font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;">
+            <p>Generando acceso seguro...</p>
+          </body>
+        </html>
+      `);
+    }
+
     try {
       setToast({ show: true, msg: `Generando acceso seguro para ${agencia.nombre}...` });
       const adminToken = localStorage.getItem("asegurasimple_admin_token");
-      const res = await fetch(`${API_URL}/api/admin/agencias/${agencia.id}/impersonate`, { method: "POST", headers: { "Authorization": `Bearer ${adminToken}` } });
-      if (!res.ok) throw new Error("Error al intentar acceder a la cuenta");
+      const res = await fetch(`${API_URL}/api/admin/impersonate/${agencia.id}`, {
+        method: "POST",
+        headers: { "Authorization": `Bearer ${adminToken}` }
+      });
 
       const data = await res.json();
-      document.cookie = `next_auth_token=${data.token}; path=/; max-age=7200; SameSite=Lax`;
-      
-      localStorage.setItem("auth-storage", JSON.stringify({
-        state: { user: data.usuario, accessToken: data.token, showUpgradeModal: false, upgradeMessage: "", sessionExpired: false },
-        version: 0
-      }));
-      
+      if (!res.ok) throw new Error(data.error || "Error al intentar acceder a la cuenta");
+
+      const secureFlag = window.location.protocol === "https:" ? "; Secure" : "";
+      document.cookie = `next_auth_token=${data.token}; path=/; max-age=7200; SameSite=Lax${secureFlag}`;
+
+      useAuthStore.setState({
+        user: data.usuario,
+        accessToken: data.token,
+        showUpgradeModal: false,
+        upgradeMessage: "",
+        sessionExpired: false,
+        puedeMostrarTour: false
+      });
+
       setToast({ show: true, msg: "¡Acceso concedido! Abriendo panel..." });
-      setTimeout(() => window.open("/inicio", "_blank"), 1000);
-    } catch (error) {
-      setToast({ show: true, msg: "Hubo un error al generar la sesión." });
+
+      if (nuevaPestana) {
+        nuevaPestana.location.href = "/inicio";
+      } else {
+        window.location.href = "/inicio";
+      }
+    } catch (error: any) {
+      if (nuevaPestana) nuevaPestana.close();
+      setToast({ show: true, msg: error.message || "Hubo un error al generar la sesión." });
     }
   };
 

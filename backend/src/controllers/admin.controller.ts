@@ -126,21 +126,50 @@ export const updateComunicadoGlobal = async (req: Request, res: Response): Promi
   }
 };
 
+// 🔥 IMPERSONATE CORREGIDO: incluye suscripción, plan, jefeId y mismos datos que login normal
 export const impersonateUser = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
-    const usuario = await prisma.user.findUnique({ where: { id: Number(id) } });
+    const usuario = await prisma.user.findUnique({
+      where: { id: Number(id) },
+      include: { suscripcion: true }
+    });
+
     if (!usuario) {
       res.status(404).json({ error: 'La cuenta no existe.' });
       return;
     }
+
     const token = jwt.sign(
-      { id: usuario.id, userId: usuario.id, email: usuario.email, role: usuario.role, rol: usuario.role },
+      {
+        id: usuario.id,
+        userId: usuario.id,
+        email: usuario.email,
+        role: usuario.role,
+        rol: usuario.role,
+        plan: usuario.plan,
+        isImpersonating: true
+      },
       process.env.JWT_SECRET || 'secret',
-      { expiresIn: '2h' } 
+      { expiresIn: '2h' }
     );
-    res.json({ message: 'Sesión generada con éxito.', token, usuario: { id: usuario.id, nombre: usuario.nombre, email: usuario.email, role: usuario.role } });
+
+    res.json({
+      message: 'Sesión generada con éxito.',
+      token,
+      usuario: {
+        id: usuario.id,
+        nombre: usuario.nombre,
+        email: usuario.email,
+        role: usuario.role,
+        jefeId: usuario.jefeId,
+        twoFactorEnabled: usuario.twoFactorEnabled,
+        plan: usuario.plan,
+        suscripcion: usuario.suscripcion
+      }
+    });
   } catch (error) {
+    console.error("Error en impersonateUser:", error);
     res.status(500).json({ error: 'Error al iniciar sesión como este usuario.' });
   }
 };
@@ -223,7 +252,9 @@ export const deleteDescuento = async (req: Request, res: Response): Promise<void
   } catch (error) {
     res.status(500).json({ error: 'Error al eliminar el descuento.' });
   }
-};// 🔥 HISTORIAL DE PAGOS
+};
+
+// 🔥 HISTORIAL DE PAGOS
 export const getUltimosPagos = async (req: Request, res: Response): Promise<void> => {
   try {
     const pagos = await prisma.pago.findMany({
@@ -233,24 +264,22 @@ export const getUltimosPagos = async (req: Request, res: Response): Promise<void
         }
       },
       orderBy: { fechaPago: 'desc' },
-      take: 50 // Trae los últimos 50 cobros
+      take: 50
     });
     res.json(pagos);
   } catch (error) {
     res.status(500).json({ error: 'Error al obtener el historial de pagos.' });
   }
 };
+
 // 🔥 NUEVA FUNCIÓN: Obtener próximos vencimientos de suscripción
 export const getProximosVencimientos = async (req: Request, res: Response): Promise<void> => {
   try {
     const agencias = await prisma.user.findMany({
       where: {
-        // Solo traemos usuarios que sean los dueños de la cuenta (no empleados)
-        // y que no sean cuentas gratuitas
         jefeId: null,
         plan: { not: 'GRATUITO' },
         suscripcion: { isNot: null },
-        // 🔥 EXCLUIMOS ESTOS DOS CORREOS:
         email: { notIn: ['fmgestionesyseguros@hotmail.com', 'ezequielzari@gmail.com'] }
       },
       include: {
@@ -258,11 +287,9 @@ export const getProximosVencimientos = async (req: Request, res: Response): Prom
       },
     });
 
-    // Filtramos y calculamos los días restantes
     const hoy = new Date();
     const hoyMs = hoy.getTime();
 
-    // 1. Mapeamos y calculamos los días
     let proximosPagos = agencias.map(agencia => {
       let diasRestantes = null;
       let fechaVenc = null;
@@ -271,19 +298,14 @@ export const getProximosVencimientos = async (req: Request, res: Response): Prom
       if (agencia.suscripcion?.fechaVencimiento) {
         let fecha = new Date(agencia.suscripcion.fechaVencimiento);
         
-        // 🔥 CORRECCIÓN DE FALSOS "VENCIDOS":
-        // Si la suscripción está aprobada/autorizada o en trial, pero la fecha de vencimiento
-        // ya pasó (MercadoPago no la actualizó), le sumamos meses hasta que quede en el futuro.
         const estadosAlDia = ["approved", "autorizado", "authorized", "trial"];
         if (estadosAlDia.includes(estadoSuscripcion.toLowerCase())) {
-           while (fecha.getTime() < hoyMs) {
-             // Si está aprobado pero vencido en fecha, le sumamos 1 mes virtualmente
-             fecha.setMonth(fecha.getMonth() + 1);
-           }
+          while (fecha.getTime() < hoyMs) {
+            fecha.setMonth(fecha.getMonth() + 1);
+          }
         }
         
         fechaVenc = fecha.toISOString();
-        // Calculamos la diferencia en días (negativo = días vencidos, positivo = días faltantes)
         diasRestantes = Math.ceil((fecha.getTime() - hoyMs) / (1000 * 60 * 60 * 24));
       }
 
@@ -299,12 +321,8 @@ export const getProximosVencimientos = async (req: Request, res: Response): Prom
       };
     });
 
-    // 🔥 2. FILTRAMOS A LOS QUE LLEVAN MÁS DE 60 DÍAS VENCIDOS
-    // Solo dejamos pasar a los que les faltan días (> 0) o están vencidos hace 60 días o menos (>= -60)
     proximosPagos = proximosPagos.filter(pago => pago.diasRestantes === null || pago.diasRestantes >= -60);
 
-    // 3. Ordenamos: los que vencen antes (menor cantidad de días, incluyendo los negativos) van primero
-    // Ponemos al final los que no tienen fecha
     proximosPagos.sort((a, b) => {
       if (a.diasRestantes === null) return 1;
       if (b.diasRestantes === null) return -1;
